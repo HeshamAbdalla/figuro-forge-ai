@@ -64,7 +64,7 @@ function App() {
                 <Route path="/profile/figurines" element={<ProfileFigurines />} />
                 <Route path="/profile/pictures" element={<ProfilePictures />} />
                 <Route path="/settings" element={<Settings />} />
-                <Route path="/checkout/return" element={<CheckoutReturn />} />
+                <Route path="/checkout-return" element={<CheckoutReturn />} />
                 <Route path="/*" element={<NotFound />} />
               </Routes>
             </PageTransition>
