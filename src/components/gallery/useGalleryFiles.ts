@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { BucketImage } from "@/components/gallery/types";
@@ -77,8 +76,9 @@ export const useGalleryFiles = () => {
     return [...processedFiles, ...filesFromSubFolders];
   };
 
-  // Load all images and models from the bucket
-  const fetchImagesFromBucket = async () => {
+  // Load all images and models from the bucket - made useCallback for better optimization
+  const fetchImagesFromBucket = useCallback(async () => {
+    console.log("Fetching gallery files...");
     setIsLoading(true);
     try {
       // Get all files recursively, starting from root
@@ -90,6 +90,7 @@ export const useGalleryFiles = () => {
       );
       
       setImages(allFiles);
+      console.log(`Loaded ${allFiles.length} files from gallery`);
     } catch (error) {
       console.error("Error loading files from bucket:", error);
       toast({
@@ -100,7 +101,7 @@ export const useGalleryFiles = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchImagesFromBucket();
@@ -112,6 +113,7 @@ export const useGalleryFiles = () => {
           { event: '*', schema: 'storage', table: 'objects', filter: "bucket_id=eq.figurine-images" }, 
           () => {
             // When storage changes, refetch the files
+            console.log("Storage changed, refetching files...");
             fetchImagesFromBucket();
           }
       )
@@ -120,7 +122,7 @@ export const useGalleryFiles = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, [fetchImagesFromBucket]);
 
   return {
     images,

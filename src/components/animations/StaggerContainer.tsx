@@ -1,6 +1,7 @@
 
 import { motion } from "framer-motion";
 import { ReactNode, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 interface StaggerContainerProps {
   children: ReactNode;
@@ -25,28 +26,32 @@ const StaggerContainer: React.FC<StaggerContainerProps> = ({
   children,
   className = "",
   staggerDelay = 0.1,
-  initialDelay = 0.2
+  initialDelay = 0.1
 }) => {
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const location = useLocation();
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Detect if this is initial page load
+    // Reset and prepare animation state when route changes
+    setIsReady(false);
+    
+    // Shorter delay to prevent blocking content rendering
     const timer = setTimeout(() => {
-      setIsInitialLoad(false);
-    }, 50);
+      setIsReady(true);
+    }, 150);
     
     return () => clearTimeout(timer);
-  }, []);
+  }, [location.pathname]);
 
-  // Add extra delay on initial load to prevent conflicts with page transition
-  const adjustedInitialDelay = isInitialLoad ? initialDelay + 0.4 : initialDelay;
+  // Reduce initial delay to prevent content rendering issues
+  const adjustedInitialDelay = isReady ? initialDelay : 0.05;
 
   return (
     <motion.div
       variants={containerVariants}
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: true, margin: "-100px" }}
+      viewport={{ once: true, margin: "-50px" }}
       custom={{ staggerDelay, initialDelay: adjustedInitialDelay }}
       className={className}
     >

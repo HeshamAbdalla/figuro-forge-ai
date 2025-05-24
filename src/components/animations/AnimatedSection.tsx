@@ -1,6 +1,7 @@
 
 import { motion } from "framer-motion";
 import { ReactNode, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 interface AnimatedSectionProps {
   children: ReactNode;
@@ -12,11 +13,11 @@ interface AnimatedSectionProps {
 
 const getInitialPosition = (direction: string) => {
   switch (direction) {
-    case "up": return { y: 30, opacity: 0 };
-    case "down": return { y: -30, opacity: 0 };
-    case "left": return { x: 30, opacity: 0 };
-    case "right": return { x: -30, opacity: 0 };
-    default: return { y: 30, opacity: 0 };
+    case "up": return { y: 20, opacity: 0 };
+    case "down": return { y: -20, opacity: 0 };
+    case "left": return { x: 20, opacity: 0 };
+    case "right": return { x: -20, opacity: 0 };
+    default: return { y: 20, opacity: 0 };
   }
 };
 
@@ -25,27 +26,31 @@ const AnimatedSection: React.FC<AnimatedSectionProps> = ({
   className = "",
   delay = 0,
   direction = "up",
-  duration = 0.6
+  duration = 0.5
 }) => {
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const location = useLocation();
+  const [hasNavigated, setHasNavigated] = useState(false);
 
   useEffect(() => {
-    // Detect if this is initial page load
+    // Reset animation state when route changes
+    setHasNavigated(false);
+    
+    // Small delay to allow page transition to start
     const timer = setTimeout(() => {
-      setIsInitialLoad(false);
-    }, 50);
+      setHasNavigated(true);
+    }, 100);
     
     return () => clearTimeout(timer);
-  }, []);
+  }, [location.pathname]);
 
-  // Add extra delay on initial load to avoid conflicts
-  const adjustedDelay = isInitialLoad ? delay + 0.3 : delay;
+  // Reduce delay and animation intensity for better performance
+  const adjustedDelay = hasNavigated ? delay + 0.1 : delay;
 
   return (
     <motion.div
       initial={getInitialPosition(direction)}
       whileInView={{ x: 0, y: 0, opacity: 1 }}
-      viewport={{ once: true, margin: "-50px" }}
+      viewport={{ once: true, margin: "-30px" }}
       transition={{
         duration,
         delay: adjustedDelay,

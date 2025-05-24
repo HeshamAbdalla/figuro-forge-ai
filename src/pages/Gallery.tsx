@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import UploadModelModal from "@/components/UploadModelModal";
@@ -19,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 const Gallery = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   
   // Use custom hooks to manage gallery functionality
@@ -31,6 +31,14 @@ const Gallery = () => {
     handleViewModel, 
     handleCloseModelViewer 
   } = useModelViewer();
+
+  // Ensure data is refreshed when navigating to gallery
+  useEffect(() => {
+    // Force a refresh when navigating to gallery to ensure content loads
+    if (location.pathname === '/gallery') {
+      fetchImagesFromBucket();
+    }
+  }, [location.pathname, fetchImagesFromBucket]);
 
   // Clean up when component unmounts
   useEffect(() => {
@@ -102,7 +110,7 @@ const Gallery = () => {
             </AnimatedSection>
           )}
           
-          <StaggerContainer staggerDelay={0.05} initialDelay={0.3}>
+          <StaggerContainer staggerDelay={0.03} initialDelay={0.2}>
             <GalleryGrid 
               images={images}
               isLoading={isLoading}
@@ -113,7 +121,7 @@ const Gallery = () => {
         </div>
       </section>
       
-      <AnimatedSection delay={0.4}>
+      <AnimatedSection delay={0.3}>
         <CallToAction onNavigateToStudio={handleNavigateToStudio} />
       </AnimatedSection>
       

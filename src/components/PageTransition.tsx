@@ -1,7 +1,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState, useRef } from "react";
 
 interface PageTransitionProps {
   children: ReactNode;
@@ -23,24 +23,33 @@ const pageVariants = {
 const pageTransition = {
   type: "tween",
   ease: "easeInOut",
-  duration: 0.2
+  duration: 0.15
 };
 
 const PageTransition: React.FC<PageTransitionProps> = ({ children, className = "" }) => {
   const location = useLocation();
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isFirstRender, setIsFirstRender] = useState(true);
+  const previousLocation = useRef<string>("");
 
   useEffect(() => {
-    // After the first render, mark as not initial load
-    const timer = setTimeout(() => {
-      setIsInitialLoad(false);
-    }, 100);
+    // Check if this is actually a route change or just initial load
+    if (previousLocation.current !== "" && previousLocation.current !== location.pathname) {
+      // This is a route change, not initial load
+      setIsFirstRender(false);
+    } else if (previousLocation.current === "") {
+      // This is the very first render
+      const timer = setTimeout(() => {
+        setIsFirstRender(false);
+      }, 50);
+      
+      return () => clearTimeout(timer);
+    }
     
-    return () => clearTimeout(timer);
-  }, []);
+    previousLocation.current = location.pathname;
+  }, [location.pathname]);
 
-  // On initial load, don't animate to avoid conflict with component animations
-  if (isInitialLoad) {
+  // On first render, don't animate to avoid conflict with component animations
+  if (isFirstRender) {
     return <div className={className}>{children}</div>;
   }
 
