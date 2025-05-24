@@ -90,6 +90,10 @@ const Pricing = () => {
         title: "Subscription activated!",
         description: "Your plan has been activated successfully.",
       });
+      // Refresh the page to update subscription status
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } else if (canceled === "true") {
       toast({
         title: "Subscription canceled",
@@ -118,6 +122,8 @@ const Pricing = () => {
     setLoadingPlanId(planId);
     
     try {
+      console.log('Creating checkout for plan:', planId);
+      
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: {
           plan: planId,
@@ -127,17 +133,24 @@ const Pricing = () => {
       });
       
       if (error) {
+        console.error('Checkout error:', error);
         throw new Error(error.message);
       }
       
       if (data?.url) {
+        console.log('Opening checkout URL:', data.url);
         // Open Stripe checkout in a new tab
         window.open(data.url, '_blank');
+        
+        toast({
+          title: "Redirecting to Checkout",
+          description: "A new tab will open with Stripe checkout.",
+        });
       } else {
         throw new Error("No checkout URL returned");
       }
     } catch (error) {
-      console.error(error);
+      console.error('Subscription error:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create checkout session",

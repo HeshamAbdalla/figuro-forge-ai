@@ -8,6 +8,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper logging function
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
+};
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === "OPTIONS") {
@@ -15,9 +21,12 @@ serve(async (req) => {
   }
 
   try {
+    logStep("Request received", { method: req.method });
+
     // Get the authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      logStep("No authorization header");
       throw new Error('No authorization header');
     }
 
@@ -32,13 +41,20 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
 
     if (userError || !user) {
+      logStep("Error getting user", { error: userError?.message });
       throw new Error('Error getting user');
     }
 
+    logStep("User authenticated", { userId: user.id, email: user.email });
+
     // Parse the request body
-    const { plan, successUrl, cancelUrl } = await req.json();
+    const body = await req.json();
+    const { plan, successUrl, cancelUrl } = body;
+
+    logStep("Request body parsed", { plan, successUrl, cancelUrl });
 
     if (!plan) {
+      logStep("No plan specified in request body");
       throw new Error('No plan specified');
     }
 
@@ -47,16 +63,18 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
+    logStep("Stripe initialized");
+
     // Create product and price if they don't exist
-    // This is a safer approach that will create products if they're missing
-    // and return existing ones if they already exist
-    async function getOrCreatePriceId(planName) {
+    async function getOrCreatePriceId(planName: string) {
+      logStep("Getting or creating price for plan", { planName });
+      
       // First, check if we already have the product
       const products = await stripe.products.list({ active: true });
       const existingProduct = products.data.find(p => p.name.toLowerCase() === planName.toLowerCase());
       
       if (existingProduct && existingProduct.default_price) {
-        // Return existing price ID
+        logStep("Found existing product", { productId: existingProduct.id, priceId: existingProduct.default_price });
         return existingProduct.default_price.toString();
       }
       
@@ -68,7 +86,8 @@ serve(async (req) => {
       
       let priceDetails = {
         currency: 'usd',
-        recurring: { interval: 'month' },
+        recurring: { interval: 'month' as const },
+        unit_amount: 0,
       };
       
       // Set price based on plan
@@ -83,8 +102,11 @@ serve(async (req) => {
           priceDetails.unit_amount = 5999; // $59.99
           break;
         default:
+          logStep("Unknown plan", { planName });
           throw new Error(`Unknown plan: ${planName}`);
       }
+      
+      logStep("Creating new product and price", { productDetails, priceDetails });
       
       // Create the product
       const product = await stripe.products.create(productDetails);
@@ -95,6 +117,7 @@ serve(async (req) => {
         product: product.id,
       });
       
+      logStep("Created new product and price", { productId: product.id, priceId: price.id });
       return price.id;
     }
 
@@ -102,6 +125,8 @@ serve(async (req) => {
     const priceId = await getOrCreatePriceId(plan);
 
     // Create a checkout session
+    logStep("Creating checkout session", { priceId, plan });
+    
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -119,13 +144,17 @@ serve(async (req) => {
       },
     });
 
+    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+
     return new Response(JSON.stringify({ sessionId: session.id, url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    console.error(`Error creating checkout session: ${error instanceof Error ? error.message : String(error)}`);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logStep("ERROR in create-checkout", { message: errorMessage });
+    console.error(`Error creating checkout session: ${errorMessage}`);
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
     });

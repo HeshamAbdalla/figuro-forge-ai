@@ -31,7 +31,6 @@ export const useSubscription = () => {
 
   // Load user and subscription data
   useEffect(() => {
-    // Get the current session
     const loadUserAndSubscription = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -54,7 +53,6 @@ export const useSubscription = () => {
 
     loadUserAndSubscription();
 
-    // Set up auth change listener
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user || null);
@@ -100,8 +98,7 @@ export const useSubscription = () => {
 
   // Subscribe to a plan
   const subscribeToPlan = async (
-    planType: 'free' | 'starter' | 'pro' | 'unlimited', 
-    addOns?: { commercialLicense?: boolean; additionalConversions?: number }
+    plan: 'free' | 'starter' | 'pro' | 'unlimited'
   ) => {
     if (!user) {
       toast({
@@ -113,13 +110,16 @@ export const useSubscription = () => {
     }
 
     try {
+      console.log('Subscribing to plan:', plan);
+      
       // For free plan, no Stripe checkout is needed
-      if (planType === 'free') {
+      if (plan === 'free') {
         const { data, error } = await supabase.functions.invoke('create-checkout', {
-          body: { planType, addOns }
+          body: { plan }
         });
 
         if (error) {
+          console.error('Error with free plan subscription:', error);
           throw new Error(error.message);
         }
 
@@ -136,10 +136,15 @@ export const useSubscription = () => {
       
       // For paid plans, create a checkout session
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { planType, addOns }
+        body: { 
+          plan,
+          successUrl: `${window.location.origin}/pricing?success=true`,
+          cancelUrl: `${window.location.origin}/pricing?canceled=true`
+        }
       });
 
       if (error) {
+        console.error('Error creating checkout session:', error);
         throw new Error(error.message);
       }
 
@@ -147,14 +152,16 @@ export const useSubscription = () => {
         throw new Error('No checkout URL returned');
       }
 
+      console.log('Opening checkout URL:', data.url);
       // Open Stripe checkout in a new tab
       window.open(data.url, '_blank');
       return data;
     } catch (err) {
       console.error('Error creating subscription:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create subscription';
       toast({
         title: "Subscription Error",
-        description: err instanceof Error ? err.message : 'Failed to create subscription',
+        description: errorMessage,
         variant: "destructive"
       });
       return null;

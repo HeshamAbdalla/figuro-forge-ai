@@ -66,7 +66,7 @@ export const PlanOptions = () => {
     },
   ];
 
-  const handlePlanAction = async (planId) => {
+  const handlePlanAction = async (planId: string) => {
     try {
       if (!user) {
         toast({
@@ -78,16 +78,21 @@ export const PlanOptions = () => {
       }
 
       setProcessingPlan(planId);
+      console.log('Handling plan action for:', planId);
       
       if (subscription?.plan === planId) {
         // If it's the current plan, open the customer portal
         await openCustomerPortal();
-      } else if (planId === 'free' || subscription?.plan === 'free') {
-        // For upgrading from free or downgrading to free
-        await subscribeToPlan(planId);
       } else {
-        // For switching between paid plans
-        await openCustomerPortal();
+        // Subscribe to the new plan
+        const result = await subscribeToPlan(planId as 'free' | 'starter' | 'pro' | 'unlimited');
+        
+        if (result && planId !== 'free') {
+          toast({
+            title: "Redirecting to Checkout",
+            description: "You will be redirected to Stripe checkout in a new tab.",
+          });
+        }
       }
     } catch (error) {
       console.error("Error handling plan action:", error);
@@ -102,18 +107,18 @@ export const PlanOptions = () => {
   };
 
   // Function to determine button text
-  const getButtonText = (planId) => {
+  const getButtonText = (planId: string) => {
     if (subscription?.plan === planId) {
       return "Current Plan";
     }
     if (isPlanUpgrade(planId)) {
       return "Upgrade";
     }
-    return "Downgrade";
+    return "Switch Plan";
   };
 
   // Function to check if switching to this plan would be an upgrade
-  const isPlanUpgrade = (planId) => {
+  const isPlanUpgrade = (planId: string) => {
     const planOrder = ['free', 'starter', 'pro', 'unlimited'];
     const currentIndex = planOrder.indexOf(subscription?.plan || 'free');
     const targetIndex = planOrder.indexOf(planId);
