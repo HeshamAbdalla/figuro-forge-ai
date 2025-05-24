@@ -16,12 +16,13 @@ const CheckoutReturn = () => {
   const { refreshAuth } = useAuth();
   const { checkSubscription } = useSubscription();
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'cancelled'>('loading');
-  const [sessionData, setSessionData] = useState<any>(null);
+  const [paymentData, setPaymentData] = useState<any>(null);
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
     
     if (!sessionId) {
+      console.error('No session_id found in URL');
       setStatus('error');
       return;
     }
@@ -30,38 +31,43 @@ const CheckoutReturn = () => {
       try {
         console.log('Verifying payment for session:', sessionId);
 
-        // Call the get-checkout-session function with the session ID
-        const { data: sessionInfo, error } = await supabase.functions.invoke('get-checkout-session', {
+        // Use the secure verification endpoint
+        const { data: verificationResult, error } = await supabase.functions.invoke('verify-payment-session', {
           body: { session_id: sessionId }
         });
 
         if (error) {
-          throw new Error(error.message || 'Failed to retrieve session');
+          console.error('Verification error:', error);
+          throw new Error(error.message || 'Failed to verify payment');
         }
 
-        console.log('Session info:', sessionInfo);
-        setSessionData(sessionInfo);
+        console.log('Verification result:', verificationResult);
+        setPaymentData(verificationResult);
 
-        if (sessionInfo.status === 'complete' && sessionInfo.payment_status === 'paid') {
+        if (verificationResult.success) {
           setStatus('success');
           
-          // Refresh auth and subscription data
+          // Regenerate session for security (refresh auth tokens)
           await refreshAuth();
+          
+          // Check subscription to update local state
           await checkSubscription();
           
           toast({
             title: "Payment Successful!",
-            description: `Your ${sessionInfo.metadata?.plan || 'subscription'} plan has been activated.`,
+            description: `Your ${verificationResult.plan} plan has been activated.`,
           });
 
           // Redirect to profile after a delay
           setTimeout(() => {
             navigate('/profile');
           }, 3000);
-        } else if (sessionInfo.status === 'open') {
-          setStatus('cancelled');
         } else {
-          setStatus('error');
+          if (verificationResult.message?.includes('not completed')) {
+            setStatus('cancelled');
+          } else {
+            setStatus('error');
+          }
         }
       } catch (error) {
         console.error('Error verifying payment:', error);
@@ -84,7 +90,7 @@ const CheckoutReturn = () => {
           <div className="text-center">
             <Loader2 className="h-16 w-16 animate-spin text-figuro-accent mx-auto mb-6" />
             <h2 className="text-2xl font-bold text-white mb-4">Verifying Payment</h2>
-            <p className="text-white/70">Please wait while we confirm your payment...</p>
+            <p className="text-white/70">Please wait while we securely verify your payment...</p>
           </div>
         );
 
@@ -94,7 +100,7 @@ const CheckoutReturn = () => {
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
             <h2 className="text-2xl font-bold text-white mb-4">Payment Successful!</h2>
             <p className="text-white/70 mb-6">
-              Your {sessionData?.metadata?.plan || 'subscription'} plan has been activated successfully.
+              Your {paymentData?.plan || 'subscription'} plan has been activated successfully.
             </p>
             <p className="text-white/50 mb-8">Redirecting you to your profile...</p>
             <Button 
@@ -110,7 +116,7 @@ const CheckoutReturn = () => {
         return (
           <div className="text-center">
             <XCircle className="h-16 w-16 text-yellow-500 mx-auto mb-6" />
-            <h2 className="text-2xl font-bold text-white mb-4">Payment Cancelled</h2>
+            <h2 className="text-2xl font-bold text-white mb-4">Payment Incomplete</h2>
             <p className="text-white/70 mb-8">
               Your payment was not completed. You can try again anytime.
             </p>

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -29,11 +29,43 @@ export const useSubscription = () => {
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
 
+  // Check subscription status
+  const checkSubscription = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke<SubscriptionData>('check-subscription');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      setSubscription(data);
+      setError(null);
+      console.log('Subscription data updated:', data);
+    } catch (err) {
+      console.error('Error checking subscription:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to check subscription';
+      setError(errorMessage);
+      
+      // Only show toast for non-auth errors
+      if (!errorMessage.includes('Authentication') && !errorMessage.includes('not authenticated')) {
+        toast({
+          title: "Subscription Error",
+          description: "Couldn't load your subscription details. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  }, []);
+
   // Load user and subscription data
   useEffect(() => {
+    let mounted = true;
+
     const loadUserAndSubscription = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
         
         if (!session?.user) {
           setUser(null);
@@ -46,8 +78,13 @@ export const useSubscription = () => {
         await checkSubscription();
       } catch (err) {
         console.error('Error loading user data:', err);
-        setError('Failed to load user data');
-        setIsLoading(false);
+        if (mounted) {
+          setError('Failed to load user data');
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -55,47 +92,32 @@ export const useSubscription = () => {
 
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+        
+        console.log('Auth state changed:', event, session?.user?.email);
         setUser(session?.user || null);
         
         if (event === 'SIGNED_IN' && session?.user) {
-          await checkSubscription();
+          // Small delay to ensure auth state is settled
+          setTimeout(async () => {
+            if (mounted) {
+              await checkSubscription();
+              setIsLoading(false);
+            }
+          }, 100);
         } else if (event === 'SIGNED_OUT') {
           setSubscription(null);
+          setError(null);
+          setIsLoading(false);
         }
       }
     );
 
     return () => {
+      mounted = false;
       authSub.unsubscribe();
     };
-  }, []);
-
-  // Check subscription status
-  const checkSubscription = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke<SubscriptionData>('check-subscription');
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      setSubscription(data);
-      console.log('Subscription data updated:', data);
-    } catch (err) {
-      console.error('Error checking subscription:', err);
-      setError(err instanceof Error ? err.message : 'Failed to check subscription');
-      toast({
-        title: "Subscription Error",
-        description: "Couldn't load your subscription details. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [checkSubscription]);
 
   // Subscribe to a plan
   const subscribeToPlan = async (
@@ -113,33 +135,10 @@ export const useSubscription = () => {
     try {
       console.log('Subscribing to plan:', plan);
       
-      // For free plan, no Stripe checkout is needed
-      if (plan === 'free') {
-        const { data, error } = await supabase.functions.invoke('create-checkout', {
-          body: { plan }
-        });
-
-        if (error) {
-          console.error('Error with free plan subscription:', error);
-          throw new Error(error.message);
-        }
-
-        // Refresh subscription data
-        await checkSubscription();
-        
-        toast({
-          title: "Subscribed to Free Plan",
-          description: "You are now on the Free plan",
-        });
-        
-        return { success: true };
-      }
-      
-      // For paid plans, create a checkout session
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
           plan,
-          successUrl: `${window.location.origin}/profile?success=true&plan=${plan}`,
+          successUrl: `${window.location.origin}/checkout-return?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/pricing?canceled=true`
         }
       });
@@ -149,12 +148,24 @@ export const useSubscription = () => {
         throw new Error(error.message);
       }
 
+      if (plan === 'free') {
+        // Refresh subscription data for free plan
+        await checkSubscription();
+        
+        toast({
+          title: "Switched to Free Plan",
+          description: "You are now on the Free plan.",
+        });
+        
+        return { success: true };
+      }
+
       if (!data?.url) {
         throw new Error('No checkout URL returned');
       }
 
       console.log('Redirecting to checkout URL:', data.url);
-      // Redirect to Stripe checkout in the same tab for better session management
+      // Redirect to Stripe checkout
       window.location.href = data.url;
       return data;
     } catch (err) {
@@ -166,64 +177,6 @@ export const useSubscription = () => {
         variant: "destructive"
       });
       return null;
-    }
-  };
-
-  // Verify subscription after payment with improved logic
-  const verifySubscription = async (expectedPlan?: string) => {
-    try {
-      console.log('Verifying subscription status with expected plan:', expectedPlan);
-      
-      // Check subscription status
-      await checkSubscription();
-      
-      // Check if the subscription data indicates the expected plan
-      if (subscription && expectedPlan) {
-        const planMatches = subscription.plan === expectedPlan;
-        const isActive = subscription.is_active;
-        
-        console.log('Verification result:', { 
-          currentPlan: subscription.plan, 
-          expectedPlan, 
-          planMatches, 
-          isActive 
-        });
-        
-        return planMatches && isActive;
-      }
-      
-      // If no expected plan, just check if user has any active paid plan
-      return subscription?.plan !== 'free' && subscription?.is_active;
-    } catch (error) {
-      console.error('Error verifying subscription:', error);
-      return false;
-    }
-  };
-
-  // Reset usage limits (useful after subscription upgrade)
-  const resetUsageLimits = async () => {
-    if (!user) return;
-    
-    try {
-      // Reset usage tracking in the database
-      const { error } = await supabase
-        .from('user_usage')
-        .upsert({
-          user_id: user.id,
-          image_generations_used: 0,
-          model_conversions_used: 0,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-
-      if (error) {
-        console.error('Error resetting usage limits:', error);
-      } else {
-        console.log('Usage limits reset successfully');
-        // Refresh subscription data to show updated usage
-        await checkSubscription();
-      }
-    } catch (error) {
-      console.error('Error in resetUsageLimits:', error);
     }
   };
 
@@ -268,8 +221,6 @@ export const useSubscription = () => {
     user,
     checkSubscription,
     subscribeToPlan,
-    openCustomerPortal,
-    verifySubscription,
-    resetUsageLimits
+    openCustomerPortal
   };
 };

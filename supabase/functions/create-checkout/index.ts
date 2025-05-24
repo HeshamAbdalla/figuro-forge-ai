@@ -14,13 +14,6 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
-// Mapping of plan names to Stripe price IDs
-const PLAN_PRICE_IDS = {
-  "starter": "price_1RRpW3Fz9RxnLs0LsxWYzd34",
-  "pro": "price_1RRozKFz9RxnLs0LjeVjldW1",
-  "unlimited": "price_1RRp0BFz9RxnLs0LjR1zMtLi"
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -29,119 +22,175 @@ serve(async (req) => {
   try {
     logStep("Request received", { method: req.method });
 
-    // Create a Supabase client
-    const supabaseClient = createClient(
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+
+    // Initialize Supabase clients
+    const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
     );
 
-    // Get the authorization header
-    const authHeader = req.headers.get("Authorization")!;
-    const token = authHeader.replace("Bearer ", "");
-    const { data } = await supabaseClient.auth.getUser(token);
-    const user = data.user;
+    // Get user from auth header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header provided");
 
-    if (!user?.email || !user?.id) {
-      throw new Error("User not authenticated or email/id not available");
-    }
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    
+    const user = userData.user;
+    if (!user?.email) throw new Error("User not authenticated or email not available");
 
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Parse request body
     const body = await req.json();
-    const { plan, mode = "embedded" } = body;
+    const { plan, mode = 'payment', successUrl, cancelUrl } = body;
 
-    logStep("Request body parsed", { plan, mode });
+    if (!plan) {
+      throw new Error("Plan is required");
+    }
 
-    // Initialize Stripe
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    
-    logStep("Stripe initialized");
-    
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    logStep("Creating checkout session", { plan, mode });
 
-    // For free plan, just update the user's plan in the database
-    if (plan === "free") {
-      logStep("Processing free plan");
-      
-      const supabaseAdmin = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-        { auth: { persistSession: false } }
-      );
-
-      // Update user profile
-      await supabaseAdmin
-        .from("profiles")
-        .update({ plan: "free" })
-        .eq("id", user.id);
-
-      // Update subscription
-      await supabaseAdmin
+    // Handle free plan without Stripe
+    if (plan === 'free') {
+      const { error: subscriptionError } = await supabaseAdmin
         .from("subscriptions")
         .upsert({
           user_id: user.id,
-          plan_type: "free",
+          plan_type: 'free',
+          commercial_license: false,
+          additional_conversions: 0,
+          stripe_customer_id: null,
+          stripe_subscription_id: null,
+          valid_until: null,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
 
-      return new Response(JSON.stringify({ success: true }), {
+      if (subscriptionError) {
+        throw new Error(`Failed to update to free plan: ${subscriptionError.message}`);
+      }
+
+      logStep("Updated to free plan successfully");
+      return new Response(JSON.stringify({ success: true, plan: 'free' }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200
+        status: 200,
       });
     }
 
-    // Get the price ID for the requested plan
-    const priceId = PLAN_PRICE_IDS[plan as keyof typeof PLAN_PRICE_IDS];
-    if (!priceId) {
-      throw new Error(`Invalid plan: ${plan}. Available plans: ${Object.keys(PLAN_PRICE_IDS).join(', ')}`);
+    // Plan configurations
+    const planConfigs = {
+      starter: { priceId: 'price_starter', amount: 1299, name: 'Starter Plan' },
+      pro: { priceId: 'price_pro', amount: 2999, name: 'Pro Plan' },
+      unlimited: { priceId: 'price_unlimited', amount: 5999, name: 'Unlimited Plan' }
+    };
+
+    const planConfig = planConfigs[plan as keyof typeof planConfigs];
+    if (!planConfig) {
+      throw new Error(`Invalid plan: ${plan}`);
     }
 
-    logStep("Using existing price ID", { plan, priceId });
-
-    // Check if customer already exists
+    // Check for existing customer
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      logStep("Found existing customer", { customerId });
+    let customerId = customers.data.length > 0 ? customers.data[0].id : undefined;
+
+    // Create customer if doesn't exist
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { userId: user.id }
+      });
+      customerId = customer.id;
+      logStep("Created new Stripe customer", { customerId });
     }
 
-    // Create checkout session with embedded UI mode
-    logStep("Creating checkout session", { priceId, plan, mode });
-    
     const origin = req.headers.get("origin") || "http://localhost:5173";
-    
-    const session = await stripe.checkout.sessions.create({
+    const metadata = {
+      userId: user.id,
+      plan: plan,
+      commercialLicense: (plan === 'unlimited').toString(),
+      additionalConversions: "0"
+    };
+
+    let sessionParams: any = {
       customer: customerId,
-      customer_email: customerId ? undefined : user.email,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: "subscription",
-      ui_mode: "embedded",
-      return_url: `${origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
-      metadata: {
-        userId: user.id,
-        user_id: user.id,
-        plan: plan,
-        planType: plan,
-      },
+      metadata: metadata,
+      success_url: successUrl || `${origin}/checkout-return?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${origin}/pricing?canceled=true`,
+    };
+
+    if (mode === 'embedded') {
+      // Embedded checkout mode
+      sessionParams = {
+        ...sessionParams,
+        ui_mode: 'embedded',
+        return_url: `${origin}/checkout-return?session_id={CHECKOUT_SESSION_ID}`,
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: { name: planConfig.name },
+              unit_amount: planConfig.amount,
+              recurring: { interval: "month" },
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "subscription",
+      };
+    } else {
+      // Regular hosted checkout
+      sessionParams = {
+        ...sessionParams,
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: { name: planConfig.name },
+              unit_amount: planConfig.amount,
+              recurring: { interval: "month" },
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "subscription",
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+
+    logStep("Checkout session created", { 
+      sessionId: session.id, 
+      mode: mode,
+      plan: plan 
     });
 
-    logStep("Checkout session created", { sessionId: session.id, clientSecret: session.client_secret });
+    // Record the payment session in our database
+    await supabaseAdmin
+      .from("payment_sessions")
+      .insert({
+        user_id: user.id,
+        stripe_session_id: session.id,
+        payment_status: 'pending',
+        plan_type: plan,
+        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour
+      });
 
-    return new Response(JSON.stringify({ 
-      clientSecret: session.client_secret,
-      sessionId: session.id 
-    }), {
+    logStep("Payment session recorded");
+
+    const response = mode === 'embedded' 
+      ? { clientSecret: session.client_secret }
+      : { url: session.url };
+
+    return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
+
   } catch (error) {
     logStep("Error in create-checkout", { error: error instanceof Error ? error.message : String(error) });
     console.error(`Error in create-checkout: ${error instanceof Error ? error.message : String(error)}`);

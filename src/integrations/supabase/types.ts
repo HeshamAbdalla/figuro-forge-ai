@@ -51,6 +51,42 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          payment_status: string
+          plan_type: string
+          stripe_session_id: string
+          updated_at: string
+          user_id: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          payment_status?: string
+          plan_type: string
+          stripe_session_id: string
+          updated_at?: string
+          user_id?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          payment_status?: string
+          plan_type?: string
+          stripe_session_id?: string
+          updated_at?: string
+          user_id?: string | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       plan_limits: {
         Row: {
           features: Json | null
@@ -206,6 +242,10 @@ export type Database = {
       check_user_limits: {
         Args: { action_type: string }
         Returns: boolean
+      }
+      cleanup_expired_payment_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       increment_stat: {
         Args: { stat_id: string; inc_amount?: number }

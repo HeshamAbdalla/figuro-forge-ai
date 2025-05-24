@@ -25,7 +25,8 @@ export const EmbeddedCheckout: React.FC<EmbeddedCheckoutProps> = ({ planId, onCl
     const createCheckoutSession = async () => {
       try {
         setIsLoading(true);
-        console.log('Creating checkout session for plan:', planId);
+        setError(null);
+        console.log('Creating embedded checkout session for plan:', planId);
 
         const { data, error } = await supabase.functions.invoke('create-checkout', {
           body: {
@@ -42,7 +43,7 @@ export const EmbeddedCheckout: React.FC<EmbeddedCheckoutProps> = ({ planId, onCl
           throw new Error('No client secret returned from checkout session');
         }
 
-        console.log('Checkout session created successfully');
+        console.log('Embedded checkout session created successfully');
         setClientSecret(data.clientSecret);
       } catch (err) {
         console.error('Error creating checkout session:', err);
@@ -66,12 +67,14 @@ export const EmbeddedCheckout: React.FC<EmbeddedCheckoutProps> = ({ planId, onCl
   const options = {
     clientSecret,
     onComplete: () => {
-      console.log('Checkout completed successfully');
+      console.log('Embedded checkout completed successfully');
       toast({
         title: "Payment Processing",
-        description: "Your payment is being processed. Please wait while we update your subscription.",
+        description: "Your payment is being processed. Redirecting you to verify...",
       });
-      // The return URL will handle the rest
+      
+      // Close the modal and redirect will be handled by the return URL
+      onClose();
     }
   };
 
@@ -79,7 +82,7 @@ export const EmbeddedCheckout: React.FC<EmbeddedCheckoutProps> = ({ planId, onCl
     return (
       <div className="flex flex-col items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-figuro-accent mb-4" />
-        <p className="text-white/70">Setting up checkout...</p>
+        <p className="text-white/70">Setting up secure checkout...</p>
       </div>
     );
   }
@@ -101,7 +104,7 @@ export const EmbeddedCheckout: React.FC<EmbeddedCheckoutProps> = ({ planId, onCl
   if (!clientSecret) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
-        <p className="text-white/70">Initializing payment...</p>
+        <p className="text-white/70">Initializing secure payment...</p>
       </div>
     );
   }
