@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import PromptForm from "@/components/PromptForm";
@@ -89,17 +90,18 @@ const Studio = () => {
     });
   };
 
-  // Call directly to handleGenerate instead of trying edge function first
+  // Enhanced generation function with authentication check
   const onGenerate = async (prompt: string, style: string) => {
     // Reset custom model when generating a new image
     setCustomModelUrl(null);
     setCustomModelFile(null);
     
-    // Check if user can perform action
+    // REQUIRE authentication for figurine creation
     if (!authUser) {
       toast({
         title: "Authentication required",
-        description: "Please sign in to generate images",
+        description: "Please sign in to generate and save figurines",
+        variant: "destructive",
       });
       navigate("/auth");
       return;
@@ -107,15 +109,11 @@ const Studio = () => {
     
     const canGenerate = canPerformAction("image_generation");
     if (!canGenerate) {
-      // Show upgrade modal
-      setShowApiInput(false); // Hide API input if shown
       toast({
         title: "Usage limit reached",
         description: "You've reached your monthly image generation limit",
         variant: "destructive",
       });
-      // Show upgrade modal with appropriate settings
-      // ... your existing modal code
       return;
     }
     
@@ -136,7 +134,6 @@ const Studio = () => {
           description: "Please enter your Hugging Face API key to continue",
         });
       } else if (!result.success) {
-        // The error property doesn't exist on the result type, so use a generic message
         toast({
           title: "Generation Failed",
           description: "Failed to generate image. Please try again.",
@@ -153,7 +150,7 @@ const Studio = () => {
     }
   };
   
-  // Handle model conversion with usage tracking
+  // Handle model conversion with usage tracking and authentication
   const handleConvertWithUsageTracking = async () => {
     if (!generatedImage) {
       return;
@@ -175,8 +172,6 @@ const Studio = () => {
         description: "You've reached your monthly model conversion limit",
         variant: "destructive",
       });
-      // Show upgrade modal with appropriate settings
-      // ... your existing modal code
       return;
     }
     
@@ -251,6 +246,7 @@ const Studio = () => {
                 onClick={() => setUploadModalOpen(true)}
                 variant="outline" 
                 className="border-white/20 hover:border-white/40 bg-white/5 backdrop-blur-sm"
+                disabled={!authUser}
               >
                 <Upload size={16} className="mr-2" />
                 Upload 3D Model
@@ -266,7 +262,7 @@ const Studio = () => {
                   </div>
                 ) : (
                   <Button onClick={handleSignIn} variant="outline" className="border-white/20 bg-white/5 backdrop-blur-sm">
-                    Sign In to Save
+                    Sign In to Create
                   </Button>
                 )}
               </div>
@@ -299,39 +295,54 @@ const Studio = () => {
               </TabsList>
               
               <TabsContent value="create" className="mt-6">
-                <motion.div 
-                  className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-                  variants={container}
-                  initial="hidden"
-                  animate="show"
-                >
-                  <motion.div variants={item}>
-                    <PromptForm 
-                      onGenerate={onGenerate} 
-                      isGenerating={isGeneratingImage}
-                    />
+                {!authUser ? (
+                  <motion.div 
+                    className="text-center py-16 glass-panel rounded-xl"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <h2 className="text-2xl font-semibold text-gradient mb-4">Sign in to create figurines</h2>
+                    <p className="text-white/70 mb-6">Authentication is required to generate and save your figurines</p>
+                    <Button onClick={handleSignIn} className="bg-figuro-accent hover:bg-figuro-accent-hover">
+                      Sign In / Sign Up
+                    </Button>
                   </motion.div>
-                  
-                  <motion.div variants={item}>
-                    <ImagePreview 
-                      imageSrc={generatedImage} 
-                      isLoading={isGeneratingImage}
-                      onConvertTo3D={handleConvertWithUsageTracking}
-                      isConverting={isConverting}
-                      generationMethod={generationMethod}
-                    />
+                ) : (
+                  <motion.div 
+                    className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+                    variants={container}
+                    initial="hidden"
+                    animate="show"
+                  >
+                    <motion.div variants={item}>
+                      <PromptForm 
+                        onGenerate={onGenerate} 
+                        isGenerating={isGeneratingImage}
+                      />
+                    </motion.div>
+                    
+                    <motion.div variants={item}>
+                      <ImagePreview 
+                        imageSrc={generatedImage} 
+                        isLoading={isGeneratingImage}
+                        onConvertTo3D={handleConvertWithUsageTracking}
+                        isConverting={isConverting}
+                        generationMethod={generationMethod}
+                      />
+                    </motion.div>
+                    
+                    <motion.div variants={item}>
+                      <ModelViewer 
+                        modelUrl={displayModelUrl} 
+                        isLoading={isConverting}
+                        progress={conversionProgress}
+                        errorMessage={conversionError}
+                        onCustomModelLoad={handleCustomModelLoad}
+                      />
+                    </motion.div>
                   </motion.div>
-                  
-                  <motion.div variants={item}>
-                    <ModelViewer 
-                      modelUrl={displayModelUrl} 
-                      isLoading={isConverting}
-                      progress={conversionProgress}
-                      errorMessage={conversionError}
-                      onCustomModelLoad={handleCustomModelLoad}
-                    />
-                  </motion.div>
-                </motion.div>
+                )}
               </TabsContent>
 
               <TabsContent value="gallery" className="mt-6">

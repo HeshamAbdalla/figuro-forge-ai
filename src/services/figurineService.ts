@@ -1,10 +1,9 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
 import { Figurine } from "@/types/figurine";
 import { saveImageToStorage } from "@/utils/storageUtils";
 
-// Save a new figurine to the database
+// Save a new figurine to the database - requires authentication
 export const saveFigurine = async (
   prompt: string, 
   style: string, 
@@ -13,7 +12,12 @@ export const saveFigurine = async (
 ): Promise<string | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id || null;
+    
+    if (!session?.user) {
+      throw new Error('Authentication required to save figurines');
+    }
+    
+    const userId = session.user.id;
     
     // Generate a new ID for the figurine
     const figurineId = uuidv4();
@@ -38,7 +42,7 @@ export const saveFigurine = async (
     // Create figurine data object
     const figurineData = {
       id: figurineId,
-      user_id: userId,
+      user_id: userId, // Now guaranteed to be non-null
       prompt: prompt,
       style: style as any, // Cast to any to bypass the strict enum type check
       image_url: imageUrl,
@@ -48,12 +52,16 @@ export const saveFigurine = async (
     };
     
     // Insert new figurine
-    await supabase.from('figurines').insert(figurineData);
+    const { error } = await supabase.from('figurines').insert(figurineData);
+    
+    if (error) {
+      throw error;
+    }
     
     return figurineId;
   } catch (error) {
     console.error('Error saving figurine:', error);
-    return null;
+    throw error; // Re-throw to handle in the calling code
   }
 };
 

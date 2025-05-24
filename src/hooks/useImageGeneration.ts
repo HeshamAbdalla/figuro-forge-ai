@@ -346,6 +346,12 @@ export const useImageGeneration = () => {
 
   // Generate image using a single generation attempt strategy
   const handleGenerate = async (prompt: string, style: string, apiKey: string = "", preGeneratedImageUrl?: string): Promise<GenerateResult> => {
+    // Check authentication first
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      throw new Error('Authentication required to generate figurines');
+    }
+
     const savedApiKey = localStorage.getItem("tempHuggingFaceApiKey") || apiKey;
     
     setIsGeneratingImage(true);
@@ -401,10 +407,20 @@ export const useImageGeneration = () => {
           description: `Created "${prompt}" in ${style} style using ${generationMethod || "API"} method`,
         });
         
-        const figurineId = await saveFigurine(prompt, style, imageUrl, imageBlob);
-        
-        if (figurineId) {
-          setCurrentFigurineId(figurineId);
+        try {
+          const figurineId = await saveFigurine(prompt, style, imageUrl, imageBlob);
+          
+          if (figurineId) {
+            setCurrentFigurineId(figurineId);
+          }
+        } catch (saveError) {
+          console.error("Error saving figurine:", saveError);
+          toast({
+            title: "Save failed",
+            description: "Image generated but failed to save to database",
+            variant: "destructive",
+          });
+          // Continue anyway since we have the image
         }
       }
       
