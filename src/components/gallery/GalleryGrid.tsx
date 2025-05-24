@@ -1,8 +1,9 @@
 
 import React from "react";
-import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import GalleryItem from "./GalleryItem";
+import AnimatedItem from "@/components/animations/AnimatedItem";
+import StaggerContainer from "@/components/animations/StaggerContainer";
 
 interface BucketImage {
   name: string;
@@ -28,17 +29,19 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <StaggerContainer staggerDelay={0.1} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {[1, 2, 3, 4, 5, 6].map((item) => (
-          <div key={item} className="glass-panel">
-            <div className="p-0">
-              <div className="aspect-square w-full">
-                <Skeleton className="h-full w-full bg-white/5 loading-shine" />
+          <AnimatedItem key={item}>
+            <div className="glass-panel">
+              <div className="p-0">
+                <div className="aspect-square w-full">
+                  <Skeleton className="h-full w-full bg-white/5 loading-shine" />
+                </div>
               </div>
             </div>
-          </div>
+          </AnimatedItem>
         ))}
-      </div>
+      </StaggerContainer>
     );
   }
 
@@ -53,19 +56,14 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {images.map((file, index) => (
-        <motion.div 
-          key={file.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: index * 0.1 }}
-        >
+      {images.map((file) => (
+        <AnimatedItem key={file.id}>
           <GalleryItem 
             file={file} 
             onDownload={onDownload} 
             onViewModel={onViewModel} 
           />
-        </motion.div>
+        </AnimatedItem>
       ))}
     </div>
   );

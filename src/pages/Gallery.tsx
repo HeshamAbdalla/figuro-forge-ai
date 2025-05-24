@@ -9,6 +9,8 @@ import GalleryGrid from "@/components/gallery/GalleryGrid";
 import ModelViewerDialog from "@/components/gallery/ModelViewerDialog";
 import CallToAction from "@/components/gallery/CallToAction";
 import ModelViewer from "@/components/model-viewer";
+import AnimatedSection from "@/components/animations/AnimatedSection";
+import StaggerContainer from "@/components/animations/StaggerContainer";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
 import { useModelUpload } from "@/components/gallery/useModelUpload";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
@@ -84,10 +86,12 @@ const Gallery = () => {
       
       <section className="pt-32 pb-20">
         <div className="container mx-auto px-4">
-          <GalleryHeader onUploadClick={() => setUploadModalOpen(true)} />
+          <AnimatedSection delay={0.1}>
+            <GalleryHeader onUploadClick={() => setUploadModalOpen(true)} />
+          </AnimatedSection>
           
           {customModelUrl && (
-            <div className="mb-16">
+            <AnimatedSection delay={0.2} className="mb-16">
               <h2 className="text-2xl font-bold mb-4 text-gradient text-center">Preview Your Uploaded Model</h2>
               <div className="max-w-3xl mx-auto">
                 <ModelViewer 
@@ -95,19 +99,23 @@ const Gallery = () => {
                   isLoading={false}
                 />
               </div>
-            </div>
+            </AnimatedSection>
           )}
           
-          <GalleryGrid 
-            images={images}
-            isLoading={isLoading}
-            onDownload={handleDownload}
-            onViewModel={handleViewModel}
-          />
+          <StaggerContainer staggerDelay={0.05} initialDelay={0.3}>
+            <GalleryGrid 
+              images={images}
+              isLoading={isLoading}
+              onDownload={handleDownload}
+              onViewModel={handleViewModel}
+            />
+          </StaggerContainer>
         </div>
       </section>
       
-      <CallToAction onNavigateToStudio={handleNavigateToStudio} />
+      <AnimatedSection delay={0.4}>
+        <CallToAction onNavigateToStudio={handleNavigateToStudio} />
+      </AnimatedSection>
       
       {/* Upload Model Modal */}
       <UploadModelModal 

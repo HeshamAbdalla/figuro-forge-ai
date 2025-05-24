@@ -40,6 +40,7 @@
 
   html {
     @apply scroll-smooth;
+    scroll-behavior: smooth;
   }
 }
 
@@ -55,6 +56,11 @@
 
   .glass-panel {
     @apply backdrop-blur-xl bg-white/5 border border-white/10 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.3)];
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .glass-panel:hover {
+    @apply bg-white/8 border-white/20 shadow-glow-sm;
   }
   
   .text-gradient {
@@ -71,7 +77,63 @@
   }
   
   .glow-effect:hover {
-    @apply shadow-glow;
+    @apply shadow-glow-lg;
+  }
+
+  .smooth-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .smooth-hover:hover {
+    transform: translateY(-2px);
+  }
+
+  .interactive-scale {
+    transition: transform 0.2s ease-out;
+  }
+  
+  .interactive-scale:hover {
+    transform: scale(1.02);
+  }
+  
+  .interactive-scale:active {
+    transform: scale(0.98);
+  }
+
+  .fade-in-up {
+    animation: slide-up 0.6s ease-out;
+  }
+  
+  .fade-in-down {
+    animation: slide-down 0.6s ease-out;
+  }
+  
+  .fade-in-left {
+    animation: slide-left 0.6s ease-out;
+  }
+  
+  .fade-in-right {
+    animation: slide-right 0.6s ease-out;
+  }
+
+  .stagger-delay-1 {
+    animation-delay: 0.1s;
+  }
+  
+  .stagger-delay-2 {
+    animation-delay: 0.2s;
+  }
+  
+  .stagger-delay-3 {
+    animation-delay: 0.3s;
+  }
+  
+  .stagger-delay-4 {
+    animation-delay: 0.4s;
+  }
+  
+  .stagger-delay-5 {
+    animation-delay: 0.5s;
   }
 }
 
@@ -106,4 +168,27 @@
   );
   background-size: 200% 100%;
   animation: shine 1.5s infinite;
+}
+
+/* Enhanced focus styles for accessibility */
+*:focus-visible {
+  @apply ring-2 ring-figuro-accent ring-offset-2 ring-offset-figuro-dark outline-none;
+}
+
+/* Smooth scrolling for better UX */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Reduced motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
 import ModelPreview from "@/components/gallery/ModelPreview";
-import ModelPlaceholder from "@/components/gallery/ModelPlaceholder";
 import ModelViewerDialog from "@/components/gallery/ModelViewerDialog";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
+import AnimatedSection from "@/components/animations/AnimatedSection";
+import StaggerContainer from "@/components/animations/StaggerContainer";
+import AnimatedItem from "@/components/animations/AnimatedItem";
 
 const HomepageGallery: React.FC = () => {
   const { images, isLoading } = useGalleryFiles();
@@ -63,120 +65,140 @@ const HomepageGallery: React.FC = () => {
   return (
     <section className="py-20 px-4">
       <div className="container mx-auto">
-        <motion.div
-          className="flex flex-col items-center mb-16 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          viewport={{ once: true }}
-        >
+        <AnimatedSection delay={0.1} className="flex flex-col items-center mb-16 text-center">
           <h2 className="text-3xl lg:text-4xl font-bold mb-4 text-gradient">
             Latest Creations
           </h2>
           <p className="text-white/70 max-w-2xl mx-auto">
             Explore the latest figurines created by our community. Get inspired and start creating your own unique designs.
           </p>
-        </motion.div>
+        </AnimatedSection>
 
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
+          <StaggerContainer 
+            staggerDelay={0.05} 
+            initialDelay={0.2}
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5"
+          >
             {Array(10).fill(0).map((_, index) => (
-              <div key={index} className="glass-panel h-48 md:h-40">
-                <Skeleton className="h-full w-full bg-white/5 loading-shine" />
-              </div>
+              <AnimatedItem key={index}>
+                <div className="glass-panel h-48 md:h-40">
+                  <Skeleton className="h-full w-full bg-white/5 loading-shine" />
+                </div>
+              </AnimatedItem>
             ))}
-          </div>
+          </StaggerContainer>
         ) : limitedImages.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-              {limitedImages.map((file, index) => (
-                <motion.div
-                  key={file.id}
-                  className="glass-panel overflow-hidden aspect-square relative group"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4, delay: index * 0.05 }}
-                  viewport={{ once: true }}
-                >
-                  <div className="w-full h-full">
-                    {file.type === '3d-model' ? (
-                      <ModelPreview 
-                        modelUrl={file.url} 
-                        fileName={file.name} 
-                      />
-                    ) : (
-                      <img
-                        src={file.url}
-                        alt={file.name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    )}
-                  </div>
-                  <div className="absolute inset-0 backdrop-blur-md bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center">
-                    <div className="p-4 w-full flex flex-col items-center">
-                      <div className="flex items-center gap-1 mb-2">
-                        {file.type === '3d-model' ? (
-                          <Box size={14} className="text-figuro-accent" />
-                        ) : (
-                          <Image size={14} className="text-white/70" />
-                        )}
-                        <span className="text-xs text-white/90">
-                          {file.type === '3d-model' ? "3D Model" : "Image"}
-                        </span>
-                      </div>
-                      
+            <StaggerContainer 
+              staggerDelay={0.08} 
+              initialDelay={0.3}
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5"
+            >
+              {limitedImages.map((file) => (
+                <AnimatedItem key={file.id}>
+                  <motion.div
+                    className="glass-panel overflow-hidden aspect-square relative group"
+                    whileHover={{ 
+                      scale: 1.02,
+                      transition: { duration: 0.2, ease: "easeOut" }
+                    }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="w-full h-full">
                       {file.type === '3d-model' ? (
-                        <div className="flex flex-col gap-2 w-full">
-                          <Button
-                            onClick={() => handleViewModel(file.url)}
-                            size="sm"
-                            className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8 px-3"
-                          >
-                            <Eye size={14} className="mr-1.5" /> View Model
-                          </Button>
+                        <ModelPreview 
+                          modelUrl={file.url} 
+                          fileName={file.name} 
+                        />
+                      ) : (
+                        <img
+                          src={file.url}
+                          alt={file.name}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          loading="lazy"
+                        />
+                      )}
+                    </div>
+                    <motion.div 
+                      className="absolute inset-0 backdrop-blur-md bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center"
+                      initial={{ opacity: 0 }}
+                      whileHover={{ opacity: 1 }}
+                    >
+                      <div className="p-4 w-full flex flex-col items-center">
+                        <div className="flex items-center gap-1 mb-2">
+                          {file.type === '3d-model' ? (
+                            <Box size={14} className="text-figuro-accent" />
+                          ) : (
+                            <Image size={14} className="text-white/70" />
+                          )}
+                          <span className="text-xs text-white/90">
+                            {file.type === '3d-model' ? "3D Model" : "Image"}
+                          </span>
+                        </div>
+                        
+                        {file.type === '3d-model' ? (
+                          <div className="flex flex-col gap-2 w-full">
+                            <Button
+                              onClick={() => handleViewModel(file.url)}
+                              size="sm"
+                              className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8 px-3 transform transition-transform hover:scale-105"
+                            >
+                              <Eye size={14} className="mr-1.5" /> View Model
+                            </Button>
+                            <Button
+                              onClick={() => handleDownload(file.url, file.name)}
+                              size="sm"
+                              variant="outline"
+                              className="w-full border-white/10 h-8 px-3 transform transition-transform hover:scale-105"
+                            >
+                              <Download size={14} className="mr-1.5" /> Download
+                            </Button>
+                          </div>
+                        ) : (
                           <Button
                             onClick={() => handleDownload(file.url, file.name)}
                             size="sm"
-                            variant="outline"
-                            className="w-full border-white/10 h-8 px-3"
+                            className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8 px-3 transform transition-transform hover:scale-105"
                           >
                             <Download size={14} className="mr-1.5" /> Download
                           </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          onClick={() => handleDownload(file.url, file.name)}
-                          size="sm"
-                          className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8 px-3"
-                        >
-                          <Download size={14} className="mr-1.5" /> Download
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
+                        )}
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                </AnimatedItem>
               ))}
-            </div>
-            <div className="flex justify-center mt-12">
-              <Button
-                onClick={navigateToGallery}
-                className="bg-figuro-accent hover:bg-figuro-accent-hover flex items-center gap-2"
+            </StaggerContainer>
+            <AnimatedSection delay={0.6} className="flex justify-center mt-12">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                View Full Gallery <ArrowRight size={16} />
-              </Button>
-            </div>
+                <Button
+                  onClick={navigateToGallery}
+                  className="bg-figuro-accent hover:bg-figuro-accent-hover flex items-center gap-2"
+                >
+                  View Full Gallery <ArrowRight size={16} />
+                </Button>
+              </motion.div>
+            </AnimatedSection>
           </>
         ) : (
-          <div className="text-center py-16">
+          <AnimatedSection delay={0.3} className="text-center py-16">
             <p className="text-white/70">No images found in the gallery yet. Be the first to create one!</p>
-            <Button
-              onClick={navigateToStudio}
-              className="mt-4 bg-figuro-accent hover:bg-figuro-accent-hover"
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              Create Your First Figurine
-            </Button>
-          </div>
+              <Button
+                onClick={navigateToStudio}
+                className="mt-4 bg-figuro-accent hover:bg-figuro-accent-hover"
+              >
+                Create Your First Figurine
+              </Button>
+            </motion.div>
+          </AnimatedSection>
         )}
       </div>
       
