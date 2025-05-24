@@ -119,45 +119,33 @@ serve(async (req) => {
     let sessionParams: any = {
       customer: customerId,
       metadata: metadata,
-      success_url: successUrl || `${origin}/checkout-return?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${origin}/pricing?canceled=true`,
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: { name: planConfig.name },
+            unit_amount: planConfig.amount,
+            recurring: { interval: "month" },
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "subscription",
     };
 
     if (mode === 'embedded') {
-      // Embedded checkout mode
+      // Embedded checkout mode - use return_url instead of success_url/cancel_url
       sessionParams = {
         ...sessionParams,
         ui_mode: 'embedded',
         return_url: `${origin}/checkout-return?session_id={CHECKOUT_SESSION_ID}`,
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              product_data: { name: planConfig.name },
-              unit_amount: planConfig.amount,
-              recurring: { interval: "month" },
-            },
-            quantity: 1,
-          },
-        ],
-        mode: "subscription",
       };
     } else {
       // Regular hosted checkout
       sessionParams = {
         ...sessionParams,
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              product_data: { name: planConfig.name },
-              unit_amount: planConfig.amount,
-              recurring: { interval: "month" },
-            },
-            quantity: 1,
-          },
-        ],
-        mode: "subscription",
+        success_url: successUrl || `${origin}/checkout-return?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: cancelUrl || `${origin}/pricing?canceled=true`,
       };
     }
 
