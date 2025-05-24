@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -56,6 +55,28 @@ export const useSubscription = () => {
       }
     }
   }, []);
+
+  // Verify subscription matches expected plan
+  const verifySubscription = useCallback(async (expectedPlan: 'free' | 'starter' | 'pro' | 'unlimited'): Promise<boolean> => {
+    try {
+      console.log('Verifying subscription for expected plan:', expectedPlan);
+      
+      // Refresh subscription data first
+      await checkSubscription();
+      
+      // Check if the current subscription matches the expected plan
+      if (subscription?.plan === expectedPlan) {
+        console.log('Subscription verification successful:', subscription.plan);
+        return true;
+      }
+      
+      console.log('Subscription verification failed. Expected:', expectedPlan, 'Actual:', subscription?.plan);
+      return false;
+    } catch (err) {
+      console.error('Error verifying subscription:', err);
+      return false;
+    }
+  }, [subscription, checkSubscription]);
 
   // Load user and subscription data
   useEffect(() => {
@@ -220,6 +241,7 @@ export const useSubscription = () => {
     error,
     user,
     checkSubscription,
+    verifySubscription,
     subscribeToPlan,
     openCustomerPortal
   };
