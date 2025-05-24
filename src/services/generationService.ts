@@ -2,7 +2,6 @@
 import { formatStylePrompt } from "@/lib/huggingface";
 import { SUPABASE_PUBLISHABLE_KEY, supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { generateImageWithEdge } from "@/lib/edgeFunction";
-import { addCorsProxy } from "@/utils/corsProxy";
 
 // Track if the edge function is available
 let isEdgeFunctionAvailable: boolean | null = null;
@@ -15,8 +14,8 @@ const getEdgeFunctionStatus = (): boolean => {
     return storedStatus === "true";
   }
   
-  // Default to assuming it's available if we haven't checked yet
-  return isEdgeFunctionAvailable !== false;
+  // Default to false initially to prefer direct API calls
+  return false;
 };
 
 const setEdgeFunctionStatus = (isAvailable: boolean): void => {
@@ -32,15 +31,35 @@ const setEdgeFunctionStatus = (isAvailable: boolean): void => {
   }
 };
 
-// Generate image using edge function
+// Generate image using improved fallback strategy
 export const generateImage = async (prompt: string, style: string, apiKey: string = ""): Promise<{blob: Blob | null, url: string | null, error?: string, method: "edge" | "direct"}> => {
   try {
-    // Check if we should attempt using the edge function
+    // Use direct API call first for better reliability
+    console.log("Using direct API call via edgeFunction.ts...");
+    
+    const edgeResult = await generateImageWithEdge({
+      prompt,
+      style, 
+      apiKey
+    });
+    
+    if (edgeResult.success && edgeResult.imageUrl) {
+      // Fetch the blob from the URL
+      const blobResponse = await fetch(edgeResult.imageUrl);
+      const blob = await blobResponse.blob();
+      
+      return {
+        blob,
+        url: edgeResult.imageUrl,
+        method: "direct"
+      };
+    }
+    
+    // If direct API failed, try edge function as fallback
     if (getEdgeFunctionStatus()) {
-      console.log("Attempting image generation using Edge Function...");
+      console.log("Direct API failed, attempting Edge Function fallback...");
       
       try {
-        // Try the edge function - Use the correct Supabase URL instead of window.location.origin
         const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-image`, {
           method: "POST",
           headers: {
@@ -71,93 +90,29 @@ export const generateImage = async (prompt: string, style: string, apiKey: strin
           };
         }
         
-        if (!response.ok) {
-          // Try to get error message from response if it's JSON
-          try {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `API error: ${response.statusText}`);
-          } catch (jsonError) {
-            // If parsing fails, just use the status text
-            throw new Error(`API error: ${response.status} ${response.statusText}`);
-          }
-        }
-        
-        // Mark edge function as available since it worked
-        setEdgeFunctionStatus(true);
-        
-        // Process the response - check content type first
-        const contentType = response.headers.get("Content-Type") || "";
-        
-        // If it's JSON, handle it as JSON
-        if (contentType.includes("application/json")) {
-          try {
-            const jsonData = await response.json();
-            if (!jsonData.success) {
-              throw new Error(jsonData.error || "Failed to generate image");
-            }
-            
-            // Check if the JSON contains an image URL
-            if (jsonData.url) {
-              return { blob: null, url: jsonData.url, method: "edge" };
-            } else {
-              throw new Error("No image data returned");
-            }
-          } catch (jsonError) {
-            throw new Error(`Failed to parse JSON response: ${jsonError.message}`);
-          }
-        }
-        
-        // Otherwise, it's an image, so create a blob
-        try {
+        if (response.ok) {
+          setEdgeFunctionStatus(true);
           const imageBlob = await response.blob();
           const imageUrl = URL.createObjectURL(imageBlob);
           
           return { blob: imageBlob, url: imageUrl, method: "edge" };
-        } catch (blobError) {
-          throw new Error(`Failed to process image data: ${blobError.message}`);
         }
+        
+        throw new Error(`Edge function error: ${response.status} ${response.statusText}`);
+        
       } catch (edgeFunctionError) {
         console.warn("Edge function failed:", edgeFunctionError);
-        // Fall through to direct API call
+        setEdgeFunctionStatus(false);
       }
-    }
-    
-    // If edge function isn't available or failed, use direct API
-    console.log("Using direct API call via edgeFunction.ts...");
-    
-    const edgeResult = await generateImageWithEdge({
-      prompt,
-      style, 
-      apiKey
-    });
-    
-    if (!edgeResult.success) {
-      return { 
-        blob: null, 
-        url: null,
-        error: edgeResult.error || "Failed to generate image with fallback method",
-        method: "direct"
-      };
-    }
-    
-    if (edgeResult.imageUrl) {
-      // Fetch the blob from the URL
-      const blobResponse = await fetch(edgeResult.imageUrl);
-      const blob = await blobResponse.blob();
-      
-      return {
-        blob,
-        url: edgeResult.imageUrl,
-        method: "direct"
-      };
     }
     
     return { 
       blob: null, 
       url: null,
-      error: "No image URL returned from fallback API",
+      error: edgeResult.error || "Failed to generate image with all available methods",
       method: "direct"
     };
+    
   } catch (error) {
     console.error("Generation error:", error);
     return { 

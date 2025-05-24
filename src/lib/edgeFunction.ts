@@ -45,45 +45,87 @@ export const generateImageWithEdge = async (
       headers["Authorization"] = `Bearer ${apiKey}`;
     }
     
-    // Add CORS proxy to the API endpoint
+    // Direct API call first, then try with CORS proxy if needed
     const apiEndpoint = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev";
-    const proxiedEndpoint = addCorsProxy(apiEndpoint);
     
-    // Make the API request with edge optimization and CORS proxy
-    const response = await fetch(proxiedEndpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ 
-        inputs: formattedPrompt,
-        options: {
-          use_lora: !!useLoraAdapter,
-          lora_weights: useLoraAdapter
-        }
-      }),
-    });
-    
-    if (response.status === 401 || response.status === 403) {
+    try {
+      // Try direct API call first
+      console.log("Attempting direct API call to Hugging Face");
+      const response = await fetch(apiEndpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ 
+          inputs: formattedPrompt,
+          options: {
+            use_lora: !!useLoraAdapter,
+            lora_weights: useLoraAdapter
+          }
+        }),
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        
+        return {
+          success: true,
+          imageUrl,
+          needsApiKey: false
+        };
+      }
+      
+      if (response.status === 401 || response.status === 403) {
+        return {
+          success: false,
+          error: "API key required or unauthorized access",
+          needsApiKey: true
+        };
+      }
+      
+      throw new Error(`Direct API failed: ${response.status} - ${response.statusText}`);
+      
+    } catch (directError) {
+      console.log("Direct API failed, trying with CORS proxy:", directError);
+      
+      // Try with the most reliable CORS proxy
+      const proxiedEndpoint = addCorsProxy(apiEndpoint, 0);
+      
+      const response = await fetch(proxiedEndpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ 
+          inputs: formattedPrompt,
+          options: {
+            use_lora: !!useLoraAdapter,
+            lora_weights: useLoraAdapter
+          }
+        }),
+      });
+      
+      if (response.status === 401 || response.status === 403) {
+        return {
+          success: false,
+          error: "API key required or unauthorized access",
+          needsApiKey: true
+        };
+      }
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Proxied API error: ${response.status} - ${errorText || response.statusText}`);
+      }
+      
+      // Process the image data
+      const blob = await response.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      
       return {
-        success: false,
-        error: "API key required or unauthorized access",
-        needsApiKey: true
+        success: true,
+        imageUrl,
+        needsApiKey: false
       };
     }
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API error: ${response.status} - ${errorText || response.statusText}`);
-    }
-    
-    // Process the image data
-    const blob = await response.blob();
-    const imageUrl = URL.createObjectURL(blob);
-    
-    return {
-      success: true,
-      imageUrl,
-      needsApiKey: false
-    };
   } catch (error) {
     console.error("Edge function error:", error);
     

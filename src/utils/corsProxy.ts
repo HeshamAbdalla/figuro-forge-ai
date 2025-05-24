@@ -3,11 +3,12 @@
  * Utility for handling CORS proxies for 3D model loading
  */
 
-// List of available CORS proxies (can be expanded)
+// List of available CORS proxies (updated with more reliable services)
 const CORS_PROXIES = [
+  "https://api.allorigins.win/raw?url=",
   "https://cors-proxy.fringe.zone/",
   "https://corsproxy.io/?",
-  "https://api.allorigins.win/raw?url="
+  "https://cors-anywhere.herokuapp.com/"
 ];
 
 /**
@@ -27,7 +28,25 @@ export const addCorsProxy = (url: string, proxyIndex: number = 0): string => {
   
   // Ensure proxy index is valid
   const validIndex = Math.max(0, Math.min(proxyIndex, CORS_PROXIES.length - 1));
-  const proxiedUrl = `${CORS_PROXIES[validIndex]}${encodeURIComponent(url)}`;
+  const proxy = CORS_PROXIES[validIndex];
+  
+  // Different encoding strategies for different proxies
+  let proxiedUrl: string;
+  
+  if (proxy.includes('allorigins.win')) {
+    // For allorigins, encode the URL properly
+    proxiedUrl = `${proxy}${encodeURIComponent(url)}`;
+  } else if (proxy.includes('cors-proxy.fringe.zone')) {
+    // For fringe.zone, append without encoding
+    proxiedUrl = `${proxy}${url}`;
+  } else if (proxy.includes('corsproxy.io')) {
+    // For corsproxy.io, encode the URL
+    proxiedUrl = `${proxy}${encodeURIComponent(url)}`;
+  } else {
+    // Default encoding for other proxies
+    proxiedUrl = `${proxy}${url}`;
+  }
+  
   console.log(`Adding CORS proxy (${validIndex}):`, proxiedUrl);
   return proxiedUrl;
 };
@@ -89,30 +108,35 @@ export const tryLoadWithCorsProxies = async (
   // First try without a proxy
   try {
     console.log("Trying to load URL directly:", url);
-    const response = await fetch(url, { method: 'HEAD' });
-    if (response.ok) {
-      console.log("Direct URL access succeeded");
-      onSuccess(url);
-      return;
-    }
+    const response = await fetch(url, { 
+      method: 'HEAD',
+      mode: 'no-cors' // Allow cross-origin requests
+    });
+    console.log("Direct URL access succeeded");
+    onSuccess(url);
+    return;
   } catch (error) {
     console.log("Direct access failed, trying proxies...", error);
   }
 
-  // Try with each proxy
+  // Try with each proxy with better error handling
   for (let i = 0; i < CORS_PROXIES.length; i++) {
     const proxiedUrl = addCorsProxy(url, i);
     console.log(`Trying with proxy ${i}:`, proxiedUrl);
     
     try {
-      const response = await fetch(proxiedUrl, { method: 'HEAD' });
-      if (response.ok) {
+      const response = await fetch(proxiedUrl, { 
+        method: 'HEAD',
+        timeout: 10000 // 10 second timeout
+      });
+      if (response.ok || response.status === 0) { // Status 0 is ok for CORS
         console.log(`Proxy ${i} succeeded`);
         onSuccess(proxiedUrl);
         return;
       }
     } catch (error) {
       console.log(`Proxy ${i} failed:`, error);
+      // Continue to next proxy
     }
   }
 
