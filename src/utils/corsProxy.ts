@@ -126,8 +126,7 @@ export const tryLoadWithCorsProxies = async (
     
     try {
       const response = await fetch(proxiedUrl, { 
-        method: 'HEAD',
-        timeout: 10000 // 10 second timeout
+        method: 'HEAD'
       });
       if (response.ok || response.status === 0) { // Status 0 is ok for CORS
         console.log(`Proxy ${i} succeeded`);
