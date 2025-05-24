@@ -1,6 +1,6 @@
 
 import { motion } from "framer-motion";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 interface AnimatedSectionProps {
   children: ReactNode;
@@ -27,6 +27,20 @@ const AnimatedSection: React.FC<AnimatedSectionProps> = ({
   direction = "up",
   duration = 0.6
 }) => {
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  useEffect(() => {
+    // Detect if this is initial page load
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Add extra delay on initial load to avoid conflicts
+  const adjustedDelay = isInitialLoad ? delay + 0.3 : delay;
+
   return (
     <motion.div
       initial={getInitialPosition(direction)}
@@ -34,7 +48,7 @@ const AnimatedSection: React.FC<AnimatedSectionProps> = ({
       viewport={{ once: true, margin: "-50px" }}
       transition={{
         duration,
-        delay,
+        delay: adjustedDelay,
         ease: [0.25, 0.25, 0.25, 0.75]
       }}
       className={className}

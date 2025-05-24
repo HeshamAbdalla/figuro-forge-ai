@@ -1,7 +1,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 interface PageTransitionProps {
   children: ReactNode;
@@ -10,30 +10,39 @@ interface PageTransitionProps {
 
 const pageVariants = {
   initial: {
-    opacity: 0,
-    y: 20,
-    scale: 0.98
+    opacity: 0
   },
   in: {
-    opacity: 1,
-    y: 0,
-    scale: 1
+    opacity: 1
   },
   out: {
-    opacity: 0,
-    y: -20,
-    scale: 1.02
+    opacity: 0
   }
 };
 
 const pageTransition = {
   type: "tween",
-  ease: "anticipate",
-  duration: 0.4
+  ease: "easeInOut",
+  duration: 0.2
 };
 
 const PageTransition: React.FC<PageTransitionProps> = ({ children, className = "" }) => {
   const location = useLocation();
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  useEffect(() => {
+    // After the first render, mark as not initial load
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // On initial load, don't animate to avoid conflict with component animations
+  if (isInitialLoad) {
+    return <div className={className}>{children}</div>;
+  }
 
   return (
     <AnimatePresence mode="wait" initial={false}>

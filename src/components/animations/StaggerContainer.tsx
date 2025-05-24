@@ -1,6 +1,6 @@
 
 import { motion } from "framer-motion";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 interface StaggerContainerProps {
   children: ReactNode;
@@ -27,13 +27,27 @@ const StaggerContainer: React.FC<StaggerContainerProps> = ({
   staggerDelay = 0.1,
   initialDelay = 0.2
 }) => {
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  useEffect(() => {
+    // Detect if this is initial page load
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Add extra delay on initial load to prevent conflicts with page transition
+  const adjustedInitialDelay = isInitialLoad ? initialDelay + 0.4 : initialDelay;
+
   return (
     <motion.div
       variants={containerVariants}
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, margin: "-100px" }}
-      custom={{ staggerDelay, initialDelay }}
+      custom={{ staggerDelay, initialDelay: adjustedInitialDelay }}
       className={className}
     >
       {children}
