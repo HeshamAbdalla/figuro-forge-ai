@@ -1,5 +1,6 @@
+
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { motion } from "framer-motion";
@@ -12,11 +13,69 @@ import { PlanSummary } from "@/components/subscription/PlanSummary";
 import { UsageTracker } from "@/components/subscription/UsageTracker";
 import { PlanOptions } from "@/components/subscription/PlanOptions";
 import { BillingHistory } from "@/components/subscription/BillingHistory";
+import { useSubscription } from "@/hooks/useSubscription";
+import { toast } from "@/hooks/use-toast";
 
 const Profile = () => {
-  const { user, profile, isLoading } = useAuth();
+  const { user, profile, isLoading, refreshAuth } = useAuth();
+  const { verifySubscription, checkSubscription } = useSubscription();
   const [activeTab, setActiveTab] = useState("info");
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  
+  // Handle success redirect from Stripe
+  useEffect(() => {
+    const handleStripeSuccess = async () => {
+      const success = searchParams.get("success");
+      const plan = searchParams.get("plan");
+      
+      if (success === "true") {
+        console.log("Handling Stripe success redirect for plan:", plan);
+        
+        // First refresh auth state to ensure we're logged in
+        await refreshAuth();
+        
+        // Show loading toast
+        toast({
+          title: "Processing Payment",
+          description: "Verifying your subscription upgrade...",
+        });
+        
+        // Verify the subscription was updated
+        try {
+          const verified = await verifySubscription(plan || undefined);
+          
+          if (verified) {
+            toast({
+              title: "Subscription Activated!",
+              description: `Your ${plan} plan has been activated successfully.`,
+            });
+          } else {
+            // Try again after a longer delay
+            setTimeout(async () => {
+              await checkSubscription();
+              toast({
+                title: "Subscription Processing",
+                description: "Your subscription is being processed. Please refresh the page in a moment.",
+              });
+            }, 5000);
+          }
+        } catch (error) {
+          console.error("Error verifying subscription:", error);
+          toast({
+            title: "Verification Error",
+            description: "There was an issue verifying your subscription. Please contact support if this persists.",
+            variant: "destructive"
+          });
+        }
+        
+        // Clean up URL parameters
+        setSearchParams({});
+      }
+    };
+
+    handleStripeSuccess();
+  }, [searchParams, refreshAuth, verifySubscription, checkSubscription, setSearchParams]);
   
   useEffect(() => {
     // If authentication is complete (not loading) and user is not authenticated, redirect to auth page

@@ -9,6 +9,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper logging function
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -16,11 +22,14 @@ serve(async (req) => {
   }
   
   try {
+    logStep("Webhook received");
+    
     // Get request body and signature header
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
     
     if (!signature) {
+      logStep("No signature header");
       return new Response("No signature header", { status: 400 });
     }
     
@@ -32,6 +41,7 @@ serve(async (req) => {
     // Verify webhook signature
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
     if (!webhookSecret) {
+      logStep("Missing Stripe webhook secret");
       console.error("Missing Stripe webhook secret");
       return new Response("Webhook secret not configured", { status: 500 });
     }
@@ -39,7 +49,9 @@ serve(async (req) => {
     let event;
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      logStep("Webhook signature verified", { eventType: event.type });
     } catch (err) {
+      logStep("Webhook signature verification failed", { error: err instanceof Error ? err.message : String(err) });
       console.error(`Webhook signature verification failed: ${err instanceof Error ? err.message : String(err)}`);
       return new Response(`Webhook Error: ${err instanceof Error ? err.message : String(err)}`, { status: 400 });
     }
@@ -60,7 +72,10 @@ serve(async (req) => {
       const customerId = session.customer;
       const plan = session.metadata?.plan;
       
+      logStep("Processing checkout.session.completed", { userId, customerId, plan });
+      
       if (!userId || !plan) {
+        logStep("Missing user_id or plan in session metadata");
         console.error("Missing user_id or plan in session metadata");
         return new Response("Missing metadata", { status: 400 });
       }
@@ -68,7 +83,7 @@ serve(async (req) => {
       console.log(`Updating user ${userId} with plan ${plan} and customer ${customerId}`);
       
       // Update user profile with Stripe customer ID and plan
-      const { error } = await supabaseAdmin
+      const { error: profileError } = await supabaseAdmin
         .from("profiles")
         .update({ 
           stripe_customer_id: customerId,
@@ -76,26 +91,46 @@ serve(async (req) => {
         })
         .eq("id", userId);
       
-      if (error) {
-        console.error(`Error updating profile: ${error.message}`);
-        return new Response(`Error updating profile: ${error.message}`, { status: 500 });
+      if (profileError) {
+        logStep("Error updating profile", { error: profileError.message });
+        console.error(`Error updating profile: ${profileError.message}`);
+        return new Response(`Error updating profile: ${profileError.message}`, { status: 500 });
+      }
+      
+      // Update or create subscription record
+      const { error: subscriptionError } = await supabaseAdmin
+        .from("subscriptions")
+        .upsert({
+          user_id: userId,
+          plan_type: plan,
+          stripe_customer_id: customerId,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+      
+      if (subscriptionError) {
+        logStep("Error updating subscription", { error: subscriptionError.message });
+        console.error(`Error updating subscription: ${subscriptionError.message}`);
       }
       
       // Reset usage tracking for the new subscription period
       await supabaseAdmin
-        .from("usage_tracking")
+        .from("user_usage")
         .upsert({
           user_id: userId,
-          date: new Date().toISOString().split('T')[0],
-          image_count: 0,
-          model_count: 0
-        });
+          image_generations_used: 0,
+          model_conversions_used: 0,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+        
+      logStep("Successfully processed checkout.session.completed");
     }
     
     // Handle subscription updated (e.g. plan changes or cancellations)
     if (event.type === "customer.subscription.updated") {
       const subscription = event.data.object;
       const customerId = subscription.customer;
+      
+      logStep("Processing customer.subscription.updated", { customerId });
       
       // Get the price object to determine the plan
       const priceId = subscription.items.data[0].price.id;
@@ -114,6 +149,8 @@ serve(async (req) => {
         plan = "unlimited";
       }
       
+      logStep("Determined plan from product", { productName, plan });
+      
       // Find user by customer ID
       const { data: profiles, error: profileError } = await supabaseAdmin
         .from("profiles")
@@ -121,22 +158,26 @@ serve(async (req) => {
         .eq("stripe_customer_id", customerId);
       
       if (profileError || !profiles?.length) {
+        logStep("Error finding user for customer", { customerId, error: profileError?.message });
         console.error(`Error finding user for customer ${customerId}: ${profileError?.message || "Not found"}`);
         return new Response("User not found", { status: 404 });
       }
       
       const userId = profiles[0].id;
       
-      // Update plan
-      const { error } = await supabaseAdmin
+      // Update plan in profiles table
+      const { error: updateError } = await supabaseAdmin
         .from("profiles")
         .update({ plan })
         .eq("id", userId);
       
-      if (error) {
-        console.error(`Error updating profile plan: ${error.message}`);
-        return new Response(`Error updating profile plan: ${error.message}`, { status: 500 });
+      if (updateError) {
+        logStep("Error updating profile plan", { error: updateError.message });
+        console.error(`Error updating profile plan: ${updateError.message}`);
+        return new Response(`Error updating profile plan: ${updateError.message}`, { status: 500 });
       }
+      
+      logStep("Successfully processed customer.subscription.updated");
     }
     
     return new Response(JSON.stringify({ received: true }), {
@@ -144,6 +185,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
+    logStep("Error processing webhook", { error: error instanceof Error ? error.message : String(error) });
     console.error(`Error processing webhook: ${error instanceof Error ? error.message : String(error)}`);
     return new Response(`Server error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
   }

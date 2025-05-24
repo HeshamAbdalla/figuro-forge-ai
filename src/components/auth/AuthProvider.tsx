@@ -15,6 +15,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<{ error: any }>;
+  refreshAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +25,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const refreshAuth = async () => {
+    try {
+      console.log("Refreshing auth state...");
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("Refreshed session:", session?.user?.email);
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        await fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
+    } catch (error) {
+      console.error("Error refreshing auth:", error);
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -287,6 +307,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     signInWithGoogle,
     resendVerificationEmail,
+    refreshAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

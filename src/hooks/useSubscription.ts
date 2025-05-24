@@ -138,7 +138,7 @@ export const useSubscription = () => {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
           plan,
-          successUrl: `${window.location.origin}/pricing?success=true`,
+          successUrl: `${window.location.origin}/profile?success=true&plan=${plan}`,
           cancelUrl: `${window.location.origin}/pricing?canceled=true`
         }
       });
@@ -152,9 +152,9 @@ export const useSubscription = () => {
         throw new Error('No checkout URL returned');
       }
 
-      console.log('Opening checkout URL:', data.url);
-      // Open Stripe checkout in a new tab
-      window.open(data.url, '_blank');
+      console.log('Redirecting to checkout URL:', data.url);
+      // Redirect to Stripe checkout in the same tab for better session management
+      window.location.href = data.url;
       return data;
     } catch (err) {
       console.error('Error creating subscription:', err);
@@ -165,6 +165,28 @@ export const useSubscription = () => {
         variant: "destructive"
       });
       return null;
+    }
+  };
+
+  // Verify subscription after payment (fallback for webhook delays)
+  const verifySubscription = async (expectedPlan?: string) => {
+    try {
+      console.log('Verifying subscription status...');
+      
+      // Wait a moment for webhook processing
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      await checkSubscription();
+      
+      // If we have an expected plan, check if it matches
+      if (expectedPlan && subscription?.plan === expectedPlan) {
+        return true;
+      }
+      
+      return subscription?.plan !== 'free';
+    } catch (error) {
+      console.error('Error verifying subscription:', error);
+      return false;
     }
   };
 
@@ -209,6 +231,7 @@ export const useSubscription = () => {
     user,
     checkSubscription,
     subscribeToPlan,
-    openCustomerPortal
+    openCustomerPortal,
+    verifySubscription
   };
 };
