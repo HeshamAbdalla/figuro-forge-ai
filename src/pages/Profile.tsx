@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
@@ -82,11 +81,19 @@ const Profile = () => {
               // Additional wait for state propagation
               await new Promise(resolve => setTimeout(resolve, 1500));
               
-              // Verify the subscription was updated
-              const verificationResult = await verifySubscription(plan);
-              if (verificationResult) {
-                verified = true;
-                console.log(`Verification successful on attempt ${attempt}`);
+              // Verify the subscription was updated - fix the type issue here
+              const validPlans = ['free', 'starter', 'pro', 'unlimited'] as const;
+              type ValidPlan = typeof validPlans[number];
+              
+              if (validPlans.includes(plan as ValidPlan)) {
+                const verificationResult = await verifySubscription(plan as ValidPlan);
+                if (verificationResult) {
+                  verified = true;
+                  console.log(`Verification successful on attempt ${attempt}`);
+                  break;
+                }
+              } else {
+                console.error(`Invalid plan type: ${plan}`);
                 break;
               }
             } catch (error) {
