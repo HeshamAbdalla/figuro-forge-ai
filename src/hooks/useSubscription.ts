@@ -83,6 +83,7 @@ export const useSubscription = () => {
       }
 
       setSubscription(data);
+      console.log('Subscription data updated:', data);
     } catch (err) {
       console.error('Error checking subscription:', err);
       setError(err instanceof Error ? err.message : 'Failed to check subscription');
@@ -168,25 +169,61 @@ export const useSubscription = () => {
     }
   };
 
-  // Verify subscription after payment (fallback for webhook delays)
+  // Verify subscription after payment with improved logic
   const verifySubscription = async (expectedPlan?: string) => {
     try {
-      console.log('Verifying subscription status...');
+      console.log('Verifying subscription status with expected plan:', expectedPlan);
       
-      // Wait a moment for webhook processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      // Check subscription status
       await checkSubscription();
       
-      // If we have an expected plan, check if it matches
-      if (expectedPlan && subscription?.plan === expectedPlan) {
-        return true;
+      // Check if the subscription data indicates the expected plan
+      if (subscription && expectedPlan) {
+        const planMatches = subscription.plan === expectedPlan;
+        const isActive = subscription.is_active;
+        
+        console.log('Verification result:', { 
+          currentPlan: subscription.plan, 
+          expectedPlan, 
+          planMatches, 
+          isActive 
+        });
+        
+        return planMatches && isActive;
       }
       
-      return subscription?.plan !== 'free';
+      // If no expected plan, just check if user has any active paid plan
+      return subscription?.plan !== 'free' && subscription?.is_active;
     } catch (error) {
       console.error('Error verifying subscription:', error);
       return false;
+    }
+  };
+
+  // Reset usage limits (useful after subscription upgrade)
+  const resetUsageLimits = async () => {
+    if (!user) return;
+    
+    try {
+      // Reset usage tracking in the database
+      const { error } = await supabase
+        .from('user_usage')
+        .upsert({
+          user_id: user.id,
+          image_generations_used: 0,
+          model_conversions_used: 0,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+      if (error) {
+        console.error('Error resetting usage limits:', error);
+      } else {
+        console.log('Usage limits reset successfully');
+        // Refresh subscription data to show updated usage
+        await checkSubscription();
+      }
+    } catch (error) {
+      console.error('Error in resetUsageLimits:', error);
     }
   };
 
@@ -232,6 +269,7 @@ export const useSubscription = () => {
     checkSubscription,
     subscribeToPlan,
     openCustomerPortal,
-    verifySubscription
+    verifySubscription,
+    resetUsageLimits
   };
 };

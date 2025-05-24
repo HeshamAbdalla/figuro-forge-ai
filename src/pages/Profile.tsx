@@ -21,61 +21,96 @@ const Profile = () => {
   const { verifySubscription, checkSubscription } = useSubscription();
   const [activeTab, setActiveTab] = useState("info");
   const [searchParams, setSearchParams] = useSearchParams();
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const navigate = useNavigate();
   
-  // Handle success redirect from Stripe
+  // Handle success redirect from Stripe - only run once
   useEffect(() => {
     const handleStripeSuccess = async () => {
       const success = searchParams.get("success");
       const plan = searchParams.get("plan");
       
-      if (success === "true") {
+      if (success === "true" && plan && !isProcessingPayment) {
         console.log("Handling Stripe success redirect for plan:", plan);
+        setIsProcessingPayment(true);
         
-        // First refresh auth state to ensure we're logged in
-        await refreshAuth();
+        // Clear URL parameters immediately to prevent infinite loop
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete("success");
+        newSearchParams.delete("plan");
+        setSearchParams(newSearchParams, { replace: true });
         
-        // Show loading toast
+        // Show processing toast
         toast({
           title: "Processing Payment",
           description: "Verifying your subscription upgrade...",
         });
         
-        // Verify the subscription was updated
         try {
-          const verified = await verifySubscription(plan || undefined);
+          // Wait a moment for webhook processing
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          // Refresh auth state first
+          await refreshAuth();
+          
+          // Try verification multiple times with increasing delays
+          let verified = false;
+          const maxAttempts = 5;
+          
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            console.log(`Verification attempt ${attempt}/${maxAttempts}`);
+            
+            // Check subscription status
+            await checkSubscription();
+            
+            // Wait a bit more between attempts
+            if (attempt < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+            }
+            
+            // Refresh auth again to get latest profile
+            await refreshAuth();
+            
+            // Check if plan was updated (we'll check this after a short delay)
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Verify the subscription was updated
+            const verificationResult = await verifySubscription(plan);
+            if (verificationResult) {
+              verified = true;
+              break;
+            }
+          }
           
           if (verified) {
             toast({
               title: "Subscription Activated!",
-              description: `Your ${plan} plan has been activated successfully.`,
+              description: `Your ${plan} plan has been activated successfully. Your usage limits have been reset.`,
             });
           } else {
-            // Try again after a longer delay
-            setTimeout(async () => {
-              await checkSubscription();
-              toast({
-                title: "Subscription Processing",
-                description: "Your subscription is being processed. Please refresh the page in a moment.",
-              });
-            }, 5000);
+            toast({
+              title: "Subscription Processing",
+              description: "Your payment was successful! Your subscription is being processed and will be active shortly. Please refresh the page in a moment.",
+            });
           }
         } catch (error) {
           console.error("Error verifying subscription:", error);
           toast({
-            title: "Verification Error",
-            description: "There was an issue verifying your subscription. Please contact support if this persists.",
+            title: "Payment Successful",
+            description: "Your payment was processed successfully. If your plan doesn't update immediately, please refresh the page or contact support.",
             variant: "destructive"
           });
+        } finally {
+          setIsProcessingPayment(false);
         }
-        
-        // Clean up URL parameters
-        setSearchParams({});
       }
     };
 
-    handleStripeSuccess();
-  }, [searchParams, refreshAuth, verifySubscription, checkSubscription, setSearchParams]);
+    // Only run if we have success parameters and haven't started processing
+    if (searchParams.get("success") === "true" && !isProcessingPayment) {
+      handleStripeSuccess();
+    }
+  }, [searchParams.get("success"), searchParams.get("plan")]); // Only depend on the specific params we need
   
   useEffect(() => {
     // If authentication is complete (not loading) and user is not authenticated, redirect to auth page
@@ -106,12 +141,15 @@ const Profile = () => {
   };
   
   // If still loading or no user, show loading state
-  if (isLoading) {
+  if (isLoading || isProcessingPayment) {
     return (
       <div className="min-h-screen bg-figuro-dark">
         <Header />
-        <div className="container mx-auto pt-32 pb-24 flex justify-center items-center">
-          <Loader2 className="h-8 w-8 animate-spin text-figuro-accent" />
+        <div className="container mx-auto pt-32 pb-24 flex flex-col justify-center items-center">
+          <Loader2 className="h-8 w-8 animate-spin text-figuro-accent mb-4" />
+          {isProcessingPayment && (
+            <p className="text-white/70">Processing your subscription upgrade...</p>
+          )}
         </div>
         <Footer />
       </div>

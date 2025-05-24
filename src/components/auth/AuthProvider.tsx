@@ -45,6 +45,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Force refresh profile data (useful after subscription changes)
+  const forceProfileRefresh = async () => {
+    if (user?.id) {
+      console.log("Force refreshing profile data...");
+      await fetchProfile(user.id);
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -93,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      console.log('Profile fetched:', data);
       setProfile(data);
     } catch (error) {
       console.error('Error in fetchProfile:', error);
@@ -308,6 +317,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
     resendVerificationEmail,
     refreshAuth,
+    forceProfileRefresh,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

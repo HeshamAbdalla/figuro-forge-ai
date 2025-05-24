@@ -15,7 +15,6 @@ const logStep = (step: string, details?: any) => {
 };
 
 serve(async (req) => {
-  // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -23,140 +22,156 @@ serve(async (req) => {
   try {
     logStep("Request received", { method: req.method });
 
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      logStep("No authorization header");
-      throw new Error('No authorization header');
-    }
-
-    // Create Supabase client
+    // Create a Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
     );
 
-    // Get the user from the authorization header
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+    // Get the authorization header
+    const authHeader = req.headers.get("Authorization")!;
+    const token = authHeader.replace("Bearer ", "");
+    const { data } = await supabaseClient.auth.getUser(token);
+    const user = data.user;
 
-    if (userError || !user) {
-      logStep("Error getting user", { error: userError?.message });
-      throw new Error('Error getting user');
+    if (!user?.email || !user?.id) {
+      throw new Error("User not authenticated or email/id not available");
     }
 
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Parse the request body
+    // Parse request body
     const body = await req.json();
     const { plan, successUrl, cancelUrl } = body;
 
     logStep("Request body parsed", { plan, successUrl, cancelUrl });
 
-    if (!plan) {
-      logStep("No plan specified in request body");
-      throw new Error('No plan specified');
-    }
-
     // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2023-10-16",
-    });
-
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    
     logStep("Stripe initialized");
+    
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Create product and price if they don't exist
-    async function getOrCreatePriceId(planName: string) {
-      logStep("Getting or creating price for plan", { planName });
+    // For free plan, just update the user's plan in the database
+    if (plan === "free") {
+      logStep("Processing free plan");
       
-      // First, check if we already have the product
-      const products = await stripe.products.list({ active: true });
-      const existingProduct = products.data.find(p => p.name.toLowerCase() === planName.toLowerCase());
-      
-      if (existingProduct && existingProduct.default_price) {
-        logStep("Found existing product", { productId: existingProduct.id, priceId: existingProduct.default_price });
-        return existingProduct.default_price.toString();
-      }
-      
-      // Set up price details based on the plan
-      let productDetails = {
-        name: planName,
-        description: `${planName} Plan`,
-      };
-      
-      let priceDetails = {
-        currency: 'usd',
-        recurring: { interval: 'month' as const },
-        unit_amount: 0,
-      };
-      
-      // Set price based on plan
-      switch (planName.toLowerCase()) {
-        case 'starter':
-          priceDetails.unit_amount = 1299; // $12.99
-          break;
-        case 'pro':
-          priceDetails.unit_amount = 2999; // $29.99
-          break;
-        case 'unlimited':
-          priceDetails.unit_amount = 5999; // $59.99
-          break;
-        default:
-          logStep("Unknown plan", { planName });
-          throw new Error(`Unknown plan: ${planName}`);
-      }
-      
-      logStep("Creating new product and price", { productDetails, priceDetails });
-      
-      // Create the product
-      const product = await stripe.products.create(productDetails);
-      
-      // Create the price
-      const price = await stripe.prices.create({
-        ...priceDetails,
-        product: product.id,
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } }
+      );
+
+      // Update user profile
+      await supabaseAdmin
+        .from("profiles")
+        .update({ plan: "free" })
+        .eq("id", user.id);
+
+      // Update subscription
+      await supabaseAdmin
+        .from("subscriptions")
+        .upsert({
+          user_id: user.id,
+          plan_type: "free",
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200
       });
-      
-      logStep("Created new product and price", { productId: product.id, priceId: price.id });
-      return price.id;
     }
 
-    // Get or create price ID for the requested plan
-    const priceId = await getOrCreatePriceId(plan);
+    // Get or create price for the plan
+    logStep("Getting or creating price for plan", { planName: plan });
+    
+    const planConfig = {
+      "starter": { name: "Starter Plan", price: 799 }, // $7.99
+      "pro": { name: "Pro Plan", price: 1999 }, // $19.99
+      "unlimited": { name: "Unlimited Plan", price: 4999 } // $49.99
+    };
 
-    // Create a checkout session
-    logStep("Creating checkout session", { priceId, plan });
+    const config = planConfig[plan as keyof typeof planConfig];
+    if (!config) {
+      throw new Error(`Invalid plan: ${plan}`);
+    }
+
+    // Check if product already exists
+    const products = await stripe.products.list({ limit: 100 });
+    let product = products.data.find(p => p.name === config.name);
+    
+    if (!product) {
+      product = await stripe.products.create({
+        name: config.name,
+        description: `${config.name} subscription`,
+      });
+      logStep("Created new product", { productId: product.id });
+    } else {
+      logStep("Found existing product", { productId: product.id });
+    }
+
+    // Check if price already exists for this product
+    const prices = await stripe.prices.list({ product: product.id, limit: 100 });
+    let price = prices.data.find(p => p.unit_amount === config.price && p.recurring?.interval === 'month');
+
+    if (!price) {
+      price = await stripe.prices.create({
+        product: product.id,
+        unit_amount: config.price,
+        currency: 'usd',
+        recurring: { interval: 'month' },
+      });
+      logStep("Created new price", { priceId: price.id });
+    } else {
+      logStep("Found existing price", { priceId: price.id });
+    }
+
+    // Check if customer already exists
+    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    let customerId;
+    if (customers.data.length > 0) {
+      customerId = customers.data[0].id;
+      logStep("Found existing customer", { customerId });
+    }
+
+    // Create checkout session
+    logStep("Creating checkout session", { priceId: price.id, plan });
     
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
+      customer: customerId,
+      customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: priceId,
+          price: price.id,
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: successUrl || `${req.headers.get("origin")}/pricing?success=true`,
+      success_url: successUrl || `${req.headers.get("origin")}/profile?success=true&plan=${plan}`,
       cancel_url: cancelUrl || `${req.headers.get("origin")}/pricing?canceled=true`,
       metadata: {
-        user_id: user.id,
+        userId: user.id,
+        user_id: user.id, // Also add this for backward compatibility
         plan: plan,
+        planType: plan, // Also add this for backward compatibility
       },
     });
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 
-    return new Response(JSON.stringify({ sessionId: session.id, url: session.url }), {
+    return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in create-checkout", { message: errorMessage });
-    console.error(`Error creating checkout session: ${errorMessage}`);
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    logStep("Error in create-checkout", { error: error instanceof Error ? error.message : String(error) });
+    console.error(`Error in create-checkout: ${error instanceof Error ? error.message : String(error)}`);
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
+      status: 500,
     });
   }
 });

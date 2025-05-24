@@ -68,9 +68,9 @@ serve(async (req) => {
     // Handle checkout session completed
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
-      const userId = session.metadata?.user_id;
+      const userId = session.metadata?.userId || session.metadata?.user_id;
       const customerId = session.customer;
-      const plan = session.metadata?.plan;
+      const plan = session.metadata?.plan || session.metadata?.planType;
       
       logStep("Processing checkout.session.completed", { userId, customerId, plan });
       
@@ -94,7 +94,8 @@ serve(async (req) => {
       if (profileError) {
         logStep("Error updating profile", { error: profileError.message });
         console.error(`Error updating profile: ${profileError.message}`);
-        return new Response(`Error updating profile: ${profileError.message}`, { status: 500 });
+      } else {
+        logStep("Successfully updated profile with new plan");
       }
       
       // Update or create subscription record
@@ -110,10 +111,12 @@ serve(async (req) => {
       if (subscriptionError) {
         logStep("Error updating subscription", { error: subscriptionError.message });
         console.error(`Error updating subscription: ${subscriptionError.message}`);
+      } else {
+        logStep("Successfully updated subscription");
       }
       
       // Reset usage tracking for the new subscription period
-      await supabaseAdmin
+      const { error: usageError } = await supabaseAdmin
         .from("user_usage")
         .upsert({
           user_id: userId,
@@ -121,6 +124,13 @@ serve(async (req) => {
           model_conversions_used: 0,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
+        
+      if (usageError) {
+        logStep("Error resetting usage", { error: usageError.message });
+        console.error(`Error resetting usage: ${usageError.message}`);
+      } else {
+        logStep("Successfully reset usage counters");
+      }
         
       logStep("Successfully processed checkout.session.completed");
     }
@@ -174,7 +184,23 @@ serve(async (req) => {
       if (updateError) {
         logStep("Error updating profile plan", { error: updateError.message });
         console.error(`Error updating profile plan: ${updateError.message}`);
-        return new Response(`Error updating profile plan: ${updateError.message}`, { status: 500 });
+      } else {
+        logStep("Successfully updated profile plan");
+      }
+      
+      // Update subscription table
+      const { error: subUpdateError } = await supabaseAdmin
+        .from("subscriptions")
+        .update({ 
+          plan_type: plan,
+          updated_at: new Date().toISOString()
+        })
+        .eq("user_id", userId);
+      
+      if (subUpdateError) {
+        logStep("Error updating subscription plan", { error: subUpdateError.message });
+      } else {
+        logStep("Successfully updated subscription plan");
       }
       
       logStep("Successfully processed customer.subscription.updated");
