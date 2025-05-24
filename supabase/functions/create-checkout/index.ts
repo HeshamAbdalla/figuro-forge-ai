@@ -14,6 +14,14 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
+// Mapping of plan names to Stripe price IDs
+// TODO: Replace these with your actual price IDs from Stripe dashboard
+const PLAN_PRICE_IDS = {
+  "starter": "price_XXXXXXXXXXXXXXXXXX", // Replace with your Starter plan price ID
+  "pro": "price_YYYYYYYYYYYYYYYYYY",     // Replace with your Pro plan price ID
+  "unlimited": "price_ZZZZZZZZZZZZZZZZ"  // Replace with your Unlimited plan price ID
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -85,49 +93,13 @@ serve(async (req) => {
       });
     }
 
-    // Get or create price for the plan
-    logStep("Getting or creating price for plan", { planName: plan });
-    
-    const planConfig = {
-      "starter": { name: "Starter Plan", price: 799 }, // $7.99
-      "pro": { name: "Pro Plan", price: 1999 }, // $19.99
-      "unlimited": { name: "Unlimited Plan", price: 4999 } // $49.99
-    };
-
-    const config = planConfig[plan as keyof typeof planConfig];
-    if (!config) {
-      throw new Error(`Invalid plan: ${plan}`);
+    // Get the price ID for the requested plan
+    const priceId = PLAN_PRICE_IDS[plan as keyof typeof PLAN_PRICE_IDS];
+    if (!priceId) {
+      throw new Error(`Invalid plan: ${plan}. Available plans: ${Object.keys(PLAN_PRICE_IDS).join(', ')}`);
     }
 
-    // Check if product already exists
-    const products = await stripe.products.list({ limit: 100 });
-    let product = products.data.find(p => p.name === config.name);
-    
-    if (!product) {
-      product = await stripe.products.create({
-        name: config.name,
-        description: `${config.name} subscription`,
-      });
-      logStep("Created new product", { productId: product.id });
-    } else {
-      logStep("Found existing product", { productId: product.id });
-    }
-
-    // Check if price already exists for this product
-    const prices = await stripe.prices.list({ product: product.id, limit: 100 });
-    let price = prices.data.find(p => p.unit_amount === config.price && p.recurring?.interval === 'month');
-
-    if (!price) {
-      price = await stripe.prices.create({
-        product: product.id,
-        unit_amount: config.price,
-        currency: 'usd',
-        recurring: { interval: 'month' },
-      });
-      logStep("Created new price", { priceId: price.id });
-    } else {
-      logStep("Found existing price", { priceId: price.id });
-    }
+    logStep("Using existing price ID", { plan, priceId });
 
     // Check if customer already exists
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -138,14 +110,14 @@ serve(async (req) => {
     }
 
     // Create checkout session
-    logStep("Creating checkout session", { priceId: price.id, plan });
+    logStep("Creating checkout session", { priceId, plan });
     
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: price.id,
+          price: priceId,
           quantity: 1,
         },
       ],
