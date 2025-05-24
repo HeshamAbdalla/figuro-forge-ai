@@ -27,12 +27,12 @@ serve(async (req) => {
     
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Get session ID from URL parameters
-    const url = new URL(req.url);
-    const sessionId = url.searchParams.get("session_id");
+    // Get session ID from request body
+    const body = await req.json();
+    const sessionId = body.session_id;
 
     if (!sessionId) {
-      throw new Error("session_id parameter is required");
+      throw new Error("session_id is required in request body");
     }
 
     logStep("Retrieving checkout session", { sessionId });

@@ -6,6 +6,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmbeddedCheckout } from "./EmbeddedCheckout";
+import { supabase } from "@/integrations/supabase/client";
 
 export const PlanOptions = () => {
   const { subscription, isLoading, openCustomerPortal, user } = useSubscription();

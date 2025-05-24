@@ -30,24 +30,13 @@ const CheckoutReturn = () => {
       try {
         console.log('Verifying payment for session:', sessionId);
 
-        // Get session status from Stripe
-        const { data, error } = await supabase.functions.invoke('get-checkout-session', {
-          body: {},
-          method: 'GET'
+        // Call the get-checkout-session function with the session ID
+        const { data: sessionInfo, error } = await supabase.functions.invoke('get-checkout-session', {
+          body: { session_id: sessionId }
         });
 
-        // Since we can't pass query params in the body, we'll use a different approach
-        const response = await fetch(`${supabase.supabaseUrl}/functions/v1/get-checkout-session?session_id=${sessionId}`, {
-          headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            'apikey': supabase.supabaseKey
-          }
-        });
-
-        const sessionInfo = await response.json();
-
-        if (!response.ok) {
-          throw new Error(sessionInfo.error || 'Failed to retrieve session');
+        if (error) {
+          throw new Error(error.message || 'Failed to retrieve session');
         }
 
         console.log('Session info:', sessionInfo);

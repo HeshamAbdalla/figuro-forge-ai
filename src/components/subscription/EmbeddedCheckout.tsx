@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   EmbeddedCheckoutProvider,
-  EmbeddedCheckout
+  EmbeddedCheckout as StripeEmbeddedCheckout
 } from '@stripe/react-stripe-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -109,7 +109,7 @@ export const EmbeddedCheckout: React.FC<EmbeddedCheckoutProps> = ({ planId, onCl
   return (
     <div className="w-full max-w-2xl mx-auto">
       <EmbeddedCheckoutProvider stripe={stripePromise} options={options}>
-        <EmbeddedCheckout />
+        <StripeEmbeddedCheckout />
       </EmbeddedCheckoutProvider>
     </div>
   );
