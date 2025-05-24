@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import PromptForm from "@/components/PromptForm";
@@ -20,7 +19,6 @@ import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import VantaBackground from "@/components/VantaBackground";
 import { motion } from "framer-motion";
-import { useTabNavigation } from "@/hooks/useTabNavigation";
 
 const Studio = () => {
   const [apiKey, setApiKey] = useState<string | "">("");
@@ -30,12 +28,7 @@ const Studio = () => {
   const [customModelFile, setCustomModelFile] = useState<File | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const { toast } = useToast();
-  
-  // Use the tab navigation hook instead of local state
-  const { activeTab, setActiveTab } = useTabNavigation({
-    defaultTab: 'create',
-    tabs: ['create', 'gallery']
-  });
+  const [activeTab, setActiveTab] = useState("create");
   
   const {
     isGeneratingImage,
@@ -244,12 +237,12 @@ const Studio = () => {
       <VantaBackground>
         <Header />
         
-        <section className="py-16 md:py-20 lg:py-24 px-4">
-          <div className="container mx-auto max-w-7xl">
+        <section className="pt-20 pb-24">
+          <div className="container mx-auto px-4">
             <StudioHeader />
             
             <motion.div 
-              className="mb-8 flex flex-col sm:flex-row justify-between items-center gap-4"
+              className="mb-8 flex justify-between items-center"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
@@ -257,22 +250,22 @@ const Studio = () => {
               <Button 
                 onClick={() => setUploadModalOpen(true)}
                 variant="outline" 
-                className="w-full sm:w-auto border-white/20 hover:border-white/40 bg-white/5 backdrop-blur-sm"
+                className="border-white/20 hover:border-white/40 bg-white/5 backdrop-blur-sm"
               >
                 <Upload size={16} className="mr-2" />
                 Upload 3D Model
               </Button>
               
-              <div className="flex items-center gap-4 w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-4">
                 {authUser ? (
-                  <div className="flex flex-wrap items-center gap-4 justify-end">
-                    <span className="text-white text-sm truncate max-w-[150px]">Welcome, {authUser.email}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-white">Welcome, {authUser.email}</span>
                     <Button onClick={handleSignOut} variant="outline" className="border-white/20 bg-white/5 backdrop-blur-sm">
                       Sign Out
                     </Button>
                   </div>
                 ) : (
-                  <Button onClick={handleSignIn} variant="outline" className="w-full sm:w-auto border-white/20 bg-white/5 backdrop-blur-sm">
+                  <Button onClick={handleSignIn} variant="outline" className="border-white/20 bg-white/5 backdrop-blur-sm">
                     Sign In to Save
                   </Button>
                 )}
@@ -296,32 +289,30 @@ const Studio = () => {
               onValueChange={setActiveTab}
               className="w-full mb-8"
             >
-              <div className="flex justify-center mb-6">
-                <TabsList className="grid grid-cols-2 w-full max-w-md bg-white/10 backdrop-blur-sm">
-                  <TabsTrigger value="create" className="data-[state=active]:text-white data-[state=active]:bg-figuro-accent">
-                    Create Model
-                  </TabsTrigger>
-                  <TabsTrigger value="gallery" className="data-[state=active]:text-white data-[state=active]:bg-figuro-accent">
-                    Your Gallery
-                  </TabsTrigger>
-                </TabsList>
-              </div>
+              <TabsList className="grid grid-cols-2 w-[400px] mx-auto bg-white/10 backdrop-blur-sm">
+                <TabsTrigger value="create" className="data-[state=active]:text-white data-[state=active]:bg-figuro-accent">
+                  Create Model
+                </TabsTrigger>
+                <TabsTrigger value="gallery" className="data-[state=active]:text-white data-[state=active]:bg-figuro-accent">
+                  Your Gallery
+                </TabsTrigger>
+              </TabsList>
               
               <TabsContent value="create" className="mt-6">
                 <motion.div 
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
+                  className="grid grid-cols-1 lg:grid-cols-3 gap-8"
                   variants={container}
                   initial="hidden"
                   animate="show"
                 >
-                  <motion.div variants={item} className="h-full">
+                  <motion.div variants={item}>
                     <PromptForm 
                       onGenerate={onGenerate} 
                       isGenerating={isGeneratingImage}
                     />
                   </motion.div>
                   
-                  <motion.div variants={item} className="h-full">
+                  <motion.div variants={item}>
                     <ImagePreview 
                       imageSrc={generatedImage} 
                       isLoading={isGeneratingImage}
@@ -331,7 +322,7 @@ const Studio = () => {
                     />
                   </motion.div>
                   
-                  <motion.div variants={item} className="h-full">
+                  <motion.div variants={item}>
                     <ModelViewer 
                       modelUrl={displayModelUrl} 
                       isLoading={isConverting}
