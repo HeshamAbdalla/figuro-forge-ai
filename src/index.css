@@ -60,7 +60,7 @@
   }
   
   .glass-panel:hover {
-    @apply bg-white/8 border-white/20 shadow-glow-sm;
+    @apply bg-white/10 border-white/20 shadow-glow-sm;
   }
   
   .text-gradient {
