@@ -1,14 +1,17 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, Loader2 } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmbeddedCheckout } from "./EmbeddedCheckout";
 
 export const PlanOptions = () => {
-  const { subscription, isLoading, subscribeToPlan, openCustomerPortal, user } = useSubscription();
+  const { subscription, isLoading, openCustomerPortal, user } = useSubscription();
   const [processingPlan, setProcessingPlan] = React.useState<string | null>(null);
+  const [showCheckout, setShowCheckout] = React.useState(false);
+  const [selectedPlan, setSelectedPlan] = React.useState<string>('');
   
   const plans = [
     {
@@ -83,16 +86,24 @@ export const PlanOptions = () => {
       if (subscription?.plan === planId) {
         // If it's the current plan, open the customer portal
         await openCustomerPortal();
-      } else {
-        // Subscribe to the new plan
-        const result = await subscribeToPlan(planId as 'free' | 'starter' | 'pro' | 'unlimited');
+      } else if (planId === 'free') {
+        // Handle free plan directly
+        const { data, error } = await supabase.functions.invoke("create-checkout", {
+          body: { plan: planId }
+        });
         
-        if (result && planId !== 'free') {
-          toast({
-            title: "Redirecting to Checkout",
-            description: "You will be redirected to Stripe checkout in a new tab.",
-          });
+        if (error) {
+          throw new Error(error.message);
         }
+        
+        toast({
+          title: "Switched to Free Plan",
+          description: "You are now on the Free plan.",
+        });
+      } else {
+        // For paid plans, show embedded checkout
+        setSelectedPlan(planId);
+        setShowCheckout(true);
       }
     } catch (error) {
       console.error("Error handling plan action:", error);
@@ -212,6 +223,21 @@ export const PlanOptions = () => {
           );
         })}
       </div>
+
+      {/* Embedded Checkout Dialog */}
+      <Dialog open={showCheckout} onOpenChange={setShowCheckout}>
+        <DialogContent className="max-w-4xl bg-figuro-darker border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              Complete Your Subscription to {plans.find(p => p.id === selectedPlan)?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <EmbeddedCheckout 
+            planId={selectedPlan} 
+            onClose={() => setShowCheckout(false)} 
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

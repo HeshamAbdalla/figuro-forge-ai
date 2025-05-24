@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -48,9 +49,9 @@ serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
-    const { plan, successUrl, cancelUrl } = body;
+    const { plan, mode = "embedded" } = body;
 
-    logStep("Request body parsed", { plan, successUrl, cancelUrl });
+    logStep("Request body parsed", { plan, mode });
 
     // Initialize Stripe
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -107,8 +108,10 @@ serve(async (req) => {
       logStep("Found existing customer", { customerId });
     }
 
-    // Create checkout session
-    logStep("Creating checkout session", { priceId, plan });
+    // Create checkout session with embedded UI mode
+    logStep("Creating checkout session", { priceId, plan, mode });
+    
+    const origin = req.headers.get("origin") || "http://localhost:5173";
     
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -120,19 +123,22 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: successUrl || `${req.headers.get("origin")}/profile?success=true&plan=${plan}`,
-      cancel_url: cancelUrl || `${req.headers.get("origin")}/pricing?canceled=true`,
+      ui_mode: "embedded",
+      return_url: `${origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         userId: user.id,
-        user_id: user.id, // Also add this for backward compatibility
+        user_id: user.id,
         plan: plan,
-        planType: plan, // Also add this for backward compatibility
+        planType: plan,
       },
     });
 
-    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+    logStep("Checkout session created", { sessionId: session.id, clientSecret: session.client_secret });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ 
+      clientSecret: session.client_secret,
+      sessionId: session.id 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
