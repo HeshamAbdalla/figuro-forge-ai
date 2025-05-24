@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -15,11 +14,10 @@ const logStep = (step: string, details?: any) => {
 };
 
 // Mapping of plan names to Stripe price IDs
-// TODO: Replace these with your actual price IDs from Stripe dashboard
 const PLAN_PRICE_IDS = {
-  "starter": "price_XXXXXXXXXXXXXXXXXX", // Replace with your Starter plan price ID
-  "pro": "price_YYYYYYYYYYYYYYYYYY",     // Replace with your Pro plan price ID
-  "unlimited": "price_ZZZZZZZZZZZZZZZZ"  // Replace with your Unlimited plan price ID
+  "starter": "price_1RRpW3Fz9RxnLs0LsxWYzd34",
+  "pro": "price_1RRozKFz9RxnLs0LjeVjldW1",
+  "unlimited": "price_1RRp0BFz9RxnLs0LjR1zMtLi"
 };
 
 serve(async (req) => {
