@@ -1,6 +1,7 @@
 
 import React, { useRef, useEffect } from "react";
 import { Center } from "@react-three/drei";
+import * as THREE from "three";
 import LoadingSpinner from "./LoadingSpinner";
 import { useModelLoader } from "./hooks/useModelLoader";
 import { disposeModel, simplifyModelForPreview } from "./utils/modelUtils";

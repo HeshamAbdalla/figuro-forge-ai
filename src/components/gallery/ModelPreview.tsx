@@ -2,6 +2,7 @@
 import React, { Suspense, useState, useEffect, useRef, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Environment } from "@react-three/drei";
+import * as THREE from "three";
 import { ErrorBoundary } from "@/components/model-viewer/ErrorBoundary";
 import DummyBox from "@/components/model-viewer/DummyBox";
 import LoadingSpinner from "@/components/model-viewer/LoadingSpinner";
