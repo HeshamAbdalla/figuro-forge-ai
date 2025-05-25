@@ -24,11 +24,18 @@ export const useModelUpload = (onFilesUpdated: () => void) => {
         }
         
         const userId = session.user.id;
+        console.log('✅ [MODEL] Authenticated user for model upload:', userId);
+        
         const fileExt = file.name.split('.').pop();
-        // Use user-specific path structure
+        // Use user-specific path structure that matches RLS policies
         const filePath = `${userId}/models/${Date.now()}.${fileExt}`;
         
         console.log('🔄 [MODEL] Uploading to path:', filePath);
+        console.log('🔄 [MODEL] File details:', {
+          name: file.name,
+          size: file.size,
+          type: file.type
+        });
         
         const { error: uploadError } = await supabase.storage
           .from('figurine-images')

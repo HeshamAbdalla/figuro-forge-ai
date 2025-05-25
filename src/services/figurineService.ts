@@ -23,6 +23,12 @@ export const saveFigurine = async (
     
     const userId = session.user.id;
     console.log('✅ [FIGURINE] Authenticated user:', userId);
+    console.log('✅ [FIGURINE] Session verification:', {
+      hasSession: !!session,
+      hasUser: !!session.user,
+      userId: session.user.id,
+      userEmail: session.user.email
+    });
     
     // Generate a new ID for the figurine
     const figurineId = uuidv4();
@@ -70,12 +76,22 @@ export const saveFigurine = async (
       is_public: true // Set all figurines as public by default
     };
     
-    console.log('🔄 [FIGURINE] Inserting figurine data:', {
+    console.log('🔄 [FIGURINE] Preparing to insert figurine data:', {
       id: figurineData.id,
       user_id: figurineData.user_id,
       title: figurineData.title,
-      is_public: figurineData.is_public
+      is_public: figurineData.is_public,
+      has_saved_image: !!figurineData.saved_image_url
     });
+    
+    // Verify authentication before insert
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser || currentUser.id !== userId) {
+      console.error('❌ [FIGURINE] User authentication mismatch');
+      throw new Error('User authentication error');
+    }
+    
+    console.log('✅ [FIGURINE] User authentication verified for insert');
     
     // Insert new figurine with proper error handling
     const { data, error } = await supabase
@@ -92,6 +108,7 @@ export const saveFigurine = async (
         details: error.details,
         hint: error.hint
       });
+      console.error('❌ [FIGURINE] Failed figurine data:', figurineData);
       throw new Error(`Database error: ${error.message}`);
     }
     
