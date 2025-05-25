@@ -17,95 +17,64 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "@/hooks/use-toast";
 
 const Profile = () => {
-  const { user, profile, isLoading, refreshAuth } = useAuth();
-  const { verifySubscription, checkSubscription } = useSubscription();
+  const { user, profile, isLoading: authLoading, refreshAuth } = useAuth();
+  const { subscription, isLoading: subscriptionLoading, checkSubscription, verifySubscription } = useSubscription();
   const [activeTab, setActiveTab] = useState("info");
   const [searchParams, setSearchParams] = useSearchParams();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [hasProcessedSuccess, setHasProcessedSuccess] = useState(false);
   const navigate = useNavigate();
   
-  // Handle success redirect from Stripe - optimized approach
+  // Handle success redirect from Stripe
   useEffect(() => {
     const handleStripeSuccess = async () => {
       const success = searchParams.get("success");
       const plan = searchParams.get("plan");
       
       if (success === "true" && plan && !hasProcessedSuccess && !isProcessingPayment) {
-        console.log("Handling Stripe success redirect for plan:", plan);
+        console.log("🎉 [PROFILE] Handling Stripe success for plan:", plan);
         setIsProcessingPayment(true);
         setHasProcessedSuccess(true);
         
-        // Clear URL parameters immediately to prevent infinite loop
+        // Clear URL parameters immediately
         const newSearchParams = new URLSearchParams(searchParams);
         newSearchParams.delete("success");
         newSearchParams.delete("plan");
         setSearchParams(newSearchParams, { replace: true });
         
-        // Show processing toast
         toast({
-          title: "Processing Payment",
-          description: "Verifying your subscription upgrade...",
+          title: "Payment Successful!",
+          description: "Processing your subscription upgrade...",
         });
         
         try {
-          // Initial wait for webhook processing
+          // Wait for webhook processing
           await new Promise(resolve => setTimeout(resolve, 3000));
           
-          // Simplified verification with single refresh
-          let verified = false;
-          const maxAttempts = 3; // Reduced attempts to prevent rate limiting
+          // Verify subscription upgrade
+          const validPlans = ['free', 'starter', 'pro', 'unlimited'] as const;
+          type ValidPlan = typeof validPlans[number];
           
-          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            console.log(`Verification attempt ${attempt}/${maxAttempts}`);
+          if (validPlans.includes(plan as ValidPlan)) {
+            const verified = await verifySubscription(plan as ValidPlan);
             
-            try {
-              // Single subscription check without multiple refreshes
-              await checkSubscription();
-              
-              // Wait between attempts with exponential backoff
-              if (attempt < maxAttempts) {
-                const waitTime = Math.min(3000 * Math.pow(1.5, attempt - 1), 10000);
-                await new Promise(resolve => setTimeout(resolve, waitTime));
-              }
-              
-              // Verify the subscription was updated
-              const validPlans = ['free', 'starter', 'pro', 'unlimited'] as const;
-              type ValidPlan = typeof validPlans[number];
-              
-              if (validPlans.includes(plan as ValidPlan)) {
-                const verificationResult = await verifySubscription(plan as ValidPlan);
-                if (verificationResult) {
-                  verified = true;
-                  console.log(`Verification successful on attempt ${attempt}`);
-                  break;
-                }
-              } else {
-                console.error(`Invalid plan type: ${plan}`);
-                break;
-              }
-            } catch (error) {
-              console.error(`Verification attempt ${attempt} failed:`, error);
-              // Continue to next attempt
+            if (verified) {
+              toast({
+                title: "Subscription Activated!",
+                description: `Your ${plan} plan is now active. Welcome!`,
+              });
+            } else {
+              toast({
+                title: "Payment Processed",
+                description: "Your subscription will be activated shortly.",
+              });
             }
           }
-          
-          if (verified) {
-            toast({
-              title: "Subscription Activated!",
-              description: `Your ${plan} plan has been activated successfully. Your usage limits have been reset.`,
-            });
-          } else {
-            toast({
-              title: "Payment Successful",
-              description: "Your payment was processed successfully. Please refresh your subscription data if needed.",
-            });
-          }
         } catch (error) {
-          console.error("Error verifying subscription:", error);
+          console.error("❌ [PROFILE] Error verifying subscription:", error);
           toast({
             title: "Payment Processed",
-            description: "Your payment was successful. The subscription status will update shortly.",
+            description: "Your subscription will be activated shortly.",
             variant: "default"
           });
         } finally {
@@ -115,16 +84,16 @@ const Profile = () => {
     };
 
     handleStripeSuccess();
-  }, [searchParams, hasProcessedSuccess, isProcessingPayment]);
+  }, [searchParams, hasProcessedSuccess, isProcessingPayment, verifySubscription, setSearchParams]);
   
   useEffect(() => {
-    // If authentication is complete (not loading) and user is not authenticated, redirect to auth page
-    if (!isLoading && !user) {
+    // Redirect if not authenticated
+    if (!authLoading && !user) {
       navigate("/auth");
     }
-  }, [isLoading, user, navigate]);
+  }, [authLoading, user, navigate]);
   
-  // Generate initials for avatar fallback
+  // Generate initials for avatar
   const getInitials = () => {
     if (profile?.full_name) {
       return profile.full_name.split(" ").map(name => name[0]).join("").toUpperCase();
@@ -136,7 +105,7 @@ const Profile = () => {
   };
   
   // Format date for display
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     if (!dateString) return "Unknown";
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -145,26 +114,31 @@ const Profile = () => {
     });
   };
 
-  // Optimized refresh function that doesn't disrupt auth state
+  // Handle data refresh
   const handleDataRefresh = async () => {
     try {
-      await checkSubscription();
+      await Promise.all([
+        checkSubscription(),
+        refreshAuth()
+      ]);
       toast({
         title: "Data Refreshed",
-        description: "Your subscription data has been updated.",
+        description: "Your profile and subscription data have been updated.",
       });
     } catch (error) {
-      console.error("Error refreshing data:", error);
+      console.error("❌ [PROFILE] Error refreshing data:", error);
       toast({
-        title: "Refresh Error",
-        description: "Could not refresh subscription data. Please try again.",
+        title: "Refresh Error", 
+        description: "Could not refresh all data. Please try again.",
         variant: "destructive"
       });
     }
   };
   
-  // If still loading or no user, show loading state
-  if (isLoading || isProcessingPayment) {
+  // Show loading state
+  const isLoading = authLoading || subscriptionLoading || isProcessingPayment;
+  
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-figuro-dark">
         <Header />
@@ -210,7 +184,7 @@ const Profile = () => {
               <div className="text-center md:text-left">
                 <h1 className="text-3xl font-bold text-white mb-2">{profile?.full_name || user?.email}</h1>
                 <p className="text-white/70">{user?.email}</p>
-                <p className="text-white/50 mt-1">Member since {formatDate(user?.created_at)}</p>
+                <p className="text-white/50 mt-1">Member since {formatDate(user?.created_at || "")}</p>
                 
                 <div className="mt-3 flex flex-wrap gap-2 justify-center md:justify-start">
                   <Button 
@@ -237,6 +211,16 @@ const Profile = () => {
                 </div>
               </div>
             </div>
+            
+            {/* Debug subscription info */}
+            {subscription && (
+              <div className="mb-6 p-4 bg-figuro-darker/30 rounded-lg">
+                <h3 className="text-white text-sm font-semibold mb-2">Subscription Debug Info:</h3>
+                <pre className="text-white/60 text-xs overflow-auto">
+                  {JSON.stringify(subscription, null, 2)}
+                </pre>
+              </div>
+            )}
             
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid grid-cols-3 max-w-[500px] mx-auto">

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -28,50 +28,67 @@ export const useSubscription = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
-  const [lastCheckTime, setLastCheckTime] = useState<number>(0);
+  
+  // Use refs to prevent duplicate calls
+  const isCheckingRef = useRef(false);
+  const lastCheckTimeRef = useRef(0);
+  const mountedRef = useRef(true);
 
-  // Debounced check subscription to prevent rapid successive calls
-  const debouncedCheckSubscription = useCallback((() => {
-    let timeoutId: NodeJS.Timeout;
-    return () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        const now = Date.now();
-        // Only check if it's been more than 5 seconds since last check to prevent rate limiting
-        if (now - lastCheckTime > 5000) {
-          checkSubscription();
-        }
-      }, 1000);
-    };
-  })(), [lastCheckTime]);
-
-  // Check subscription status
+  // Debounced check subscription with rate limiting protection
   const checkSubscription = useCallback(async () => {
+    const now = Date.now();
+    
+    // Prevent duplicate calls and rate limiting
+    if (isCheckingRef.current || (now - lastCheckTimeRef.current) < 10000) {
+      console.log('🚫 [SUBSCRIPTION] Skipping check - too recent or already checking');
+      return;
+    }
+
+    if (!mountedRef.current) {
+      return;
+    }
+
+    isCheckingRef.current = true;
+    lastCheckTimeRef.current = now;
+
     try {
-      setLastCheckTime(Date.now());
+      console.log('🔄 [SUBSCRIPTION] Checking subscription status');
+      
       const { data, error } = await supabase.functions.invoke<SubscriptionData>('check-subscription');
 
+      if (!mountedRef.current) {
+        return;
+      }
+
       if (error) {
+        // Handle rate limit errors gracefully
+        if (error.message?.includes('rate limit')) {
+          console.warn('⚠️ [SUBSCRIPTION] Rate limited, using cached data');
+          return;
+        }
         throw new Error(error.message);
       }
 
       setSubscription(data);
       setError(null);
-      console.log('Subscription data updated:', data);
+      console.log('✅ [SUBSCRIPTION] Subscription data updated:', data);
     } catch (err) {
-      console.error('Error checking subscription:', err);
+      console.error('❌ [SUBSCRIPTION] Error checking subscription:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to check subscription';
-      setError(errorMessage);
       
-      // Only show toast for non-auth errors and non-rate-limit errors
-      if (!errorMessage.includes('Authentication') && 
-          !errorMessage.includes('not authenticated') &&
-          !errorMessage.includes('rate limit')) {
+      // Only show toast for critical errors, not rate limits
+      if (!errorMessage.includes('rate limit') && !errorMessage.includes('Authentication')) {
+        setError(errorMessage);
         toast({
           title: "Subscription Error",
-          description: "Couldn't load your subscription details. Please try again.",
-          variant: "destructive"
+          description: "Couldn't load your subscription details. Using cached data.",
+          variant: "default"
         });
+      }
+    } finally {
+      isCheckingRef.current = false;
+      if (mountedRef.current) {
+        setIsLoading(false);
       }
     }
   }, []);
@@ -79,34 +96,36 @@ export const useSubscription = () => {
   // Verify subscription matches expected plan
   const verifySubscription = useCallback(async (expectedPlan: 'free' | 'starter' | 'pro' | 'unlimited'): Promise<boolean> => {
     try {
-      console.log('Verifying subscription for expected plan:', expectedPlan);
+      console.log('🔍 [SUBSCRIPTION] Verifying subscription for expected plan:', expectedPlan);
       
-      // Refresh subscription data first
-      await checkSubscription();
-      
-      // Small delay to ensure state has updated
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Check if the current subscription matches the expected plan
-      if (subscription?.plan === expectedPlan) {
-        console.log('Subscription verification successful:', subscription.plan);
-        return true;
+      // Use current subscription data if available and recent
+      if (subscription && (Date.now() - lastCheckTimeRef.current) < 30000) {
+        const matches = subscription.plan === expectedPlan;
+        console.log('🔍 [SUBSCRIPTION] Using cached data for verification:', matches);
+        return matches;
       }
       
-      console.log('Subscription verification failed. Expected:', expectedPlan, 'Actual:', subscription?.plan);
-      return false;
+      // Only refresh if really needed
+      await checkSubscription();
+      
+      // Small delay to ensure state updates
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const matches = subscription?.plan === expectedPlan;
+      console.log('🔍 [SUBSCRIPTION] Verification result:', matches);
+      return matches;
     } catch (err) {
-      console.error('Error verifying subscription:', err);
+      console.error('❌ [SUBSCRIPTION] Error verifying subscription:', err);
       return false;
     }
   }, [subscription, checkSubscription]);
 
-  // Load user and subscription data with optimized auth state handling
+  // Initialize subscription data
   useEffect(() => {
     let mounted = true;
-    let authSubscription: any;
+    mountedRef.current = true;
 
-    const loadUserAndSubscription = async () => {
+    const initializeSubscription = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -120,32 +139,34 @@ export const useSubscription = () => {
         }
         
         setUser(session.user);
+        
+        // Initial subscription check
         await checkSubscription();
       } catch (err) {
-        console.error('Error loading user data:', err);
+        console.error('❌ [SUBSCRIPTION] Error initializing:', err);
         if (mounted) {
-          setError('Failed to load user data');
-        }
-      } finally {
-        if (mounted) {
+          setError('Failed to initialize subscription data');
           setIsLoading(false);
         }
       }
     };
 
-    // Set up auth state listener with correct destructuring pattern and non-async callback
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    // Set up auth state listener
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!mounted) return;
         
-        console.log('Auth state changed in useSubscription:', event, session?.user?.email);
+        console.log('🔄 [SUBSCRIPTION] Auth state changed:', event, session?.user?.email);
         
-        // Update user state immediately
         setUser(session?.user || null);
         
         if (event === 'SIGNED_IN' && session?.user) {
-          // Use debounced check to prevent conflicts and rate limiting
-          debouncedCheckSubscription();
+          // Delay to prevent conflicts with auth initialization
+          setTimeout(() => {
+            if (mounted) {
+              checkSubscription();
+            }
+          }, 2000);
         } else if (event === 'SIGNED_OUT') {
           setSubscription(null);
           setError(null);
@@ -154,18 +175,16 @@ export const useSubscription = () => {
       }
     );
 
-    // Store the subscription for cleanup
-    authSubscription = subscription;
-
-    loadUserAndSubscription();
+    initializeSubscription();
 
     return () => {
       mounted = false;
+      mountedRef.current = false;
       if (authSubscription) {
         authSubscription.unsubscribe();
       }
     };
-  }, [debouncedCheckSubscription]);
+  }, [checkSubscription]);
 
   // Subscribe to a plan
   const subscribeToPlan = async (
@@ -181,24 +200,24 @@ export const useSubscription = () => {
     }
 
     try {
-      console.log('Subscribing to plan:', plan);
+      console.log('💳 [SUBSCRIPTION] Subscribing to plan:', plan);
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
           plan,
-          successUrl: `${window.location.origin}/checkout-return?session_id={CHECKOUT_SESSION_ID}`,
+          successUrl: `${window.location.origin}/profile?success=true&plan=${plan}`,
           cancelUrl: `${window.location.origin}/pricing?canceled=true`
         }
       });
 
       if (error) {
-        console.error('Error creating checkout session:', error);
+        console.error('❌ [SUBSCRIPTION] Error creating checkout session:', error);
         throw new Error(error.message);
       }
 
       if (plan === 'free') {
         // Refresh subscription data for free plan
-        await checkSubscription();
+        setTimeout(checkSubscription, 1000);
         
         toast({
           title: "Switched to Free Plan",
@@ -212,12 +231,11 @@ export const useSubscription = () => {
         throw new Error('No checkout URL returned');
       }
 
-      console.log('Redirecting to checkout URL:', data.url);
-      // Redirect to Stripe checkout
+      console.log('💳 [SUBSCRIPTION] Redirecting to checkout:', data.url);
       window.location.href = data.url;
       return data;
     } catch (err) {
-      console.error('Error creating subscription:', err);
+      console.error('❌ [SUBSCRIPTION] Error creating subscription:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to create subscription';
       toast({
         title: "Subscription Error",
@@ -228,7 +246,7 @@ export const useSubscription = () => {
     }
   };
 
-  // Open customer portal to manage subscription
+  // Open customer portal
   const openCustomerPortal = async () => {
     if (!user) {
       toast({
@@ -250,10 +268,9 @@ export const useSubscription = () => {
         throw new Error('No portal URL returned');
       }
 
-      // Open customer portal in a new tab
       window.open(data.url, '_blank');
     } catch (err) {
-      console.error('Error opening customer portal:', err);
+      console.error('❌ [SUBSCRIPTION] Error opening customer portal:', err);
       toast({
         title: "Portal Error",
         description: err instanceof Error ? err.message : 'Failed to open customer portal',

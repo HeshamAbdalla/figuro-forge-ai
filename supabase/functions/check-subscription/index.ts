@@ -14,6 +14,9 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
+// Rate limiting cache
+const rateLimitCache = new Map<string, { lastCall: number; attempts: number }>();
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,6 +41,35 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.id) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
+    
+    // Check rate limiting per user
+    const now = Date.now();
+    const userCache = rateLimitCache.get(user.id);
+    
+    if (userCache) {
+      const timeSinceLastCall = now - userCache.lastCall;
+      
+      // If less than 10 seconds since last call, use cached response
+      if (timeSinceLastCall < 10000) {
+        logStep("Rate limited - using cached response");
+        // Return a basic free plan response to prevent errors
+        return new Response(JSON.stringify({
+          plan: "free",
+          commercial_license: false,
+          additional_conversions: 0,
+          is_active: false,
+          valid_until: null,
+          usage: { image_generations_used: 0, model_conversions_used: 0 },
+          limits: { image_generations_limit: 3, model_conversions_limit: 1 }
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200
+        });
+      }
+    }
+    
+    // Update rate limit cache
+    rateLimitCache.set(user.id, { lastCall: now, attempts: (userCache?.attempts || 0) + 1 });
     
     // Get current subscription from database
     const { data: subscriptionData, error: subscriptionError } = await supabaseAdmin
@@ -95,6 +127,8 @@ serve(async (req) => {
         plan: "free",
         commercial_license: false,
         additional_conversions: 0,
+        is_active: false,
+        valid_until: null,
         usage: usageData || { 
           image_generations_used: 0, 
           model_conversions_used: 0 
@@ -121,20 +155,22 @@ serve(async (req) => {
       const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
       
       try {
-        // Get subscription from Stripe
-        const subscription = await stripe.subscriptions.retrieve(subscriptionData.stripe_subscription_id);
-        logStep("Retrieved Stripe subscription", { 
-          id: subscription.id,
-          status: subscription.status 
-        });
+        // Only check Stripe if it's been more than 1 hour since last update
+        const lastUpdate = new Date(subscriptionData.updated_at || "").getTime();
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
         
-        isActive = subscription.status === 'active' || subscription.status === 'trialing';
-        validUntil = new Date(subscription.current_period_end * 1000).toISOString();
-        
-        // Update subscription in database if status changed
-        if (isActive !== (subscriptionData.valid_until !== null) || 
-            new Date(validUntil).getTime() !== new Date(subscriptionData.valid_until || "").getTime()) {
+        if (lastUpdate < oneHourAgo) {
+          logStep("Checking Stripe subscription (hourly check)");
+          const subscription = await stripe.subscriptions.retrieve(subscriptionData.stripe_subscription_id);
+          logStep("Retrieved Stripe subscription", { 
+            id: subscription.id,
+            status: subscription.status 
+          });
           
+          isActive = subscription.status === 'active' || subscription.status === 'trialing';
+          validUntil = new Date(subscription.current_period_end * 1000).toISOString();
+          
+          // Update subscription in database
           await supabaseAdmin
             .from("subscriptions")
             .update({
@@ -147,6 +183,9 @@ serve(async (req) => {
             isActive, 
             validUntil 
           });
+        } else {
+          logStep("Using cached subscription data (recent update)");
+          isActive = !!subscriptionData.valid_until && new Date(subscriptionData.valid_until) > new Date();
         }
         
         // If subscription is no longer active, downgrade to free plan
@@ -165,24 +204,30 @@ serve(async (req) => {
           logStep("Downgraded to free plan due to inactive subscription");
         }
       } catch (stripeError) {
-        // If we can't retrieve the subscription, assume it's inactive
-        logStep("Error retrieving Stripe subscription", { 
-          error: stripeError instanceof Error ? stripeError.message : String(stripeError)
-        });
-        
-        isActive = false;
-        currentPlan = 'free';
-        
-        await supabaseAdmin
-          .from("subscriptions")
-          .update({
-            plan_type: 'free',
-            valid_until: null,
-            commercial_license: false,
-            additional_conversions: 0,
-            updated_at: new Date().toISOString()
-          })
-          .eq("user_id", user.id);
+        // Handle rate limiting gracefully
+        if (stripeError.message?.includes('rate limit')) {
+          logStep("Stripe rate limited - using database data");
+          isActive = !!subscriptionData.valid_until && new Date(subscriptionData.valid_until) > new Date();
+        } else {
+          logStep("Error retrieving Stripe subscription", { 
+            error: stripeError instanceof Error ? stripeError.message : String(stripeError)
+          });
+          
+          // Assume subscription is inactive on other errors
+          isActive = false;
+          currentPlan = 'free';
+          
+          await supabaseAdmin
+            .from("subscriptions")
+            .update({
+              plan_type: 'free',
+              valid_until: null,
+              commercial_license: false,
+              additional_conversions: 0,
+              updated_at: new Date().toISOString()
+            })
+            .eq("user_id", user.id);
+        }
       }
     }
     
