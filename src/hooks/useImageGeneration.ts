@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { saveFigurine, updateFigurineWithModelUrl } from "@/services/figurineService";
@@ -65,6 +64,38 @@ export const useImageGeneration = () => {
       console.error("Error converting image to base64:", error);
       return null;
     }
+  };
+
+  // Enhanced model download and save function with better error handling
+  const downloadAndSaveModelWithRetry = async (externalUrl: string, figurineId: string, maxRetries = 3): Promise<string | null> => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 [CONVERSION] Attempt ${attempt}/${maxRetries} to download and save model...`);
+        
+        const storedModelUrl = await downloadAndSaveModel(
+          externalUrl, 
+          `figurine_${figurineId}`
+        );
+        
+        if (storedModelUrl) {
+          console.log(`✅ [CONVERSION] Model successfully saved on attempt ${attempt}`);
+          return storedModelUrl;
+        }
+      } catch (error) {
+        console.error(`❌ [CONVERSION] Attempt ${attempt} failed:`, error);
+        
+        if (attempt === maxRetries) {
+          console.error(`❌ [CONVERSION] All ${maxRetries} attempts failed`);
+          throw error;
+        } else {
+          // Wait before retrying (exponential backoff)
+          const delay = Math.pow(2, attempt) * 1000;
+          console.log(`⏳ [CONVERSION] Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    return null;
   };
 
   // Set up SSE connection for real-time updates on conversion
@@ -154,11 +185,7 @@ export const useImageGeneration = () => {
         // Handle completion
         if (data.modelUrl) {
           try {
-            // First set the external model URL temporarily
-            setModelUrl(data.modelUrl);
-            setIsConverting(false);
-            setConversionProgress(100);
-            setConversionError(null);
+            setConversionProgress(95); // Show near completion
             
             // Show initial success message
             toast({
@@ -168,18 +195,19 @@ export const useImageGeneration = () => {
             
             // Attempt to download and save the model to our storage
             if (currentFigurineId) {
-              console.log('🔄 [CONVERSION] Starting model download and save process...');
+              console.log('🔄 [CONVERSION] Starting enhanced model download and save process...');
               
               try {
-                // Download and save the model to our storage
-                const storedModelUrl = await downloadAndSaveModel(
+                // Download and save the model to our storage with retry logic
+                const storedModelUrl = await downloadAndSaveModelWithRetry(
                   data.modelUrl, 
-                  `figurine_${currentFigurineId}`
+                  currentFigurineId
                 );
                 
                 if (storedModelUrl) {
                   // Update the model URL to our stored version
                   setModelUrl(storedModelUrl);
+                  setConversionProgress(100);
                   
                   // Update figurine with the stored model URL
                   await updateFigurineWithModelUrl(currentFigurineId, storedModelUrl);
@@ -190,38 +218,43 @@ export const useImageGeneration = () => {
                     description: "Your figurine is ready to view in 3D and has been added to the gallery",
                   });
                 } else {
-                  console.warn('⚠️ [CONVERSION] Storage save failed, using external URL');
-                  // Fallback to the external URL if storage failed
-                  await updateFigurineWithModelUrl(currentFigurineId, data.modelUrl);
-                  
-                  toast({
-                    title: "3D model created",
-                    description: "Your figurine is ready to view in 3D (using external hosting)",
-                  });
+                  throw new Error("Failed to save model to storage");
                 }
               } catch (saveError) {
                 console.error('❌ [CONVERSION] Error during model save process:', saveError);
                 
-                // Fallback to external URL if save process fails
+                // Fallback to the external URL if storage failed
+                setModelUrl(data.modelUrl);
+                setConversionProgress(100);
                 await updateFigurineWithModelUrl(currentFigurineId, data.modelUrl);
                 
                 toast({
                   title: "3D model created",
-                  description: "Your figurine is ready to view in 3D (external hosting - gallery save failed)",
+                  description: "Your figurine is ready to view in 3D (using external hosting - storage save failed)",
                   variant: "default"
                 });
               }
             } else {
-              console.log('ℹ️ [CONVERSION] No figurine ID available, skipping save to gallery');
+              console.log('ℹ️ [CONVERSION] No figurine ID available, using external URL');
+              setModelUrl(data.modelUrl);
+              setConversionProgress(100);
+              
               toast({
                 title: "3D model created",
                 description: "Your 3D model is ready to view",
               });
             }
+            
+            setIsConverting(false);
+            setConversionError(null);
           } catch (error) {
             console.error('❌ [CONVERSION] Error in completion handler:', error);
             
             // Ensure we still show the model even if save fails
+            setModelUrl(data.modelUrl);
+            setConversionProgress(100);
+            setIsConverting(false);
+            
             if (currentFigurineId) {
               await updateFigurineWithModelUrl(currentFigurineId, data.modelUrl);
             }
@@ -333,19 +366,52 @@ export const useImageGeneration = () => {
         if (statusData.modelUrl) {
           clearInterval(checkInterval);
           
-          setModelUrl(statusData.modelUrl);
-          setConversionError(null); // Clear any errors since we got a valid URL
-          
-          toast({
-            title: "3D model created",
-            description: "Your figurine is ready to view in 3D",
-          });
-          
-          // Update figurine with model URL if we have one
-          if (currentFigurineId) {
-            await updateFigurineWithModelUrl(currentFigurineId, statusData.modelUrl);
+          // Enhanced model saving with retry logic
+          try {
+            if (currentFigurineId) {
+              console.log('🔄 [CONVERSION] Starting model save from polling...');
+              
+              const storedModelUrl = await downloadAndSaveModelWithRetry(
+                statusData.modelUrl, 
+                currentFigurineId
+              );
+              
+              if (storedModelUrl) {
+                setModelUrl(storedModelUrl);
+                await updateFigurineWithModelUrl(currentFigurineId, storedModelUrl);
+                
+                toast({
+                  title: "3D model saved to gallery",
+                  description: "Your figurine is ready to view in 3D",
+                });
+              } else {
+                // Fallback to external URL
+                setModelUrl(statusData.modelUrl);
+                await updateFigurineWithModelUrl(currentFigurineId, statusData.modelUrl);
+                
+                toast({
+                  title: "3D model created",
+                  description: "Your figurine is ready to view in 3D (external hosting)",
+                });
+              }
+            } else {
+              setModelUrl(statusData.modelUrl);
+              
+              toast({
+                title: "3D model created",
+                description: "Your figurine is ready to view in 3D",
+              });
+            }
+          } catch (error) {
+            console.error('❌ [CONVERSION] Error saving model from polling:', error);
+            // Still show the model even if saving fails
+            setModelUrl(statusData.modelUrl);
+            if (currentFigurineId) {
+              await updateFigurineWithModelUrl(currentFigurineId, statusData.modelUrl);
+            }
           }
           
+          setConversionError(null); // Clear any errors since we got a valid URL
           setIsConverting(false);
         } else if (statusData.error && !modelUrlRef.current) {
           clearInterval(checkInterval);

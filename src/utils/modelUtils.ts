@@ -23,7 +23,21 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
     const userId = session.user.id;
     console.log('✅ [MODEL] Authenticated user for model save:', userId);
     
+    // Check if URL is accessible first
+    console.log('🔍 [MODEL] Checking URL accessibility...');
+    try {
+      const headResponse = await fetch(modelUrl, { method: 'HEAD' });
+      if (!headResponse.ok) {
+        throw new Error(`URL not accessible: ${headResponse.status} ${headResponse.statusText}`);
+      }
+      console.log('✅ [MODEL] URL is accessible');
+    } catch (accessError) {
+      console.error('❌ [MODEL] URL accessibility check failed:', accessError);
+      throw new Error(`Model URL is not accessible: ${accessError.message}`);
+    }
+    
     // Download the model file from the external URL
+    console.log('🔄 [MODEL] Starting file download...');
     const response = await fetch(modelUrl);
     if (!response.ok) {
       throw new Error(`Failed to download model: ${response.status} ${response.statusText}`);
@@ -36,12 +50,41 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
       type: modelBlob.type
     });
     
+    // Validate blob size
+    if (modelBlob.size === 0) {
+      throw new Error('Downloaded model file is empty');
+    }
+    
+    // Validate blob type (should be a binary file)
+    if (modelBlob.type && !modelBlob.type.includes('application/') && !modelBlob.type.includes('model/')) {
+      console.warn('⚠️ [MODEL] Unexpected blob type:', modelBlob.type);
+    }
+    
     // Generate a unique filename with the correct extension and user-specific path
     const extension = modelUrl.split('.').pop()?.toLowerCase() || 'glb';
     const cleanFilename = filename.replace(/\s+/g, '_');
     const filePath = `${userId}/models/${cleanFilename}_${Date.now()}.${extension}`;
     
     console.log('🔄 [MODEL] Uploading to storage path:', filePath);
+    
+    // Check if storage bucket exists and is accessible
+    try {
+      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+      if (bucketError) {
+        console.error('❌ [MODEL] Error listing buckets:', bucketError);
+        throw new Error(`Storage bucket access error: ${bucketError.message}`);
+      }
+      
+      const targetBucket = buckets?.find(bucket => bucket.name === 'figurine-images');
+      if (!targetBucket) {
+        throw new Error('Storage bucket "figurine-images" not found');
+      }
+      
+      console.log('✅ [MODEL] Storage bucket verified');
+    } catch (bucketError) {
+      console.error('❌ [MODEL] Bucket verification failed:', bucketError);
+      throw bucketError;
+    }
     
     // Upload to Supabase storage using the same bucket as images
     const { data, error } = await supabase.storage
@@ -67,10 +110,15 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
         });
         
         throw new Error(`Model storage RLS policy violation: ${error.message}`);
+      } else if (error.message?.includes('bucket') || error.message?.includes('not found')) {
+        console.log('🔄 [MODEL] Bucket might not exist, attempting to create and retry...');
+        throw new Error(`Storage bucket not found: ${error.message}`);
       } else {
         throw new Error(`Failed to save model to storage: ${error.message}`);
       }
     }
+    
+    console.log('✅ [MODEL] Upload successful, data:', data);
     
     // Get the public URL of the saved model
     const { data: publicUrlData } = supabase.storage
@@ -78,7 +126,7 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
       .getPublicUrl(filePath);
       
     const publicUrl = publicUrlData.publicUrl;
-    console.log('✅ [MODEL] Model saved to storage successfully:', publicUrl);
+    console.log('✅ [MODEL] Public URL generated:', publicUrl);
     
     // Verify the file was actually uploaded by checking if it exists
     const { data: fileData, error: fileError } = await supabase.storage
@@ -92,12 +140,47 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
       console.warn('⚠️ [MODEL] Could not verify model upload:', fileError);
     } else {
       console.log('✅ [MODEL] Model file verification successful:', fileData?.length);
+      
+      // Additional verification - check if the specific file exists
+      const uploadedFile = fileData?.find(file => file.name.includes(cleanFilename));
+      if (!uploadedFile) {
+        console.error('❌ [MODEL] Uploaded file not found in verification');
+        throw new Error('Model upload verification failed - file not found');
+      } else {
+        console.log('✅ [MODEL] File verification confirmed:', uploadedFile.name);
+      }
+    }
+    
+    // Test the public URL accessibility
+    try {
+      console.log('🔍 [MODEL] Testing public URL accessibility...');
+      const testResponse = await fetch(publicUrl, { method: 'HEAD' });
+      if (!testResponse.ok) {
+        console.warn('⚠️ [MODEL] Public URL may not be immediately accessible:', testResponse.status);
+      } else {
+        console.log('✅ [MODEL] Public URL is accessible');
+      }
+    } catch (testError) {
+      console.warn('⚠️ [MODEL] Could not test public URL accessibility:', testError);
+      // Don't throw error here as the file might be accessible but not immediately
     }
     
     return publicUrl;
   } catch (error) {
     console.error('❌ [MODEL] Failed to download and save model:', error);
     console.error('❌ [MODEL] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
+    // Provide more specific error context
+    if (error instanceof Error) {
+      if (error.message.includes('fetch')) {
+        throw new Error(`Network error downloading model: ${error.message}`);
+      } else if (error.message.includes('storage')) {
+        throw new Error(`Storage error saving model: ${error.message}`);
+      } else if (error.message.includes('auth')) {
+        throw new Error(`Authentication error: ${error.message}`);
+      }
+    }
+    
     throw error; // Re-throw to handle in calling code
   }
 };
