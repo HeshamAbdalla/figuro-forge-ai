@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { tryLoadWithCorsProxies } from "./corsProxy";
 
 /**
  * Downloads a 3D model from an external URL and saves it to Supabase storage
@@ -23,28 +24,30 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
     const userId = session.user.id;
     console.log('✅ [MODEL] Authenticated user for model save:', userId);
     
-    // Check if URL is accessible first
-    console.log('🔍 [MODEL] Checking URL accessibility...');
-    try {
-      const headResponse = await fetch(modelUrl, { method: 'HEAD' });
-      if (!headResponse.ok) {
-        throw new Error(`URL not accessible: ${headResponse.status} ${headResponse.statusText}`);
-      }
-      console.log('✅ [MODEL] URL is accessible');
-    } catch (accessError) {
-      console.error('❌ [MODEL] URL accessibility check failed:', accessError);
-      throw new Error(`Model URL is not accessible: ${accessError.message}`);
-    }
+    // Use CORS proxy to download the model file
+    console.log('🔄 [MODEL] Starting file download with CORS proxy...');
     
-    // Download the model file from the external URL
-    console.log('🔄 [MODEL] Starting file download...');
-    const response = await fetch(modelUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to download model: ${response.status} ${response.statusText}`);
-    }
+    const modelBlob = await new Promise<Blob>((resolve, reject) => {
+      tryLoadWithCorsProxies(
+        modelUrl,
+        async (proxiedUrl: string) => {
+          try {
+            const response = await fetch(proxiedUrl);
+            if (!response.ok) {
+              throw new Error(`Failed to download model: ${response.status} ${response.statusText}`);
+            }
+            const blob = await response.blob();
+            resolve(blob);
+          } catch (error) {
+            reject(error);
+          }
+        },
+        (error: Error) => {
+          reject(new Error(`Failed to download model via CORS proxies: ${error.message}`));
+        }
+      );
+    });
     
-    // Get the model file as a blob
-    const modelBlob = await response.blob();
     console.log('✅ [MODEL] Model blob downloaded:', {
       size: modelBlob.size,
       type: modelBlob.type
@@ -172,7 +175,7 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
     
     // Provide more specific error context
     if (error instanceof Error) {
-      if (error.message.includes('fetch')) {
+      if (error.message.includes('fetch') || error.message.includes('CORS') || error.message.includes('proxy')) {
         throw new Error(`Network error downloading model: ${error.message}`);
       } else if (error.message.includes('storage')) {
         throw new Error(`Storage error saving model: ${error.message}`);
