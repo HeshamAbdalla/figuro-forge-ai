@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -20,65 +21,75 @@ export const useGalleryFiles = () => {
   
   // Recursive function to list files in a folder and its subfolders
   const listFilesRecursively = async (path: string = ''): Promise<BucketImage[]> => {
-    // List files in the current path
-    const { data: files, error } = await supabase
-      .storage
-      .from('figurine-images')
-      .list(path, {
-        limit: 100,
-        sortBy: { column: 'created_at', order: 'desc' }
-      });
-    
-    if (error) {
-      console.error("Error listing files:", error);
+    try {
+      console.log('🔄 [GALLERY] Listing files in path:', path || 'root');
+      
+      // List files in the current path
+      const { data: files, error } = await supabase
+        .storage
+        .from('figurine-images')
+        .list(path, {
+          limit: 100,
+          sortBy: { column: 'created_at', order: 'desc' }
+        });
+      
+      if (error) {
+        console.error('❌ [GALLERY] Error listing files:', error);
+        return [];
+      }
+      
+      if (!files || files.length === 0) {
+        console.log('ℹ️ [GALLERY] No files found in path:', path || 'root');
+        return [];
+      }
+      
+      // Separate folders and files
+      const folders = files.filter(item => item.id === null);
+      const actualFiles = files.filter(item => item.id !== null);
+      
+      console.log('📁 [GALLERY] Found folders:', folders.length, 'files:', actualFiles.length);
+      
+      // Process current path's files
+      const processedFiles = await Promise.all(
+        actualFiles.map(async (file) => {
+          const fullPath = path ? `${path}/${file.name}` : file.name;
+          const { data: publicUrlData } = supabase.storage
+            .from('figurine-images')
+            .getPublicUrl(fullPath);
+          
+          // Clean URL - don't add cache busters here as they can cause download issues
+          const url = publicUrlData.publicUrl;
+          
+          return {
+            name: file.name,
+            fullPath: fullPath,
+            url: url,
+            id: file.id || fullPath,
+            created_at: file.created_at || new Date().toISOString(),
+            type: getFileType(file.name) // Determine file type based on extension
+          };
+        })
+      );
+      
+      // Recursively process subfolders
+      let filesFromSubFolders: BucketImage[] = [];
+      for (const folder of folders) {
+        const subPath = path ? `${path}/${folder.name}` : folder.name;
+        const subFolderFiles = await listFilesRecursively(subPath);
+        filesFromSubFolders = [...filesFromSubFolders, ...subFolderFiles];
+      }
+      
+      // Combine files from current path and subfolders
+      return [...processedFiles, ...filesFromSubFolders];
+    } catch (error) {
+      console.error('❌ [GALLERY] Error in listFilesRecursively:', error);
       return [];
     }
-    
-    if (!files || files.length === 0) {
-      return [];
-    }
-    
-    // Separate folders and files
-    const folders = files.filter(item => item.id === null);
-    const actualFiles = files.filter(item => item.id !== null);
-    
-    // Process current path's files
-    const processedFiles = await Promise.all(
-      actualFiles.map(async (file) => {
-        const fullPath = path ? `${path}/${file.name}` : file.name;
-        const { data: publicUrlData } = supabase.storage
-          .from('figurine-images')
-          .getPublicUrl(fullPath);
-        
-        // Clean URL - don't add cache busters here as they can cause download issues
-        const url = publicUrlData.publicUrl;
-        
-        return {
-          name: file.name,
-          fullPath: fullPath,
-          url: url,
-          id: file.id || fullPath,
-          created_at: file.created_at || new Date().toISOString(),
-          type: getFileType(file.name) // Determine file type based on extension
-        };
-      })
-    );
-    
-    // Recursively process subfolders
-    let filesFromSubFolders: BucketImage[] = [];
-    for (const folder of folders) {
-      const subPath = path ? `${path}/${folder.name}` : folder.name;
-      const subFolderFiles = await listFilesRecursively(subPath);
-      filesFromSubFolders = [...filesFromSubFolders, ...subFolderFiles];
-    }
-    
-    // Combine files from current path and subfolders
-    return [...processedFiles, ...filesFromSubFolders];
   };
 
   // Load all images and models from the bucket - made useCallback for better optimization
   const fetchImagesFromBucket = useCallback(async () => {
-    console.log("Fetching gallery files...");
+    console.log('🔄 [GALLERY] Starting gallery files fetch...');
     setIsLoading(true);
     try {
       // Get all files recursively, starting from root
@@ -90,9 +101,9 @@ export const useGalleryFiles = () => {
       );
       
       setImages(allFiles);
-      console.log(`Loaded ${allFiles.length} files from gallery`);
+      console.log(`✅ [GALLERY] Loaded ${allFiles.length} files from gallery`);
     } catch (error) {
-      console.error("Error loading files from bucket:", error);
+      console.error('❌ [GALLERY] Error loading files from bucket:', error);
       toast({
         title: "Error loading gallery",
         description: "Could not load the gallery items. Please try again.",
@@ -113,7 +124,7 @@ export const useGalleryFiles = () => {
           { event: '*', schema: 'storage', table: 'objects', filter: "bucket_id=eq.figurine-images" }, 
           () => {
             // When storage changes, refetch the files
-            console.log("Storage changed, refetching files...");
+            console.log('🔄 [GALLERY] Storage changed, refetching files...');
             fetchImagesFromBucket();
           }
       )

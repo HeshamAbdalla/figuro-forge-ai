@@ -15,14 +15,27 @@ export const useModelUpload = (onFilesUpdated: () => void) => {
     // Upload to storage 
     const uploadModel = async () => {
       try {
+        console.log('🔄 [MODEL] Starting model upload process...');
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.user) {
+          throw new Error('Authentication required to upload models');
+        }
+        
+        const userId = session.user.id;
         const fileExt = file.name.split('.').pop();
-        const filePath = `models/${Date.now()}.${fileExt}`;
+        // Use user-specific path structure
+        const filePath = `${userId}/models/${Date.now()}.${fileExt}`;
+        
+        console.log('🔄 [MODEL] Uploading to path:', filePath);
         
         const { error: uploadError } = await supabase.storage
           .from('figurine-images')
           .upload(filePath, file);
           
         if (uploadError) {
+          console.error('❌ [MODEL] Upload error:', uploadError);
           throw uploadError;
         }
         
@@ -30,6 +43,8 @@ export const useModelUpload = (onFilesUpdated: () => void) => {
           .from('figurine-images')
           .getPublicUrl(filePath);
           
+        console.log('✅ [MODEL] Model uploaded successfully:', data.publicUrl);
+        
         toast({
           title: "Model uploaded",
           description: `Your 3D model has been uploaded to the gallery`,
@@ -38,7 +53,7 @@ export const useModelUpload = (onFilesUpdated: () => void) => {
         // Refresh the gallery
         onFilesUpdated();
       } catch (error) {
-        console.error('Error uploading model:', error);
+        console.error('❌ [MODEL] Error uploading model:', error);
         toast({
           title: "Upload failed",
           description: "There was an error uploading your model",

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
 import { Figurine } from "@/types/figurine";
@@ -11,56 +12,93 @@ export const saveFigurine = async (
   imageBlob: Blob | null
 ): Promise<string | null> => {
   try {
+    console.log('🔄 [FIGURINE] Starting figurine save process');
+    
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
+      console.error('❌ [FIGURINE] No authenticated session found');
       throw new Error('Authentication required to save figurines');
     }
     
     const userId = session.user.id;
+    console.log('✅ [FIGURINE] Authenticated user:', userId);
     
     // Generate a new ID for the figurine
     const figurineId = uuidv4();
+    console.log('🔄 [FIGURINE] Generated figurine ID:', figurineId);
     
     // Save image to storage if we have a blob
     let savedImageUrl = null;
     if (imageBlob) {
-      savedImageUrl = await saveImageToStorage(imageBlob, figurineId);
-      console.log('Image saved to storage:', savedImageUrl);
+      console.log('🔄 [FIGURINE] Saving image blob to storage...');
+      try {
+        savedImageUrl = await saveImageToStorage(imageBlob, figurineId);
+        console.log('✅ [FIGURINE] Image saved to storage:', savedImageUrl);
+      } catch (storageError) {
+        console.error('❌ [FIGURINE] Storage save failed:', storageError);
+        // Don't proceed with database insert if storage fails
+        throw new Error(`Failed to save image to storage: ${storageError.message}`);
+      }
     } else if (imageUrl) {
+      console.log('🔄 [FIGURINE] Fetching image from URL and saving...');
       // If we only have an URL but no blob, fetch the image and save it
       try {
         const response = await fetch(imageUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+        }
         const blob = await response.blob();
         savedImageUrl = await saveImageToStorage(blob, figurineId);
-        console.log('Image fetched and saved to storage:', savedImageUrl);
+        console.log('✅ [FIGURINE] Image fetched and saved to storage:', savedImageUrl);
       } catch (fetchError) {
-        console.error('Error fetching image from URL:', fetchError);
+        console.error('❌ [FIGURINE] Error fetching image from URL:', fetchError);
+        // Don't proceed if we can't save the image
+        throw new Error(`Failed to fetch and save image: ${fetchError.message}`);
       }
     }
     
-    // Create figurine data object
+    // Create figurine data object with explicit user_id
     const figurineData = {
       id: figurineId,
-      user_id: userId, // Now guaranteed to be non-null
+      user_id: userId, // Explicitly set the user_id for RLS
       prompt: prompt,
       style: style as any, // Cast to any to bypass the strict enum type check
       image_url: imageUrl,
-      saved_image_url: savedImageUrl || imageUrl, // Fallback to original URL if storage failed
+      saved_image_url: savedImageUrl || imageUrl, // Use saved URL or fallback to original
       title: prompt.substring(0, 50),
       is_public: true // Set all figurines as public by default
     };
     
-    // Insert new figurine
-    const { error } = await supabase.from('figurines').insert(figurineData);
+    console.log('🔄 [FIGURINE] Inserting figurine data:', {
+      id: figurineData.id,
+      user_id: figurineData.user_id,
+      title: figurineData.title,
+      is_public: figurineData.is_public
+    });
+    
+    // Insert new figurine with proper error handling
+    const { data, error } = await supabase
+      .from('figurines')
+      .insert(figurineData)
+      .select()
+      .single();
     
     if (error) {
-      throw error;
+      console.error('❌ [FIGURINE] Database insert error:', error);
+      console.error('❌ [FIGURINE] Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      throw new Error(`Database error: ${error.message}`);
     }
     
+    console.log('✅ [FIGURINE] Figurine saved successfully:', data);
     return figurineId;
   } catch (error) {
-    console.error('Error saving figurine:', error);
+    console.error('❌ [FIGURINE] Error saving figurine:', error);
     throw error; // Re-throw to handle in the calling code
   }
 };
@@ -68,11 +106,21 @@ export const saveFigurine = async (
 // Update an existing figurine with a model URL
 export const updateFigurineWithModelUrl = async (figurineId: string, modelUrl: string): Promise<void> => {
   try {
-    await supabase.from('figurines').update({
-      model_url: modelUrl
-    }).eq('id', figurineId);
+    console.log('🔄 [FIGURINE] Updating figurine with model URL:', figurineId);
+    
+    const { error } = await supabase
+      .from('figurines')
+      .update({ model_url: modelUrl })
+      .eq('id', figurineId);
+      
+    if (error) {
+      console.error('❌ [FIGURINE] Model URL update error:', error);
+      throw error;
+    }
+    
+    console.log('✅ [FIGURINE] Model URL updated successfully');
   } catch (error) {
-    console.error('Error updating figurine with model URL:', error);
+    console.error('❌ [FIGURINE] Error updating figurine with model URL:', error);
     throw error;
   }
 };
@@ -80,11 +128,21 @@ export const updateFigurineWithModelUrl = async (figurineId: string, modelUrl: s
 // Update the public status of a figurine
 export const updateFigurinePublicStatus = async (figurineId: string, isPublic: boolean): Promise<void> => {
   try {
-    await supabase.from('figurines').update({
-      is_public: isPublic
-    }).eq('id', figurineId);
+    console.log('🔄 [FIGURINE] Updating figurine public status:', figurineId, isPublic);
+    
+    const { error } = await supabase
+      .from('figurines')
+      .update({ is_public: isPublic })
+      .eq('id', figurineId);
+      
+    if (error) {
+      console.error('❌ [FIGURINE] Public status update error:', error);
+      throw error;
+    }
+    
+    console.log('✅ [FIGURINE] Public status updated successfully');
   } catch (error) {
-    console.error('Error updating figurine public status:', error);
+    console.error('❌ [FIGURINE] Error updating figurine public status:', error);
     throw error;
   }
 };
@@ -92,13 +150,18 @@ export const updateFigurinePublicStatus = async (figurineId: string, isPublic: b
 // Fetch all public figurines for the gallery
 export const fetchPublicFigurines = async (): Promise<Figurine[]> => {
   try {
+    console.log('🔄 [FIGURINE] Fetching public figurines...');
+    
     const { data, error } = await supabase
       .from('figurines')
       .select('*')
       .eq('is_public', true)
       .order('created_at', { ascending: false });
       
-    if (error) throw error;
+    if (error) {
+      console.error('❌ [FIGURINE] Error fetching public figurines:', error);
+      throw error;
+    }
     
     // Map figurines to include best available image URL
     const processedFigurines = (data || []).map((figurine) => {
@@ -117,9 +180,10 @@ export const fetchPublicFigurines = async (): Promise<Figurine[]> => {
       };
     });
     
+    console.log('✅ [FIGURINE] Fetched public figurines:', processedFigurines.length);
     return processedFigurines;
   } catch (error) {
-    console.error('Error fetching public figurines:', error);
+    console.error('❌ [FIGURINE] Error fetching public figurines:', error);
     return [];
   }
 };
