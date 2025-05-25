@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
 import { cleanupAuthState, getAuthErrorMessage } from "@/utils/authUtils";
+import { sessionManager } from "@/utils/sessionManager";
+import { debugger } from "@/utils/debugUtils";
 
 interface AuthContextType {
   user: User | null;
@@ -25,98 +27,175 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Refresh auth state
+  // Initialize debugging and monitoring
+  useEffect(() => {
+    console.log('🔧 [AUTH-PROVIDER] Initializing with debugging...');
+    debugger.monitorConcurrentSessions();
+    
+    return () => {
+      sessionManager.destroy();
+    };
+  }, []);
+
+  // Refresh auth state with comprehensive error handling
   const refreshAuth = async () => {
+    const refreshStart = performance.now();
     try {
-      console.log("Refreshing auth state...");
+      console.log("🔄 [AUTH-PROVIDER] Refreshing auth state...");
+      
+      // Initialize session with health check
+      const sessionHealth = await sessionManager.initializeSession();
+      console.log("📊 [AUTH-PROVIDER] Session health:", sessionHealth);
+      
+      if (!sessionHealth.isValid) {
+        console.warn("⚠️ [AUTH-PROVIDER] Session health issues:", sessionHealth.issues);
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        return;
+      }
       
       // Get current session
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
-        console.error("Error getting session:", error);
+        debugger.logSessionError(error, 'Auth refresh - get session');
         return;
       }
       
-      console.log("Current session:", session?.user?.email);
+      console.log("🔍 [AUTH-PROVIDER] Current session:", session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       
-      // Fetch fresh profile data if user exists
+      // Fetch profile with enhanced error handling
       if (session?.user) {
-        console.log("Fetching fresh profile for user:", session.user.id);
-        await fetchProfile(session.user.id);
+        try {
+          const profileData = await sessionManager.getProfile(session.user.id);
+          setProfile(profileData);
+          console.log("✅ [AUTH-PROVIDER] Profile loaded successfully");
+        } catch (error) {
+          debugger.logSessionError(error, 'Auth refresh - profile fetch');
+          console.error("❌ [AUTH-PROVIDER] Profile fetch failed:", error);
+        }
       } else {
         setProfile(null);
       }
+      
+      console.log("✅ [AUTH-PROVIDER] Auth refresh completed in", performance.now() - refreshStart, "ms");
+      
     } catch (error) {
-      console.error("Error refreshing auth:", error);
+      debugger.logSessionError(error, 'Auth refresh failed');
+      console.error("❌ [AUTH-PROVIDER] Error refreshing auth:", error);
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener with non-async callback to prevent deadlocks
+    // Set up auth state listener with enhanced debugging
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!mounted) return;
         
-        console.log("Auth state changed:", event, session?.user?.email);
+        console.log("🔄 [AUTH-PROVIDER] Auth state changed:", event, session?.user?.email);
+        
+        // Track auth events for debugging
+        const authEvent = {
+          event,
+          userEmail: session?.user?.email,
+          timestamp: new Date().toISOString(),
+          sessionValid: !!session,
+          hasAccessToken: !!session?.access_token
+        };
+        console.log("📊 [AUTH-PROVIDER] Auth event details:", authEvent);
         
         // Update state immediately for better UX
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Handle different auth events with deferred profile fetching
+        // Handle different auth events with enhanced monitoring
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user && mounted) {
+            console.log("👤 [AUTH-PROVIDER] User signed in, fetching profile...");
             // Defer profile fetching to prevent conflicts
             setTimeout(async () => {
               if (mounted) {
-                await fetchProfile(session.user.id);
-                setIsLoading(false);
+                try {
+                  const profileData = await sessionManager.getProfile(session.user.id);
+                  setProfile(profileData);
+                  setIsLoading(false);
+                  console.log("✅ [AUTH-PROVIDER] Profile loaded after sign in");
+                } catch (error) {
+                  debugger.logSessionError(error, 'Profile fetch after sign in');
+                  setIsLoading(false);
+                }
               }
             }, 200);
           }
         } else if (event === 'SIGNED_OUT') {
+          console.log("👋 [AUTH-PROVIDER] User signed out, clearing data...");
           setProfile(null);
+          sessionManager.clearCache();
           setIsLoading(false);
         } else if (event === 'INITIAL_SESSION') {
           if (session?.user && mounted) {
+            console.log("🚀 [AUTH-PROVIDER] Initial session found, loading profile...");
             setTimeout(async () => {
               if (mounted) {
-                await fetchProfile(session.user.id);
-                setIsLoading(false);
+                try {
+                  const profileData = await sessionManager.getProfile(session.user.id);
+                  setProfile(profileData);
+                  setIsLoading(false);
+                  console.log("✅ [AUTH-PROVIDER] Initial profile loaded");
+                } catch (error) {
+                  debugger.logSessionError(error, 'Initial profile fetch');
+                  setIsLoading(false);
+                }
               }
             }, 200);
           } else {
+            console.log("❌ [AUTH-PROVIDER] No initial session found");
             setIsLoading(false);
           }
         }
       }
     );
 
-    // Check for existing session
+    // Check for existing session with enhanced error handling
     const initializeAuth = async () => {
       try {
+        console.log("🚀 [AUTH-PROVIDER] Initializing authentication...");
+        
+        const initHealth = await sessionManager.initializeSession();
+        console.log("📊 [AUTH-PROVIDER] Initialization health:", initHealth);
+        
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-          console.error("Error getting initial session:", error);
+          debugger.logSessionError(error, 'Auth initialization');
+          console.error("❌ [AUTH-PROVIDER] Error getting initial session:", error);
         }
         
         if (mounted) {
-          console.log("Initial session check:", session?.user?.email);
+          console.log("🔍 [AUTH-PROVIDER] Initial session check:", session?.user?.email);
           setSession(session);
           setUser(session?.user ?? null);
           
           if (session?.user) {
-            await fetchProfile(session.user.id);
+            try {
+              const profileData = await sessionManager.getProfile(session.user.id);
+              setProfile(profileData);
+              console.log("✅ [AUTH-PROVIDER] Initial profile loaded successfully");
+            } catch (error) {
+              debugger.logSessionError(error, 'Initial profile load');
+              console.error("❌ [AUTH-PROVIDER] Initial profile load failed:", error);
+            }
           }
           
           setIsLoading(false);
+          console.log("✅ [AUTH-PROVIDER] Authentication initialization completed");
         }
       } catch (error) {
-        console.error("Error initializing auth:", error);
+        debugger.logSessionError(error, 'Auth initialization failed');
+        console.error("❌ [AUTH-PROVIDER] Error initializing auth:", error);
         if (mounted) {
           setIsLoading(false);
         }
@@ -131,24 +210,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Enhanced fetchProfile with debugging
   const fetchProfile = async (userId: string) => {
     try {
-      console.log("Fetching profile for user:", userId);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return;
-      }
-
-      console.log('Profile fetched:', data);
-      setProfile(data);
+      console.log('🔄 [AUTH-PROVIDER] Fetching profile for user:', userId);
+      const profileData = await sessionManager.getProfile(userId, true); // Force refresh
+      setProfile(profileData);
+      console.log('✅ [AUTH-PROVIDER] Profile fetched:', profileData);
     } catch (error) {
-      console.error('Error in fetchProfile:', error);
+      debugger.logSessionError(error, 'fetchProfile');
+      console.error('❌ [AUTH-PROVIDER] Error in fetchProfile:', error);
     }
   };
 

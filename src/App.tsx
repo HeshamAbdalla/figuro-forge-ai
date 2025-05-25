@@ -8,6 +8,7 @@ import {
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from "@/components/ui/toaster";
 import PageTransition from "@/components/PageTransition";
+import { PerformanceDashboard } from "@/components/debug/PerformanceDashboard";
 
 import Index from "@/pages/Index";
 import Features from "@/pages/Features";
@@ -70,6 +71,7 @@ function App() {
             </PageTransition>
           </Suspense>
           <Toaster />
+          <PerformanceDashboard />
         </BrowserRouter>
       </AuthProvider>
     </HelmetProvider>
