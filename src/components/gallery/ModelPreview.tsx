@@ -7,6 +7,7 @@ import DummyBox from "@/components/model-viewer/DummyBox";
 import LoadingSpinner from "@/components/model-viewer/LoadingSpinner";
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
 import { useOptimizedModelLoader } from "@/components/model-viewer/hooks/useOptimizedModelLoader";
+import { disposeModel, simplifyModelForPreview } from "@/components/model-viewer/utils/modelUtils";
 import ModelPlaceholder from "./ModelPlaceholder";
 
 interface ModelPreviewProps {
@@ -32,18 +33,7 @@ const isUrlExpiredOrInvalid = (url: string): boolean => {
   }
 };
 
-// Function to validate URL accessibility
-const validateUrlAccessibility = async (url: string): Promise<boolean> => {
-  try {
-    const response = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
-    return true;
-  } catch (error) {
-    console.warn(`URL validation failed for ${url}:`, error);
-    return false;
-  }
-};
-
-// This component will render the actual 3D model
+// This component will render the actual 3D model with preview optimization
 const ModelContent = ({ 
   modelUrl, 
   isVisible,
@@ -54,6 +44,7 @@ const ModelContent = ({
   onModelError: (error: any) => void;
 }) => {
   const [urlValidated, setUrlValidated] = useState<boolean | null>(null);
+  const processedModelRef = useRef<THREE.Group | null>(null);
   
   // Create a stable ID based on the URL to prevent reloads
   const modelIdRef = useRef(`preview-${modelUrl.split('/').pop()?.split('?')[0]}-${Math.random().toString(36).substring(2, 9)}`);
@@ -86,13 +77,9 @@ const ModelContent = ({
         return;
       }
 
-      // Then validate accessibility
-      const isAccessible = await validateUrlAccessibility(cleanUrl);
-      setUrlValidated(isAccessible);
-      
-      if (!isAccessible) {
-        onModelError(new Error('Model URL is not accessible'));
-      }
+      // For preview mode, we'll assume URLs are valid to avoid CORS issues
+      // The actual loading will handle any accessibility problems
+      setUrlValidated(true);
     };
 
     if (isVisible) {
@@ -109,6 +96,31 @@ const ModelContent = ({
       onModelError(err);
     }
   });
+
+  // Apply preview simplification to the loaded model
+  useEffect(() => {
+    if (model) {
+      console.log(`Applying preview simplification for: ${cleanUrl}`);
+      
+      // Dispose previous processed model
+      if (processedModelRef.current && processedModelRef.current !== model) {
+        disposeModel(processedModelRef.current);
+      }
+      
+      // Apply simplification for preview
+      processedModelRef.current = simplifyModelForPreview(model);
+    }
+  }, [model, cleanUrl]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (processedModelRef.current) {
+        disposeModel(processedModelRef.current);
+        processedModelRef.current = null;
+      }
+    };
+  }, []);
   
   // Show loading while validating URL
   if (urlValidated === null) {
@@ -124,13 +136,13 @@ const ModelContent = ({
     return <LoadingSpinner />;
   }
   
-  if (error || !model) {
+  if (error || !processedModelRef.current) {
     console.error(`Failed to load model: ${cleanUrl}`, error);
     return <DummyBox />;
   }
   
   return (
-    <primitive object={model} scale={1.5} />
+    <primitive object={processedModelRef.current} scale={1.5} />
   );
 };
 

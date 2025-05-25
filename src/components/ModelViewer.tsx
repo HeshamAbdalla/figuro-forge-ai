@@ -15,6 +15,7 @@ import { Download, Upload } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import * as THREE from "three";
 import { useToast } from "@/hooks/use-toast";
+import { disposeModel, handleObjectUrl } from "@/components/model-viewer/utils/modelUtils";
 // Import GLTFLoader through drei's exposed version instead of directly from three.js
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
@@ -41,12 +42,20 @@ const Model = ({ url, onError }: { url: string; onError: (error: any) => void })
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [model, setModel] = useState<THREE.Group | null>(null);
+  const previousModelRef = useRef<THREE.Group | null>(null);
   
   useEffect(() => {
     if (!url) return;
     
     setLoading(true);
     console.log("Attempting to load model from URL:", url);
+    
+    // Dispose previous model before loading new one
+    if (previousModelRef.current) {
+      console.log("Disposing previous model before loading new one");
+      disposeModel(previousModelRef.current);
+      previousModelRef.current = null;
+    }
     
     // For blob URLs, we need special handling
     if (url.startsWith('blob:')) {
@@ -57,6 +66,9 @@ const Model = ({ url, onError }: { url: string; onError: (error: any) => void })
           url,
           (gltf) => {
             console.log("Blob URL model loaded successfully:", gltf);
+            
+            // Store reference for disposal
+            previousModelRef.current = gltf.scene;
             setModel(gltf.scene);
             setLoading(false);
             toast({
@@ -82,21 +94,10 @@ const Model = ({ url, onError }: { url: string; onError: (error: any) => void })
       }
       
       return () => {
-        // Cleanup function for blob URLs
-        if (model) {
-          model.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              const mesh = child as THREE.Mesh;
-              if (mesh.geometry) mesh.geometry.dispose();
-              if (mesh.material) {
-                if (Array.isArray(mesh.material)) {
-                  mesh.material.forEach((material) => material.dispose());
-                } else {
-                  mesh.material.dispose();
-                }
-              }
-            }
-          });
+        // Cleanup function for blob URLs - dispose model on cleanup
+        if (previousModelRef.current) {
+          disposeModel(previousModelRef.current);
+          previousModelRef.current = null;
         }
       };
     }
@@ -109,6 +110,9 @@ const Model = ({ url, onError }: { url: string; onError: (error: any) => void })
       url,
       (gltf) => {
         console.log("Model loaded successfully:", gltf);
+        
+        // Store reference for disposal
+        previousModelRef.current = gltf.scene;
         setModel(gltf.scene);
         setLoading(false);
         toast({
@@ -132,6 +136,9 @@ const Model = ({ url, onError }: { url: string; onError: (error: any) => void })
           proxyUrl,
           (gltf) => {
             console.log("Model loaded successfully with proxy:", gltf);
+            
+            // Store reference for disposal
+            previousModelRef.current = gltf.scene;
             setModel(gltf.scene);
             setLoading(false);
             toast({
@@ -157,24 +164,23 @@ const Model = ({ url, onError }: { url: string; onError: (error: any) => void })
     );
     
     return () => {
-      // Cleanup function
-      if (model) {
-        model.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            const mesh = child as THREE.Mesh;
-            if (mesh.geometry) mesh.geometry.dispose();
-            if (mesh.material) {
-              if (Array.isArray(mesh.material)) {
-                mesh.material.forEach((material) => material.dispose());
-              } else {
-                mesh.material.dispose();
-              }
-            }
-          }
-        });
+      // Cleanup function - dispose model on cleanup
+      if (previousModelRef.current) {
+        disposeModel(previousModelRef.current);
+        previousModelRef.current = null;
       }
     };
   }, [url, onError, toast]);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (previousModelRef.current) {
+        disposeModel(previousModelRef.current);
+        previousModelRef.current = null;
+      }
+    };
+  }, []);
   
   if (loading) {
     return <LoadingSpinner />;
@@ -210,6 +216,7 @@ const ModelViewer = ({
   const [customModelUrl, setCustomModelUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const customObjectUrlRef = useRef<string | null>(null);
   // Keep track of original URL for downloads
   const originalUrlRef = useRef<string | null>(modelUrl);
 
@@ -220,6 +227,10 @@ const ModelViewer = ({
       setModelLoadAttempted(false);
       originalUrlRef.current = modelUrl;
       // Reset custom model when a new model is provided
+      if (customObjectUrlRef.current) {
+        handleObjectUrl(null, customObjectUrlRef.current);
+        customObjectUrlRef.current = null;
+      }
       setCustomModelUrl(null);
       setCustomFile(null);
     }
@@ -248,8 +259,9 @@ const ModelViewer = ({
     console.log("Selected file:", file.name, "size:", file.size);
     setCustomFile(file);
     
-    // Create blob URL for the file
-    const objectUrl = URL.createObjectURL(file);
+    // Create blob URL for the file using proper URL management
+    const objectUrl = handleObjectUrl(file, customObjectUrlRef.current);
+    customObjectUrlRef.current = objectUrl;
     console.log("Created blob URL:", objectUrl);
     setCustomModelUrl(objectUrl);
     setModelError(null);
@@ -261,10 +273,20 @@ const ModelViewer = ({
     });
     
     // Call the callback if provided
-    if (onCustomModelLoad) {
+    if (onCustomModelLoad && objectUrl) {
       onCustomModelLoad(objectUrl);
     }
   };
+
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (customObjectUrlRef.current) {
+        handleObjectUrl(null, customObjectUrlRef.current);
+        customObjectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   if (!modelUrl && !customModelUrl && !isLoading) {
     return null;

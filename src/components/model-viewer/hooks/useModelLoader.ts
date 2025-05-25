@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { loadModelWithFallback, createObjectUrl, revokeObjectUrl } from "../utils/modelLoaderUtils";
 import { cleanupResources } from "../utils/resourceManager";
 import { modelQueueManager } from "../utils/modelQueueManager";
+import { disposeModel, handleObjectUrl } from "../utils/modelUtils";
 
 interface UseModelLoaderProps {
   modelSource: string | null;
@@ -27,6 +28,7 @@ export const useModelLoader = ({
   const isLoadingRef = useRef<boolean>(false);
   const controllerRef = useRef<AbortController | null>(null);
   const objectUrlRef = useRef<string | null>(null);
+  const previousModelRef = useRef<THREE.Group | null>(null);
   const modelIdRef = useRef<string>(
     providedModelId || `modelloader-${Math.random().toString(36).substring(2, 10)}`
   );
@@ -77,6 +79,13 @@ export const useModelLoader = ({
       modelQueueManager.abortModelLoad(modelIdRef.current);
     }
     
+    // Dispose previous model before loading new one
+    if (previousModelRef.current) {
+      console.log(`Disposing previous model for ${modelIdRef.current}`);
+      disposeModel(previousModelRef.current);
+      previousModelRef.current = null;
+    }
+    
     // Clean up previous model resources
     if (model) {
       console.log(`Cleaning up previous model resources for ${modelIdRef.current}`);
@@ -95,16 +104,11 @@ export const useModelLoader = ({
       try {
         let modelUrl: string;
         
-        // Handle different source types
+        // Handle different source types with proper object URL management
         if (modelBlob) {
-          // It's a Blob object, create an object URL
-          if (objectUrlRef.current) {
-            revokeObjectUrl(objectUrlRef.current);
-            objectUrlRef.current = null;
-          }
-          
-          objectUrlRef.current = createObjectUrl(modelBlob);
-          modelUrl = objectUrlRef.current;
+          // Use handleObjectUrl to properly manage object URLs
+          objectUrlRef.current = handleObjectUrl(modelBlob, objectUrlRef.current);
+          modelUrl = objectUrlRef.current!;
           console.log(`Created object URL for ${modelIdRef.current}: ${modelUrl}`);
         } else if (typeof modelSource === 'string') {
           // It's a URL string
@@ -137,6 +141,8 @@ export const useModelLoader = ({
           return;
         }
         
+        // Store reference to previous model for proper disposal
+        previousModelRef.current = loadedModel;
         setModel(loadedModel);
         setLoading(false);
         isLoadingRef.current = false;
@@ -176,6 +182,19 @@ export const useModelLoader = ({
   // Clean up all resources when unmounting
   useEffect(() => {
     return () => {
+      // Dispose current and previous models
+      if (model) {
+        disposeModel(model);
+      }
+      if (previousModelRef.current) {
+        disposeModel(previousModelRef.current);
+      }
+      
+      // Clean up object URLs
+      if (objectUrlRef.current) {
+        handleObjectUrl(null, objectUrlRef.current);
+      }
+      
       cleanupResources(model, objectUrlRef.current, controllerRef.current);
       console.log(`Cleaned up resources on unmount for ${modelIdRef.current}`);
     };

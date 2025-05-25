@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { modelQueueManager } from "../utils/modelQueueManager";
 import { loadModelWithFallback } from "../utils/modelLoaderUtils";
 import { cleanupResources } from "../utils/resourceManager";
+import { disposeModel, handleObjectUrl } from "../utils/modelUtils";
 import { useToast } from "@/hooks/use-toast";
 
 interface UseOptimizedModelLoaderOptions {
@@ -32,6 +33,7 @@ export const useOptimizedModelLoader = ({
   const objectUrlRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const activeSourceRef = useRef<string | null | Blob>(null);
+  const previousModelRef = useRef<THREE.Group | null>(null);
   const { toast } = useToast();
 
   // Generate a stable ID for this model that won't change between renders
@@ -42,6 +44,12 @@ export const useOptimizedModelLoader = ({
   // Cleanup function to handle resource disposal properly
   const cleanupActiveResources = () => {
     if (activeSourceRef.current) {
+      // Dispose previous model before cleanup
+      if (previousModelRef.current) {
+        disposeModel(previousModelRef.current);
+        previousModelRef.current = null;
+      }
+      
       // Only cleanup if we're actually changing sources
       cleanupResources(
         model, 
@@ -76,6 +84,11 @@ export const useOptimizedModelLoader = ({
       return;
     }
     
+    // Store reference to current model before disposal
+    if (model) {
+      previousModelRef.current = model;
+    }
+    
     // Update active source reference
     activeSourceRef.current = currentSource;
     
@@ -95,9 +108,9 @@ export const useOptimizedModelLoader = ({
         setLoading(true);
         setError(null);
         
-        // Create a URL if we have a blob
+        // Create a URL if we have a blob using proper URL management
         if (modelBlob) {
-          localObjectUrl = URL.createObjectURL(modelBlob);
+          localObjectUrl = handleObjectUrl(modelBlob, objectUrlRef.current);
           objectUrlRef.current = localObjectUrl;
           console.log(`Created object URL for ${modelIdRef.current}: ${localObjectUrl}`);
         }
@@ -114,6 +127,9 @@ export const useOptimizedModelLoader = ({
         if (!isActive) return;
 
         console.log(`Model ${modelIdRef.current} loaded successfully`);
+        
+        // Store reference for future disposal
+        previousModelRef.current = loadedModel;
         setModel(loadedModel);
       } catch (err) {
         if (!isActive) return;
@@ -147,6 +163,19 @@ export const useOptimizedModelLoader = ({
   // Clean up resources when component unmounts
   useEffect(() => {
     return () => {
+      // Dispose all models
+      if (model) {
+        disposeModel(model);
+      }
+      if (previousModelRef.current) {
+        disposeModel(previousModelRef.current);
+      }
+      
+      // Clean up object URLs
+      if (objectUrlRef.current) {
+        handleObjectUrl(null, objectUrlRef.current);
+      }
+      
       cleanupActiveResources();
       objectUrlRef.current = null;
       activeSourceRef.current = null;

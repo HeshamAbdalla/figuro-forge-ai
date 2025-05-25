@@ -13,9 +13,16 @@ interface ModelSceneProps {
   modelBlob?: Blob | null;
   autoRotate: boolean;
   onModelError: (error: any) => void;
+  isPreview?: boolean; // Add preview flag
 }
 
-const ModelScene = ({ modelUrl, modelBlob, autoRotate, onModelError }: ModelSceneProps) => {
+const ModelScene = ({ 
+  modelUrl, 
+  modelBlob, 
+  autoRotate, 
+  onModelError, 
+  isPreview = false 
+}: ModelSceneProps) => {
   // Track the current model source to prevent unnecessary re-renders
   const currentSourceRef = useRef<string | Blob | null>(null);
   const [stableSource, setStableSource] = useState<string | null>(modelUrl);
@@ -92,7 +99,8 @@ const ModelScene = ({ modelUrl, modelBlob, autoRotate, onModelError }: ModelScen
             <Model3D 
               modelSource={stableSource} 
               modelBlob={stableBlob}
-              onError={handleModelError} 
+              onError={handleModelError}
+              isPreview={isPreview}
             />
           </ErrorBoundary>
         ) : (
