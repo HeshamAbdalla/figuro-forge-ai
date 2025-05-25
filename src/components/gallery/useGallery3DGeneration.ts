@@ -91,22 +91,37 @@ export const useGallery3DGeneration = () => {
         attempts++;
         console.log(`🔍 [GALLERY] Checking status (${attempts}/${maxAttempts}) for task:`, taskId);
 
-        const { data, error } = await supabase.functions.invoke('check-3d-status', {
-          body: { taskId }
-        });
-
-        if (error) {
-          throw new Error(`Status check failed: ${error.message}`);
+        // Get the current session for authentication
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('Authentication required');
         }
 
-        const { status, model_url, thumbnail_url, progress: apiProgress } = data;
-        console.log('📊 [GALLERY] Status update:', { status, model_url, progress: apiProgress });
+        // Make direct fetch call with taskId as URL parameter
+        const supabaseUrl = 'https://cwjxbwqdfejhmiixoiym.supabase.co';
+        const response = await fetch(`${supabaseUrl}/functions/v1/check-3d-status?taskId=${taskId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3anhid3FkZmVqaG1paXhvaXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4OTg0MDksImV4cCI6MjA2MzQ3NDQwOX0.g_-L7Bsv0cnEjSLNXEjrDdYYdxtV7yiHFYUV3_Ww3PI',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Status check failed: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        const { status, modelUrl, progress: apiProgress } = data;
+        console.log('📊 [GALLERY] Status update:', { status, modelUrl, progress: apiProgress });
 
         // Update progress based on status
         let progressValue = 30 + (apiProgress || 0) * 0.6; // 30-90%
         let message = 'Converting image to 3D model...';
 
-        if (status === 'SUCCEEDED' && model_url) {
+        if ((status === 'SUCCEEDED' || status === 'completed') && modelUrl) {
           setProgress({
             status: 'downloading',
             progress: 90,
@@ -115,7 +130,7 @@ export const useGallery3DGeneration = () => {
           });
 
           // Download and save the model
-          const savedModelUrl = await downloadAndSaveModel(model_url, fileName);
+          const savedModelUrl = await downloadAndSaveModel(modelUrl, fileName);
           
           if (savedModelUrl) {
             setProgress({
@@ -137,11 +152,11 @@ export const useGallery3DGeneration = () => {
           return;
         }
 
-        if (status === 'FAILED') {
+        if (status === 'FAILED' || status === 'failed') {
           throw new Error('3D conversion failed on the server');
         }
 
-        if (status === 'IN_PROGRESS' || status === 'PENDING') {
+        if (status === 'IN_PROGRESS' || status === 'PENDING' || status === 'processing') {
           setProgress({
             status: 'converting',
             progress: Math.min(progressValue, 89),
