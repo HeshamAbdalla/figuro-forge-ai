@@ -154,4 +154,4 @@ export class SessionProfileDebugger {
   }
 }
 
-export const debugger = new SessionProfileDebugger();
+export const sessionDebugger = new SessionProfileDebugger();

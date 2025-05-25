@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { debugger } from "./debugUtils";
+import { sessionDebugger } from "./debugUtils";
 
 export interface SessionHealth {
   isValid: boolean;
@@ -22,17 +22,17 @@ export class SessionManager {
     
     try {
       // Test network latency first
-      await debugger.testNetworkLatency();
+      await sessionDebugger.testNetworkLatency();
       
       // Verify session configuration
-      const debugInfo = debugger.verifySessionConfiguration();
+      const debugInfo = sessionDebugger.verifySessionConfiguration();
       console.log('🔧 [SESSION-MANAGER] Debug info:', debugInfo);
       
       // Get current session
       const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {
-        debugger.logSessionError(error, 'Session initialization');
+        sessionDebugger.logSessionError(error, 'Session initialization');
         throw error;
       }
       
@@ -48,7 +48,7 @@ export class SessionManager {
       return health;
       
     } catch (error) {
-      debugger.logSessionError(error, 'Session initialization failed');
+      sessionDebugger.logSessionError(error, 'Session initialization failed');
       throw error;
     }
   }
@@ -90,7 +90,7 @@ export class SessionManager {
       }
     } catch (error) {
       health.issues.push('Profile fetch failed');
-      debugger.logSessionError(error, 'Profile health check');
+      sessionDebugger.logSessionError(error, 'Profile health check');
     }
     
     health.isValid = health.hasUser && health.hasProfile && health.issues.length === 0;
@@ -104,7 +104,7 @@ export class SessionManager {
     // Return cached profile if valid and not forcing refresh
     if (!forceRefresh && this.profileCache && (now - this.lastProfileFetch) < this.cacheTimeout) {
       console.log('💾 [SESSION-MANAGER] Returning cached profile');
-      debugger.trackProfileLoadPerformance(profileStart, true, this.profileCache);
+      sessionDebugger.trackProfileLoadPerformance(profileStart, true, this.profileCache);
       return this.profileCache;
     }
     
@@ -118,8 +118,8 @@ export class SessionManager {
         .single();
       
       if (error) {
-        debugger.logSessionError(error, 'Profile fetch');
-        debugger.trackProfileLoadPerformance(profileStart, false);
+        sessionDebugger.logSessionError(error, 'Profile fetch');
+        sessionDebugger.trackProfileLoadPerformance(profileStart, false);
         throw error;
       }
       
@@ -128,13 +128,13 @@ export class SessionManager {
       this.lastProfileFetch = now;
       
       console.log('✅ [SESSION-MANAGER] Profile fetched successfully');
-      debugger.trackProfileLoadPerformance(profileStart, true, data);
+      sessionDebugger.trackProfileLoadPerformance(profileStart, true, data);
       
       return data;
       
     } catch (error) {
-      debugger.logSessionError(error, 'Profile fetch failed');
-      debugger.trackProfileLoadPerformance(profileStart, false);
+      sessionDebugger.logSessionError(error, 'Profile fetch failed');
+      sessionDebugger.trackProfileLoadPerformance(profileStart, false);
       throw error;
     }
   }
@@ -165,7 +165,7 @@ export class SessionManager {
         }
         
       } catch (error) {
-        debugger.logSessionError(error, 'Session monitoring');
+        sessionDebugger.logSessionError(error, 'Session monitoring');
       }
     }, 2 * 60 * 1000);
   }
@@ -192,7 +192,7 @@ export class SessionManager {
         hasCachedProfile: !!this.profileCache,
         isMonitoring: !!this.sessionCheckInterval
       },
-      debugger: debugger.getPerformanceReport()
+      debugger: sessionDebugger.getPerformanceReport()
     };
   }
 }

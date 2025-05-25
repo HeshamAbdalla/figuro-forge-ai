@@ -1,10 +1,11 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
 import { cleanupAuthState, getAuthErrorMessage } from "@/utils/authUtils";
 import { sessionManager } from "@/utils/sessionManager";
-import { debugger } from "@/utils/debugUtils";
+import { sessionDebugger } from "@/utils/debugUtils";
 
 interface AuthContextType {
   user: User | null;
@@ -30,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize debugging and monitoring
   useEffect(() => {
     console.log('🔧 [AUTH-PROVIDER] Initializing with debugging...');
-    debugger.monitorConcurrentSessions();
+    sessionDebugger.monitorConcurrentSessions();
     
     return () => {
       sessionManager.destroy();
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Get current session
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
-        debugger.logSessionError(error, 'Auth refresh - get session');
+        sessionDebugger.logSessionError(error, 'Auth refresh - get session');
         return;
       }
       
@@ -73,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(profileData);
           console.log("✅ [AUTH-PROVIDER] Profile loaded successfully");
         } catch (error) {
-          debugger.logSessionError(error, 'Auth refresh - profile fetch');
+          sessionDebugger.logSessionError(error, 'Auth refresh - profile fetch');
           console.error("❌ [AUTH-PROVIDER] Profile fetch failed:", error);
         }
       } else {
@@ -83,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("✅ [AUTH-PROVIDER] Auth refresh completed in", performance.now() - refreshStart, "ms");
       
     } catch (error) {
-      debugger.logSessionError(error, 'Auth refresh failed');
+      sessionDebugger.logSessionError(error, 'Auth refresh failed');
       console.error("❌ [AUTH-PROVIDER] Error refreshing auth:", error);
     }
   };
@@ -125,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   setIsLoading(false);
                   console.log("✅ [AUTH-PROVIDER] Profile loaded after sign in");
                 } catch (error) {
-                  debugger.logSessionError(error, 'Profile fetch after sign in');
+                  sessionDebugger.logSessionError(error, 'Profile fetch after sign in');
                   setIsLoading(false);
                 }
               }
@@ -147,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   setIsLoading(false);
                   console.log("✅ [AUTH-PROVIDER] Initial profile loaded");
                 } catch (error) {
-                  debugger.logSessionError(error, 'Initial profile fetch');
+                  sessionDebugger.logSessionError(error, 'Initial profile fetch');
                   setIsLoading(false);
                 }
               }
@@ -170,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-          debugger.logSessionError(error, 'Auth initialization');
+          sessionDebugger.logSessionError(error, 'Auth initialization');
           console.error("❌ [AUTH-PROVIDER] Error getting initial session:", error);
         }
         
@@ -185,7 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setProfile(profileData);
               console.log("✅ [AUTH-PROVIDER] Initial profile loaded successfully");
             } catch (error) {
-              debugger.logSessionError(error, 'Initial profile load');
+              sessionDebugger.logSessionError(error, 'Initial profile load');
               console.error("❌ [AUTH-PROVIDER] Initial profile load failed:", error);
             }
           }
@@ -194,7 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log("✅ [AUTH-PROVIDER] Authentication initialization completed");
         }
       } catch (error) {
-        debugger.logSessionError(error, 'Auth initialization failed');
+        sessionDebugger.logSessionError(error, 'Auth initialization failed');
         console.error("❌ [AUTH-PROVIDER] Error initializing auth:", error);
         if (mounted) {
           setIsLoading(false);
@@ -218,7 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(profileData);
       console.log('✅ [AUTH-PROVIDER] Profile fetched:', profileData);
     } catch (error) {
-      debugger.logSessionError(error, 'fetchProfile');
+      sessionDebugger.logSessionError(error, 'fetchProfile');
       console.error('❌ [AUTH-PROVIDER] Error in fetchProfile:', error);
     }
   };

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { sessionManager } from '@/utils/sessionManager';
-import { debugger } from '@/utils/debugUtils';
+import { sessionDebugger } from '@/utils/debugUtils';
 
 export const PerformanceDashboard = () => {
   const [isVisible, setIsVisible] = useState(false);
