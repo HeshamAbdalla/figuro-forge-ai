@@ -24,75 +24,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Debounced refresh to prevent rapid successive calls
   const refreshAuth = async () => {
+    if (isRefreshing) {
+      console.log("Auth refresh already in progress, skipping...");
+      return;
+    }
+
     try {
+      setIsRefreshing(true);
       console.log("Refreshing auth state...");
       
-      // Force refresh session from server
-      const { data: { session }, error } = await supabase.auth.refreshSession();
+      // Get current session without forcing refresh to avoid disruption
+      const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
-        console.error("Error refreshing session:", error);
-        // Fallback to getSession if refresh fails
-        const { data: { session: fallbackSession } } = await supabase.auth.getSession();
-        console.log("Using fallback session:", fallbackSession?.user?.email);
-        setSession(fallbackSession);
-        setUser(fallbackSession?.user ?? null);
-      } else {
-        console.log("Refreshed session:", session?.user?.email);
-        setSession(session);
-        setUser(session?.user ?? null);
+        console.error("Error getting session:", error);
+        return;
       }
       
+      console.log("Current session:", session?.user?.email);
+      setSession(session);
+      setUser(session?.user ?? null);
+      
       // Fetch fresh profile data if user exists
-      if (session?.user || user) {
-        const userId = session?.user?.id || user?.id;
-        if (userId) {
-          console.log("Fetching fresh profile for user:", userId);
-          await fetchProfile(userId);
-        }
+      if (session?.user) {
+        console.log("Fetching fresh profile for user:", session.user.id);
+        await fetchProfile(session.user.id);
       } else {
         setProfile(null);
       }
     } catch (error) {
       console.error("Error refreshing auth:", error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener FIRST
+    // Set up auth state listener with improved error handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
         
         console.log("Auth state changed:", event, session?.user?.email);
+        
+        // Update state immediately for better UX
         setSession(session);
         setUser(session?.user ?? null);
         
         // Handle different auth events
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (session?.user) {
-            // Use setTimeout to prevent deadlocks and ensure proper state updates
+          if (session?.user && mounted) {
+            // Defer profile fetching to prevent conflicts
             setTimeout(async () => {
-              if (mounted) {
+              if (mounted && !isRefreshing) {
                 await fetchProfile(session.user.id);
                 setIsLoading(false);
               }
-            }, 100);
+            }, 200);
           }
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
           setIsLoading(false);
         } else if (event === 'INITIAL_SESSION') {
-          if (session?.user) {
+          if (session?.user && mounted) {
             setTimeout(async () => {
-              if (mounted) {
+              if (mounted && !isRefreshing) {
                 await fetchProfile(session.user.id);
                 setIsLoading(false);
               }
-            }, 100);
+            }, 200);
           } else {
             setIsLoading(false);
           }
@@ -100,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // THEN check for existing session
+    // Check for existing session
     const initializeAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();

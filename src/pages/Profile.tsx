@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
@@ -22,9 +23,23 @@ const Profile = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [hasProcessedSuccess, setHasProcessedSuccess] = useState(false);
+  const [authStateProtected, setAuthStateProtected] = useState(false);
   const navigate = useNavigate();
   
-  // Handle success redirect from Stripe - more robust approach
+  // Debounced refresh function to prevent rapid successive calls
+  const debouncedRefreshAuth = (() => {
+    let timeoutId: NodeJS.Timeout;
+    return () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(async () => {
+        if (!authStateProtected) {
+          await refreshAuth();
+        }
+      }, 1000);
+    };
+  })();
+  
+  // Handle success redirect from Stripe - optimized approach
   useEffect(() => {
     const handleStripeSuccess = async () => {
       const success = searchParams.get("success");
@@ -34,6 +49,7 @@ const Profile = () => {
         console.log("Handling Stripe success redirect for plan:", plan);
         setIsProcessingPayment(true);
         setHasProcessedSuccess(true);
+        setAuthStateProtected(true); // Protect auth state during verification
         
         // Clear URL parameters immediately to prevent infinite loop
         const newSearchParams = new URLSearchParams(searchParams);
@@ -48,40 +64,27 @@ const Profile = () => {
         });
         
         try {
-          // Wait longer for webhook processing (Stripe webhooks can take time)
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          // Initial wait for webhook processing
+          await new Promise(resolve => setTimeout(resolve, 3000));
           
-          // Force refresh auth state first
-          console.log("Refreshing auth state...");
-          await refreshAuth();
-          
-          // Wait a bit more for auth to propagate
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Multiple verification attempts with exponential backoff
+          // Simplified verification with single refresh
           let verified = false;
-          const maxAttempts = 6;
+          const maxAttempts = 4; // Reduced attempts
           
           for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             console.log(`Verification attempt ${attempt}/${maxAttempts}`);
             
             try {
-              // Check subscription status
+              // Single subscription check without multiple refreshes
               await checkSubscription();
               
-              // Wait with exponential backoff
-              const waitTime = Math.min(3000 * Math.pow(1.5, attempt - 1), 10000);
+              // Wait between attempts with exponential backoff
               if (attempt < maxAttempts) {
+                const waitTime = Math.min(2000 * Math.pow(1.5, attempt - 1), 8000);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
               }
               
-              // Refresh auth again to get latest profile
-              await refreshAuth();
-              
-              // Additional wait for state propagation
-              await new Promise(resolve => setTimeout(resolve, 1500));
-              
-              // Verify the subscription was updated - fix the type issue here
+              // Verify the subscription was updated
               const validPlans = ['free', 'starter', 'pro', 'unlimited'] as const;
               type ValidPlan = typeof validPlans[number];
               
@@ -108,48 +111,45 @@ const Profile = () => {
               description: `Your ${plan} plan has been activated successfully. Your usage limits have been reset.`,
             });
             
-            // Force a final refresh to ensure UI updates
-            setTimeout(() => {
-              window.location.reload();
-            }, 2000);
+            // Single auth refresh instead of page reload
+            await debouncedRefreshAuth();
+            
+            // Force subscription data refresh
+            setTimeout(async () => {
+              await checkSubscription();
+            }, 1000);
           } else {
             toast({
               title: "Payment Successful",
-              description: "Your payment was processed successfully. Please refresh the page to see your updated subscription status.",
+              description: "Your payment was processed successfully. Please refresh your subscription data if needed.",
             });
             
-            // Auto-refresh after showing message
-            setTimeout(() => {
-              window.location.reload();
-            }, 3000);
+            // Gentle state refresh without page reload
+            await debouncedRefreshAuth();
           }
         } catch (error) {
           console.error("Error verifying subscription:", error);
           toast({
-            title: "Payment Successful",
-            description: "Your payment was processed successfully. Please refresh the page to see your updated subscription status.",
-            variant: "destructive"
+            title: "Payment Processed",
+            description: "Your payment was successful. The subscription status will update shortly.",
+            variant: "default"
           });
-          
-          // Auto-refresh on error too
-          setTimeout(() => {
-            window.location.reload();
-          }, 3000);
         } finally {
           setIsProcessingPayment(false);
+          setAuthStateProtected(false); // Remove auth state protection
         }
       }
     };
 
     handleStripeSuccess();
-  }, [searchParams, hasProcessedSuccess, isProcessingPayment]); // More specific dependencies
+  }, [searchParams, hasProcessedSuccess, isProcessingPayment]);
   
   useEffect(() => {
     // If authentication is complete (not loading) and user is not authenticated, redirect to auth page
-    if (!isLoading && !user) {
+    if (!isLoading && !user && !authStateProtected) {
       navigate("/auth");
     }
-  }, [isLoading, user, navigate]);
+  }, [isLoading, user, navigate, authStateProtected]);
   
   // Generate initials for avatar fallback
   const getInitials = () => {
@@ -170,6 +170,24 @@ const Profile = () => {
       month: "long",
       day: "numeric",
     });
+  };
+
+  // Optimized refresh function that doesn't disrupt auth state
+  const handleDataRefresh = async () => {
+    try {
+      await checkSubscription();
+      toast({
+        title: "Data Refreshed",
+        description: "Your subscription data has been updated.",
+      });
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      toast({
+        title: "Refresh Error",
+        description: "Could not refresh subscription data. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   // If still loading or no user, show loading state
@@ -239,7 +257,7 @@ const Profile = () => {
                   <Button 
                     variant="outline" 
                     className="text-white border-white/20 hover:bg-figuro-accent hover:text-white"
-                    onClick={() => window.location.reload()}
+                    onClick={handleDataRefresh}
                   >
                     Refresh Data
                   </Button>

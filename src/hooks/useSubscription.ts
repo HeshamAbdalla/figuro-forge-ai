@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -27,10 +28,27 @@ export const useSubscription = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [lastCheckTime, setLastCheckTime] = useState<number>(0);
+
+  // Debounced check subscription to prevent rapid successive calls
+  const debouncedCheckSubscription = useCallback((() => {
+    let timeoutId: NodeJS.Timeout;
+    return () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        const now = Date.now();
+        // Only check if it's been more than 3 seconds since last check
+        if (now - lastCheckTime > 3000) {
+          checkSubscription();
+        }
+      }, 500);
+    };
+  })(), [lastCheckTime]);
 
   // Check subscription status
   const checkSubscription = useCallback(async () => {
     try {
+      setLastCheckTime(Date.now());
       const { data, error } = await supabase.functions.invoke<SubscriptionData>('check-subscription');
 
       if (error) {
@@ -64,6 +82,9 @@ export const useSubscription = () => {
       // Refresh subscription data first
       await checkSubscription();
       
+      // Small delay to ensure state has updated
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Check if the current subscription matches the expected plan
       if (subscription?.plan === expectedPlan) {
         console.log('Subscription verification successful:', subscription.plan);
@@ -78,9 +99,10 @@ export const useSubscription = () => {
     }
   }, [subscription, checkSubscription]);
 
-  // Load user and subscription data
+  // Load user and subscription data with optimized auth state handling
   useEffect(() => {
     let mounted = true;
+    let authSubscription: any;
 
     const loadUserAndSubscription = async () => {
       try {
@@ -109,23 +131,19 @@ export const useSubscription = () => {
       }
     };
 
-    loadUserAndSubscription();
-
-    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
+    // Set up auth state listener with debouncing
+    authSubscription = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
         
-        console.log('Auth state changed:', event, session?.user?.email);
+        console.log('Auth state changed in useSubscription:', event, session?.user?.email);
+        
+        // Update user state immediately
         setUser(session?.user || null);
         
         if (event === 'SIGNED_IN' && session?.user) {
-          // Small delay to ensure auth state is settled
-          setTimeout(async () => {
-            if (mounted) {
-              await checkSubscription();
-              setIsLoading(false);
-            }
-          }, 100);
+          // Use debounced check to prevent conflicts with other hooks
+          debouncedCheckSubscription();
         } else if (event === 'SIGNED_OUT') {
           setSubscription(null);
           setError(null);
@@ -134,11 +152,15 @@ export const useSubscription = () => {
       }
     );
 
+    loadUserAndSubscription();
+
     return () => {
       mounted = false;
-      authSub.unsubscribe();
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
     };
-  }, [checkSubscription]);
+  }, [debouncedCheckSubscription]);
 
   // Subscribe to a plan
   const subscribeToPlan = async (
