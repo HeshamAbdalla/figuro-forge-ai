@@ -1,9 +1,7 @@
 
 import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import GalleryItem from "./GalleryItem";
-import AnimatedItem from "@/components/animations/AnimatedItem";
-import StaggerContainer from "@/components/animations/StaggerContainer";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface BucketImage {
   name: string;
@@ -19,37 +17,35 @@ interface GalleryGridProps {
   isLoading: boolean;
   onDownload: (url: string, name: string) => void;
   onViewModel: (url: string) => void;
+  onGenerate3D?: (url: string, name: string) => void;
 }
 
 const GalleryGrid: React.FC<GalleryGridProps> = ({ 
   images, 
   isLoading, 
   onDownload, 
-  onViewModel 
+  onViewModel,
+  onGenerate3D 
 }) => {
   if (isLoading) {
     return (
-      <StaggerContainer staggerDelay={0.1} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {[1, 2, 3, 4, 5, 6].map((item) => (
-          <AnimatedItem key={item}>
-            <div className="glass-panel">
-              <div className="p-0">
-                <div className="aspect-square w-full">
-                  <Skeleton className="h-full w-full bg-white/5 loading-shine" />
-                </div>
-              </div>
-            </div>
-          </AnimatedItem>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={index} className="glass-panel rounded-lg overflow-hidden">
+            <Skeleton className="aspect-square w-full bg-white/10" />
+          </div>
         ))}
-      </StaggerContainer>
+      </div>
     );
   }
 
   if (images.length === 0) {
     return (
-      <div className="text-center py-16">
-        <p className="text-white/70 mb-4">No images found in the bucket yet.</p>
-        <p className="text-white/50 mb-8">Be the first to create one!</p>
+      <div className="text-center py-20">
+        <h3 className="text-xl font-semibold text-white mb-4">No files yet</h3>
+        <p className="text-white/60">
+          Upload some models or create figurines to see them here.
+        </p>
       </div>
     );
   }
@@ -57,13 +53,13 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {images.map((file) => (
-        <AnimatedItem key={file.id}>
-          <GalleryItem 
-            file={file} 
-            onDownload={onDownload} 
-            onViewModel={onViewModel} 
-          />
-        </AnimatedItem>
+        <GalleryItem 
+          key={file.id} 
+          file={file} 
+          onDownload={onDownload}
+          onViewModel={onViewModel}
+          onGenerate3D={onGenerate3D}
+        />
       ))}
     </div>
   );

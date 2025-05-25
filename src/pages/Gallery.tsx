@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
@@ -8,15 +9,18 @@ import GalleryGrid from "@/components/gallery/GalleryGrid";
 import ModelViewerDialog from "@/components/gallery/ModelViewerDialog";
 import CallToAction from "@/components/gallery/CallToAction";
 import ModelViewer from "@/components/model-viewer";
+import Generate3DModal from "@/components/gallery/Generate3DModal";
 import AnimatedSection from "@/components/animations/AnimatedSection";
 import StaggerContainer from "@/components/animations/StaggerContainer";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
 import { useModelUpload } from "@/components/gallery/useModelUpload";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
+import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useToast } from "@/hooks/use-toast";
 
 const Gallery = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [generate3DModalOpen, setGenerate3DModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -31,6 +35,12 @@ const Gallery = () => {
     handleViewModel, 
     handleCloseModelViewer 
   } = useModelViewer();
+  const { 
+    isGenerating, 
+    progress, 
+    generate3DModel, 
+    resetProgress 
+  } = useGallery3DGeneration();
 
   // Ensure data is refreshed when navigating to gallery
   useEffect(() => {
@@ -39,6 +49,16 @@ const Gallery = () => {
       fetchImagesFromBucket();
     }
   }, [location.pathname, fetchImagesFromBucket]);
+
+  // Auto-refresh gallery when 3D generation completes
+  useEffect(() => {
+    if (progress.status === 'completed') {
+      // Refresh the gallery after a short delay to show the new 3D model
+      setTimeout(() => {
+        fetchImagesFromBucket();
+      }, 2000);
+    }
+  }, [progress.status, fetchImagesFromBucket]);
 
   // Clean up when component unmounts
   useEffect(() => {
@@ -88,6 +108,26 @@ const Gallery = () => {
     }
   };
 
+  const handleGenerate3D = async (imageUrl: string, imageName: string) => {
+    try {
+      console.log('🎯 [GALLERY] Starting 3D generation for:', imageName);
+      setGenerate3DModalOpen(true);
+      await generate3DModel(imageUrl, imageName);
+    } catch (error) {
+      console.error('❌ [GALLERY] 3D generation failed:', error);
+      toast({
+        title: "3D Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to generate 3D model",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCloseGenerate3DModal = () => {
+    resetProgress();
+    setGenerate3DModalOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-figuro-dark">
       <Header />
@@ -116,6 +156,7 @@ const Gallery = () => {
               isLoading={isLoading}
               onDownload={handleDownload}
               onViewModel={handleViewModel}
+              onGenerate3D={handleGenerate3D}
             />
           </StaggerContainer>
         </div>
@@ -138,6 +179,14 @@ const Gallery = () => {
         onOpenChange={setModelViewerOpen}
         modelUrl={viewingModel}
         onClose={handleCloseModelViewer}
+      />
+
+      {/* 3D Generation Modal */}
+      <Generate3DModal
+        open={generate3DModalOpen}
+        onOpenChange={setGenerate3DModalOpen}
+        progress={progress}
+        onClose={handleCloseGenerate3DModal}
       />
       
       <Footer />

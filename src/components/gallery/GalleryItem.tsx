@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Eye } from "lucide-react";
+import { Download, Eye, Box } from "lucide-react";
 import ModelPlaceholder from "./ModelPlaceholder";
 import ModelPreview from "./ModelPreview";
 
@@ -18,9 +18,15 @@ interface GalleryItemProps {
   file: BucketImage;
   onDownload: (url: string, name: string) => void;
   onViewModel: (url: string) => void;
+  onGenerate3D?: (url: string, name: string) => void;
 }
 
-const GalleryItem: React.FC<GalleryItemProps> = ({ file, onDownload, onViewModel }) => {
+const GalleryItem: React.FC<GalleryItemProps> = ({ 
+  file, 
+  onDownload, 
+  onViewModel,
+  onGenerate3D 
+}) => {
   const [isPreviewLoaded, setIsPreviewLoaded] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
 
@@ -43,6 +49,14 @@ const GalleryItem: React.FC<GalleryItemProps> = ({ file, onDownload, onViewModel
     e.preventDefault();
     e.stopPropagation();
     onViewModel(file.url);
+  };
+
+  const handleGenerate3DClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onGenerate3D) {
+      onGenerate3D(file.url, file.name);
+    }
   };
 
   return (
@@ -72,12 +86,23 @@ const GalleryItem: React.FC<GalleryItemProps> = ({ file, onDownload, onViewModel
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
           <div className="p-4 w-full">
             {file.type === 'image' ? (
-              <Button 
-                onClick={handleDownloadClick}
-                className="w-full bg-figuro-accent hover:bg-figuro-accent-hover"
-              >
-                <Download size={16} className="mr-2" /> Download
-              </Button>
+              <div className="flex flex-col space-y-2 w-full">
+                <Button 
+                  onClick={handleDownloadClick}
+                  className="w-full bg-figuro-accent hover:bg-figuro-accent-hover"
+                >
+                  <Download size={16} className="mr-2" /> Download
+                </Button>
+                {onGenerate3D && (
+                  <Button 
+                    onClick={handleGenerate3DClick}
+                    variant="outline"
+                    className="w-full border-white/10"
+                  >
+                    <Box size={16} className="mr-2" /> Generate 3D Model
+                  </Button>
+                )}
+              </div>
             ) : (
               <div className="flex flex-col space-y-2 w-full">
                 <Button 
