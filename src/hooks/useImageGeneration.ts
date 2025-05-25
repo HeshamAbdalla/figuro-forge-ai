@@ -154,51 +154,74 @@ export const useImageGeneration = () => {
         // Handle completion
         if (data.modelUrl) {
           try {
-            // First save the external model URL temporarily
+            // First set the external model URL temporarily
             setModelUrl(data.modelUrl);
             setIsConverting(false);
             setConversionProgress(100);
             setConversionError(null);
             
+            // Show initial success message
+            toast({
+              title: "3D model created",
+              description: "Downloading and saving your 3D model to gallery...",
+            });
+            
             // Attempt to download and save the model to our storage
             if (currentFigurineId) {
-              // Start downloading and saving the model asynchronously
-              toast({
-                title: "3D model created",
-                description: "Downloading and saving your 3D model...",
-              });
+              console.log('🔄 [CONVERSION] Starting model download and save process...');
               
-              // Download and save the model to our storage
-              const storedModelUrl = await downloadAndSaveModel(
-                data.modelUrl, 
-                `figurine_${currentFigurineId}`
-              );
-              
-              if (storedModelUrl) {
-                // Update the model URL to our stored version
-                setModelUrl(storedModelUrl);
+              try {
+                // Download and save the model to our storage
+                const storedModelUrl = await downloadAndSaveModel(
+                  data.modelUrl, 
+                  `figurine_${currentFigurineId}`
+                );
                 
-                // Update figurine with the stored model URL
-                await updateFigurineWithModelUrl(currentFigurineId, storedModelUrl);
+                if (storedModelUrl) {
+                  // Update the model URL to our stored version
+                  setModelUrl(storedModelUrl);
+                  
+                  // Update figurine with the stored model URL
+                  await updateFigurineWithModelUrl(currentFigurineId, storedModelUrl);
+                  
+                  console.log('✅ [CONVERSION] Model successfully saved to gallery storage');
+                  toast({
+                    title: "3D model saved to gallery",
+                    description: "Your figurine is ready to view in 3D and has been added to the gallery",
+                  });
+                } else {
+                  console.warn('⚠️ [CONVERSION] Storage save failed, using external URL');
+                  // Fallback to the external URL if storage failed
+                  await updateFigurineWithModelUrl(currentFigurineId, data.modelUrl);
+                  
+                  toast({
+                    title: "3D model created",
+                    description: "Your figurine is ready to view in 3D (using external hosting)",
+                  });
+                }
+              } catch (saveError) {
+                console.error('❌ [CONVERSION] Error during model save process:', saveError);
                 
-                toast({
-                  title: "3D model saved",
-                  description: "Your figurine is ready to view in 3D",
-                });
-              } else {
-                // Fallback to the external URL if storage failed
+                // Fallback to external URL if save process fails
                 await updateFigurineWithModelUrl(currentFigurineId, data.modelUrl);
                 
                 toast({
                   title: "3D model created",
-                  description: "Your figurine is ready to view in 3D (using external hosting)",
+                  description: "Your figurine is ready to view in 3D (external hosting - gallery save failed)",
+                  variant: "default"
                 });
               }
+            } else {
+              console.log('ℹ️ [CONVERSION] No figurine ID available, skipping save to gallery');
+              toast({
+                title: "3D model created",
+                description: "Your 3D model is ready to view",
+              });
             }
-          } catch (saveError) {
-            console.error("Error saving model:", saveError);
+          } catch (error) {
+            console.error('❌ [CONVERSION] Error in completion handler:', error);
             
-            // If we failed to save the model, still update with the external URL
+            // Ensure we still show the model even if save fails
             if (currentFigurineId) {
               await updateFigurineWithModelUrl(currentFigurineId, data.modelUrl);
             }
