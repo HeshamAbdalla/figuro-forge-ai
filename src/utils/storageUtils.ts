@@ -41,7 +41,6 @@ export const saveImageToStorage = async (imageBlob: Blob, figurineId: string): P
     if (error) {
       console.error('❌ [STORAGE] Upload error details:', {
         message: error.message,
-        statusCode: error.statusCode,
         error: error
       });
       
