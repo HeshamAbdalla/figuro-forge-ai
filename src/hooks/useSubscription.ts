@@ -37,11 +37,11 @@ export const useSubscription = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         const now = Date.now();
-        // Only check if it's been more than 3 seconds since last check
-        if (now - lastCheckTime > 3000) {
+        // Only check if it's been more than 5 seconds since last check to prevent rate limiting
+        if (now - lastCheckTime > 5000) {
           checkSubscription();
         }
-      }, 500);
+      }, 1000);
     };
   })(), [lastCheckTime]);
 
@@ -63,8 +63,10 @@ export const useSubscription = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to check subscription';
       setError(errorMessage);
       
-      // Only show toast for non-auth errors
-      if (!errorMessage.includes('Authentication') && !errorMessage.includes('not authenticated')) {
+      // Only show toast for non-auth errors and non-rate-limit errors
+      if (!errorMessage.includes('Authentication') && 
+          !errorMessage.includes('not authenticated') &&
+          !errorMessage.includes('rate limit')) {
         toast({
           title: "Subscription Error",
           description: "Couldn't load your subscription details. Please try again.",
@@ -131,9 +133,9 @@ export const useSubscription = () => {
       }
     };
 
-    // Set up auth state listener with correct destructuring pattern
+    // Set up auth state listener with correct destructuring pattern and non-async callback
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return;
         
         console.log('Auth state changed in useSubscription:', event, session?.user?.email);
@@ -142,7 +144,7 @@ export const useSubscription = () => {
         setUser(session?.user || null);
         
         if (event === 'SIGNED_IN' && session?.user) {
-          // Use debounced check to prevent conflicts with other hooks
+          // Use debounced check to prevent conflicts and rate limiting
           debouncedCheckSubscription();
         } else if (event === 'SIGNED_OUT') {
           setSubscription(null);

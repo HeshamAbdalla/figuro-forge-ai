@@ -23,21 +23,7 @@ const Profile = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [hasProcessedSuccess, setHasProcessedSuccess] = useState(false);
-  const [authStateProtected, setAuthStateProtected] = useState(false);
   const navigate = useNavigate();
-  
-  // Debounced refresh function to prevent rapid successive calls
-  const debouncedRefreshAuth = (() => {
-    let timeoutId: NodeJS.Timeout;
-    return () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(async () => {
-        if (!authStateProtected) {
-          await refreshAuth();
-        }
-      }, 1000);
-    };
-  })();
   
   // Handle success redirect from Stripe - optimized approach
   useEffect(() => {
@@ -49,7 +35,6 @@ const Profile = () => {
         console.log("Handling Stripe success redirect for plan:", plan);
         setIsProcessingPayment(true);
         setHasProcessedSuccess(true);
-        setAuthStateProtected(true); // Protect auth state during verification
         
         // Clear URL parameters immediately to prevent infinite loop
         const newSearchParams = new URLSearchParams(searchParams);
@@ -69,7 +54,7 @@ const Profile = () => {
           
           // Simplified verification with single refresh
           let verified = false;
-          const maxAttempts = 4; // Reduced attempts
+          const maxAttempts = 3; // Reduced attempts to prevent rate limiting
           
           for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             console.log(`Verification attempt ${attempt}/${maxAttempts}`);
@@ -80,7 +65,7 @@ const Profile = () => {
               
               // Wait between attempts with exponential backoff
               if (attempt < maxAttempts) {
-                const waitTime = Math.min(2000 * Math.pow(1.5, attempt - 1), 8000);
+                const waitTime = Math.min(3000 * Math.pow(1.5, attempt - 1), 10000);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
               }
               
@@ -110,22 +95,11 @@ const Profile = () => {
               title: "Subscription Activated!",
               description: `Your ${plan} plan has been activated successfully. Your usage limits have been reset.`,
             });
-            
-            // Single auth refresh instead of page reload
-            await debouncedRefreshAuth();
-            
-            // Force subscription data refresh
-            setTimeout(async () => {
-              await checkSubscription();
-            }, 1000);
           } else {
             toast({
               title: "Payment Successful",
               description: "Your payment was processed successfully. Please refresh your subscription data if needed.",
             });
-            
-            // Gentle state refresh without page reload
-            await debouncedRefreshAuth();
           }
         } catch (error) {
           console.error("Error verifying subscription:", error);
@@ -136,7 +110,6 @@ const Profile = () => {
           });
         } finally {
           setIsProcessingPayment(false);
-          setAuthStateProtected(false); // Remove auth state protection
         }
       }
     };
@@ -146,10 +119,10 @@ const Profile = () => {
   
   useEffect(() => {
     // If authentication is complete (not loading) and user is not authenticated, redirect to auth page
-    if (!isLoading && !user && !authStateProtected) {
+    if (!isLoading && !user) {
       navigate("/auth");
     }
-  }, [isLoading, user, navigate, authStateProtected]);
+  }, [isLoading, user, navigate]);
   
   // Generate initials for avatar fallback
   const getInitials = () => {

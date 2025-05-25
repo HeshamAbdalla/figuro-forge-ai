@@ -24,20 +24,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Debounced refresh to prevent rapid successive calls
+  // Refresh auth state
   const refreshAuth = async () => {
-    if (isRefreshing) {
-      console.log("Auth refresh already in progress, skipping...");
-      return;
-    }
-
     try {
-      setIsRefreshing(true);
       console.log("Refreshing auth state...");
       
-      // Get current session without forcing refresh to avoid disruption
+      // Get current session
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
         console.error("Error getting session:", error);
@@ -57,17 +50,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Error refreshing auth:", error);
-    } finally {
-      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener with improved error handling
+    // Set up auth state listener with non-async callback to prevent deadlocks
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return;
         
         console.log("Auth state changed:", event, session?.user?.email);
@@ -76,12 +67,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Handle different auth events
+        // Handle different auth events with deferred profile fetching
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user && mounted) {
             // Defer profile fetching to prevent conflicts
             setTimeout(async () => {
-              if (mounted && !isRefreshing) {
+              if (mounted) {
                 await fetchProfile(session.user.id);
                 setIsLoading(false);
               }
@@ -93,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else if (event === 'INITIAL_SESSION') {
           if (session?.user && mounted) {
             setTimeout(async () => {
-              if (mounted && !isRefreshing) {
+              if (mounted) {
                 await fetchProfile(session.user.id);
                 setIsLoading(false);
               }
