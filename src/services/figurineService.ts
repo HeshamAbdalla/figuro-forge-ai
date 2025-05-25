@@ -44,7 +44,7 @@ export const saveFigurine = async (
       } catch (storageError) {
         console.error('❌ [FIGURINE] Storage save failed:', storageError);
         // Don't proceed with database insert if storage fails
-        throw new Error(`Failed to save image to storage: ${storageError.message}`);
+        throw new Error(`Failed to save image to storage: ${storageError instanceof Error ? storageError.message : 'Unknown storage error'}`);
       }
     } else if (imageUrl) {
       console.log('🔄 [FIGURINE] Fetching image from URL and saving...');
@@ -60,7 +60,7 @@ export const saveFigurine = async (
       } catch (fetchError) {
         console.error('❌ [FIGURINE] Error fetching image from URL:', fetchError);
         // Don't proceed if we can't save the image
-        throw new Error(`Failed to fetch and save image: ${fetchError.message}`);
+        throw new Error(`Failed to fetch and save image: ${fetchError instanceof Error ? fetchError.message : 'Unknown fetch error'}`);
       }
     }
     

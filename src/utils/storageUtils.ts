@@ -29,6 +29,13 @@ export const saveImageToStorage = async (imageBlob: Blob, figurineId: string): P
       type: imageBlob.type 
     });
     
+    // Verify auth.uid() is working correctly
+    const { data: currentUser } = await supabase.auth.getUser();
+    console.log('🔍 [STORAGE] Current user verification:', {
+      hasCurrentUser: !!currentUser.user,
+      userIdMatch: currentUser.user?.id === userId
+    });
+    
     // Upload image to storage with explicit bucket reference
     console.log('🔄 [STORAGE] Attempting upload to figurine-images bucket...');
     const { data, error } = await supabase.storage
@@ -44,8 +51,20 @@ export const saveImageToStorage = async (imageBlob: Blob, figurineId: string): P
         error: error
       });
       
-      // If the bucket doesn't exist, try to create it
-      if (error.message?.includes('bucket') || error.message?.includes('not found')) {
+      // More specific error handling
+      if (error.message?.includes('row-level security')) {
+        console.error('❌ [STORAGE] RLS Policy violation - checking session state');
+        
+        // Re-verify authentication state
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        console.error('❌ [STORAGE] Session state during error:', {
+          hasSession: !!currentSession,
+          hasUser: !!currentSession?.user,
+          userId: currentSession?.user?.id
+        });
+        
+        throw new Error(`Storage RLS policy violation: ${error.message}`);
+      } else if (error.message?.includes('bucket') || error.message?.includes('not found')) {
         console.log('🔄 [STORAGE] Bucket might not exist, attempting to create and retry...');
         throw new Error(`Storage bucket not found: ${error.message}`);
       } else {
