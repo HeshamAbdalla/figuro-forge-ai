@@ -131,8 +131,8 @@ export const useSubscription = () => {
       }
     };
 
-    // Set up auth state listener with debouncing - FIXED: properly destructure the subscription
-    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
+    // Set up auth state listener with correct destructuring pattern
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
         
@@ -152,8 +152,8 @@ export const useSubscription = () => {
       }
     );
 
-    // Store the correct subscription object
-    authSubscription = authSub;
+    // Store the subscription for cleanup
+    authSubscription = subscription;
 
     loadUserAndSubscription();
 
