@@ -30,19 +30,23 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
     const modelBlob = await new Promise<Blob>((resolve, reject) => {
       tryLoadWithCorsProxies(
         modelUrl,
-        async (proxiedUrl: string) => {
+        async (workingUrl: string) => {
           try {
-            const response = await fetch(proxiedUrl);
+            console.log(`🔄 [MODEL] Downloading from working URL: ${workingUrl.substring(0, 100)}...`);
+            const response = await fetch(workingUrl);
             if (!response.ok) {
               throw new Error(`Failed to download model: ${response.status} ${response.statusText}`);
             }
             const blob = await response.blob();
+            console.log(`✅ [MODEL] Downloaded blob: ${blob.size} bytes, type: ${blob.type}`);
             resolve(blob);
           } catch (error) {
+            console.error(`❌ [MODEL] Download failed from working URL:`, error);
             reject(error);
           }
         },
         (error: Error) => {
+          console.error(`❌ [MODEL] All CORS proxy attempts failed:`, error);
           reject(new Error(`Failed to download model via CORS proxies: ${error.message}`));
         }
       );

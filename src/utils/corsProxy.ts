@@ -83,6 +83,51 @@ export const getOriginalUrl = (proxiedUrl: string): string => {
 };
 
 /**
+ * Test if a proxy can actually download data from a URL
+ * @param proxiedUrl The URL with proxy applied
+ * @returns Promise<boolean> Whether the proxy works for data download
+ */
+const testProxyDataAccess = async (proxiedUrl: string): Promise<boolean> => {
+  try {
+    console.log(`Testing data access with proxy: ${proxiedUrl}`);
+    
+    // Try to fetch a small amount of data (first 1024 bytes)
+    const response = await fetch(proxiedUrl, {
+      method: 'GET',
+      headers: {
+        'Range': 'bytes=0-1023'
+      }
+    });
+    
+    if (!response.ok) {
+      console.log(`Proxy test failed with status: ${response.status}`);
+      return false;
+    }
+    
+    // Try to read a small amount of the response to ensure it's actually accessible
+    const reader = response.body?.getReader();
+    if (!reader) {
+      console.log('Proxy test failed: no readable stream');
+      return false;
+    }
+    
+    const { done, value } = await reader.read();
+    reader.releaseLock();
+    
+    if (done || !value || value.length === 0) {
+      console.log('Proxy test failed: no data received');
+      return false;
+    }
+    
+    console.log(`Proxy test succeeded: received ${value.length} bytes`);
+    return true;
+  } catch (error) {
+    console.log(`Proxy test failed with error:`, error);
+    return false;
+  }
+};
+
+/**
  * Try to load a URL with different CORS proxies
  * @param url The original URL
  * @param onSuccess Callback when successful
@@ -105,31 +150,18 @@ export const tryLoadWithCorsProxies = async (
     return;
   }
 
-  // First try without a proxy
-  try {
-    console.log("Trying to load URL directly:", url);
-    const response = await fetch(url, { 
-      method: 'HEAD',
-      mode: 'no-cors' // Allow cross-origin requests
-    });
-    console.log("Direct URL access succeeded");
-    onSuccess(url);
-    return;
-  } catch (error) {
-    console.log("Direct access failed, trying proxies...", error);
-  }
+  // For external URLs, start directly with proxy attempts since we know they're CORS-blocked
+  console.log("Starting proxy attempts for external URL:", url);
 
-  // Try with each proxy with better error handling
+  // Try with each proxy with proper data access testing
   for (let i = 0; i < CORS_PROXIES.length; i++) {
     const proxiedUrl = addCorsProxy(url, i);
-    console.log(`Trying with proxy ${i}:`, proxiedUrl);
+    console.log(`Trying proxy ${i}: ${proxiedUrl.substring(0, 100)}...`);
     
     try {
-      const response = await fetch(proxiedUrl, { 
-        method: 'HEAD'
-      });
-      if (response.ok || response.status === 0) { // Status 0 is ok for CORS
-        console.log(`Proxy ${i} succeeded`);
+      const canDownloadData = await testProxyDataAccess(proxiedUrl);
+      if (canDownloadData) {
+        console.log(`Proxy ${i} succeeded for data access`);
         onSuccess(proxiedUrl);
         return;
       }
@@ -140,8 +172,8 @@ export const tryLoadWithCorsProxies = async (
   }
 
   // If all attempts fail, call the error callback
-  console.error("All proxy attempts failed");
-  onError(new Error("Failed to load URL with all available proxies"));
+  console.error("All proxy attempts failed for URL:", url);
+  onError(new Error("Failed to load URL with all available proxies - all proxies are either blocked or non-functional"));
 };
 
 export default {
