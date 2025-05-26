@@ -82,7 +82,7 @@ const GalleryModals: React.FC<GalleryModalsProps> = ({
       <Generate3DModal 
         open={isGenerating}
         onOpenChange={onGeneration3DOpenChange}
-        progress={progress.progress}
+        progress={progress}
         onClose={onResetProgress}
       />
 
