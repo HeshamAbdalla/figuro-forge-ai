@@ -61,7 +61,7 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
           isDownloading={isDownloading}
           onDownload={handleDownload}
           onView={handleView}
-          onGenerate3D={onGenerate3D}
+          onGenerate3D={handleGenerate3D}
         />
       </div>
       
