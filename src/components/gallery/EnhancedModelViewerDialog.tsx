@@ -7,7 +7,6 @@ import ErrorView from "@/components/model-viewer/ErrorView";
 import { 
   Dialog, 
   DialogContent, 
-  DialogTitle, 
   DialogHeader,
   DialogClose 
 } from "@/components/ui/dialog";
@@ -176,7 +175,7 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
       <DialogContent 
         ref={dialogRef}
         className={cn(
-          "p-0 border border-white/10 overflow-hidden transition-all duration-300",
+          "p-0 border border-white/10 overflow-hidden transition-all duration-300 [&>button]:hidden",
           isFullscreen 
             ? "fixed inset-0 w-screen h-screen max-w-none rounded-none z-[100]" 
             : "sm:max-w-[90vw] sm:max-h-[90vh] w-full h-full max-w-4xl bg-gray-900/95 backdrop-blur-sm rounded-xl"
@@ -191,9 +190,9 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
         {/* Enhanced Header */}
         <DialogHeader className="relative p-4 border-b border-white/10 bg-gray-900/90 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-semibold text-white truncate max-w-[60%]">
+            <h2 className="text-lg font-semibold text-white truncate max-w-[60%]">
               {modelName}
-            </DialogTitle>
+            </h2>
             
             {/* Control Buttons */}
             <div className="flex items-center space-x-2">
@@ -253,17 +252,15 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
                 {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               </Button>
               
-              <DialogClose asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={onClose} 
-                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
-                  title="Close"
-                >
-                  <X size={16} />
-                </Button>
-              </DialogClose>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onClose} 
+                className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                title="Close"
+              >
+                <X size={16} />
+              </Button>
             </div>
           </div>
           
