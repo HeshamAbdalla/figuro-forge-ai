@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import FiguroMascot from "./FiguroMascot";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Menu, X, User, Settings, LogOut, ChevronDown, Image } from "lucide-react";
+import { Menu, X, User, Settings, LogOut, Image } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,7 +53,7 @@ const Header = () => {
         scrolled || mobileMenuOpen ? "bg-figuro-darker/95 backdrop-blur-md" : "backdrop-blur-md"
       }`}
     >
-      <div className="container mx-auto flex items-center justify-between py-4">
+      <div className="container mx-auto flex items-center justify-between py-4 px-4">
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-2">
             <div className="hidden sm:block">
@@ -69,18 +69,30 @@ const Header = () => {
           </Link>
         </div>
         
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8">
-          <Link to="/studio" className="text-sm text-white/70 hover:text-white transition-colors font-medium">
+        {/* Desktop Navigation - Always visible on desktop */}
+        <nav className="hidden md:flex items-center gap-6">
+          <Link 
+            to="/studio" 
+            className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
+          >
             Studio
           </Link>
-          <Link to="/gallery" className="text-sm text-white/70 hover:text-white transition-colors font-medium">
+          <Link 
+            to="/gallery" 
+            className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
+          >
             Gallery
           </Link>
-          <Link to="/community" className="text-sm text-white/70 hover:text-white transition-colors font-medium">
+          <Link 
+            to="/community" 
+            className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
+          >
             Community
           </Link>
-          <Link to="/pricing" className="text-sm text-white/70 hover:text-white transition-colors font-medium">
+          <Link 
+            to="/pricing" 
+            className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
+          >
             Pricing
           </Link>
         </nav>
@@ -172,7 +184,7 @@ const Header = () => {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden overflow-hidden bg-figuro-darker border-t border-white/10"
           >
-            <div className="container mx-auto py-4 flex flex-col space-y-4">
+            <div className="container mx-auto py-4 flex flex-col space-y-4 px-4">
               <Link 
                 to="/studio" 
                 className="text-white py-2 px-4 rounded-md hover:bg-white/10 transition-colors"
