@@ -94,6 +94,7 @@ export type Database = {
           image_generations_limit: number
           is_unlimited: boolean | null
           model_conversions_limit: number
+          monthly_credits: number | null
           plan_type: string
           price_monthly: number
         }
@@ -103,6 +104,7 @@ export type Database = {
           image_generations_limit: number
           is_unlimited?: boolean | null
           model_conversions_limit: number
+          monthly_credits?: number | null
           plan_type: string
           price_monthly: number
         }
@@ -112,6 +114,7 @@ export type Database = {
           image_generations_limit?: number
           is_unlimited?: boolean | null
           model_conversions_limit?: number
+          monthly_credits?: number | null
           plan_type?: string
           price_monthly?: number
         }
@@ -176,8 +179,12 @@ export type Database = {
           additional_conversions: number | null
           commercial_license: boolean | null
           created_at: string | null
+          credits_remaining: number | null
+          expires_at: string | null
           id: string
           plan_type: string
+          renewed_at: string | null
+          status: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           updated_at: string | null
@@ -188,8 +195,12 @@ export type Database = {
           additional_conversions?: number | null
           commercial_license?: boolean | null
           created_at?: string | null
+          credits_remaining?: number | null
+          expires_at?: string | null
           id?: string
           plan_type?: string
+          renewed_at?: string | null
+          status?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string | null
@@ -200,8 +211,12 @@ export type Database = {
           additional_conversions?: number | null
           commercial_license?: boolean | null
           created_at?: string | null
+          credits_remaining?: number | null
+          expires_at?: string | null
           id?: string
           plan_type?: string
+          renewed_at?: string | null
+          status?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string | null

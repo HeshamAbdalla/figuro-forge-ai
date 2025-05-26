@@ -21,6 +21,8 @@ export interface SubscriptionData {
   valid_until: string | null;
   usage: UsageStats;
   limits: SubscriptionLimits;
+  credits_remaining: number;
+  status: 'active' | 'past_due' | 'canceled' | 'inactive' | 'expired';
 }
 
 export const useSubscription = () => {
@@ -100,7 +102,7 @@ export const useSubscription = () => {
       
       // Use current subscription data if available and recent
       if (subscription && (Date.now() - lastCheckTimeRef.current) < 30000) {
-        const matches = subscription.plan === expectedPlan;
+        const matches = subscription.plan === expectedPlan && subscription.is_active;
         console.log('🔍 [SUBSCRIPTION] Using cached data for verification:', matches);
         return matches;
       }
@@ -111,7 +113,7 @@ export const useSubscription = () => {
       // Small delay to ensure state updates
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const matches = subscription?.plan === expectedPlan;
+      const matches = subscription?.plan === expectedPlan && subscription?.is_active;
       console.log('🔍 [SUBSCRIPTION] Verification result:', matches);
       return matches;
     } catch (err) {
@@ -119,6 +121,62 @@ export const useSubscription = () => {
       return false;
     }
   }, [subscription, checkSubscription]);
+
+  // Check if user has enough credits for an action
+  const hasCredits = useCallback((creditsNeeded: number = 1): boolean => {
+    if (!subscription) return false;
+    
+    // Unlimited plans have infinite credits
+    if (subscription.plan === 'unlimited') return true;
+    
+    // Check if user has enough credits remaining
+    return subscription.credits_remaining >= creditsNeeded;
+  }, [subscription]);
+
+  // Consume credits for an action
+  const consumeCredits = useCallback(async (creditsToConsume: number = 1): Promise<boolean> => {
+    if (!subscription || !user) return false;
+    
+    // Unlimited plans don't consume credits
+    if (subscription.plan === 'unlimited') return true;
+    
+    // Check if user has enough credits
+    if (subscription.credits_remaining < creditsToConsume) {
+      toast({
+        title: "Insufficient Credits",
+        description: "You don't have enough credits for this action. Please upgrade your plan.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    try {
+      // Update credits in database
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ 
+          credits_remaining: subscription.credits_remaining - creditsToConsume,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+      
+      if (error) {
+        console.error('Error consuming credits:', error);
+        return false;
+      }
+      
+      // Update local state
+      setSubscription(prev => prev ? {
+        ...prev,
+        credits_remaining: prev.credits_remaining - creditsToConsume
+      } : null);
+      
+      return true;
+    } catch (err) {
+      console.error('Error consuming credits:', err);
+      return false;
+    }
+  }, [subscription, user]);
 
   // Initialize subscription data
   useEffect(() => {
@@ -287,6 +345,8 @@ export const useSubscription = () => {
     checkSubscription,
     verifySubscription,
     subscribeToPlan,
-    openCustomerPortal
+    openCustomerPortal,
+    hasCredits,
+    consumeCredits
   };
 };

@@ -60,7 +60,9 @@ serve(async (req) => {
           is_active: false,
           valid_until: null,
           usage: { image_generations_used: 0, model_conversions_used: 0 },
-          limits: { image_generations_limit: 3, model_conversions_limit: 1 }
+          limits: { image_generations_limit: 3, model_conversions_limit: 1 },
+          credits_remaining: 3,
+          status: 'inactive'
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200
@@ -104,6 +106,8 @@ serve(async (req) => {
         .upsert({
           user_id: user.id,
           plan_type: "free",
+          status: "active",
+          credits_remaining: 3,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
       
@@ -127,7 +131,7 @@ serve(async (req) => {
         plan: "free",
         commercial_license: false,
         additional_conversions: 0,
-        is_active: false,
+        is_active: true,
         valid_until: null,
         usage: usageData || { 
           image_generations_used: 0, 
@@ -136,7 +140,9 @@ serve(async (req) => {
         limits: {
           image_generations_limit: freePlan.image_generations_limit,
           model_conversions_limit: freePlan.model_conversions_limit
-        }
+        },
+        credits_remaining: 3,
+        status: 'active'
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200
@@ -145,10 +151,18 @@ serve(async (req) => {
     
     // For subscribed users, verify subscription with Stripe if they have stripe_subscription_id
     let currentPlan = subscriptionData.plan_type;
-    let isActive = true;
+    let isActive = subscriptionData.status === 'active';
     let validUntil = subscriptionData.valid_until;
+    let creditsRemaining = subscriptionData.credits_remaining || 0;
+    let status = subscriptionData.status || 'inactive';
     
-    if (subscriptionData.stripe_subscription_id) {
+    // Check if subscription has expired
+    if (validUntil && new Date(validUntil) <= new Date()) {
+      isActive = false;
+      status = 'expired';
+    }
+    
+    if (subscriptionData.stripe_subscription_id && isActive) {
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
       if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
       
@@ -170,33 +184,51 @@ serve(async (req) => {
           isActive = subscription.status === 'active' || subscription.status === 'trialing';
           validUntil = new Date(subscription.current_period_end * 1000).toISOString();
           
+          // Map Stripe status to our status
+          if (subscription.status === 'active' || subscription.status === 'trialing') {
+            status = 'active';
+          } else if (subscription.status === 'past_due') {
+            status = 'past_due';
+            isActive = false;
+          } else if (subscription.status === 'canceled') {
+            status = 'canceled';
+            isActive = false;
+          } else {
+            status = 'inactive';
+            isActive = false;
+          }
+          
           // Update subscription in database
           await supabaseAdmin
             .from("subscriptions")
             .update({
               valid_until: isActive ? validUntil : null,
+              expires_at: isActive ? validUntil : null,
+              status: status,
               updated_at: new Date().toISOString()
             })
             .eq("user_id", user.id);
           
           logStep("Updated subscription in database", { 
             isActive, 
-            validUntil 
+            validUntil,
+            status 
           });
         } else {
           logStep("Using cached subscription data (recent update)");
-          isActive = !!subscriptionData.valid_until && new Date(subscriptionData.valid_until) > new Date();
         }
         
         // If subscription is no longer active, downgrade to free plan
         if (!isActive && currentPlan !== 'free') {
           currentPlan = 'free';
+          creditsRemaining = 3; // Free plan credits
           await supabaseAdmin
             .from("subscriptions")
             .update({
               plan_type: 'free',
               commercial_license: false,
               additional_conversions: 0,
+              credits_remaining: 3,
               updated_at: new Date().toISOString()
             })
             .eq("user_id", user.id);
@@ -207,26 +239,13 @@ serve(async (req) => {
         // Handle rate limiting gracefully
         if (stripeError.message?.includes('rate limit')) {
           logStep("Stripe rate limited - using database data");
-          isActive = !!subscriptionData.valid_until && new Date(subscriptionData.valid_until) > new Date();
         } else {
           logStep("Error retrieving Stripe subscription", { 
             error: stripeError instanceof Error ? stripeError.message : String(stripeError)
           });
           
-          // Assume subscription is inactive on other errors
-          isActive = false;
-          currentPlan = 'free';
-          
-          await supabaseAdmin
-            .from("subscriptions")
-            .update({
-              plan_type: 'free',
-              valid_until: null,
-              commercial_license: false,
-              additional_conversions: 0,
-              updated_at: new Date().toISOString()
-            })
-            .eq("user_id", user.id);
+          // On Stripe errors, use database status but mark as potentially stale
+          logStep("Using database subscription status due to Stripe error");
         }
       }
     }
@@ -251,7 +270,9 @@ serve(async (req) => {
       plan: currentPlan,
       commercial_license: subscriptionData.commercial_license,
       additional_conversions: subscriptionData.additional_conversions,
-      isActive
+      isActive,
+      status,
+      creditsRemaining
     });
     
     // Return subscription details
@@ -269,7 +290,9 @@ serve(async (req) => {
         image_generations_limit: currentPlanLimits.image_generations_limit,
         model_conversions_limit: currentPlanLimits.model_conversions_limit + 
           (subscriptionData.additional_conversions || 0)
-      }
+      },
+      credits_remaining: creditsRemaining,
+      status: status
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200

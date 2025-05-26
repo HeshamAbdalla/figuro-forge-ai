@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, ExternalLink } from "lucide-react";
+import { CalendarClock, ExternalLink, CreditCard } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { formatDate } from "@/lib/utils";
 
@@ -21,6 +21,21 @@ export const PlanSummary = () => {
         return 'bg-green-500 hover:bg-green-600';
       default:
         return 'bg-gray-500 hover:bg-gray-600';
+    }
+  };
+
+  // Get status color based on subscription status
+  const getStatusColor = (status: string | undefined): string => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-500/20 text-green-400 border-green-400/30';
+      case 'past_due':
+        return 'bg-amber-500/20 text-amber-400 border-amber-400/30';
+      case 'canceled':
+      case 'expired':
+        return 'bg-red-500/20 text-red-400 border-red-400/30';
+      default:
+        return 'bg-gray-500/20 text-gray-400 border-gray-400/30';
     }
   };
 
@@ -52,17 +67,29 @@ export const PlanSummary = () => {
             <Badge className={`${getPlanColor(subscription?.plan)} text-white capitalize`}>
               {subscription?.plan || "Free"}
             </Badge>
+            {subscription?.status && (
+              <Badge variant="outline" className={getStatusColor(subscription.status)}>
+                {subscription.status.replace('_', ' ')}
+              </Badge>
+            )}
           </div>
           
-          {subscription?.valid_until && (
-            <p className="text-white/70 flex items-center gap-2">
+          {subscription?.valid_until && subscription.is_active && (
+            <p className="text-white/70 flex items-center gap-2 mb-2">
               <CalendarClock className="h-4 w-4" />
               Renews on {formatDate(subscription.valid_until)}
             </p>
           )}
           
+          {subscription?.credits_remaining !== undefined && (
+            <p className="text-white/70 flex items-center gap-2 mb-2">
+              <CreditCard className="h-4 w-4" />
+              {subscription.plan === 'unlimited' ? 'Unlimited' : subscription.credits_remaining} credits remaining
+            </p>
+          )}
+          
           {subscription?.commercial_license && (
-            <Badge variant="outline" className="mt-2 text-yellow-400 border-yellow-400/30">
+            <Badge variant="outline" className="text-yellow-400 border-yellow-400/30">
               Commercial License
             </Badge>
           )}
