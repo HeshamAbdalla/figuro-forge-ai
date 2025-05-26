@@ -31,7 +31,6 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isInfoVisible, setIsInfoVisible] = useState(false);
-  const [autoRotate, setAutoRotate] = useState(false); // Changed from true to false
   const [stableModelUrl, setStableModelUrl] = useState<string | null>(null);
   const [modelError, setModelError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -70,7 +69,6 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
       setIsFullscreen(false);
       setIsInfoVisible(false);
       setModelError(null);
-      setAutoRotate(false); // Changed from true to false
     }
     onOpenChange(newOpen);
   };
@@ -159,15 +157,6 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
     });
   };
 
-  // Auto-rotation toggle
-  const toggleAutoRotation = () => {
-    setAutoRotate(!autoRotate);
-    toast({
-      title: autoRotate ? "Auto-rotation disabled" : "Auto-rotation enabled",
-      description: autoRotate ? "Model rotation stopped" : "Model will now rotate automatically"
-    });
-  };
-
   // Determine if we should show error
   const shouldShowError = modelError && !isLoading;
 
@@ -205,20 +194,6 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
                 title="Model Information"
               >
                 <Info size={16} />
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleAutoRotation}
-                className={cn(
-                  "h-8 w-8 text-white/70 hover:text-white hover:bg-white/10",
-                  autoRotate && "bg-white/10 text-white"
-                )}
-                title={autoRotate ? "Stop Auto-rotation" : "Start Auto-rotation"}
-                disabled={!stableModelUrl || isLoading}
-              >
-                <RotateCcw size={16} />
               </Button>
               
               <Button
@@ -272,7 +247,6 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
                 <div><span className="text-white/60">File:</span> {modelName}</div>
                 <div><span className="text-white/60">Type:</span> 3D Model (GLB)</div>
                 <div><span className="text-white/60">Controls:</span> Click and drag to rotate, scroll to zoom</div>
-                <div><span className="text-white/60">Auto-rotation:</span> {autoRotate ? 'Enabled' : 'Disabled'}</div>
               </div>
             </div>
           )}
@@ -291,7 +265,7 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
             <ModelScene 
               ref={modelSceneRef}
               modelUrl={stableModelUrl}
-              autoRotate={autoRotate}
+              autoRotate={false}
               onModelError={handleModelError}
             />
           ) : (
@@ -311,12 +285,6 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
               <span>Interactive 3D Preview</span>
               <span className="hidden sm:inline">•</span>
               <span className="hidden sm:inline">Click and drag to rotate</span>
-              {autoRotate && (
-                <>
-                  <span className="hidden sm:inline">•</span>
-                  <span className="hidden sm:inline text-green-400">Auto-rotating</span>
-                </>
-              )}
             </div>
             
             <div className="flex items-center space-x-2">
