@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { saveFigurine, updateFigurineWithModelUrl } from "@/services/figurineService";
 import { generateImage } from "@/services/generationService";
-import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { downloadAndSaveModel } from "@/utils/modelUtils";
 
 // Define the return type for handleGenerate to make it consistent
@@ -391,7 +391,7 @@ export const useImageGeneration = () => {
                 
                 toast({
                   title: "3D model created",
-                  description: "Your figurine is ready to view in 3D (external hosting)",
+                  description: "Your 3D model is ready to view",
                 });
               }
             } else {
@@ -399,7 +399,7 @@ export const useImageGeneration = () => {
               
               toast({
                 title: "3D model created",
-                description: "Your figurine is ready to view in 3D",
+                description: "Your 3D model is ready to view",
               });
             }
           } catch (error) {
@@ -551,6 +551,12 @@ export const useImageGeneration = () => {
     modelUrlRef.current = null;
     
     try {
+      // Get current session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Authentication required');
+      }
+
       // Check if the image URL is a blob URL
       const isBlobUrl = generatedImage.startsWith('blob:');
       let requestBody: any = {};
@@ -569,38 +575,26 @@ export const useImageGeneration = () => {
       
       console.log("Sending conversion request to edge function...");
       
-      // Use the correct Supabase URL for the edge function
-      const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/convert-to-3d`;
-      
-      console.log("Edge function URL:", edgeFunctionUrl);
-      
-      // Call our Supabase Edge Function to convert the image to 3D
-      const response = await fetch(edgeFunctionUrl, {
-        method: "POST",
+      // Call the convert-to-3d edge function with proper authentication
+      const { data, error } = await supabase.functions.invoke('convert-to-3d', {
+        body: requestBody,
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify(requestBody),
       });
       
-      if (!response.ok) {
-        let errorMessage = "Failed to convert image to 3D model";
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.details || errorMessage;
-          console.error("Error response from edge function:", errorData);
-        } catch (e) {
-          // If we can't parse the error as JSON, use the status text
-          errorMessage = `Error: ${response.status} ${response.statusText}`;
-          console.error("Error response from edge function (not JSON):", response.status, response.statusText);
+      if (error) {
+        console.error("Error response from edge function:", error);
+        
+        // Handle specific error cases
+        if (error.message?.includes('limit reached') || error.message?.includes('429')) {
+          throw new Error('You have reached your 3D model conversion limit. Please upgrade your plan to continue.');
         }
-        throw new Error(errorMessage);
+        
+        throw new Error(error.message || 'Failed to convert image to 3D model');
       }
       
-      const data = await response.json();
-      
-      if (!data.taskId) {
+      if (!data?.taskId) {
         throw new Error("No task ID returned from conversion service");
       }
       
