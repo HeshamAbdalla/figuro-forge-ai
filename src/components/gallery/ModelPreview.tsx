@@ -243,7 +243,7 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
             </Suspense>
             
             <OrbitControls 
-              autoRotate={isIntersecting}
+              autoRotate={false}
               autoRotateSpeed={1.5}
               enablePan={false}
               enableZoom={false}
