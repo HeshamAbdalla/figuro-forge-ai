@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface UseGalleryHandlersProps {
   generate3DModel: (imageUrl: string, imageName: string) => void;
@@ -17,6 +18,7 @@ export const useGalleryHandlers = ({
   const { user } = useAuth();
   const navigate = useNavigate();
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
+  const { canPerformAction, consumeAction } = useSubscription();
 
   // Handle download functionality
   const handleDownload = (url: string, name: string) => {
@@ -43,9 +45,23 @@ export const useGalleryHandlers = ({
     }
   };
 
-  // Handle 3D generation
-  const handleGenerate3D = (imageUrl: string, imageName: string) => {
+  // Handle 3D generation with subscription usage tracking
+  const handleGenerate3D = async (imageUrl: string, imageName: string) => {
     if (!user) {
+      setAuthPromptOpen(true);
+      return;
+    }
+    
+    // Check if user can perform 3D conversion
+    const canConvert = canPerformAction("model_conversion");
+    if (!canConvert) {
+      setAuthPromptOpen(true);
+      return;
+    }
+    
+    // Consume usage before generation
+    const consumed = await consumeAction("model_conversion");
+    if (!consumed) {
       setAuthPromptOpen(true);
       return;
     }

@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 
 export const PlanSummary = () => {
-  const { subscription, openCustomerPortal, isLoading, getUpgradeRecommendation } = useSubscription();
+  const { subscription, openCustomerPortal, isLoading } = useSubscription();
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   
   const getPlanColor = (plan: string | undefined): string => {
@@ -88,8 +88,6 @@ export const PlanSummary = () => {
   }
 
   const currentPlan = subscription?.plan ? PLANS[subscription.plan] : PLANS.free;
-  const imageGenUpgrade = getUpgradeRecommendation('image_generation');
-  const modelConvUpgrade = getUpgradeRecommendation('model_conversion');
 
   // Calculate usage percentages for progress bars using subscription data
   const dailyImageProgress = currentPlan.limits.isUnlimited ? 0 : 
@@ -178,10 +176,10 @@ export const PlanSummary = () => {
                   indicatorClassName={dailyImageProgress >= 90 ? "bg-red-500" : dailyImageProgress >= 70 ? "bg-amber-500" : "bg-blue-400"}
                 />
               )}
-              {dailyImageProgress >= 90 && !currentPlan.limits.isUnlimited && imageGenUpgrade && (
+              {dailyImageProgress >= 90 && !currentPlan.limits.isUnlimited && (
                 <div className="flex items-center gap-1 text-amber-400 text-sm">
                   <TrendingUp className="h-3 w-3" />
-                  <span>Upgrade to {imageGenUpgrade.recommendedPlan} for {imageGenUpgrade.benefits}</span>
+                  <span>Approaching daily limit</span>
                 </div>
               )}
             </div>
@@ -204,10 +202,10 @@ export const PlanSummary = () => {
                   indicatorClassName={monthlyModelProgress >= 90 ? "bg-red-500" : monthlyModelProgress >= 70 ? "bg-amber-500" : "bg-purple-400"}
                 />
               )}
-              {monthlyModelProgress >= 90 && !currentPlan.limits.isUnlimited && modelConvUpgrade && (
+              {monthlyModelProgress >= 90 && !currentPlan.limits.isUnlimited && (
                 <div className="flex items-center gap-1 text-amber-400 text-sm">
                   <TrendingUp className="h-3 w-3" />
-                  <span>Upgrade to {modelConvUpgrade.recommendedPlan} for {modelConvUpgrade.benefits}</span>
+                  <span>Approaching monthly limit</span>
                 </div>
               )}
             </div>

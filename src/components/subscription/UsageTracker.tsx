@@ -26,7 +26,7 @@ export const UsageTracker = () => {
 
   const currentPlan = PLANS[subscription.plan];
   
-  // Calculate usage percentages
+  // Calculate usage percentages using subscription data
   const imageUsagePercentage = currentPlan.limits.isUnlimited 
     ? 0 
     : Math.min(100, (subscription.generation_count_today / currentPlan.limits.imageGenerationsPerDay) * 100);

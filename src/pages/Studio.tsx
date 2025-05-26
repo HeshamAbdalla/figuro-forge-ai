@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import UploadModelModal from "@/components/UploadModelModal";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { useUsageTracking } from "@/hooks/useUsageTracking";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import VantaBackground from "@/components/VantaBackground";
@@ -44,7 +44,7 @@ const Studio = () => {
 
   const { user: authUser, signOut } = useAuth();
   const navigate = useNavigate();
-  const { canPerformAction, trackAction } = useUsageTracking();
+  const { canPerformAction, consumeAction } = useSubscription();
 
   // Check for authenticated user
   useEffect(() => {
@@ -99,15 +99,20 @@ const Studio = () => {
     if (!canGenerate) {
       toast({
         title: "Usage limit reached",
-        description: "You've reached your monthly image generation limit",
+        description: "You've reached your daily image generation limit",
         variant: "destructive",
       });
       return;
     }
     
-    // Track usage
-    const tracked = await trackAction("image_generation");
-    if (!tracked) {
+    // Consume usage before generation
+    const consumed = await consumeAction("image_generation");
+    if (!consumed) {
+      toast({
+        title: "Usage limit reached",
+        description: "You've reached your daily image generation limit",
+        variant: "destructive",
+      });
       return;
     }
     
@@ -163,9 +168,14 @@ const Studio = () => {
       return;
     }
     
-    // Track usage
-    const tracked = await trackAction("model_conversion");
-    if (!tracked) {
+    // Consume usage before conversion
+    const consumed = await consumeAction("model_conversion");
+    if (!consumed) {
+      toast({
+        title: "Usage limit reached",
+        description: "You've reached your monthly model conversion limit",
+        variant: "destructive",
+      });
       return;
     }
     
