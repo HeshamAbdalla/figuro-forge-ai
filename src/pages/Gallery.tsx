@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
@@ -8,9 +7,11 @@ import CallToAction from "@/components/gallery/CallToAction";
 import Generate3DModal from "@/components/gallery/Generate3DModal";
 import Generate3DConfigModal from "@/components/gallery/Generate3DConfigModal";
 import EnhancedModelViewerDialog from "@/components/gallery/EnhancedModelViewerDialog";
+import EnhancedImageViewerDialog from "@/components/gallery/EnhancedImageViewerDialog";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
+import { useImageViewer } from "@/components/gallery/useImageViewer";
 import PageTransition from "@/components/PageTransition";
 import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
@@ -43,6 +44,15 @@ const Gallery = () => {
     handleCloseModelViewer
   } = useModelViewer();
 
+  const {
+    viewingImage,
+    viewingImageName,
+    imageViewerOpen,
+    setImageViewerOpen,
+    handleViewImage,
+    handleCloseImageViewer
+  } = useImageViewer();
+
   // Handle download functionality
   const handleDownload = (url: string, name: string) => {
     if (!user) {
@@ -57,6 +67,15 @@ const Gallery = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Handle view functionality - route to appropriate viewer
+  const handleView = (url: string, fileName: string, fileType: 'image' | '3d-model') => {
+    if (fileType === '3d-model') {
+      handleViewModel(url, fileName);
+    } else {
+      handleViewImage(url, fileName);
+    }
   };
 
   // Handle 3D generation
@@ -101,7 +120,7 @@ const Gallery = () => {
                 images={images}
                 isLoading={isLoading}
                 onDownload={handleDownload}
-                onViewModel={handleViewModel}
+                onView={handleView}
                 onGenerate3D={handleGenerate3D}
               />
               
@@ -128,7 +147,7 @@ const Gallery = () => {
             images={images}
             isLoading={isLoading}
             onDownload={handleDownload}
-            onViewModel={handleViewModel}
+            onView={handleView}
             onGenerate3D={handleGenerate3D}
           />
           
@@ -142,6 +161,15 @@ const Gallery = () => {
           modelUrl={viewingModel}
           fileName={viewingFileName}
           onClose={handleCloseModelViewer}
+        />
+
+        {/* Enhanced Image Viewer Dialog */}
+        <EnhancedImageViewerDialog
+          open={imageViewerOpen}
+          onOpenChange={setImageViewerOpen}
+          imageUrl={viewingImage}
+          fileName={viewingImageName}
+          onClose={handleCloseImageViewer}
         />
 
         {/* 3D Generation Modal */}

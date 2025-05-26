@@ -16,7 +16,7 @@ interface GalleryGridProps {
   images: BucketImage[];
   isLoading: boolean;
   onDownload: (url: string, name: string) => void;
-  onViewModel: (url: string) => void;
+  onView: (url: string, name: string, type: 'image' | '3d-model') => void;
   onGenerate3D?: (url: string, name: string) => void;
 }
 
@@ -24,7 +24,7 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
   images, 
   isLoading, 
   onDownload, 
-  onViewModel,
+  onView,
   onGenerate3D 
 }) => {
   if (isLoading) {
@@ -57,7 +57,7 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
           key={file.id} 
           file={file} 
           onDownload={onDownload}
-          onViewModel={onViewModel}
+          onView={onView}
           onGenerate3D={onGenerate3D}
         />
       ))}

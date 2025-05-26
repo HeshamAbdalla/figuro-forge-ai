@@ -1,4 +1,3 @@
-
 import React from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +13,8 @@ import { useModelViewer } from "@/components/gallery/useModelViewer";
 import AnimatedSection from "@/components/animations/AnimatedSection";
 import StaggerContainer from "@/components/animations/StaggerContainer";
 import AnimatedItem from "@/components/animations/AnimatedItem";
+import EnhancedImageViewerDialog from "@/components/gallery/EnhancedImageViewerDialog";
+import { useImageViewer } from "@/components/gallery/useImageViewer";
 
 const HomepageGallery: React.FC = () => {
   const { images, isLoading } = useGalleryFiles();
@@ -27,6 +28,16 @@ const HomepageGallery: React.FC = () => {
     handleViewModel, 
     handleCloseModelViewer 
   } = useModelViewer();
+
+  // Set up image viewer functionality
+  const {
+    viewingImage,
+    viewingImageName,
+    imageViewerOpen,
+    setImageViewerOpen,
+    handleViewImage,
+    handleCloseImageViewer
+  } = useImageViewer();
 
   // Set up secure download functionality
   const { 
@@ -46,6 +57,15 @@ const HomepageGallery: React.FC = () => {
 
   const navigateToStudio = () => {
     navigate("/studio");
+  };
+
+  // Handle view functionality - route to appropriate viewer
+  const handleView = (url: string, fileName: string, fileType: 'image' | '3d-model') => {
+    if (fileType === '3d-model') {
+      handleViewModel(url);
+    } else {
+      handleViewImage(url, fileName);
+    }
   };
 
   return (
@@ -123,41 +143,21 @@ const HomepageGallery: React.FC = () => {
                           </span>
                         </div>
                         
-                        {file.type === '3d-model' ? (
-                          <div className="flex flex-col gap-2 w-full">
-                            <Button
-                              onClick={() => handleViewModel(file.url)}
-                              size="sm"
-                              className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8 px-3 transform transition-transform hover:scale-105"
-                            >
-                              <Eye size={14} className="mr-1.5" /> View Model
-                            </Button>
-                            <Button
-                              onClick={() => secureDownload(file.url, file.name)}
-                              disabled={isDownloading}
-                              size="sm"
-                              variant="outline"
-                              className="w-full border-white/10 h-8 px-3 transform transition-transform hover:scale-105"
-                            >
-                              {isDownloading ? (
-                                <>
-                                  <Loader2 size={14} className="mr-1.5 animate-spin" />
-                                  Downloading...
-                                </>
-                              ) : (
-                                <>
-                                  <Download size={14} className="mr-1.5" />
-                                  {isAuthenticated ? 'Download' : 'Sign in'}
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        ) : (
+                        <div className="flex flex-col gap-2 w-full">
+                          <Button
+                            onClick={() => handleView(file.url, file.name, file.type)}
+                            size="sm"
+                            className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8 px-3 transform transition-transform hover:scale-105"
+                          >
+                            <Eye size={14} className="mr-1.5" /> 
+                            {file.type === '3d-model' ? 'View Model' : 'View Image'}
+                          </Button>
                           <Button
                             onClick={() => secureDownload(file.url, file.name)}
                             disabled={isDownloading}
                             size="sm"
-                            className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8 px-3 transform transition-transform hover:scale-105"
+                            variant="outline"
+                            className="w-full border-white/10 h-8 px-3 transform transition-transform hover:scale-105"
                           >
                             {isDownloading ? (
                               <>
@@ -171,7 +171,7 @@ const HomepageGallery: React.FC = () => {
                               </>
                             )}
                           </Button>
-                        )}
+                        </div>
                       </div>
                     </motion.div>
                   </motion.div>
@@ -216,6 +216,15 @@ const HomepageGallery: React.FC = () => {
         onOpenChange={setModelViewerOpen}
         modelUrl={viewingModel}
         onClose={handleCloseModelViewer}
+      />
+
+      {/* Enhanced Image Viewer Dialog */}
+      <EnhancedImageViewerDialog
+        open={imageViewerOpen}
+        onOpenChange={setImageViewerOpen}
+        imageUrl={viewingImage}
+        fileName={viewingImageName}
+        onClose={handleCloseImageViewer}
       />
 
       {/* Authentication Prompt Modal */}

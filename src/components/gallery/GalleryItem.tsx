@@ -9,14 +9,14 @@ import ModelPreview from "./ModelPreview";
 interface GalleryItemProps {
   file: BucketImage;
   onDownload: (url: string, name: string) => void;
-  onViewModel: (url: string, fileName?: string) => void;
+  onView: (url: string, name: string, type: 'image' | '3d-model') => void;
   onGenerate3D?: (url: string, name: string) => void;
 }
 
 const GalleryItem: React.FC<GalleryItemProps> = ({ 
   file, 
   onDownload, 
-  onViewModel,
+  onView,
   onGenerate3D 
 }) => {
   const [imageError, setImageError] = useState(false);
@@ -38,8 +38,8 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
 
   const handleView = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Pass the file name to the enhanced modal
-    onViewModel(file.url, file.name);
+    // Pass the file type to determine which viewer to use
+    onView(file.url, file.name, file.type);
   };
 
   const handleGenerate3D = (e: React.MouseEvent) => {
@@ -179,7 +179,7 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
               variant="outline"
               className="border-white/20 bg-white/10 backdrop-blur-sm hover:bg-white/20"
               onClick={handleView}
-              title={is3DModel ? "View in Enhanced 3D Viewer" : "View Image"}
+              title={is3DModel ? "View in Enhanced 3D Viewer" : "View in Enhanced Image Viewer"}
             >
               <Eye size={16} />
             </Button>
