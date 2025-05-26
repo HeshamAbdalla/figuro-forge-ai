@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, ExternalLink, CreditCard, Image, Box, TrendingUp, Loader2 } from "lucide-react";
+import { CalendarClock, ExternalLink, Image, Box, TrendingUp, Loader2 } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { formatDate } from "@/lib/utils";
 import { PLANS } from "@/config/plans";
@@ -97,11 +97,6 @@ export const PlanSummary = () => {
   
   const monthlyModelProgress = currentPlan.limits.isUnlimited ? 0 :
     Math.min(100, ((subscription?.converted_3d_this_month || 0) / currentPlan.limits.modelConversionsPerMonth) * 100);
-  
-  // Fix credits calculation to use subscription data and calculate usage percentage
-  const creditsUsed = currentPlan.limits.monthlyCredits - (subscription?.credits_remaining || 0);
-  const creditsProgress = currentPlan.limits.isUnlimited ? 0 :
-    Math.min(100, (creditsUsed / currentPlan.limits.monthlyCredits) * 100);
 
   return (
     <div className="space-y-6">
@@ -127,13 +122,6 @@ export const PlanSummary = () => {
                   Renews on {formatDate(subscription.valid_until)}
                 </p>
               )}
-              
-              <div className="flex items-center gap-2 mb-2">
-                <CreditCard className="h-4 w-4 text-white/70" />
-                <span className="text-white/70">
-                  {currentPlan.limits.isUnlimited ? 'Unlimited' : subscription?.credits_remaining || 0} credits remaining
-                </span>
-              </div>
               
               {subscription?.commercial_license && (
                 <Badge variant="outline" className="text-yellow-400 border-yellow-400/30">
@@ -166,38 +154,12 @@ export const PlanSummary = () => {
         </CardContent>
       </Card>
 
-      {/* Enhanced Usage Breakdown */}
+      {/* Usage Breakdown */}
       <Card className="bg-figuro-darker/50 border-white/10">
         <CardContent className="p-6">
           <h3 className="text-xl font-semibold text-white mb-4">Usage Overview</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Credits Usage */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-figuro-accent" />
-                  <span className="text-white font-medium">Credits</span>
-                </div>
-                <span className="text-white/70 text-sm">
-                  {subscription?.credits_remaining || 0} / {currentPlan.limits.isUnlimited ? '∞' : currentPlan.limits.monthlyCredits}
-                </span>
-              </div>
-              {!currentPlan.limits.isUnlimited && (
-                <Progress 
-                  value={creditsProgress} 
-                  className="h-2 bg-white/10"
-                  indicatorClassName={creditsProgress >= 90 ? "bg-red-500" : creditsProgress >= 70 ? "bg-amber-500" : "bg-figuro-accent"}
-                />
-              )}
-              {creditsProgress >= 90 && !currentPlan.limits.isUnlimited && (
-                <div className="flex items-center gap-1 text-amber-400 text-sm">
-                  <TrendingUp className="h-3 w-3" />
-                  <span>Running low on credits</span>
-                </div>
-              )}
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Daily Image Generations */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -217,8 +179,9 @@ export const PlanSummary = () => {
                 />
               )}
               {dailyImageProgress >= 90 && !currentPlan.limits.isUnlimited && imageGenUpgrade && (
-                <div className="text-xs text-amber-400">
-                  Upgrade to {imageGenUpgrade.recommendedPlan} for {imageGenUpgrade.benefits}
+                <div className="flex items-center gap-1 text-amber-400 text-sm">
+                  <TrendingUp className="h-3 w-3" />
+                  <span>Upgrade to {imageGenUpgrade.recommendedPlan} for {imageGenUpgrade.benefits}</span>
                 </div>
               )}
             </div>
@@ -228,7 +191,7 @@ export const PlanSummary = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Box className="h-4 w-4 text-purple-400" />
-                  <span className="text-white font-medium">3D Models</span>
+                  <span className="text-white font-medium">3D Models This Month</span>
                 </div>
                 <span className="text-white/70 text-sm">
                   {subscription?.converted_3d_this_month || 0} / {currentPlan.limits.isUnlimited ? '∞' : currentPlan.limits.modelConversionsPerMonth}
@@ -242,8 +205,9 @@ export const PlanSummary = () => {
                 />
               )}
               {monthlyModelProgress >= 90 && !currentPlan.limits.isUnlimited && modelConvUpgrade && (
-                <div className="text-xs text-amber-400">
-                  Upgrade to {modelConvUpgrade.recommendedPlan} for {modelConvUpgrade.benefits}
+                <div className="flex items-center gap-1 text-amber-400 text-sm">
+                  <TrendingUp className="h-3 w-3" />
+                  <span>Upgrade to {modelConvUpgrade.recommendedPlan} for {modelConvUpgrade.benefits}</span>
                 </div>
               )}
             </div>

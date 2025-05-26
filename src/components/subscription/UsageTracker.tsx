@@ -3,12 +3,13 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle } from "lucide-react";
-import { useUsageTracking } from "@/hooks/useUsageTracking";
+import { useSubscription } from "@/hooks/useSubscription";
+import { PLANS } from "@/config/plans";
 
 export const UsageTracker = () => {
-  const { usage, limits, isLoading } = useUsageTracking();
+  const { subscription, isLoading } = useSubscription();
   
-  if (isLoading || !usage || !limits) {
+  if (isLoading || !subscription) {
     return (
       <Card className="bg-figuro-darker/50 border-white/10 mb-6">
         <CardContent className="p-6">
@@ -23,13 +24,16 @@ export const UsageTracker = () => {
     );
   }
 
-  const imageUsagePercentage = limits.images === Infinity 
-    ? 0 
-    : Math.min(100, (usage.image_count / limits.images) * 100);
+  const currentPlan = PLANS[subscription.plan];
   
-  const modelUsagePercentage = limits.models === Infinity 
+  // Calculate usage percentages
+  const imageUsagePercentage = currentPlan.limits.isUnlimited 
     ? 0 
-    : Math.min(100, (usage.model_count / limits.models) * 100);
+    : Math.min(100, (subscription.generation_count_today / currentPlan.limits.imageGenerationsPerDay) * 100);
+  
+  const modelUsagePercentage = currentPlan.limits.isUnlimited 
+    ? 0 
+    : Math.min(100, (subscription.converted_3d_this_month / currentPlan.limits.modelConversionsPerMonth) * 100);
 
   const isImageNearLimit = imageUsagePercentage >= 80;
   const isModelNearLimit = modelUsagePercentage >= 80;
@@ -43,7 +47,7 @@ export const UsageTracker = () => {
           <div>
             <div className="flex justify-between items-center mb-2">
               <p className="text-white">
-                Image Generations
+                Image Generations (Today)
                 {isImageNearLimit && !isNaN(imageUsagePercentage) && imageUsagePercentage < 100 && (
                   <span className="ml-2 text-amber-400 font-medium flex items-center text-sm">
                     <AlertTriangle className="h-3.5 w-3.5 mr-1" />
@@ -52,7 +56,7 @@ export const UsageTracker = () => {
                 )}
               </p>
               <span className="text-white/70">
-                {usage.image_count} / {limits.images === Infinity ? '∞' : limits.images}
+                {subscription.generation_count_today} / {currentPlan.limits.isUnlimited ? '∞' : currentPlan.limits.imageGenerationsPerDay}
               </span>
             </div>
             <Progress 
@@ -67,7 +71,7 @@ export const UsageTracker = () => {
             />
             {imageUsagePercentage >= 100 && (
               <p className="text-red-400 text-sm mt-1">
-                You've reached your limit. Please upgrade to continue generating images.
+                You've reached your daily limit. Please upgrade to continue generating images.
               </p>
             )}
           </div>
@@ -75,7 +79,7 @@ export const UsageTracker = () => {
           <div>
             <div className="flex justify-between items-center mb-2">
               <p className="text-white">
-                3D Model Conversions
+                3D Model Conversions (This Month)
                 {isModelNearLimit && !isNaN(modelUsagePercentage) && modelUsagePercentage < 100 && (
                   <span className="ml-2 text-amber-400 font-medium flex items-center text-sm">
                     <AlertTriangle className="h-3.5 w-3.5 mr-1" />
@@ -84,7 +88,7 @@ export const UsageTracker = () => {
                 )}
               </p>
               <span className="text-white/70">
-                {usage.model_count} / {limits.models === Infinity ? '∞' : limits.models}
+                {subscription.converted_3d_this_month} / {currentPlan.limits.isUnlimited ? '∞' : currentPlan.limits.modelConversionsPerMonth}
               </span>
             </div>
             <Progress 
@@ -99,7 +103,7 @@ export const UsageTracker = () => {
             />
             {modelUsagePercentage >= 100 && (
               <p className="text-red-400 text-sm mt-1">
-                You've reached your limit. Please upgrade to continue converting models.
+                You've reached your monthly limit. Please upgrade to continue converting models.
               </p>
             )}
           </div>

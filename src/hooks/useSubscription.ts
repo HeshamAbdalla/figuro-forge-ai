@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -24,7 +23,6 @@ export interface SubscriptionData {
   valid_until: string | null;
   usage: UsageStats;
   limits: SubscriptionLimits;
-  credits_remaining: number;
   status: 'active' | 'past_due' | 'canceled' | 'inactive' | 'expired';
   generation_count_today: number;
   converted_3d_this_month: number;
@@ -101,17 +99,12 @@ export const useSubscription = () => {
     }
   }, []);
 
-  // Check if user can perform action with enhanced limit checking
+  // Check if user can perform action based on usage limits
   const canPerformAction = useCallback((actionType: 'image_generation' | 'model_conversion'): boolean => {
     if (!subscription || !user) return false;
     
     const planConfig = PLANS[subscription.plan];
     if (!planConfig) return false;
-    
-    // Check credits first
-    if (subscription.credits_remaining <= 0 && !planConfig.limits.isUnlimited) {
-      return false;
-    }
     
     // Check specific limits
     if (actionType === 'image_generation') {
@@ -351,7 +344,7 @@ export const useSubscription = () => {
     canPerformAction,
     consumeAction,
     getUpgradeRecommendation,
-    // Legacy compatibility
+    // Legacy compatibility - now based on actual usage limits
     hasCredits: (creditsNeeded: number = 1) => canPerformAction('image_generation'),
     consumeCredits: (creditsToConsume: number = 1) => consumeAction('image_generation'),
   };
