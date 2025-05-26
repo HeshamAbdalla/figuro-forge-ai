@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
@@ -18,7 +17,7 @@ import { toast } from "@/hooks/use-toast";
 
 const Profile = () => {
   const { user, profile, isLoading: authLoading, refreshAuth } = useAuth();
-  const { subscription, isLoading: subscriptionLoading, checkSubscription, verifySubscription } = useSubscription();
+  const { subscription, isLoading: subscriptionLoading, checkSubscription } = useSubscription();
   const [activeTab, setActiveTab] = useState("info");
   const [searchParams, setSearchParams] = useSearchParams();
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -51,27 +50,15 @@ const Profile = () => {
           // Wait for webhook processing
           await new Promise(resolve => setTimeout(resolve, 3000));
           
-          // Verify subscription upgrade
-          const validPlans = ['free', 'starter', 'pro', 'unlimited'] as const;
-          type ValidPlan = typeof validPlans[number];
+          // Refresh subscription data
+          await checkSubscription();
           
-          if (validPlans.includes(plan as ValidPlan)) {
-            const verified = await verifySubscription(plan as ValidPlan);
-            
-            if (verified) {
-              toast({
-                title: "Subscription Activated!",
-                description: `Your ${plan} plan is now active. Welcome!`,
-              });
-            } else {
-              toast({
-                title: "Payment Processed",
-                description: "Your subscription will be activated shortly.",
-              });
-            }
-          }
+          toast({
+            title: "Subscription Activated!",
+            description: `Your ${plan} plan is now active. Welcome!`,
+          });
         } catch (error) {
-          console.error("❌ [PROFILE] Error verifying subscription:", error);
+          console.error("❌ [PROFILE] Error refreshing subscription:", error);
           toast({
             title: "Payment Processed",
             description: "Your subscription will be activated shortly.",
@@ -84,7 +71,7 @@ const Profile = () => {
     };
 
     handleStripeSuccess();
-  }, [searchParams, hasProcessedSuccess, isProcessingPayment, verifySubscription, setSearchParams]);
+  }, [searchParams, hasProcessedSuccess, isProcessingPayment, checkSubscription, setSearchParams]);
   
   useEffect(() => {
     // Redirect if not authenticated
