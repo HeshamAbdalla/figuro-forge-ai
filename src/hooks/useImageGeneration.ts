@@ -580,9 +580,13 @@ export const useImageGeneration = () => {
       if (error) {
         console.error("Error response from edge function:", error);
         
-        // Handle specific error cases
+        // Handle specific error cases with better messages
         if (error.message?.includes('limit reached') || error.message?.includes('429')) {
           throw new Error('You have reached your 3D model conversion limit. Please upgrade your plan to continue.');
+        }
+        
+        if (error.message?.includes('Model conversion limit reached')) {
+          throw new Error('You have reached your monthly 3D model conversion limit. Please upgrade your plan or wait until next month.');
         }
         
         throw new Error(error.message || 'Failed to convert image to 3D model');

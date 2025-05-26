@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -137,7 +138,7 @@ export const useSubscription = () => {
       });
       
       if (error) {
-        console.error('Error consuming action:', error);
+        console.error('❌ [SUBSCRIPTION] Error consuming action:', error);
         return false;
       }
       
@@ -155,7 +156,7 @@ export const useSubscription = () => {
       
       return true;
     } catch (err) {
-      console.error('Error consuming action:', err);
+      console.error('❌ [SUBSCRIPTION] Error consuming action:', err);
       return false;
     }
   }, [subscription, user, checkSubscription]);
