@@ -1,7 +1,7 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { PLANS } from '@/config/plans';
 
 export interface SubscriptionLimits {
   image_generations_limit: number;
@@ -11,6 +11,8 @@ export interface SubscriptionLimits {
 export interface UsageStats {
   image_generations_used: number;
   model_conversions_used: number;
+  generation_count_today: number;
+  converted_3d_this_month: number;
 }
 
 export interface SubscriptionData {
@@ -23,6 +25,9 @@ export interface SubscriptionData {
   limits: SubscriptionLimits;
   credits_remaining: number;
   status: 'active' | 'past_due' | 'canceled' | 'inactive' | 'expired';
+  generation_count_today: number;
+  converted_3d_this_month: number;
+  last_generated_at: string | null;
 }
 
 export const useSubscription = () => {
@@ -95,88 +100,85 @@ export const useSubscription = () => {
     }
   }, []);
 
-  // Verify subscription matches expected plan
-  const verifySubscription = useCallback(async (expectedPlan: 'free' | 'starter' | 'pro' | 'unlimited'): Promise<boolean> => {
-    try {
-      console.log('🔍 [SUBSCRIPTION] Verifying subscription for expected plan:', expectedPlan);
-      
-      // Use current subscription data if available and recent
-      if (subscription && (Date.now() - lastCheckTimeRef.current) < 30000) {
-        const matches = subscription.plan === expectedPlan && subscription.is_active;
-        console.log('🔍 [SUBSCRIPTION] Using cached data for verification:', matches);
-        return matches;
-      }
-      
-      // Only refresh if really needed
-      await checkSubscription();
-      
-      // Small delay to ensure state updates
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const matches = subscription?.plan === expectedPlan && subscription?.is_active;
-      console.log('🔍 [SUBSCRIPTION] Verification result:', matches);
-      return matches;
-    } catch (err) {
-      console.error('❌ [SUBSCRIPTION] Error verifying subscription:', err);
-      return false;
-    }
-  }, [subscription, checkSubscription]);
-
-  // Check if user has enough credits for an action
-  const hasCredits = useCallback((creditsNeeded: number = 1): boolean => {
-    if (!subscription) return false;
-    
-    // Unlimited plans have infinite credits
-    if (subscription.plan === 'unlimited') return true;
-    
-    // Check if user has enough credits remaining
-    return subscription.credits_remaining >= creditsNeeded;
-  }, [subscription]);
-
-  // Consume credits for an action
-  const consumeCredits = useCallback(async (creditsToConsume: number = 1): Promise<boolean> => {
+  // Check if user can perform action with enhanced limit checking
+  const canPerformAction = useCallback((actionType: 'image_generation' | 'model_conversion'): boolean => {
     if (!subscription || !user) return false;
     
-    // Unlimited plans don't consume credits
-    if (subscription.plan === 'unlimited') return true;
+    const planConfig = PLANS[subscription.plan];
+    if (!planConfig) return false;
     
-    // Check if user has enough credits
-    if (subscription.credits_remaining < creditsToConsume) {
-      toast({
-        title: "Insufficient Credits",
-        description: "You don't have enough credits for this action. Please upgrade your plan.",
-        variant: "destructive"
-      });
+    // Check credits first
+    if (subscription.credits_remaining <= 0 && !planConfig.limits.isUnlimited) {
       return false;
     }
     
+    // Check specific limits
+    if (actionType === 'image_generation') {
+      return planConfig.limits.isUnlimited || 
+             subscription.generation_count_today < planConfig.limits.imageGenerationsPerDay;
+    } else if (actionType === 'model_conversion') {
+      return planConfig.limits.isUnlimited || 
+             subscription.converted_3d_this_month < planConfig.limits.modelConversionsPerMonth;
+    }
+    
+    return false;
+  }, [subscription, user]);
+
+  // Enhanced consume action with database function integration
+  const consumeAction = useCallback(async (actionType: 'image_generation' | 'model_conversion'): Promise<boolean> => {
+    if (!subscription || !user) return false;
+    
     try {
-      // Update credits in database
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({ 
-          credits_remaining: subscription.credits_remaining - creditsToConsume,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
+      // Use the database function to consume usage
+      const { data, error } = await supabase.rpc('consume_feature_usage', {
+        feature_type: actionType,
+        user_id_param: user.id,
+        amount: 1
+      });
       
       if (error) {
-        console.error('Error consuming credits:', error);
+        console.error('Error consuming action:', error);
         return false;
       }
       
-      // Update local state
-      setSubscription(prev => prev ? {
-        ...prev,
-        credits_remaining: prev.credits_remaining - creditsToConsume
-      } : null);
+      if (!data) {
+        toast({
+          title: "Usage Limit Reached",
+          description: `You've reached your ${actionType.replace('_', ' ')} limit. Please upgrade your plan.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      // Refresh subscription data after consumption
+      setTimeout(checkSubscription, 500);
       
       return true;
     } catch (err) {
-      console.error('Error consuming credits:', err);
+      console.error('Error consuming action:', err);
       return false;
     }
-  }, [subscription, user]);
+  }, [subscription, user, checkSubscription]);
+
+  // Get upgrade recommendations
+  const getUpgradeRecommendation = useCallback((actionType: 'image_generation' | 'model_conversion') => {
+    if (!subscription) return null;
+    
+    const currentPlan = PLANS[subscription.plan];
+    const nextPlanOrder = currentPlan.order + 1;
+    const recommendedPlan = Object.values(PLANS).find(plan => plan.order === nextPlanOrder);
+    
+    if (!recommendedPlan) return null;
+    
+    return {
+      currentPlan: currentPlan.name,
+      recommendedPlan: recommendedPlan.name,
+      benefits: actionType === 'image_generation' 
+        ? `Increase daily limit from ${currentPlan.limits.imageGenerationsPerDay} to ${recommendedPlan.limits.imageGenerationsPerDay}`
+        : `Increase monthly limit from ${currentPlan.limits.modelConversionsPerMonth} to ${recommendedPlan.limits.modelConversionsPerMonth}`,
+      price: recommendedPlan.price
+    };
+  }, [subscription]);
 
   // Initialize subscription data
   useEffect(() => {
@@ -343,10 +345,13 @@ export const useSubscription = () => {
     error,
     user,
     checkSubscription,
-    verifySubscription,
     subscribeToPlan,
     openCustomerPortal,
-    hasCredits,
-    consumeCredits
+    canPerformAction,
+    consumeAction,
+    getUpgradeRecommendation,
+    // Legacy compatibility
+    hasCredits: (creditsNeeded: number = 1) => canPerformAction('image_generation'),
+    consumeCredits: (creditsToConsume: number = 1) => consumeAction('image_generation'),
   };
 };

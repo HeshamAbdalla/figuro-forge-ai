@@ -178,14 +178,20 @@ export type Database = {
         Row: {
           additional_conversions: number | null
           commercial_license: boolean | null
+          converted_3d_this_month: number | null
           created_at: string | null
           credits_remaining: number | null
+          daily_reset_date: string | null
           expires_at: string | null
+          generation_count_today: number | null
           id: string
+          last_generated_at: string | null
+          monthly_reset_date: string | null
           plan_type: string
           renewed_at: string | null
           status: string | null
           stripe_customer_id: string | null
+          stripe_price_id: string | null
           stripe_subscription_id: string | null
           updated_at: string | null
           user_id: string
@@ -194,14 +200,20 @@ export type Database = {
         Insert: {
           additional_conversions?: number | null
           commercial_license?: boolean | null
+          converted_3d_this_month?: number | null
           created_at?: string | null
           credits_remaining?: number | null
+          daily_reset_date?: string | null
           expires_at?: string | null
+          generation_count_today?: number | null
           id?: string
+          last_generated_at?: string | null
+          monthly_reset_date?: string | null
           plan_type?: string
           renewed_at?: string | null
           status?: string | null
           stripe_customer_id?: string | null
+          stripe_price_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string | null
           user_id: string
@@ -210,14 +222,20 @@ export type Database = {
         Update: {
           additional_conversions?: number | null
           commercial_license?: boolean | null
+          converted_3d_this_month?: number | null
           created_at?: string | null
           credits_remaining?: number | null
+          daily_reset_date?: string | null
           expires_at?: string | null
+          generation_count_today?: number | null
           id?: string
+          last_generated_at?: string | null
+          monthly_reset_date?: string | null
           plan_type?: string
           renewed_at?: string | null
           status?: string | null
           stripe_customer_id?: string | null
+          stripe_price_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string | null
           user_id?: string
@@ -254,6 +272,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_use_feature: {
+        Args: { feature_type: string; user_id_param: string }
+        Returns: boolean
+      }
       check_user_limits: {
         Args: { action_type: string }
         Returns: boolean
@@ -262,6 +284,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      consume_feature_usage: {
+        Args: { feature_type: string; user_id_param: string; amount?: number }
+        Returns: boolean
+      }
       increment_stat: {
         Args: { stat_id: string; inc_amount?: number }
         Returns: number
@@ -269,6 +295,14 @@ export type Database = {
       increment_usage: {
         Args: { action_type: string }
         Returns: boolean
+      }
+      reset_daily_usage: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      reset_monthly_usage: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {
