@@ -5,6 +5,7 @@ import { Download, Eye, Box } from "lucide-react";
 import { BucketImage } from "./types";
 import { useSecureDownload } from "@/hooks/useSecureDownload";
 import { supabase } from "@/integrations/supabase/client";
+import ModelPreview from "./ModelPreview";
 
 interface GalleryItemProps {
   file: BucketImage;
@@ -141,32 +142,34 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
 
   const isImage = file.type === 'image';
   const is3DModel = file.type === '3d-model';
-  
-  // Use thumbnail if available and verified, otherwise use original file URL
-  const displayImageUrl = (thumbnailExists && thumbnailUrl) ? thumbnailUrl : file.url;
 
   return (
     <div className="glass-panel rounded-lg overflow-hidden group hover:scale-105 transition-transform duration-200">
       <div className="aspect-square relative overflow-hidden bg-white/5">
-        {!imageError ? (
-          <img
-            src={displayImageUrl}
-            alt={file.name}
-            className="w-full h-full object-cover"
-            onError={handleImageError}
-            loading="lazy"
+        {is3DModel ? (
+          // Display 3D model directly using ModelPreview
+          <ModelPreview 
+            modelUrl={file.url} 
+            fileName={file.name}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="text-center text-white/60">
-              {is3DModel ? (
-                <Box className="w-12 h-12 mx-auto mb-2" />
-              ) : (
+          // Display image as before
+          !imageError ? (
+            <img
+              src={file.url}
+              alt={file.name}
+              className="w-full h-full object-cover"
+              onError={handleImageError}
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="text-center text-white/60">
                 <div className="w-12 h-12 mx-auto mb-2 bg-white/10 rounded" />
-              )}
-              <p className="text-sm">Preview unavailable</p>
+                <p className="text-sm">Preview unavailable</p>
+              </div>
             </div>
-          </div>
+          )
         )}
         
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
