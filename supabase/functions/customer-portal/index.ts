@@ -56,10 +56,54 @@ serve(async (req) => {
       .single();
     
     if (subscriptionError) {
-      logStep("No subscription found");
-      return new Response(JSON.stringify({ error: "No subscription found" }), {
+      logStep("No subscription found, creating free subscription");
+      
+      // For free users, create a basic customer and redirect to pricing
+      const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+      
+      // Try to find existing customer by email
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      let customerId;
+      
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+        logStep("Found existing Stripe customer for free user", { customerId });
+      } else {
+        // Create a new customer for the free user
+        const newCustomer = await stripe.customers.create({
+          email: user.email,
+          metadata: {
+            userId: user.id
+          }
+        });
+        customerId = newCustomer.id;
+        logStep("Created new Stripe customer for free user", { customerId });
+      }
+      
+      // Create a basic subscription record
+      await supabaseAdmin
+        .from("subscriptions")
+        .upsert({
+          user_id: user.id,
+          plan: 'free',
+          stripe_customer_id: customerId,
+          status: 'active',
+          is_active: true,
+          commercial_license: false,
+          additional_conversions: 0,
+          credits_remaining: 3,
+          generation_count_today: 0,
+          converted_3d_this_month: 0,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      
+      return new Response(JSON.stringify({ 
+        error: "No active subscription found",
+        action: "upgrade",
+        message: "Please upgrade to a paid plan to access subscription management."
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 404
+        status: 400
       });
     }
     
@@ -98,14 +142,20 @@ serve(async (req) => {
         .eq("user_id", user.id);
     }
     
-    // Create a customer portal session
+    // Create a customer portal session with enhanced return URL
     const origin = req.headers.get("origin") || "http://localhost:3000";
+    const returnUrl = `${origin}/profile?portal_return=true`;
+    
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${origin}/pricing`,
+      return_url: returnUrl,
     });
     
-    logStep("Customer portal session created", { url: portalSession.url });
+    logStep("Customer portal session created", { 
+      url: portalSession.url,
+      returnUrl: returnUrl,
+      customerId: customerId
+    });
     
     return new Response(JSON.stringify({ url: portalSession.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -114,8 +164,33 @@ serve(async (req) => {
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[CUSTOMER-PORTAL] Error: ${errorMessage}`);
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    logStep("ERROR in customer-portal", { message: errorMessage });
+    
+    // Provide more specific error responses
+    if (errorMessage.includes("Authentication")) {
+      return new Response(JSON.stringify({ 
+        error: "Authentication failed",
+        message: "Please log in again to access subscription management."
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401
+      });
+    }
+    
+    if (errorMessage.includes("STRIPE_SECRET_KEY")) {
+      return new Response(JSON.stringify({ 
+        error: "Service configuration error",
+        message: "Payment service is temporarily unavailable."
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 503
+      });
+    }
+    
+    return new Response(JSON.stringify({ 
+      error: "Portal creation failed",
+      message: "Unable to open subscription management. Please try again."
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500
     });

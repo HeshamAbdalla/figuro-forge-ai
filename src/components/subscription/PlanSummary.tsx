@@ -1,16 +1,18 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, ExternalLink, CreditCard, Image, Box, TrendingUp } from "lucide-react";
+import { CalendarClock, ExternalLink, CreditCard, Image, Box, TrendingUp, Loader2 } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { formatDate } from "@/lib/utils";
 import { PLANS } from "@/config/plans";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "@/hooks/use-toast";
 
 export const PlanSummary = () => {
   const { subscription, openCustomerPortal, isLoading, getUpgradeRecommendation } = useSubscription();
+  const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   
   const getPlanColor = (plan: string | undefined): string => {
     switch (plan) {
@@ -40,7 +42,34 @@ export const PlanSummary = () => {
   };
 
   const handleManagePlan = async () => {
-    await openCustomerPortal();
+    if (subscription?.plan === 'free') {
+      toast({
+        title: "No Active Subscription",
+        description: "You're currently on the free plan. Upgrade to a paid plan to access subscription management.",
+        variant: "default"
+      });
+      return;
+    }
+
+    setIsOpeningPortal(true);
+    
+    try {
+      await openCustomerPortal();
+      // Show success message
+      toast({
+        title: "Opening Customer Portal",
+        description: "Redirecting you to manage your subscription...",
+      });
+    } catch (error) {
+      console.error("❌ [PLAN_SUMMARY] Error opening customer portal:", error);
+      toast({
+        title: "Portal Error",
+        description: "Unable to open subscription management. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsOpeningPortal(false);
+    }
   };
 
   if (isLoading) {
@@ -115,10 +144,21 @@ export const PlanSummary = () => {
               variant="outline" 
               className="border-white/20 text-white hover:bg-figuro-accent hover:text-white"
               onClick={handleManagePlan}
-              disabled={subscription?.plan === 'free'}
+              disabled={isOpeningPortal}
             >
-              {subscription?.plan === 'free' ? 'No Active Subscription' : 'Manage Plan'} 
-              <ExternalLink className="ml-1 h-4 w-4" />
+              {isOpeningPortal ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Opening Portal...
+                </>
+              ) : subscription?.plan === 'free' ? (
+                'Upgrade Plan'
+              ) : (
+                <>
+                  Manage Plan
+                  <ExternalLink className="ml-1 h-4 w-4" />
+                </>
+              )}
             </Button>
           </div>
         </CardContent>

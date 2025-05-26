@@ -29,6 +29,7 @@ const Profile = () => {
     const handleStripeSuccess = async () => {
       const success = searchParams.get("success");
       const plan = searchParams.get("plan");
+      const sessionId = searchParams.get("session_id");
       
       if (success === "true" && plan && !hasProcessedSuccess && !isProcessingPayment) {
         console.log("🎉 [PROFILE] Handling Stripe success for plan:", plan);
@@ -39,6 +40,7 @@ const Profile = () => {
         const newSearchParams = new URLSearchParams(searchParams);
         newSearchParams.delete("success");
         newSearchParams.delete("plan");
+        newSearchParams.delete("session_id");
         setSearchParams(newSearchParams, { replace: true });
         
         toast({
@@ -72,6 +74,41 @@ const Profile = () => {
 
     handleStripeSuccess();
   }, [searchParams, hasProcessedSuccess, isProcessingPayment, checkSubscription, setSearchParams]);
+  
+  // Handle return from customer portal
+  useEffect(() => {
+    const handlePortalReturn = async () => {
+      const portalReturn = searchParams.get("portal_return");
+      
+      if (portalReturn === "true") {
+        console.log("🔄 [PROFILE] User returned from customer portal");
+        
+        // Clear the parameter
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete("portal_return");
+        setSearchParams(newSearchParams, { replace: true });
+        
+        // Show success message
+        toast({
+          title: "Welcome Back!",
+          description: "Checking for any subscription changes...",
+        });
+        
+        // Refresh subscription data
+        try {
+          await checkSubscription();
+          toast({
+            title: "Subscription Updated",
+            description: "Your subscription details have been refreshed.",
+          });
+        } catch (error) {
+          console.error("❌ [PROFILE] Error refreshing after portal return:", error);
+        }
+      }
+    };
+
+    handlePortalReturn();
+  }, [searchParams, checkSubscription, setSearchParams]);
   
   useEffect(() => {
     // Redirect if not authenticated
