@@ -91,15 +91,17 @@ export const PlanSummary = () => {
   const imageGenUpgrade = getUpgradeRecommendation('image_generation');
   const modelConvUpgrade = getUpgradeRecommendation('model_conversion');
 
-  // Calculate usage percentages for progress bars
+  // Calculate usage percentages for progress bars using subscription data
   const dailyImageProgress = currentPlan.limits.isUnlimited ? 0 : 
     Math.min(100, ((subscription?.generation_count_today || 0) / currentPlan.limits.imageGenerationsPerDay) * 100);
   
   const monthlyModelProgress = currentPlan.limits.isUnlimited ? 0 :
     Math.min(100, ((subscription?.converted_3d_this_month || 0) / currentPlan.limits.modelConversionsPerMonth) * 100);
   
+  // Fix credits calculation to use subscription data and calculate usage percentage
+  const creditsUsed = currentPlan.limits.monthlyCredits - (subscription?.credits_remaining || 0);
   const creditsProgress = currentPlan.limits.isUnlimited ? 0 :
-    Math.max(0, 100 - ((subscription?.credits_remaining || 0) / currentPlan.limits.monthlyCredits) * 100);
+    Math.min(100, (creditsUsed / currentPlan.limits.monthlyCredits) * 100);
 
   return (
     <div className="space-y-6">
