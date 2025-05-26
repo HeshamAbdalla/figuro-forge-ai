@@ -38,8 +38,17 @@ serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    if (taskData.status === 'SUCCEEDED' && taskData.model_url) {
-      console.log('Task completed with model URL:', taskData.model_url)
+    if (taskData.status === 'SUCCEEDED' && taskData.model_urls) {
+      // Prefer GLB format, fallback to OBJ if GLB not available
+      let modelUrl = taskData.model_urls.glb || taskData.model_urls.obj
+      
+      if (!modelUrl) {
+        console.error('No supported model format found in response:', taskData.model_urls)
+        throw new Error('No supported model format available')
+      }
+
+      console.log('Task completed with model URL:', modelUrl)
+      console.log('Available model formats:', Object.keys(taskData.model_urls))
       
       // Also capture thumbnail URL if available
       const thumbnailUrl = taskData.thumbnail_url || null
@@ -47,16 +56,19 @@ serve(async (req: Request) => {
       
       return new Response(JSON.stringify({
         status: 'completed',
-        modelUrl: taskData.model_url,
+        modelUrl: modelUrl,
         thumbnailUrl: thumbnailUrl,
         progress: 100
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     } else if (taskData.status === 'FAILED') {
+      const errorMessage = taskData.task_error?.message || 'Unknown error occurred'
+      console.error('Task failed with error:', errorMessage)
+      
       return new Response(JSON.stringify({
         status: 'failed',
-        error: taskData.task_error || 'Unknown error occurred',
+        error: errorMessage,
         progress: 0
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
