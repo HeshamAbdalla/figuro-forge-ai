@@ -11,15 +11,15 @@ import Model3D from "./Model3D";
 interface ModelSceneProps {
   modelUrl: string | null;
   modelBlob?: Blob | null;
-  autoRotate?: boolean; // Keep for backward compatibility but default to false
+  autoRotate: boolean;
   onModelError: (error: any) => void;
-  isPreview?: boolean;
+  isPreview?: boolean; // Add preview flag
 }
 
 const ModelScene = ({ 
   modelUrl, 
   modelBlob, 
-  autoRotate = false, // Default to false - no auto-rotation
+  autoRotate, 
   onModelError, 
   isPreview = false 
 }: ModelSceneProps) => {
@@ -31,17 +31,24 @@ const ModelScene = ({
   
   // Stabilize the source to prevent rapid changes
   useEffect(() => {
+    // Only update if there's been a significant change in modelUrl
+    // and it's different from what we're currently tracking
     if (modelUrl !== currentSourceRef.current) {
       console.log("ModelScene: URL source changed to", modelUrl);
       
+      // Clear any previous timeouts
       const current = currentSourceRef.current;
       currentSourceRef.current = modelUrl;
       
+      // If this is a completely new URL (not just undefined → undefined)
       if (modelUrl || (current !== null && modelUrl !== current)) {
+        // Generate new load key to force proper re-mounting
         setLoadKey(`load-${Date.now()}`);
         
+        // Small delay to ensure stable updates and prevent thrashing
         const timer = setTimeout(() => {
           setStableSource(modelUrl);
+          // Clear blob when URL changes
           if (modelUrl) setStableBlob(null);
         }, 100);
         
@@ -50,15 +57,20 @@ const ModelScene = ({
     }
   }, [modelUrl]);
   
+  // Separate effect for blob changes to prevent dependencies conflicts
   useEffect(() => {
+    // Only update if the blob itself has changed and is not null
     if (modelBlob && modelBlob !== currentSourceRef.current) {
       console.log("ModelScene: Blob source changed");
       
+      // Generate new load key to force proper re-mounting
       setLoadKey(`load-${Date.now()}`);
       currentSourceRef.current = modelBlob;
       
+      // Small delay to ensure stable updates
       const timer = setTimeout(() => {
         setStableBlob(modelBlob);
+        // Clear URL when blob changes
         if (modelBlob) setStableSource(null);
       }, 100);
       
@@ -66,6 +78,7 @@ const ModelScene = ({
     }
   }, [modelBlob]);
 
+  // Handler for errors in the 3D model
   const handleModelError = (error: any) => {
     console.error("ModelScene: Error in 3D model:", error);
     onModelError(error);
@@ -96,7 +109,8 @@ const ModelScene = ({
       </Suspense>
       
       <OrbitControls 
-        autoRotate={false} // Always disabled for better presentation
+        autoRotate={autoRotate}
+        autoRotateSpeed={2}
         enablePan={true}
         enableZoom={true}
         enableRotate={true}

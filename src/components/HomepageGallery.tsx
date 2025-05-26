@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
 import { useSecureDownload } from "@/hooks/useSecureDownload";
-import ModelThumbnail from "@/components/gallery/ModelThumbnail";
+import ModelPreview from "@/components/gallery/ModelPreview";
 import ModelViewerDialog from "@/components/gallery/ModelViewerDialog";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
@@ -93,10 +93,9 @@ const HomepageGallery: React.FC = () => {
                   >
                     <div className="w-full h-full">
                       {file.type === '3d-model' ? (
-                        <ModelThumbnail 
-                          thumbnailUrl={file.thumbnailUrl} 
-                          fileName={file.name}
-                          onViewClick={() => handleViewModel(file.url)}
+                        <ModelPreview 
+                          modelUrl={file.url} 
+                          fileName={file.name} 
                         />
                       ) : (
                         <img
@@ -124,25 +123,35 @@ const HomepageGallery: React.FC = () => {
                           </span>
                         </div>
                         
-                        {file.type === 'image' ? (
-                          <Button
-                            onClick={() => secureDownload(file.url, file.name)}
-                            disabled={isDownloading}
-                            size="sm"
-                            className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8 px-3 transform transition-transform hover:scale-105"
-                          >
-                            {isDownloading ? (
-                              <>
-                                <Loader2 size={14} className="mr-1.5 animate-spin" />
-                                Downloading...
-                              </>
-                            ) : (
-                              <>
-                                <Download size={14} className="mr-1.5" />
-                                {isAuthenticated ? 'Download' : 'Sign in'}
-                              </>
-                            )}
-                          </Button>
+                        {file.type === '3d-model' ? (
+                          <div className="flex flex-col gap-2 w-full">
+                            <Button
+                              onClick={() => handleViewModel(file.url)}
+                              size="sm"
+                              className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8 px-3 transform transition-transform hover:scale-105"
+                            >
+                              <Eye size={14} className="mr-1.5" /> View Model
+                            </Button>
+                            <Button
+                              onClick={() => secureDownload(file.url, file.name)}
+                              disabled={isDownloading}
+                              size="sm"
+                              variant="outline"
+                              className="w-full border-white/10 h-8 px-3 transform transition-transform hover:scale-105"
+                            >
+                              {isDownloading ? (
+                                <>
+                                  <Loader2 size={14} className="mr-1.5 animate-spin" />
+                                  Downloading...
+                                </>
+                              ) : (
+                                <>
+                                  <Download size={14} className="mr-1.5" />
+                                  {isAuthenticated ? 'Download' : 'Sign in'}
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         ) : (
                           <Button
                             onClick={() => secureDownload(file.url, file.name)}
