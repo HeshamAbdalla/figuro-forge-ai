@@ -5,6 +5,7 @@ import { downloadAndSaveModel } from '@/utils/modelUtils';
 import { downloadAndSaveThumbnail } from '@/utils/thumbnailUtils';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
+import { saveFigurine } from '@/services/figurineService';
 
 interface ConversionProgress {
   status: 'idle' | 'converting' | 'downloading' | 'completed' | 'error';
@@ -103,7 +104,7 @@ export const useGallery3DGeneration = () => {
       });
 
       // Poll for completion
-      await pollConversionStatus(data.taskId, fileName);
+      await pollConversionStatus(data.taskId, fileName, imageUrl);
 
       // Refresh subscription data after successful conversion
       setTimeout(() => {
@@ -140,7 +141,7 @@ export const useGallery3DGeneration = () => {
     }
   };
 
-  const pollConversionStatus = async (taskId: string, fileName: string) => {
+  const pollConversionStatus = async (taskId: string, fileName: string, originalImageUrl: string) => {
     const maxAttempts = 60; // 5 minutes with 5-second intervals
     let attempts = 0;
 
@@ -204,6 +205,43 @@ export const useGallery3DGeneration = () => {
           }
           
           if (savedModelUrl) {
+            // Create a figurine record for this 3D conversion
+            try {
+              console.log('🔄 [GALLERY] Creating figurine record for 3D conversion...');
+              
+              // Generate a prompt based on the file name and metadata
+              const prompt = `Generated from ${fileName.replace(/\.[^/.]+$/, '')}`;
+              
+              // Create the figurine record
+              const figurineId = await saveFigurine(
+                prompt,
+                'realistic', // Default style for 3D conversions
+                originalImageUrl,
+                null // No blob since we're using URLs
+              );
+              
+              if (figurineId) {
+                // Update the figurine with the 3D model URL
+                const { error: updateError } = await supabase
+                  .from('figurines')
+                  .update({ 
+                    model_url: savedModelUrl,
+                    title: `3D Model - ${fileName.replace(/\.[^/.]+$/, '')}`
+                  })
+                  .eq('id', figurineId);
+                
+                if (updateError) {
+                  console.error('❌ [GALLERY] Failed to update figurine with model URL:', updateError);
+                } else {
+                  console.log('✅ [GALLERY] Figurine record created and updated with model URL:', figurineId);
+                }
+              }
+            } catch (figurineError) {
+              console.error('❌ [GALLERY] Failed to create figurine record:', figurineError);
+              // Don't fail the entire process if figurine creation fails
+              // The user still gets their 3D model
+            }
+
             setProgress({
               status: 'completed',
               progress: 100,

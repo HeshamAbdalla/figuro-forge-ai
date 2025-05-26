@@ -243,43 +243,11 @@ export type Database = {
         }
         Relationships: []
       }
-      user_usage: {
-        Row: {
-          id: string
-          image_generations_used: number | null
-          model_conversions_used: number | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          image_generations_used?: number | null
-          model_conversions_used?: number | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          id?: string
-          image_generations_used?: number | null
-          model_conversions_used?: number | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      can_use_feature: {
-        Args: { feature_type: string; user_id_param: string }
-        Returns: boolean
-      }
-      check_user_limits: {
-        Args: { action_type: string }
-        Returns: boolean
-      }
       cleanup_expired_payment_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -291,10 +259,6 @@ export type Database = {
       increment_stat: {
         Args: { stat_id: string; inc_amount?: number }
         Returns: number
-      }
-      increment_usage: {
-        Args: { action_type: string }
-        Returns: boolean
       }
       reset_daily_usage: {
         Args: Record<PropertyKey, never>
