@@ -10,6 +10,7 @@ import ModelViewerDialog from "@/components/gallery/ModelViewerDialog";
 import CallToAction from "@/components/gallery/CallToAction";
 import ModelViewer from "@/components/model-viewer";
 import Generate3DModal from "@/components/gallery/Generate3DModal";
+import Generate3DConfigModal, { Generate3DConfig } from "@/components/gallery/Generate3DConfigModal";
 import AnimatedSection from "@/components/animations/AnimatedSection";
 import StaggerContainer from "@/components/animations/StaggerContainer";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
@@ -21,6 +22,8 @@ import { useToast } from "@/hooks/use-toast";
 const Gallery = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [generate3DModalOpen, setGenerate3DModalOpen] = useState(false);
+  const [generate3DConfigModalOpen, setGenerate3DConfigModalOpen] = useState(false);
+  const [pendingImageData, setPendingImageData] = useState<{ url: string; name: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -79,10 +82,21 @@ const Gallery = () => {
   };
 
   const handleGenerate3D = async (imageUrl: string, imageName: string) => {
+    // Show configuration modal instead of directly generating
+    setPendingImageData({ url: imageUrl, name: imageName });
+    setGenerate3DConfigModalOpen(true);
+  };
+
+  const handleGenerate3DWithConfig = async (config: Generate3DConfig) => {
+    if (!pendingImageData) return;
+    
     try {
-      console.log('🎯 [GALLERY] Starting 3D generation for:', imageName);
+      console.log('🎯 [GALLERY] Starting 3D generation with config:', config);
+      setGenerate3DConfigModalOpen(false);
       setGenerate3DModalOpen(true);
-      await generate3DModel(imageUrl, imageName);
+      
+      // Pass the configuration to the generation function
+      await generate3DModel(pendingImageData.url, pendingImageData.name, config);
     } catch (error) {
       console.error('❌ [GALLERY] 3D generation failed:', error);
       toast({
@@ -90,12 +104,19 @@ const Gallery = () => {
         description: error instanceof Error ? error.message : "Failed to generate 3D model",
         variant: "destructive"
       });
+    } finally {
+      setPendingImageData(null);
     }
   };
 
   const handleCloseGenerate3DModal = () => {
     resetProgress();
     setGenerate3DModalOpen(false);
+  };
+
+  const handleCloseGenerate3DConfigModal = () => {
+    setPendingImageData(null);
+    setGenerate3DConfigModalOpen(false);
   };
 
   return (
@@ -151,7 +172,19 @@ const Gallery = () => {
         onClose={handleCloseModelViewer}
       />
 
-      {/* 3D Generation Modal */}
+      {/* 3D Generation Configuration Modal */}
+      {pendingImageData && (
+        <Generate3DConfigModal
+          open={generate3DConfigModalOpen}
+          onOpenChange={setGenerate3DConfigModalOpen}
+          onGenerate={handleGenerate3DWithConfig}
+          imageUrl={pendingImageData.url}
+          imageName={pendingImageData.name}
+          onClose={handleCloseGenerate3DConfigModal}
+        />
+      )}
+
+      {/* 3D Generation Progress Modal */}
       <Generate3DModal
         open={generate3DModalOpen}
         onOpenChange={setGenerate3DModalOpen}

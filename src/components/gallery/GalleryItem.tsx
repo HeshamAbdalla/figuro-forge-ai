@@ -1,20 +1,9 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Box, Loader2 } from "lucide-react";
-import ModelPlaceholder from "./ModelPlaceholder";
-import ModelPreview from "./ModelPreview";
+import { Download, Eye, Box } from "lucide-react";
+import { BucketImage } from "./types";
 import { useSecureDownload } from "@/hooks/useSecureDownload";
-import AuthPromptModal from "@/components/auth/AuthPromptModal";
-
-interface BucketImage {
-  name: string;
-  url: string;
-  id: string;
-  created_at: string;
-  fullPath?: string;
-  type: 'image' | '3d-model';
-}
 
 interface GalleryItemProps {
   file: BucketImage;
@@ -29,140 +18,111 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
   onViewModel,
   onGenerate3D 
 }) => {
-  const [isPreviewLoaded, setIsPreviewLoaded] = useState(false);
-  const [previewFailed, setPreviewFailed] = useState(false);
-  
-  const { 
-    secureDownload, 
-    isDownloading, 
-    authPromptOpen, 
-    setAuthPromptOpen,
-    isAuthenticated 
-  } = useSecureDownload();
+  const [imageError, setImageError] = useState(false);
+  const { downloadFile, isDownloading } = useSecureDownload();
 
-  // Load state handlers
-  const handlePreviewLoaded = () => {
-    setIsPreviewLoaded(true);
-  };
-
-  const handlePreviewFailed = () => {
-    setPreviewFailed(true);
-  };
-
-  const handleDownloadClick = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    secureDownload(file.url, file.name);
+    try {
+      await downloadFile(file.url, file.name);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback to original download method
+      onDownload(file.url, file.name);
+    }
   };
 
-  const handleViewClick = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleView = (e: React.MouseEvent) => {
     e.stopPropagation();
     onViewModel(file.url);
   };
 
-  const handleGenerate3DClick = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleGenerate3D = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onGenerate3D) {
       onGenerate3D(file.url, file.name);
     }
   };
 
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  const isImage = file.type === 'image';
+  const is3DModel = file.type === '3d-model';
+
   return (
-    <>
-      <div className="glass-panel rounded-lg overflow-hidden group">
-        <div className="aspect-square relative overflow-hidden bg-white/5">
-          {file.type === 'image' ? (
-            <img 
-              src={`${file.url}?t=${Date.now()}`} 
-              alt={file.name} 
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full">
-              {!previewFailed ? (
-                <div className="w-full h-full" onLoad={handlePreviewLoaded}>
-                  <ModelPreview 
-                    modelUrl={file.url} 
-                    fileName={file.name} 
-                  />
-                </div>
+    <div className="glass-panel rounded-lg overflow-hidden group hover:scale-105 transition-transform duration-200">
+      <div className="aspect-square relative overflow-hidden bg-white/5">
+        {!imageError ? (
+          <img
+            src={file.url}
+            alt={file.name}
+            className="w-full h-full object-cover"
+            onError={handleImageError}
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="text-center text-white/60">
+              {is3DModel ? (
+                <Box className="w-12 h-12 mx-auto mb-2" />
               ) : (
-                <ModelPlaceholder fileName={file.name} />
+                <div className="w-12 h-12 mx-auto mb-2 bg-white/10 rounded" />
               )}
+              <p className="text-sm">Preview unavailable</p>
             </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
-            <div className="p-4 w-full">
-              {file.type === 'image' ? (
-                <div className="flex flex-col space-y-2 w-full">
-                  <Button 
-                    onClick={handleDownloadClick}
-                    disabled={isDownloading}
-                    className="w-full bg-figuro-accent hover:bg-figuro-accent-hover"
-                  >
-                    {isDownloading ? (
-                      <>
-                        <Loader2 size={16} className="mr-2 animate-spin" /> 
-                        Downloading...
-                      </>
-                    ) : (
-                      <>
-                        <Download size={16} className="mr-2" /> 
-                        {isAuthenticated ? 'Download' : 'Sign in to Download'}
-                      </>
-                    )}
-                  </Button>
-                  {onGenerate3D && (
-                    <Button 
-                      onClick={handleGenerate3DClick}
-                      variant="outline"
-                      className="w-full border-white/10"
-                    >
-                      <Box size={16} className="mr-2" /> Generate 3D Model
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col space-y-2 w-full">
-                  <Button 
-                    onClick={handleViewClick}
-                    className="w-full bg-figuro-accent hover:bg-figuro-accent-hover"
-                  >
-                    <Eye size={16} className="mr-2" /> View Model
-                  </Button>
-                  <Button 
-                    onClick={handleDownloadClick}
-                    disabled={isDownloading}
-                    variant="outline"
-                    className="w-full border-white/10"
-                  >
-                    {isDownloading ? (
-                      <>
-                        <Loader2 size={16} className="mr-2 animate-spin" /> 
-                        Downloading...
-                      </>
-                    ) : (
-                      <>
-                        <Download size={16} className="mr-2" /> 
-                        {isAuthenticated ? 'Download' : 'Sign in to Download'}
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-            </div>
+          </div>
+        )}
+        
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+          <div className="flex space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-white/20 bg-white/10 backdrop-blur-sm hover:bg-white/20"
+              onClick={handleView}
+            >
+              <Eye size={16} />
+            </Button>
+            
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-white/20 bg-white/10 backdrop-blur-sm hover:bg-white/20"
+              onClick={handleDownload}
+              disabled={isDownloading}
+            >
+              <Download size={16} />
+            </Button>
+            
+            {isImage && onGenerate3D && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white/20 bg-white/10 backdrop-blur-sm hover:bg-white/20"
+                onClick={handleGenerate3D}
+                title="Generate 3D Model"
+              >
+                <Box size={16} />
+              </Button>
+            )}
           </div>
         </div>
       </div>
-
-      <AuthPromptModal
-        open={authPromptOpen}
-        onOpenChange={setAuthPromptOpen}
-      />
-    </>
+      
+      <div className="p-4">
+        <h3 className="text-white font-medium truncate mb-1">{file.name}</h3>
+        <p className="text-white/60 text-sm">
+          {new Date(file.created_at).toLocaleDateString()}
+        </p>
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs px-2 py-1 rounded bg-white/10 text-white/80">
+            {is3DModel ? '3D Model' : 'Image'}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -13,6 +13,16 @@ interface ConversionProgress {
   modelUrl?: string;
 }
 
+export interface Generate3DConfig {
+  art_style: 'realistic' | 'cartoon' | 'low-poly';
+  negative_prompt?: string;
+  ai_model: string;
+  topology: 'quad' | 'triangle';
+  target_polycount?: number;
+  texture_richness: 'high' | 'medium' | 'low';
+  moderation: boolean;
+}
+
 export const useGallery3DGeneration = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState<ConversionProgress>({
@@ -23,7 +33,7 @@ export const useGallery3DGeneration = () => {
   const { toast } = useToast();
   const { canPerformAction, checkSubscription } = useSubscription();
 
-  const generate3DModel = async (imageUrl: string, fileName: string) => {
+  const generate3DModel = async (imageUrl: string, fileName: string, config?: Generate3DConfig) => {
     try {
       setIsGenerating(true);
       setProgress({
@@ -32,7 +42,7 @@ export const useGallery3DGeneration = () => {
         message: 'Checking usage limits...'
       });
 
-      console.log('🔄 [GALLERY] Starting 3D conversion for:', fileName);
+      console.log('🔄 [GALLERY] Starting 3D conversion for:', fileName, 'with config:', config);
 
       // Check authentication
       const { data: { session } } = await supabase.auth.getSession();
@@ -51,9 +61,19 @@ export const useGallery3DGeneration = () => {
         message: 'Starting 3D conversion...'
       });
 
-      // Call the convert-to-3d edge function (which now handles usage consumption)
+      // Call the convert-to-3d edge function with configuration
       const { data, error } = await supabase.functions.invoke('convert-to-3d', {
-        body: { imageUrl }
+        body: { 
+          imageUrl,
+          config: config || {
+            art_style: 'realistic',
+            ai_model: 'meshy-5',
+            topology: 'quad',
+            target_polycount: 20000,
+            texture_richness: 'high',
+            moderation: true
+          }
+        }
       });
 
       if (error) {
@@ -150,8 +170,8 @@ export const useGallery3DGeneration = () => {
         }
 
         const data = await response.json();
-        const { status, modelUrl, progress: apiProgress } = data;
-        console.log('📊 [GALLERY] Status update:', { status, modelUrl, progress: apiProgress });
+        const { status, modelUrl, progress: apiProgress, thumbnail_url } = data;
+        console.log('📊 [GALLERY] Status update:', { status, modelUrl, progress: apiProgress, thumbnail_url });
 
         // Update progress based on status
         let progressValue = 30 + (apiProgress || 0) * 0.6; // 30-90%
