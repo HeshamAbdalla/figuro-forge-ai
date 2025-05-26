@@ -22,6 +22,73 @@ serve(async (req: Request) => {
   if (corsResponse) return corsResponse
 
   try {
+    console.log("🔄 [CONVERT-TO-3D] Function started")
+
+    // Get authentication header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      )
+    }
+
+    // Create Supabase client for authentication and usage tracking
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    
+    if (!supabaseServiceKey || !supabaseUrl) {
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Verify user authentication
+    const token = authHeader.replace('Bearer ', '')
+    const { data: userData, error: userError } = await supabase.auth.getUser(token)
+    
+    if (userError || !userData.user) {
+      console.error("❌ [CONVERT-TO-3D] Authentication failed:", userError)
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      )
+    }
+
+    const userId = userData.user.id
+    console.log("✅ [CONVERT-TO-3D] User authenticated:", userId)
+
+    // Check and consume model conversion usage
+    const { data: canConsume, error: consumeError } = await supabase.rpc('consume_feature_usage', {
+      feature_type: 'model_conversion',
+      user_id_param: userId,
+      amount: 1
+    })
+
+    if (consumeError) {
+      console.error("❌ [CONVERT-TO-3D] Database error:", consumeError)
+      return new Response(
+        JSON.stringify({ error: 'Failed to check usage limits' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
+    }
+
+    if (!canConsume) {
+      console.log("🚫 [CONVERT-TO-3D] User has reached model conversion limit")
+      return new Response(
+        JSON.stringify({ 
+          error: 'Model conversion limit reached',
+          message: 'You have reached your monthly 3D model conversion limit. Please upgrade your plan to continue.'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+      )
+    }
+
+    console.log("✅ [CONVERT-TO-3D] Usage consumed successfully")
+
     // Parse request body
     const { imageUrl, imageBase64 } = await req.json()
 
@@ -34,9 +101,9 @@ serve(async (req: Request) => {
 
     // Log which format we're using
     if (imageBase64) {
-      console.log("Processing base64 image data for 3D conversion")
+      console.log("🖼️ [CONVERT-TO-3D] Processing base64 image data for 3D conversion")
     } else {
-      console.log(`Processing image URL for 3D conversion: ${imageUrl}`)
+      console.log(`🖼️ [CONVERT-TO-3D] Processing image URL for 3D conversion: ${imageUrl}`)
     }
 
     // Get Meshy.ai API key from environment variables
@@ -53,8 +120,8 @@ serve(async (req: Request) => {
     const baseUrl = Deno.env.get('SUPABASE_URL') || `${url.protocol}//${url.hostname}`
     const callbackUrl = `${baseUrl}/functions/v1/check-3d-status?webhook=true`
     
-    console.log("Creating 3D conversion request with webhook callback...")
-    console.log(`Webhook callback URL: ${callbackUrl}`)
+    console.log("🔄 [CONVERT-TO-3D] Creating 3D conversion request with webhook callback...")
+    console.log(`📞 [CONVERT-TO-3D] Webhook callback URL: ${callbackUrl}`)
     
     // Step 1: Prepare the request payload with webhook callback
     const requestPayload: any = {
@@ -88,47 +155,41 @@ serve(async (req: Request) => {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`Error during 3D conversion: ${errorText}`)
+      console.error(`❌ [CONVERT-TO-3D] Error during 3D conversion: ${errorText}`)
       throw new Error(`Failed to convert image to 3D model: ${errorText}`)
     }
 
     // Parse the response from Meshy API
     const initialResult = await response.json()
-    console.log("Initial API response:", JSON.stringify(initialResult))
+    console.log("📊 [CONVERT-TO-3D] Initial API response:", JSON.stringify(initialResult))
     
     // Extract the task ID from the response
     const taskId = initialResult.result || initialResult.id
     
     if (!taskId) {
-      console.error("No task ID found in response:", initialResult)
+      console.error("❌ [CONVERT-TO-3D] No task ID found in response:", initialResult)
       throw new Error('No task ID returned from conversion API')
     }
     
-    // Create Supabase client for storing task info
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    
-    if (baseUrl && supabaseServiceKey) {
-      try {
-        const supabase = createClient(baseUrl, supabaseServiceKey)
-        
-        // Store task information - this is useful for tracking webhooks
-        await supabase.from('conversion_tasks').upsert({
-          task_id: taskId,
-          status: 'processing',
-          created_at: new Date().toISOString(),
-          image_url: imageUrl || 'base64-image'
-        }).select()
-        
-        console.log(`Stored task info in database. Task ID: ${taskId}`)
-      } catch (dbError) {
-        // Non-critical error - log it but continue
-        console.error("Failed to store task info in database:", dbError)
-        // Note: Not stopping execution, as this is not critical for the conversion process
-      }
+    // Store task information - this is useful for tracking webhooks
+    try {
+      await supabase.from('conversion_tasks').upsert({
+        task_id: taskId,
+        status: 'processing',
+        created_at: new Date().toISOString(),
+        image_url: imageUrl || 'base64-image',
+        user_id: userId
+      }).select()
+      
+      console.log(`💾 [CONVERT-TO-3D] Stored task info in database. Task ID: ${taskId}`)
+    } catch (dbError) {
+      // Non-critical error - log it but continue
+      console.error("⚠️ [CONVERT-TO-3D] Failed to store task info in database:", dbError)
+      // Note: Not stopping execution, as this is not critical for the conversion process
     }
 
     // Return the task ID to the client immediately
-    console.log(`Task created with ID: ${taskId}, webhook will be called when complete`)
+    console.log(`✅ [CONVERT-TO-3D] Task created with ID: ${taskId}, webhook will be called when complete`)
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -140,7 +201,7 @@ serve(async (req: Request) => {
     )
 
   } catch (error) {
-    console.error('Error converting image to 3D:', error)
+    console.error('❌ [CONVERT-TO-3D] Error converting image to 3D:', error)
     return new Response(
       JSON.stringify({ 
         error: 'Failed to convert image to 3D', 
@@ -153,5 +214,5 @@ serve(async (req: Request) => {
 
 // Add event listener to handle shutdown
 addEventListener('beforeunload', (ev) => {
-  console.log('Function shutdown due to:', ev.detail?.reason)
+  console.log('🔄 [CONVERT-TO-3D] Function shutdown due to:', ev.detail?.reason)
 })

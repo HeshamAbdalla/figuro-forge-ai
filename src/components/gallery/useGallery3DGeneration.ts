@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { downloadAndSaveModel } from '@/utils/modelUtils';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface ConversionProgress {
   status: 'idle' | 'converting' | 'downloading' | 'completed' | 'error';
@@ -20,6 +21,7 @@ export const useGallery3DGeneration = () => {
     message: ''
   });
   const { toast } = useToast();
+  const { canPerformAction, checkSubscription } = useSubscription();
 
   const generate3DModel = async (imageUrl: string, fileName: string) => {
     try {
@@ -27,7 +29,7 @@ export const useGallery3DGeneration = () => {
       setProgress({
         status: 'converting',
         progress: 10,
-        message: 'Starting 3D conversion...'
+        message: 'Checking usage limits...'
       });
 
       console.log('🔄 [GALLERY] Starting 3D conversion for:', fileName);
@@ -38,13 +40,30 @@ export const useGallery3DGeneration = () => {
         throw new Error('Please log in to generate 3D models');
       }
 
-      // Call the convert-to-3d edge function
+      // Check if user can perform model conversion
+      if (!canPerformAction('model_conversion')) {
+        throw new Error('You have reached your 3D model conversion limit. Please upgrade your plan to continue.');
+      }
+
+      setProgress({
+        status: 'converting',
+        progress: 20,
+        message: 'Starting 3D conversion...'
+      });
+
+      // Call the convert-to-3d edge function (which now handles usage consumption)
       const { data, error } = await supabase.functions.invoke('convert-to-3d', {
         body: { imageUrl }
       });
 
       if (error) {
         console.error('❌ [GALLERY] Conversion error:', error);
+        
+        // Handle specific error cases
+        if (error.message?.includes('limit reached') || error.message?.includes('429')) {
+          throw new Error('You have reached your 3D model conversion limit. Please upgrade your plan to continue.');
+        }
+        
         throw new Error(`Conversion failed: ${error.message}`);
       }
 
@@ -64,19 +83,36 @@ export const useGallery3DGeneration = () => {
       // Poll for completion
       await pollConversionStatus(data.taskId, fileName);
 
+      // Refresh subscription data after successful conversion
+      setTimeout(() => {
+        checkSubscription();
+      }, 1000);
+
     } catch (error) {
       console.error('❌ [GALLERY] 3D generation error:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate 3D model';
+      
       setProgress({
         status: 'error',
         progress: 0,
-        message: error instanceof Error ? error.message : 'Failed to generate 3D model'
+        message: errorMessage
       });
       
-      toast({
-        title: "3D Generation Failed",
-        description: error instanceof Error ? error.message : 'Failed to generate 3D model',
-        variant: "destructive"
-      });
+      // Show upgrade prompt for limit-related errors
+      if (errorMessage.includes('limit') || errorMessage.includes('upgrade')) {
+        toast({
+          title: "3D Conversion Limit Reached",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "3D Generation Failed",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsGenerating(false);
     }
