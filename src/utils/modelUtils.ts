@@ -6,9 +6,14 @@ import { tryLoadWithCorsProxies } from "./corsProxy";
  * Downloads a 3D model from an external URL and saves it to Supabase storage
  * @param modelUrl External URL of the 3D model
  * @param filename Name to save the file as (without extension)
- * @returns The storage URL of the saved model
+ * @param thumbnailUrl Optional thumbnail URL from Meshy API
+ * @returns The storage URL of the saved model and thumbnail URL
  */
-export const downloadAndSaveModel = async (modelUrl: string, filename: string): Promise<string | null> => {
+export const downloadAndSaveModel = async (
+  modelUrl: string, 
+  filename: string, 
+  thumbnailUrl?: string
+): Promise<{ modelUrl: string; thumbnailUrl?: string } | null> => {
   try {
     console.log('🔄 [MODEL] Starting model download and save process');
     console.log(`🔄 [MODEL] Downloading model from: ${modelUrl}`);
@@ -153,7 +158,10 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
       // Don't throw error here as the file might be accessible but not immediately
     }
     
-    return publicUrl;
+    return {
+      modelUrl: publicUrl,
+      thumbnailUrl: thumbnailUrl || undefined
+    };
   } catch (error) {
     console.error('❌ [MODEL] Failed to download and save model:', error);
     console.error('❌ [MODEL] Error stack:', error instanceof Error ? error.stack : 'No stack trace');

@@ -1,39 +1,50 @@
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { handleObjectUrl } from "./utils/modelUtils";
 
 export const useModelViewerState = (
-  initialModelUrl: string | null,
+  modelUrl: string | null,
   onCustomModelLoad?: (url: string, file: File) => void
 ) => {
-  const [autoRotate, setAutoRotate] = useState(true);
   const [modelError, setModelError] = useState<string | null>(null);
-  const [modelLoadAttempted, setModelLoadAttempted] = useState(false);
   const [customFile, setCustomFile] = useState<File | null>(null);
   const [customModelUrl, setCustomModelUrl] = useState<string | null>(null);
   const [customModelBlob, setCustomModelBlob] = useState<Blob | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const customObjectUrlRef = useRef<string | null>(null);
+  const originalUrlRef = useRef<string | null>(modelUrl);
   const { toast } = useToast();
-  const originalUrlRef = useRef<string | null>(initialModelUrl);
+
+  // Determine which URL to use for the 3D model - custom uploaded model takes priority
+  const displayModelUrl = customModelUrl || modelUrl;
+
+  // Determine if we should show an error message
+  const shouldShowError = (modelError) && 
+    ((!modelUrl && !customModelUrl) || modelError);
 
   // Reset error state when modelUrl changes
-  useEffect(() => {
-    if (initialModelUrl) {
+  useState(() => {
+    if (modelUrl) {
       setModelError(null);
-      setModelLoadAttempted(false);
-      originalUrlRef.current = initialModelUrl;
+      originalUrlRef.current = modelUrl;
       // Reset custom model when a new model is provided
+      if (customObjectUrlRef.current) {
+        handleObjectUrl(null, customObjectUrlRef.current);
+        customObjectUrlRef.current = null;
+      }
       setCustomModelUrl(null);
-      setCustomModelBlob(null);
       setCustomFile(null);
+      setCustomModelBlob(null);
     }
-  }, [initialModelUrl]);
+  });
 
-  const triggerFileInputClick = () => {
+  const triggerFileInputClick = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
@@ -49,14 +60,14 @@ export const useModelViewerState = (
 
     console.log("Selected file:", file.name, "size:", file.size);
     setCustomFile(file);
-    setCustomModelBlob(file);
     
-    // Create a temporary URL for download functionality
-    const objectUrl = URL.createObjectURL(file);
-    console.log("Created temporary URL for download:", objectUrl);
+    // Create blob URL for the file using proper URL management
+    const objectUrl = handleObjectUrl(file, customObjectUrlRef.current);
+    customObjectUrlRef.current = objectUrl;
+    console.log("Created blob URL:", objectUrl);
     setCustomModelUrl(objectUrl);
+    setCustomModelBlob(file);
     setModelError(null);
-    setModelLoadAttempted(false);
     
     toast({
       title: "Custom model loaded",
@@ -64,12 +75,12 @@ export const useModelViewerState = (
     });
     
     // Call the callback if provided
-    if (onCustomModelLoad) {
+    if (onCustomModelLoad && objectUrl) {
       onCustomModelLoad(objectUrl, file);
     }
-  };
+  }, [toast, onCustomModelLoad]);
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     const downloadUrl = customModelUrl || originalUrlRef.current;
     if (!downloadUrl) return;
     
@@ -83,7 +94,7 @@ export const useModelViewerState = (
         a.click();
         document.body.removeChild(a);
       } else {
-        // For generated models, use the original URL for downloads, not the proxied version
+        // For generated models, use the original URL for downloads
         const a = document.createElement('a');
         a.href = downloadUrl;
         a.download = `figurine-model-${new Date().getTime()}.glb`;
@@ -104,9 +115,9 @@ export const useModelViewerState = (
         variant: "destructive"
       });
     }
-  };
+  }, [customModelUrl, customFile, toast]);
 
-  const handleModelError = (error: any) => {
+  const handleModelError = useCallback((error: any) => {
     console.error("Error loading 3D model:", error);
     
     let errorMsg = "Failed to load 3D model. The download may still work.";
@@ -121,28 +132,18 @@ export const useModelViewerState = (
     }
     
     setModelError(errorMsg);
-    setModelLoadAttempted(true);
-  };
-
-  // Determine which URL to use for the 3D model - custom uploaded model takes priority
-  const displayModelUrl = customModelUrl || initialModelUrl;
-  const shouldShowError = (customModelUrl === null && initialModelUrl === null) || 
-    (modelLoadAttempted && modelError);
+  }, []);
 
   return {
-    autoRotate,
-    setAutoRotate,
     modelError,
     customFile,
-    customModelUrl,
-    customModelBlob,
     fileInputRef,
     displayModelUrl,
+    customModelBlob,
     shouldShowError,
     handleFileChange,
     triggerFileInputClick,
     handleDownload,
-    handleModelError,
-    modelLoadAttempted
+    handleModelError
   };
 };

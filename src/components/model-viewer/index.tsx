@@ -26,8 +26,6 @@ const ModelViewer = ({
   const containerRef = React.useRef<HTMLDivElement>(null);
   
   const {
-    autoRotate,
-    setAutoRotate,
     modelError,
     customFile,
     fileInputRef,
@@ -55,8 +53,6 @@ const ModelViewer = ({
     >
       <ModelHeader 
         displayModelUrl={displayModelUrl}
-        autoRotate={autoRotate}
-        onAutoRotateToggle={() => setAutoRotate(!autoRotate)}
         onUploadClick={triggerFileInputClick}
       />
 
@@ -77,7 +73,7 @@ const ModelViewer = ({
           <ModelScene 
             modelUrl={customModelBlob ? null : displayModelUrl}
             modelBlob={customModelBlob}
-            autoRotate={autoRotate} 
+            autoRotate={false} // Always disabled
             onModelError={handleModelError}
           />
         )}
