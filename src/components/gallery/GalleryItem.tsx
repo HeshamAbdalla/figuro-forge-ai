@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Box } from "lucide-react";
@@ -211,24 +212,13 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
       </div>
       
       <div className="p-4">
-        <h3 className="text-white font-medium truncate mb-1">{file.name}</h3>
-        <p className="text-white/60 text-sm">
+        <p className="text-white/60 text-sm mb-2">
           {new Date(file.created_at).toLocaleDateString()}
         </p>
-        <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center">
           <span className="text-xs px-2 py-1 rounded bg-white/10 text-white/80">
             {is3DModel ? '3D Model' : 'Image'}
           </span>
-          {is3DModel && thumbnailExists && (
-            <span className="text-xs text-green-400">
-              Has Preview
-            </span>
-          )}
-          {is3DModel && thumbnailChecked && !thumbnailExists && (
-            <span className="text-xs text-yellow-400">
-              No Preview
-            </span>
-          )}
         </div>
       </div>
     </div>
