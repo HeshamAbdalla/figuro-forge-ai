@@ -13,7 +13,24 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { taskId } = await req.json()
+    // Extract taskId from URL parameters for GET requests
+    const url = new URL(req.url)
+    let taskId = url.searchParams.get('taskId')
+    
+    // If no taskId in URL params, try to get it from request body (for backward compatibility)
+    if (!taskId && req.method === 'POST') {
+      try {
+        const body = await req.json()
+        taskId = body.taskId
+      } catch (e) {
+        // Ignore JSON parsing errors for GET requests
+      }
+    }
+    
+    if (!taskId) {
+      throw new Error('taskId parameter is required')
+    }
+    
     console.log('Checking status for task:', taskId)
 
     const meshyApiKey = Deno.env.get('MESHY_API_KEY')
