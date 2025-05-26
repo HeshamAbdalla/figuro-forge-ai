@@ -180,7 +180,6 @@ const Gallery = () => {
           onGenerate={handleGenerate3DWithConfig}
           imageUrl={pendingImageData.url}
           imageName={pendingImageData.name}
-          onClose={handleCloseGenerate3DConfigModal}
         />
       )}
 

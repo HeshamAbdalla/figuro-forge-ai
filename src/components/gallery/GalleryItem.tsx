@@ -19,12 +19,12 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
   onGenerate3D 
 }) => {
   const [imageError, setImageError] = useState(false);
-  const { downloadFile, isDownloading } = useSecureDownload();
+  const { secureDownload, isDownloading } = useSecureDownload();
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await downloadFile(file.url, file.name);
+      await secureDownload(file.url, file.name);
     } catch (error) {
       console.error('Download failed:', error);
       // Fallback to original download method
