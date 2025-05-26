@@ -5,6 +5,15 @@ import EnhancedImageViewerDialog from "@/components/gallery/EnhancedImageViewerD
 import Generate3DModal from "@/components/gallery/Generate3DModal";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
 
+interface ConversionProgress {
+  status: 'idle' | 'converting' | 'downloading' | 'completed' | 'error';
+  progress: number;
+  message: string;
+  taskId?: string;
+  modelUrl?: string;
+  thumbnailUrl?: string;
+}
+
 interface GalleryModalsProps {
   // Model viewer props
   modelViewerOpen: boolean;
@@ -22,7 +31,7 @@ interface GalleryModalsProps {
 
   // 3D generation props
   isGenerating: boolean;
-  progress: number;
+  progress: ConversionProgress;
   onGeneration3DOpenChange: (open: boolean) => void;
   onResetProgress: () => void;
 
@@ -73,7 +82,7 @@ const GalleryModals: React.FC<GalleryModalsProps> = ({
       <Generate3DModal 
         open={isGenerating}
         onOpenChange={onGeneration3DOpenChange}
-        progress={progress}
+        progress={progress.progress}
         onClose={onResetProgress}
       />
 

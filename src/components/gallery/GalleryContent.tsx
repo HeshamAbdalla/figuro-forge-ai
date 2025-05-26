@@ -9,6 +9,15 @@ import PageTransition from "@/components/PageTransition";
 import { Helmet } from "react-helmet-async";
 import { BucketImage } from "@/components/gallery/types";
 
+interface ConversionProgress {
+  status: 'idle' | 'converting' | 'downloading' | 'completed' | 'error';
+  progress: number;
+  message: string;
+  taskId?: string;
+  modelUrl?: string;
+  thumbnailUrl?: string;
+}
+
 interface GalleryContentProps {
   images: BucketImage[];
   isLoading: boolean;
@@ -36,7 +45,7 @@ interface GalleryContentProps {
 
   // 3D generation props
   isGenerating: boolean;
-  progress: number;
+  progress: ConversionProgress;
   onResetProgress: () => void;
 
   // Auth prompt props
