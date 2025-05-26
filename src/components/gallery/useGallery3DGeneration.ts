@@ -134,23 +134,20 @@ export const useGallery3DGeneration = () => {
           throw new Error('Authentication required');
         }
 
-        // Make direct fetch call with taskId as URL parameter
-        const supabaseUrl = 'https://cwjxbwqdfejhmiixoiym.supabase.co';
-        const response = await fetch(`${supabaseUrl}/functions/v1/check-3d-status?taskId=${taskId}`, {
+        // Use supabase.functions.invoke with taskId as URL parameter
+        const { data, error } = await supabase.functions.invoke('check-3d-status', {
           method: 'GET',
+          body: null,
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3anhid3FkZmVqaG1paXhvaXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4OTg0MDksImV4cCI6MjA2MzQ3NDQwOX0.g_-L7Bsv0cnEjSLNXEjrDdYYdxtV7yiHFYUV3_Ww3PI',
             'Content-Type': 'application/json'
           }
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Status check failed: ${response.status} - ${errorText}`);
+        if (error) {
+          console.error('❌ [GALLERY] Status check error:', error);
+          throw new Error(`Status check failed: ${error.message}`);
         }
 
-        const data = await response.json();
         const { status, modelUrl, thumbnailUrl, progress: apiProgress } = data;
         console.log('📊 [GALLERY] Status update:', { status, modelUrl, thumbnailUrl, progress: apiProgress });
 
