@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { saveFigurine, updateFigurineWithModelUrl } from "@/services/figurineService";
@@ -343,11 +344,7 @@ export const useImageGeneration = () => {
       
       attempts++;
       try {
-        const statusResponse = await fetch(`${SUPABASE_URL}/functions/v1/check-3d-status?taskId=${taskId}`, {
-          headers: {
-            "Authorization": `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-          }
-        });
+        const statusResponse = await fetch(`${SUPABASE_URL}/functions/v1/check-3d-status?taskId=${taskId}`);
         
         if (!statusResponse.ok) {
           console.error(`Error checking status (attempt ${attempts}):`, statusResponse.status);
@@ -575,12 +572,9 @@ export const useImageGeneration = () => {
       
       console.log("Sending conversion request to edge function...");
       
-      // Call the convert-to-3d edge function with proper authentication
+      // Call the convert-to-3d edge function using supabase.functions.invoke
       const { data, error } = await supabase.functions.invoke('convert-to-3d', {
-        body: requestBody,
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        body: requestBody
       });
       
       if (error) {
