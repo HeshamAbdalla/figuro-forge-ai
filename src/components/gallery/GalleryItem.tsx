@@ -50,13 +50,36 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
 
   const isImage = file.type === 'image';
   const is3DModel = file.type === '3d-model';
+  
+  // Check if this file has an associated thumbnail
+  // Thumbnails are stored with pattern: userId/thumbnails/taskId_thumbnail.png
+  // We can try to construct the thumbnail URL for 3D models
+  const getThumbnailUrl = () => {
+    if (is3DModel && file.fullPath) {
+      // Extract the base filename (without extension) from the model path
+      const pathParts = file.fullPath.split('/');
+      const fileName = pathParts[pathParts.length - 1];
+      const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+      
+      // Try to construct thumbnail path
+      const userId = pathParts[0]; // assuming format: userId/models/filename
+      const thumbnailPath = `${userId}/thumbnails/${fileNameWithoutExt}_thumbnail.png`;
+      
+      // Construct the thumbnail URL using the same bucket
+      const baseUrl = file.url.split('/figurine-images/')[0];
+      return `${baseUrl}/figurine-images/${thumbnailPath}`;
+    }
+    return null;
+  };
+
+  const thumbnailUrl = getThumbnailUrl();
 
   return (
     <div className="glass-panel rounded-lg overflow-hidden group hover:scale-105 transition-transform duration-200">
       <div className="aspect-square relative overflow-hidden bg-white/5">
         {!imageError ? (
           <img
-            src={file.url}
+            src={thumbnailUrl || file.url}
             alt={file.name}
             className="w-full h-full object-cover"
             onError={handleImageError}
@@ -120,6 +143,11 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
           <span className="text-xs px-2 py-1 rounded bg-white/10 text-white/80">
             {is3DModel ? '3D Model' : 'Image'}
           </span>
+          {is3DModel && thumbnailUrl && (
+            <span className="text-xs text-green-400">
+              Has Preview
+            </span>
+          )}
         </div>
       </div>
     </div>

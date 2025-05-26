@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { downloadAndSaveModel } from '@/utils/modelUtils';
+import { downloadAndSaveThumbnail } from '@/utils/thumbnailUtils';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 
@@ -11,6 +12,7 @@ interface ConversionProgress {
   message: string;
   taskId?: string;
   modelUrl?: string;
+  thumbnailUrl?: string;
 }
 
 export interface Generate3DConfig {
@@ -188,13 +190,27 @@ export const useGallery3DGeneration = () => {
           // Download and save the model
           const savedModelUrl = await downloadAndSaveModel(modelUrl, fileName);
           
+          // Download and save thumbnail if available
+          let savedThumbnailUrl: string | null = null;
+          if (thumbnail_url) {
+            try {
+              console.log('🔄 [GALLERY] Downloading and saving thumbnail...');
+              savedThumbnailUrl = await downloadAndSaveThumbnail(thumbnail_url, taskId);
+              console.log('✅ [GALLERY] Thumbnail saved:', savedThumbnailUrl);
+            } catch (thumbnailError) {
+              console.warn('⚠️ [GALLERY] Failed to save thumbnail, but continuing:', thumbnailError);
+              // Don't fail the entire process if thumbnail save fails
+            }
+          }
+          
           if (savedModelUrl) {
             setProgress({
               status: 'completed',
               progress: 100,
               message: '3D model generated successfully!',
               taskId,
-              modelUrl: savedModelUrl
+              modelUrl: savedModelUrl,
+              thumbnailUrl: savedThumbnailUrl || undefined
             });
 
             toast({
@@ -217,7 +233,8 @@ export const useGallery3DGeneration = () => {
             status: 'converting',
             progress: Math.min(progressValue, 89),
             message,
-            taskId
+            taskId,
+            thumbnailUrl: thumbnail_url ? thumbnail_url : undefined
           });
 
           // Continue polling if not at max attempts

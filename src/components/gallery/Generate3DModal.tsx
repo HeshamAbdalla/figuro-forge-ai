@@ -19,6 +19,7 @@ interface Generate3DModalProps {
     message: string;
     taskId?: string;
     modelUrl?: string;
+    thumbnailUrl?: string;
   };
   onClose: () => void;
 }
@@ -89,6 +90,25 @@ const Generate3DModal: React.FC<Generate3DModalProps> = ({
               )}
             </div>
           </div>
+
+          {/* Thumbnail Preview */}
+          {progress.thumbnailUrl && (
+            <div className="flex flex-col items-center space-y-2">
+              <p className="text-sm text-white/80">Preview:</p>
+              <div className="relative w-32 h-32 rounded-lg overflow-hidden bg-white/5">
+                <img
+                  src={progress.thumbnailUrl}
+                  alt="3D Model Preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.warn('Failed to load thumbnail:', progress.thumbnailUrl);
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Progress Bar */}
           {(progress.status === 'converting' || progress.status === 'downloading') && (
