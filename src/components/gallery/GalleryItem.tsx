@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Box } from "lucide-react";
@@ -10,7 +9,7 @@ import ModelPreview from "./ModelPreview";
 interface GalleryItemProps {
   file: BucketImage;
   onDownload: (url: string, name: string) => void;
-  onViewModel: (url: string) => void;
+  onViewModel: (url: string, fileName?: string) => void;
   onGenerate3D?: (url: string, name: string) => void;
 }
 
@@ -39,7 +38,8 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
 
   const handleView = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onViewModel(file.url);
+    // Pass the file name to the enhanced modal
+    onViewModel(file.url, file.name);
   };
 
   const handleGenerate3D = (e: React.MouseEvent) => {
@@ -179,6 +179,7 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
               variant="outline"
               className="border-white/20 bg-white/10 backdrop-blur-sm hover:bg-white/20"
               onClick={handleView}
+              title={is3DModel ? "View in Enhanced 3D Viewer" : "View Image"}
             >
               <Eye size={16} />
             </Button>
@@ -189,6 +190,7 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
               className="border-white/20 bg-white/10 backdrop-blur-sm hover:bg-white/20"
               onClick={handleDownload}
               disabled={isDownloading}
+              title="Download File"
             >
               <Download size={16} />
             </Button>

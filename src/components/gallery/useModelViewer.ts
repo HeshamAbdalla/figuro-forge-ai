@@ -9,6 +9,7 @@ const MAX_ACTIVE_VIEWERS = 1;
 
 export const useModelViewer = () => {
   const [viewingModel, setViewingModel] = useState<string | null>(null);
+  const [viewingFileName, setViewingFileName] = useState<string | undefined>(undefined);
   const [modelViewerOpen, setModelViewerOpen] = useState(false);
   const { toast } = useToast();
   
@@ -37,6 +38,7 @@ export const useModelViewer = () => {
   const handleCloseModelViewer = () => {
     setModelViewerOpen(false);
     setViewingModel(null); // Clear the model URL to prevent reloading
+    setViewingFileName(undefined);
     
     activeViewersRef.current = Math.max(0, activeViewersRef.current - 1);
     webGLContextTracker.releaseContext();
@@ -46,6 +48,7 @@ export const useModelViewer = () => {
       console.log("Model viewer resources released");
       // Force a small UI refresh to clear any stale resources
       setViewingModel(null);
+      setViewingFileName(undefined);
     }, 800);
   };
 
@@ -67,8 +70,8 @@ export const useModelViewer = () => {
     }
   };
 
-  // Handle opening full model viewer
-  const handleViewModel = (modelUrl: string) => {
+  // Handle opening enhanced model viewer with file name support
+  const handleViewModel = (modelUrl: string, fileName?: string) => {
     // First make sure the URL is valid
     if (!modelUrl || typeof modelUrl !== 'string') {
       toast({
@@ -100,7 +103,7 @@ export const useModelViewer = () => {
     
     // Clean the URL to prevent reloading and resource issues
     const cleanedUrl = cleanModelUrl(modelUrl);
-    console.log("Opening model viewer with URL:", cleanedUrl);
+    console.log("Opening enhanced model viewer with URL:", cleanedUrl, "fileName:", fileName);
     
     // First close any existing viewer to clean up resources
     if (modelViewerOpen) {
@@ -109,12 +112,14 @@ export const useModelViewer = () => {
       // Increased timeout to ensure cleanup before opening new model
       setTimeout(() => {
         setViewingModel(cleanedUrl);
+        setViewingFileName(fileName);
         setModelViewerOpen(true);
         activeViewersRef.current += 1;
         webGLContextTracker.registerContext();
       }, 800);
     } else {
       setViewingModel(cleanedUrl);
+      setViewingFileName(fileName);
       setModelViewerOpen(true);
       activeViewersRef.current += 1;
       webGLContextTracker.registerContext();
@@ -123,6 +128,7 @@ export const useModelViewer = () => {
   
   return {
     viewingModel,
+    viewingFileName,
     modelViewerOpen,
     setModelViewerOpen,
     handleViewModel,
