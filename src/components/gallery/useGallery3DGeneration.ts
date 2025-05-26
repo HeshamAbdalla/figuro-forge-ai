@@ -11,6 +11,7 @@ interface ConversionProgress {
   message: string;
   taskId?: string;
   modelUrl?: string;
+  thumbnailUrl?: string;
 }
 
 export const useGallery3DGeneration = () => {
@@ -150,8 +151,8 @@ export const useGallery3DGeneration = () => {
         }
 
         const data = await response.json();
-        const { status, modelUrl, progress: apiProgress } = data;
-        console.log('📊 [GALLERY] Status update:', { status, modelUrl, progress: apiProgress });
+        const { status, modelUrl, thumbnailUrl, progress: apiProgress } = data;
+        console.log('📊 [GALLERY] Status update:', { status, modelUrl, thumbnailUrl, progress: apiProgress });
 
         // Update progress based on status
         let progressValue = 30 + (apiProgress || 0) * 0.6; // 30-90%
@@ -162,11 +163,12 @@ export const useGallery3DGeneration = () => {
             status: 'downloading',
             progress: 90,
             message: 'Downloading and saving 3D model...',
-            taskId
+            taskId,
+            thumbnailUrl
           });
 
           // Download and save the model
-          const savedModelUrl = await downloadAndSaveModel(modelUrl, fileName);
+          const savedModelUrl = await downloadAndSaveModel(modelUrl, fileName, thumbnailUrl);
           
           if (savedModelUrl) {
             setProgress({
@@ -174,7 +176,8 @@ export const useGallery3DGeneration = () => {
               progress: 100,
               message: '3D model generated successfully!',
               taskId,
-              modelUrl: savedModelUrl
+              modelUrl: savedModelUrl,
+              thumbnailUrl
             });
 
             toast({

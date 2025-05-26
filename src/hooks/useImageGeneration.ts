@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { saveFigurine, updateFigurineWithModelUrl } from "@/services/figurineService";
@@ -68,14 +67,15 @@ export const useImageGeneration = () => {
   };
 
   // Enhanced model download and save function with better error handling
-  const downloadAndSaveModelWithRetry = async (externalUrl: string, figurineId: string, maxRetries = 3): Promise<string | null> => {
+  const downloadAndSaveModelWithRetry = async (externalUrl: string, figurineId: string, thumbnailUrl?: string, maxRetries = 3): Promise<string | null> => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`🔄 [CONVERSION] Attempt ${attempt}/${maxRetries} to download and save model...`);
         
         const storedModelUrl = await downloadAndSaveModel(
           externalUrl, 
-          `figurine_${figurineId}`
+          `figurine_${figurineId}`,
+          thumbnailUrl
         );
         
         if (storedModelUrl) {
@@ -202,7 +202,8 @@ export const useImageGeneration = () => {
                 // Download and save the model to our storage with retry logic
                 const storedModelUrl = await downloadAndSaveModelWithRetry(
                   data.modelUrl, 
-                  currentFigurineId
+                  currentFigurineId,
+                  data.thumbnailUrl
                 );
                 
                 if (storedModelUrl) {
@@ -370,7 +371,8 @@ export const useImageGeneration = () => {
               
               const storedModelUrl = await downloadAndSaveModelWithRetry(
                 statusData.modelUrl, 
-                currentFigurineId
+                currentFigurineId,
+                statusData.thumbnailUrl
               );
               
               if (storedModelUrl) {

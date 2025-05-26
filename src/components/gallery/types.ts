@@ -6,4 +6,5 @@ export interface BucketImage {
   created_at: string;
   fullPath?: string;
   type: 'image' | '3d-model';
+  thumbnailUrl?: string;
 }
