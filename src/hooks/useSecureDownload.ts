@@ -22,36 +22,38 @@ export const useSecureDownload = () => {
     try {
       console.log('🔄 [SECURE-DOWNLOAD] Starting secure download:', imageName);
       
-      // Call the Supabase Edge Function using the supabase client
-      const { data, error } = await supabase.functions.invoke('download-image', {
-        body: { 
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setAuthPromptOpen(true);
+        return;
+      }
+
+      // Make direct fetch request to the edge function to get the blob response
+      const response = await fetch(`https://cwjxbwqdfejhmiixoiym.supabase.co/functions/v1/download-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3anhid3FkZmVqaG1paXhvaXltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4OTg0MDksImV4cCI6MjA2MzQ3NDQwOX0.g_-L7Bsv0cnEjSLNXEjrDdYYdxtV7yiHFYUV3_Ww3PI',
+        },
+        body: JSON.stringify({ 
           imageUrl, 
           fileName: imageName 
-        },
+        }),
       });
 
-      if (error) {
-        console.error('❌ [SECURE-DOWNLOAD] Edge function error:', error);
-        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+      if (!response.ok) {
+        console.error('❌ [SECURE-DOWNLOAD] Edge function error:', response.status);
+        if (response.status === 401) {
           setAuthPromptOpen(true);
           return;
         }
         throw new Error('Download failed');
       }
 
-      // The edge function should return a blob directly
-      // Convert the response to a blob if it's not already
-      let blob: Blob;
-      
-      if (data instanceof Blob) {
-        blob = data;
-      } else if (data instanceof ArrayBuffer) {
-        blob = new Blob([data]);
-      } else {
-        // If data is some other format, we need to handle it
-        console.error('❌ [SECURE-DOWNLOAD] Unexpected data format:', typeof data);
-        throw new Error('Unexpected response format');
-      }
+      // Get the blob from the response
+      const blob = await response.blob();
       
       // Create download link
       const blobUrl = URL.createObjectURL(blob);
