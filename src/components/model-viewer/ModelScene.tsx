@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Environment } from "@react-three/drei";
 import { Suspense } from "react";
@@ -16,18 +16,32 @@ interface ModelSceneProps {
   isPreview?: boolean; // Add preview flag
 }
 
-const ModelScene = ({ 
+export interface ModelSceneRef {
+  resetCamera: () => void;
+}
+
+const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({ 
   modelUrl, 
   modelBlob, 
   autoRotate, 
   onModelError, 
   isPreview = false 
-}: ModelSceneProps) => {
+}, ref) => {
   // Track the current model source to prevent unnecessary re-renders
   const currentSourceRef = useRef<string | Blob | null>(null);
   const [stableSource, setStableSource] = useState<string | null>(modelUrl);
   const [stableBlob, setStableBlob] = useState<Blob | null>(modelBlob || null);
   const [loadKey, setLoadKey] = useState<string>(`load-${Date.now()}`);
+  const orbitControlsRef = useRef<any>(null);
+  
+  // Expose reset camera functionality
+  useImperativeHandle(ref, () => ({
+    resetCamera: () => {
+      if (orbitControlsRef.current) {
+        orbitControlsRef.current.reset();
+      }
+    }
+  }));
   
   // Stabilize the source to prevent rapid changes
   useEffect(() => {
@@ -109,6 +123,7 @@ const ModelScene = ({
       </Suspense>
       
       <OrbitControls 
+        ref={orbitControlsRef}
         autoRotate={autoRotate}
         autoRotateSpeed={2}
         enablePan={true}
@@ -118,6 +133,8 @@ const ModelScene = ({
       <Environment preset="sunset" />
     </Canvas>
   );
-};
+});
+
+ModelScene.displayName = "ModelScene";
 
 export default ModelScene;
