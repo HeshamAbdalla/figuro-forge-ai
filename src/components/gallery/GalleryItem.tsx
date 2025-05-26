@@ -1,9 +1,10 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Box } from "lucide-react";
 import { BucketImage } from "./types";
 import { useSecureDownload } from "@/hooks/useSecureDownload";
+import { supabase } from "@/integrations/supabase/client";
 
 interface GalleryItemProps {
   file: BucketImage;
@@ -19,6 +20,9 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
   onGenerate3D 
 }) => {
   const [imageError, setImageError] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [thumbnailExists, setThumbnailExists] = useState<boolean>(false);
+  const [thumbnailChecked, setThumbnailChecked] = useState<boolean>(false);
   const { secureDownload, isDownloading } = useSecureDownload();
 
   const handleDownload = async (e: React.MouseEvent) => {
@@ -48,38 +52,105 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
     setImageError(true);
   };
 
+  // Enhanced thumbnail URL construction and validation
+  useEffect(() => {
+    const checkThumbnailExists = async () => {
+      if (file.type !== '3d-model' || !file.fullPath || thumbnailChecked) {
+        return;
+      }
+
+      try {
+        console.log('🔍 [THUMBNAIL] Checking thumbnail for 3D model:', file.name);
+        
+        // Extract user ID and base filename from the model path
+        const pathParts = file.fullPath.split('/');
+        if (pathParts.length < 2) {
+          console.warn('⚠️ [THUMBNAIL] Invalid file path structure:', file.fullPath);
+          setThumbnailChecked(true);
+          return;
+        }
+
+        const userId = pathParts[0];
+        const fileName = pathParts[pathParts.length - 1];
+        const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+        
+        console.log('🔍 [THUMBNAIL] Extracted info:', { userId, fileName, fileNameWithoutExt });
+
+        // Try multiple possible thumbnail naming patterns
+        const possibleThumbnailPaths = [
+          `${userId}/thumbnails/${fileNameWithoutExt}_thumbnail.png`,
+          `${userId}/thumbnails/${fileName}_thumbnail.png`,
+          `${userId}/thumbnails/${fileNameWithoutExt}.png`,
+          // Also check for task-based naming if the filename contains task info
+          ...(fileNameWithoutExt.includes('_') ? [
+            `${userId}/thumbnails/${fileNameWithoutExt.split('_')[0]}_thumbnail.png`
+          ] : [])
+        ];
+
+        console.log('🔍 [THUMBNAIL] Checking possible paths:', possibleThumbnailPaths);
+
+        // Check each possible thumbnail path
+        for (const thumbnailPath of possibleThumbnailPaths) {
+          try {
+            const { data, error } = await supabase.storage
+              .from('figurine-images')
+              .list(thumbnailPath.substring(0, thumbnailPath.lastIndexOf('/')), {
+                search: thumbnailPath.substring(thumbnailPath.lastIndexOf('/') + 1)
+              });
+
+            if (!error && data && data.length > 0) {
+              // Thumbnail file exists, construct the public URL
+              const { data: publicUrlData } = supabase.storage
+                .from('figurine-images')
+                .getPublicUrl(thumbnailPath);
+              
+              const constructedThumbnailUrl = publicUrlData.publicUrl;
+              console.log('✅ [THUMBNAIL] Found thumbnail at:', thumbnailPath);
+              console.log('✅ [THUMBNAIL] Thumbnail URL:', constructedThumbnailUrl);
+              
+              // Verify the thumbnail URL actually returns an image
+              try {
+                const response = await fetch(constructedThumbnailUrl, { method: 'HEAD' });
+                if (response.ok && response.headers.get('content-type')?.startsWith('image/')) {
+                  setThumbnailUrl(constructedThumbnailUrl);
+                  setThumbnailExists(true);
+                  setThumbnailChecked(true);
+                  return;
+                }
+              } catch (fetchError) {
+                console.warn('⚠️ [THUMBNAIL] Failed to verify thumbnail URL:', fetchError);
+              }
+            }
+          } catch (listError) {
+            console.warn('⚠️ [THUMBNAIL] Error checking path:', thumbnailPath, listError);
+          }
+        }
+
+        console.log('❌ [THUMBNAIL] No valid thumbnail found for:', file.name);
+        setThumbnailExists(false);
+        setThumbnailChecked(true);
+      } catch (error) {
+        console.error('❌ [THUMBNAIL] Error checking thumbnail existence:', error);
+        setThumbnailExists(false);
+        setThumbnailChecked(true);
+      }
+    };
+
+    checkThumbnailExists();
+  }, [file.fullPath, file.type, file.name, thumbnailChecked]);
+
   const isImage = file.type === 'image';
   const is3DModel = file.type === '3d-model';
   
-  // Check if this file has an associated thumbnail
-  // Thumbnails are stored with pattern: userId/thumbnails/taskId_thumbnail.png
-  // We can try to construct the thumbnail URL for 3D models
-  const getThumbnailUrl = () => {
-    if (is3DModel && file.fullPath) {
-      // Extract the base filename (without extension) from the model path
-      const pathParts = file.fullPath.split('/');
-      const fileName = pathParts[pathParts.length - 1];
-      const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
-      
-      // Try to construct thumbnail path
-      const userId = pathParts[0]; // assuming format: userId/models/filename
-      const thumbnailPath = `${userId}/thumbnails/${fileNameWithoutExt}_thumbnail.png`;
-      
-      // Construct the thumbnail URL using the same bucket
-      const baseUrl = file.url.split('/figurine-images/')[0];
-      return `${baseUrl}/figurine-images/${thumbnailPath}`;
-    }
-    return null;
-  };
-
-  const thumbnailUrl = getThumbnailUrl();
+  // Use thumbnail if available and verified, otherwise use original file URL
+  const displayImageUrl = (thumbnailExists && thumbnailUrl) ? thumbnailUrl : file.url;
 
   return (
     <div className="glass-panel rounded-lg overflow-hidden group hover:scale-105 transition-transform duration-200">
       <div className="aspect-square relative overflow-hidden bg-white/5">
         {!imageError ? (
           <img
-            src={thumbnailUrl || file.url}
+            src={displayImageUrl}
             alt={file.name}
             className="w-full h-full object-cover"
             onError={handleImageError}
@@ -143,9 +214,14 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
           <span className="text-xs px-2 py-1 rounded bg-white/10 text-white/80">
             {is3DModel ? '3D Model' : 'Image'}
           </span>
-          {is3DModel && thumbnailUrl && (
+          {is3DModel && thumbnailExists && (
             <span className="text-xs text-green-400">
               Has Preview
+            </span>
+          )}
+          {is3DModel && thumbnailChecked && !thumbnailExists && (
+            <span className="text-xs text-yellow-400">
+              No Preview
             </span>
           )}
         </div>

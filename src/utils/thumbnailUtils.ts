@@ -12,6 +12,7 @@ export const downloadAndSaveThumbnail = async (thumbnailUrl: string, taskId: str
   try {
     console.log('🔄 [THUMBNAIL] Starting thumbnail download and save process');
     console.log(`🔄 [THUMBNAIL] Downloading thumbnail from: ${thumbnailUrl}`);
+    console.log(`🔄 [THUMBNAIL] Using task ID: ${taskId}`);
     
     // Check authentication first
     const { data: { session } } = await supabase.auth.getSession();
@@ -62,7 +63,7 @@ export const downloadAndSaveThumbnail = async (thumbnailUrl: string, taskId: str
       throw new Error('Downloaded thumbnail file is empty');
     }
     
-    // Generate a unique filename with user-specific path
+    // Generate a unique filename with user-specific path and task ID
     const filePath = `${userId}/thumbnails/${taskId}_thumbnail.png`;
     
     console.log('🔄 [THUMBNAIL] Uploading to storage path:', filePath);
@@ -89,10 +90,63 @@ export const downloadAndSaveThumbnail = async (thumbnailUrl: string, taskId: str
       
     const publicUrl = publicUrlData.publicUrl;
     console.log('✅ [THUMBNAIL] Public URL generated:', publicUrl);
+    console.log('✅ [THUMBNAIL] Thumbnail successfully saved with task ID:', taskId);
     
     return publicUrl;
   } catch (error) {
     console.error('❌ [THUMBNAIL] Failed to download and save thumbnail:', error);
     throw error; // Re-throw to handle in calling code
+  }
+};
+
+/**
+ * Checks if a thumbnail exists in storage for a given task ID
+ * @param taskId The task ID to check for
+ * @param userId The user ID (optional, will use current session if not provided)
+ * @returns Promise<string | null> - Returns thumbnail URL if exists, null otherwise
+ */
+export const checkThumbnailExists = async (taskId: string, userId?: string): Promise<string | null> => {
+  try {
+    let currentUserId = userId;
+    
+    if (!currentUserId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        console.warn('⚠️ [THUMBNAIL] No authenticated session for thumbnail check');
+        return null;
+      }
+      currentUserId = session.user.id;
+    }
+    
+    const thumbnailPath = `${currentUserId}/thumbnails/${taskId}_thumbnail.png`;
+    
+    console.log('🔍 [THUMBNAIL] Checking thumbnail existence:', thumbnailPath);
+    
+    // Try to get file info to check if it exists
+    const { data, error } = await supabase.storage
+      .from('figurine-images')
+      .list(`${currentUserId}/thumbnails`, {
+        search: `${taskId}_thumbnail.png`
+      });
+    
+    if (error) {
+      console.warn('⚠️ [THUMBNAIL] Error checking thumbnail existence:', error);
+      return null;
+    }
+    
+    if (data && data.length > 0) {
+      const { data: publicUrlData } = supabase.storage
+        .from('figurine-images')
+        .getPublicUrl(thumbnailPath);
+      
+      console.log('✅ [THUMBNAIL] Thumbnail exists:', publicUrlData.publicUrl);
+      return publicUrlData.publicUrl;
+    }
+    
+    console.log('ℹ️ [THUMBNAIL] No thumbnail found for task ID:', taskId);
+    return null;
+  } catch (error) {
+    console.error('❌ [THUMBNAIL] Error in thumbnail existence check:', error);
+    return null;
   }
 };
