@@ -114,10 +114,12 @@ const EnhancedImageViewerDialog: React.FC<EnhancedImageViewerDialogProps> = ({
       imageUrl.split('/').pop()?.split('?')[0] || 'image.png' : 
       'image.png');
 
+    console.log('🔄 [IMAGE-VIEWER] Starting secure download:', imageName);
+    
     try {
       await secureDownload(imageUrl, imageName);
     } catch (error) {
-      console.error('Secure download failed:', error);
+      console.error('❌ [IMAGE-VIEWER] Secure download failed:', error);
       toast({
         title: "Download failed",
         description: "There was a problem downloading the image",

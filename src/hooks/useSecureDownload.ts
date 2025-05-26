@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useSecureDownload = () => {
   const { user } = useAuth();
@@ -19,11 +20,33 @@ export const useSecureDownload = () => {
     setIsDownloading(true);
     
     try {
-      // Call our secure download endpoint
-      const response = await fetch('/api/download-image', {
+      console.log('🔄 [SECURE-DOWNLOAD] Starting secure download:', imageName);
+      
+      // Call the Supabase Edge Function using the supabase client
+      const { data, error } = await supabase.functions.invoke('download-image', {
+        body: { 
+          imageUrl, 
+          fileName: imageName 
+        },
+      });
+
+      if (error) {
+        console.error('❌ [SECURE-DOWNLOAD] Edge function error:', error);
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          setAuthPromptOpen(true);
+          return;
+        }
+        throw new Error('Download failed');
+      }
+
+      // The edge function returns the file as a blob response
+      // We need to get the actual response and create a blob from it
+      const response = await fetch(supabase.functions._getInvokeUrl('download-image'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'apikey': supabase.supabaseKey,
         },
         body: JSON.stringify({ 
           imageUrl, 
@@ -54,13 +77,14 @@ export const useSecureDownload = () => {
       document.body.removeChild(a);
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
 
+      console.log('✅ [SECURE-DOWNLOAD] Download completed successfully');
       toast({
         title: "Download started",
         description: `Downloading ${imageName || 'file'}`,
         variant: "default"
       });
     } catch (error) {
-      console.error("Error downloading file:", error);
+      console.error("❌ [SECURE-DOWNLOAD] Error downloading file:", error);
       toast({
         title: "Download failed",
         description: "There was a problem downloading the file",

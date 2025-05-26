@@ -86,7 +86,7 @@ const GalleryModals: React.FC<GalleryModalsProps> = ({
         onClose={onResetProgress}
       />
 
-      {/* Auth Prompt Modal */}
+      {/* Centralized Auth Prompt Modal - handles all auth prompts from secure downloads */}
       <AuthPromptModal 
         open={authPromptOpen} 
         onOpenChange={onAuthPromptChange}
