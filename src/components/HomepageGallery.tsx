@@ -2,12 +2,14 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Image, Box, Eye, Download } from "lucide-react";
+import { ArrowRight, Image, Box, Eye, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
+import { useSecureDownload } from "@/hooks/useSecureDownload";
 import ModelPreview from "@/components/gallery/ModelPreview";
 import ModelViewerDialog from "@/components/gallery/ModelViewerDialog";
+import AuthPromptModal from "@/components/auth/AuthPromptModal";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
 import AnimatedSection from "@/components/animations/AnimatedSection";
 import StaggerContainer from "@/components/animations/StaggerContainer";
@@ -25,6 +27,15 @@ const HomepageGallery: React.FC = () => {
     handleViewModel, 
     handleCloseModelViewer 
   } = useModelViewer();
+
+  // Set up secure download functionality
+  const { 
+    secureDownload, 
+    isDownloading, 
+    authPromptOpen, 
+    setAuthPromptOpen,
+    isAuthenticated 
+  } = useSecureDownload();
   
   // Limit to 10 items for homepage display
   const limitedImages = images.slice(0, 10);
@@ -35,31 +46,6 @@ const HomepageGallery: React.FC = () => {
 
   const navigateToStudio = () => {
     navigate("/studio");
-  };
-  
-  // Handle downloads with a proper function that ensures content is downloaded
-  const handleDownload = async (imageUrl: string, imageName: string) => {
-    try {
-      // Fetch the file as a blob
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      
-      // Create an object URL for the blob
-      const blobUrl = URL.createObjectURL(blob);
-      
-      // Create a temporary anchor element
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = imageName || 'figurine.png';
-      document.body.appendChild(a);
-      a.click();
-      
-      // Clean up
-      document.body.removeChild(a);
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
-    } catch (error) {
-      console.error("Error downloading file:", error);
-    }
   };
 
   return (
@@ -147,21 +133,43 @@ const HomepageGallery: React.FC = () => {
                               <Eye size={14} className="mr-1.5" /> View Model
                             </Button>
                             <Button
-                              onClick={() => handleDownload(file.url, file.name)}
+                              onClick={() => secureDownload(file.url, file.name)}
+                              disabled={isDownloading}
                               size="sm"
                               variant="outline"
                               className="w-full border-white/10 h-8 px-3 transform transition-transform hover:scale-105"
                             >
-                              <Download size={14} className="mr-1.5" /> Download
+                              {isDownloading ? (
+                                <>
+                                  <Loader2 size={14} className="mr-1.5 animate-spin" />
+                                  Downloading...
+                                </>
+                              ) : (
+                                <>
+                                  <Download size={14} className="mr-1.5" />
+                                  {isAuthenticated ? 'Download' : 'Sign in'}
+                                </>
+                              )}
                             </Button>
                           </div>
                         ) : (
                           <Button
-                            onClick={() => handleDownload(file.url, file.name)}
+                            onClick={() => secureDownload(file.url, file.name)}
+                            disabled={isDownloading}
                             size="sm"
                             className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8 px-3 transform transition-transform hover:scale-105"
                           >
-                            <Download size={14} className="mr-1.5" /> Download
+                            {isDownloading ? (
+                              <>
+                                <Loader2 size={14} className="mr-1.5 animate-spin" />
+                                Downloading...
+                              </>
+                            ) : (
+                              <>
+                                <Download size={14} className="mr-1.5" />
+                                {isAuthenticated ? 'Download' : 'Sign in'}
+                              </>
+                            )}
                           </Button>
                         )}
                       </div>
@@ -208,6 +216,12 @@ const HomepageGallery: React.FC = () => {
         onOpenChange={setModelViewerOpen}
         modelUrl={viewingModel}
         onClose={handleCloseModelViewer}
+      />
+
+      {/* Authentication Prompt Modal */}
+      <AuthPromptModal
+        open={authPromptOpen}
+        onOpenChange={setAuthPromptOpen}
       />
     </section>
   );

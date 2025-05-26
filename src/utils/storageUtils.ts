@@ -74,7 +74,9 @@ export const saveImageToStorage = async (imageBlob: Blob, figurineId: string): P
     
     console.log('✅ [STORAGE] Upload successful, data:', data);
     
-    // Get public URL
+    // Get public URL - Note: Even though the bucket is not public, 
+    // we can still get the public URL structure for viewing
+    // Downloads will be handled by our secure endpoint
     const { data: publicUrlData } = supabase.storage
       .from('figurine-images')
       .getPublicUrl(filePath);

@@ -71,41 +71,11 @@ const Gallery = () => {
     navigate('/studio');
   };
   
+  // Legacy download function - now handled by useSecureDownload hook
   const handleDownload = async (imageUrl: string, imageName: string) => {
-    if (!imageUrl) return;
-    
-    try {
-      // Fetch the file as a blob
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      
-      // Create an object URL for the blob
-      const blobUrl = URL.createObjectURL(blob);
-      
-      // Create a temporary anchor element
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = imageName || 'figurine.png';
-      document.body.appendChild(a);
-      a.click();
-      
-      // Clean up
-      document.body.removeChild(a);
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
-
-      toast({
-        title: "Download started",
-        description: `Downloading ${imageName || 'file'}`,
-        variant: "default"
-      });
-    } catch (error) {
-      console.error("Error downloading file:", error);
-      toast({
-        title: "Download failed",
-        description: "There was a problem downloading the file",
-        variant: "destructive"
-      });
-    }
+    // This function is kept for backward compatibility but is no longer used
+    // Downloads are now handled by the useSecureDownload hook in GalleryItem
+    console.log('Legacy download function called - this should use useSecureDownload instead');
   };
 
   const handleGenerate3D = async (imageUrl: string, imageName: string) => {
