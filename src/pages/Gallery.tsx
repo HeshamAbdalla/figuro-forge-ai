@@ -1,6 +1,8 @@
+
 import React from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
+import Header from "@/components/Header";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
 import GalleryGrid from "@/components/gallery/GalleryGrid";
 import CallToAction from "@/components/gallery/CallToAction";
@@ -102,6 +104,7 @@ const Gallery = () => {
   if (!user) {
     return (
       <>
+        <Header />
         <AuthPromptModal 
           open={authPromptOpen} 
           onOpenChange={setAuthPromptOpen}
@@ -112,7 +115,7 @@ const Gallery = () => {
             <meta name="description" content="Browse and manage your 3D models and images in your personal Figuro gallery." />
           </Helmet>
 
-          <div className="min-h-screen bg-gradient-to-br from-figuro-dark via-figuro-dark to-figuro-accent/20">
+          <div className="min-h-screen bg-gradient-to-br from-figuro-dark via-figuro-dark to-figuro-accent/20 pt-24">
             <div className="container mx-auto px-4 py-8">
               <GalleryHeader onUploadClick={handleUploadClick} />
               
@@ -133,64 +136,67 @@ const Gallery = () => {
   }
 
   return (
-    <PageTransition>
-      <Helmet>
-        <title>Gallery - Figuro</title>
-        <meta name="description" content="Browse and manage your 3D models and images in your personal Figuro gallery." />
-      </Helmet>
+    <>
+      <Header />
+      <PageTransition>
+        <Helmet>
+          <title>Gallery - Figuro</title>
+          <meta name="description" content="Browse and manage your 3D models and images in your personal Figuro gallery." />
+        </Helmet>
 
-      <div className="min-h-screen bg-gradient-to-br from-figuro-dark via-figuro-dark to-figuro-accent/20">
-        <div className="container mx-auto px-4 py-8">
-          <GalleryHeader onUploadClick={handleUploadClick} />
-          
-          <GalleryGrid 
-            images={images}
-            isLoading={isLoading}
-            onDownload={handleDownload}
-            onView={handleView}
-            onGenerate3D={handleGenerate3D}
+        <div className="min-h-screen bg-gradient-to-br from-figuro-dark via-figuro-dark to-figuro-accent/20 pt-24">
+          <div className="container mx-auto px-4 py-8">
+            <GalleryHeader onUploadClick={handleUploadClick} />
+            
+            <GalleryGrid 
+              images={images}
+              isLoading={isLoading}
+              onDownload={handleDownload}
+              onView={handleView}
+              onGenerate3D={handleGenerate3D}
+            />
+            
+            <CallToAction onNavigateToStudio={handleNavigateToStudio} />
+          </div>
+
+          {/* Enhanced 3D Model Viewer Dialog */}
+          <EnhancedModelViewerDialog
+            open={modelViewerOpen}
+            onOpenChange={setModelViewerOpen}
+            modelUrl={viewingModel}
+            fileName={viewingFileName}
+            onClose={handleCloseModelViewer}
           />
-          
-          <CallToAction onNavigateToStudio={handleNavigateToStudio} />
+
+          {/* Enhanced Image Viewer Dialog */}
+          <EnhancedImageViewerDialog
+            open={imageViewerOpen}
+            onOpenChange={setImageViewerOpen}
+            imageUrl={viewingImage}
+            fileName={viewingImageName}
+            onClose={handleCloseImageViewer}
+          />
+
+          {/* 3D Generation Modal */}
+          <Generate3DModal 
+            open={isGenerating}
+            onOpenChange={(open) => {
+              if (!open) {
+                resetProgress();
+              }
+            }}
+            progress={progress}
+            onClose={resetProgress}
+          />
+
+          {/* Auth Prompt Modal */}
+          <AuthPromptModal 
+            open={authPromptOpen} 
+            onOpenChange={setAuthPromptOpen}
+          />
         </div>
-
-        {/* Enhanced 3D Model Viewer Dialog */}
-        <EnhancedModelViewerDialog
-          open={modelViewerOpen}
-          onOpenChange={setModelViewerOpen}
-          modelUrl={viewingModel}
-          fileName={viewingFileName}
-          onClose={handleCloseModelViewer}
-        />
-
-        {/* Enhanced Image Viewer Dialog */}
-        <EnhancedImageViewerDialog
-          open={imageViewerOpen}
-          onOpenChange={setImageViewerOpen}
-          imageUrl={viewingImage}
-          fileName={viewingImageName}
-          onClose={handleCloseImageViewer}
-        />
-
-        {/* 3D Generation Modal */}
-        <Generate3DModal 
-          open={isGenerating}
-          onOpenChange={(open) => {
-            if (!open) {
-              resetProgress();
-            }
-          }}
-          progress={progress}
-          onClose={resetProgress}
-        />
-
-        {/* Auth Prompt Modal */}
-        <AuthPromptModal 
-          open={authPromptOpen} 
-          onOpenChange={setAuthPromptOpen}
-        />
-      </div>
-    </PageTransition>
+      </PageTransition>
+    </>
   );
 };
 
