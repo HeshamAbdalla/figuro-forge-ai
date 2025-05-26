@@ -74,25 +74,6 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
     
     console.log('🔄 [MODEL] Uploading to storage path:', filePath);
     
-    // Check if storage bucket exists and is accessible
-    try {
-      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-      if (bucketError) {
-        console.error('❌ [MODEL] Error listing buckets:', bucketError);
-        throw new Error(`Storage bucket access error: ${bucketError.message}`);
-      }
-      
-      const targetBucket = buckets?.find(bucket => bucket.name === 'figurine-images');
-      if (!targetBucket) {
-        throw new Error('Storage bucket "figurine-images" not found');
-      }
-      
-      console.log('✅ [MODEL] Storage bucket verified');
-    } catch (bucketError) {
-      console.error('❌ [MODEL] Bucket verification failed:', bucketError);
-      throw bucketError;
-    }
-    
     // Upload to Supabase storage using the same bucket as images
     const { data, error } = await supabase.storage
       .from('figurine-images')
