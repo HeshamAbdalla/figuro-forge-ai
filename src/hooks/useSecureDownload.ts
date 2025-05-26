@@ -39,31 +39,19 @@ export const useSecureDownload = () => {
         throw new Error('Download failed');
       }
 
-      // The edge function returns the file as a blob response
-      // We need to get the actual response and create a blob from it
-      const response = await fetch(supabase.functions._getInvokeUrl('download-image'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'apikey': supabase.supabaseKey,
-        },
-        body: JSON.stringify({ 
-          imageUrl, 
-          fileName: imageName 
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setAuthPromptOpen(true);
-          return;
-        }
-        throw new Error('Download failed');
+      // The edge function should return a blob directly
+      // Convert the response to a blob if it's not already
+      let blob: Blob;
+      
+      if (data instanceof Blob) {
+        blob = data;
+      } else if (data instanceof ArrayBuffer) {
+        blob = new Blob([data]);
+      } else {
+        // If data is some other format, we need to handle it
+        console.error('❌ [SECURE-DOWNLOAD] Unexpected data format:', typeof data);
+        throw new Error('Unexpected response format');
       }
-
-      // Get the blob from response
-      const blob = await response.blob();
       
       // Create download link
       const blobUrl = URL.createObjectURL(blob);
