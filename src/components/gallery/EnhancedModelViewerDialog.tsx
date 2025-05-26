@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Maximize2, Minimize2, RotateCcw, Download, Info } from "lucide-react";
@@ -30,7 +31,7 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isInfoVisible, setIsInfoVisible] = useState(false);
-  const [autoRotate, setAutoRotate] = useState(true);
+  const [autoRotate, setAutoRotate] = useState(false); // Changed from true to false
   const [stableModelUrl, setStableModelUrl] = useState<string | null>(null);
   const [modelError, setModelError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -69,7 +70,7 @@ const EnhancedModelViewerDialog: React.FC<EnhancedModelViewerDialogProps> = ({
       setIsFullscreen(false);
       setIsInfoVisible(false);
       setModelError(null);
-      setAutoRotate(true);
+      setAutoRotate(false); // Changed from true to false
     }
     onOpenChange(newOpen);
   };
