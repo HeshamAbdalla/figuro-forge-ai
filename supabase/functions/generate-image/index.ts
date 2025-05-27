@@ -37,7 +37,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, style, apiKey } = await req.json();
+    const { prompt, style } = await req.json();
     
     if (!prompt || !style) {
       throw new Error("Missing required parameters: prompt and style are required");
@@ -49,26 +49,27 @@ serve(async (req) => {
     // Determine if we should use a specific LoRA adapter
     const useLoraAdapter = style === "isometric" ? "multimodalart/isometric-skeumorphic-3d-bnb" : undefined;
     
-    // Create headers with API key if provided or use the Hugging Face token from environment variables
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
+    // Use the Hugging Face token from environment variables
+    const hfToken = Deno.env.get("HUGGING_FACE_ACCESS_TOKEN");
     
-    // First try to use the provided API key, then fall back to the environment variable
-    const hfToken = apiKey || Deno.env.get("HUGGING_FACE_ACCESS_TOKEN");
-    
-    if (hfToken) {
-      headers["Authorization"] = `Bearer ${hfToken}`;
-    } else {
+    if (!hfToken) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: "No API key provided and no environment token available",
-          needsApiKey: true 
+          error: "Hugging Face API key not configured on server",
+          needsApiKey: false 
         }), 
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
+    
+    // Create headers with API key
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${hfToken}`,
+    };
+    
+    console.log("Making request to Hugging Face API with prompt:", formattedPrompt);
     
     // Make the API request
     const response = await fetch("https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev", {
@@ -83,26 +84,17 @@ serve(async (req) => {
       }),
     });
     
-    // Handle authentication errors
-    if (response.status === 401 || response.status === 403) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "API key required or unauthorized access",
-          needsApiKey: true 
-        }), 
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
-    }
-    
-    // Handle other errors
+    // Handle errors
     if (!response.ok) {
       const errorText = await response.text();
+      console.error("Hugging Face API error:", response.status, errorText);
       throw new Error(`API error: ${response.status} - ${errorText || response.statusText}`);
     }
     
     // Get the image data
     const imageData = await response.arrayBuffer();
+    
+    console.log("Successfully generated image, size:", imageData.byteLength);
     
     // Return the image with proper content type
     return new Response(imageData, {
@@ -114,15 +106,13 @@ serve(async (req) => {
   } catch (error) {
     console.error("Edge function error:", error);
     
-    // Check if the error is about API key
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const needsApiKey = errorMessage.includes("API key") || errorMessage.includes("unauthorized");
     
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: errorMessage,
-        needsApiKey: needsApiKey
+        needsApiKey: false
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -1,17 +1,12 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Settings, Upload, Key, ChevronDown, ChevronUp } from "lucide-react";
+import { Settings, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 interface StudioConfigPanelProps {
-  apiKey: string;
-  setApiKey: (key: string) => void;
-  showApiInput: boolean;
-  setShowApiInput: (show: boolean) => void;
   onUploadModel: () => void;
   user: any;
   onSignIn: () => void;
@@ -19,10 +14,6 @@ interface StudioConfigPanelProps {
 }
 
 const StudioConfigPanel = ({
-  apiKey,
-  setApiKey,
-  showApiInput,
-  setShowApiInput,
   onUploadModel,
   user,
   onSignIn,
@@ -47,23 +38,6 @@ const StudioConfigPanel = ({
         </CollapsibleTrigger>
         
         <CollapsibleContent className="p-4 pt-0 space-y-4">
-          {/* API Key Section */}
-          {(showApiInput || apiKey) && (
-            <div className="space-y-2">
-              <label className="text-sm text-white/70 flex items-center gap-2">
-                <Key size={14} />
-                Hugging Face API Key
-              </label>
-              <Input
-                type="password"
-                placeholder="hf_..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="bg-white/10 border-white/20 text-white"
-              />
-            </div>
-          )}
-
           {/* Generation Settings */}
           <div className="space-y-2">
             <label className="text-sm text-white/70">Image Quality</label>

@@ -25,8 +25,6 @@ import Generate3DModal from "@/components/gallery/Generate3DModal";
 import type { Generate3DConfig } from "@/components/gallery/types/conversion";
 
 const Studio = () => {
-  const [apiKey, setApiKey] = useState<string | "">("");
-  const [showApiInput, setShowApiInput] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [customModelUrl, setCustomModelUrl] = useState<string | null>(null);
   const [customModelFile, setCustomModelFile] = useState<File | null>(null);
@@ -40,7 +38,6 @@ const Studio = () => {
     isGeneratingImage,
     generatedImage,
     handleGenerate,
-    requiresApiKey,
   } = useImageGeneration();
 
   const {
@@ -72,19 +69,6 @@ const Studio = () => {
     
     checkUser();
   }, []);
-
-  useEffect(() => {
-    // Check if API key is stored in localStorage
-    const savedApiKey = localStorage.getItem("tempHuggingFaceApiKey");
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Show API input if requiresApiKey is true
-    setShowApiInput(requiresApiKey);
-  }, [requiresApiKey]);
 
   // Watch for generation modal state changes
   useEffect(() => {
@@ -132,18 +116,12 @@ const Studio = () => {
     
     // Call the handleGenerate function with improved error handling
     try {
-      const result = await handleGenerate(prompt, style, apiKey);
+      const result = await handleGenerate(prompt, style, ""); // No API key needed anymore
       
-      if (result.needsApiKey) {
-        setShowApiInput(true);
-        toast({
-          title: "API Key Required",
-          description: "Please enter your Hugging Face API key to continue",
-        });
-      } else if (!result.success) {
+      if (!result.success) {
         toast({
           title: "Generation Failed",
-          description: "Failed to generate image. Please try again.",
+          description: result.error || "Failed to generate image. Please try again.",
           variant: "destructive",
         });
       }
@@ -272,13 +250,6 @@ const Studio = () => {
               transition={{ duration: 0.5 }}
             >
               <StudioConfigPanel
-                apiKey={apiKey}
-                setApiKey={(key) => {
-                  setApiKey(key);
-                  localStorage.setItem("tempHuggingFaceApiKey", key);
-                }}
-                showApiInput={showApiInput}
-                setShowApiInput={setShowApiInput}
                 onUploadModel={() => setUploadModalOpen(true)}
                 user={authUser}
                 onSignIn={handleSignIn}
