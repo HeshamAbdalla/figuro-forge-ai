@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
@@ -57,7 +58,8 @@ const Gallery = () => {
   // Handler to generate 3D model with config
   const handleGenerate3DWithConfig = (config: Generate3DConfig) => {
     setConfigModalOpen(false);
-    generate3DModel(selectedImageUrl, selectedImageName, config);
+    // For gallery conversions, don't update existing figurines (shouldUpdateExisting = false)
+    generate3DModel(selectedImageUrl, selectedImageName, config, false);
   };
 
   const {

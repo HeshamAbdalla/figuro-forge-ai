@@ -1,4 +1,3 @@
-
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -13,7 +12,7 @@ interface UseStudioHandlersProps {
   setGenerationModalOpen: (open: boolean) => void;
   setTextTo3DProgress: (progress: { status: string; progress: number; modelUrl: string }) => void;
   handleGenerate: (prompt: string, style: string, apiKey: string) => Promise<any>;
-  generate3DModel: (image: string, fileName: string, config: Generate3DConfig) => Promise<void>;
+  generate3DModel: (image: string, fileName: string, config: Generate3DConfig, shouldUpdateExisting?: boolean) => Promise<void>;
   generateTextTo3DModel: (prompt: string, artStyle: string, negativePrompt: string) => Promise<any>;
   resetProgress: () => void;
 }
@@ -154,8 +153,8 @@ export const useStudioHandlers = ({
     // Generate a filename for the conversion
     const fileName = `studio-conversion-${Date.now()}.png`;
     
-    // Start the 3D generation process
-    await generate3DModel(generatedImage, fileName, config);
+    // Start the 3D generation process with shouldUpdateExisting = true for studio
+    await generate3DModel(generatedImage, fileName, config, true);
   };
 
   // Handler for Text to 3D generation

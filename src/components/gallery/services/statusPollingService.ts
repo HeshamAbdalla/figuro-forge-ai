@@ -9,7 +9,8 @@ export const pollConversionStatus = async (
   taskId: string,
   fileName: string,
   originalImageUrl: string,
-  callbacks: ConversionCallbacks
+  callbacks: ConversionCallbacks,
+  shouldUpdateExisting: boolean = true
 ): Promise<void> => {
   const maxAttempts = 60; // 5 minutes with 5-second intervals
   let attempts = 0;
@@ -74,9 +75,57 @@ export const pollConversionStatus = async (
         }
         
         if (savedModelUrl) {
-          // Create a figurine record for this 3D conversion
+          if (shouldUpdateExisting) {
+            // Check if a figurine already exists for this image URL
+            console.log('🔄 [POLLING] Checking for existing figurine with image URL:', originalImageUrl);
+            
+            const { data: existingFigurines, error: searchError } = await supabase
+              .from('figurines')
+              .select('id, title')
+              .or(`image_url.eq.${originalImageUrl},saved_image_url.eq.${originalImageUrl}`)
+              .limit(1);
+
+            if (searchError) {
+              console.error('❌ [POLLING] Error searching for existing figurine:', searchError);
+            }
+
+            if (existingFigurines && existingFigurines.length > 0) {
+              // Update existing figurine with 3D model
+              const existingFigurine = existingFigurines[0];
+              console.log('🔄 [POLLING] Updating existing figurine with 3D model:', existingFigurine.id);
+              
+              const { error: updateError } = await supabase
+                .from('figurines')
+                .update({ 
+                  model_url: savedModelUrl,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', existingFigurine.id);
+              
+              if (updateError) {
+                console.error('❌ [POLLING] Failed to update existing figurine with model URL:', updateError);
+                // Fall back to creating a new figurine if update fails
+              } else {
+                console.log('✅ [POLLING] Successfully updated existing figurine with 3D model');
+                
+                callbacks.onProgressUpdate({
+                  status: 'completed',
+                  progress: 100,
+                  message: '3D model added to existing figurine!',
+                  taskId,
+                  modelUrl: savedModelUrl,
+                  thumbnailUrl: savedThumbnailUrl || undefined
+                });
+
+                callbacks.onSuccess(savedModelUrl, savedThumbnailUrl || undefined);
+                return;
+              }
+            }
+          }
+
+          // Create a new figurine record if no existing one found or if shouldUpdateExisting is false
           try {
-            console.log('🔄 [POLLING] Creating figurine record for 3D conversion...');
+            console.log('🔄 [POLLING] Creating new figurine record for 3D conversion...');
             
             // Generate a prompt based on the file name and metadata
             const prompt = `Generated from ${fileName.replace(/\.[^/.]+$/, '')}`;

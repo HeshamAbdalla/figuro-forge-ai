@@ -4,6 +4,35 @@ import { v4 as uuidv4 } from 'uuid';
 import { Figurine } from "@/types/figurine";
 import { saveImageToStorage } from "@/utils/storageUtils";
 
+// Check if a figurine already exists for a given image URL
+export const findExistingFigurine = async (imageUrl: string): Promise<string | null> => {
+  try {
+    console.log('🔍 [FIGURINE] Checking for existing figurine with image URL:', imageUrl);
+    
+    const { data: existingFigurines, error } = await supabase
+      .from('figurines')
+      .select('id')
+      .or(`image_url.eq.${imageUrl},saved_image_url.eq.${imageUrl}`)
+      .limit(1);
+
+    if (error) {
+      console.error('❌ [FIGURINE] Error searching for existing figurine:', error);
+      return null;
+    }
+
+    if (existingFigurines && existingFigurines.length > 0) {
+      console.log('✅ [FIGURINE] Found existing figurine:', existingFigurines[0].id);
+      return existingFigurines[0].id;
+    }
+
+    console.log('📝 [FIGURINE] No existing figurine found for image URL');
+    return null;
+  } catch (error) {
+    console.error('❌ [FIGURINE] Error in findExistingFigurine:', error);
+    return null;
+  }
+};
+
 // Save a new figurine to the database - requires authentication
 export const saveFigurine = async (
   prompt: string, 

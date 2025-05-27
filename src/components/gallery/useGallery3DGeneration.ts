@@ -16,7 +16,12 @@ export const useGallery3DGeneration = () => {
   const { toast } = useToast();
   const { canPerformAction, checkSubscription, consumeAction } = useSubscription();
 
-  const generate3DModel = async (imageUrl: string, fileName: string, config?: Generate3DConfig) => {
+  const generate3DModel = async (
+    imageUrl: string, 
+    fileName: string, 
+    config?: Generate3DConfig,
+    shouldUpdateExisting: boolean = false // New parameter to control behavior
+  ) => {
     try {
       setIsGenerating(true);
       updateProgress({
@@ -25,7 +30,7 @@ export const useGallery3DGeneration = () => {
         message: 'Checking usage limits...'
       });
 
-      console.log('🔄 [GALLERY] Starting 3D conversion for:', fileName, 'with config:', config);
+      console.log('🔄 [GALLERY] Starting 3D conversion for:', fileName, 'with config:', config, 'shouldUpdateExisting:', shouldUpdateExisting);
 
       // Check authentication
       const { data: { session } } = await supabase.auth.getSession();
@@ -60,7 +65,9 @@ export const useGallery3DGeneration = () => {
           setIsGenerating(false);
           toast({
             title: "3D Model Generated",
-            description: "Your 3D model has been created and saved to the gallery",
+            description: shouldUpdateExisting 
+              ? "Your 3D model has been added to the existing figurine"
+              : "Your 3D model has been created and saved to the gallery",
             variant: "default"
           });
         },
@@ -102,8 +109,8 @@ export const useGallery3DGeneration = () => {
         conversionCallbacks
       );
 
-      // Poll for completion
-      await pollConversionStatus(taskId, fileName, imageUrl, conversionCallbacks);
+      // Poll for completion with the shouldUpdateExisting flag
+      await pollConversionStatus(taskId, fileName, imageUrl, conversionCallbacks, shouldUpdateExisting);
 
       // Refresh subscription data after successful conversion
       setTimeout(() => {
