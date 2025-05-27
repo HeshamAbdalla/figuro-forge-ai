@@ -154,7 +154,7 @@ export const useFigurines = () => {
       .channel('conversions-channel')
       .on('postgres_changes', 
           { event: '*', schema: 'public', table: 'conversion_tasks' }, 
-          (payload) => {
+          (payload: { new?: any; old?: any; eventType?: string }) => {
             // Only refresh when a task is completed
             if (payload.new && payload.new.status === 'SUCCEEDED') {
               console.log("Text-to-3D conversion completed, refreshing data");

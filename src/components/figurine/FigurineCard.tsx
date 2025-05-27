@@ -73,11 +73,15 @@ const FigurineCard = ({
           <CardTitle className="text-sm font-medium truncate flex items-center justify-between">
             <span className="flex items-center gap-2">
               {isTextTo3D && (
-                <Sparkles size={14} className="text-figuro-accent" title="Text-to-3D Generated" />
+                <span title="Text-to-3D Generated">
+                  <Sparkles size={14} className="text-figuro-accent" />
+                </span>
               )}
               <span className="truncate">{displayTitle}</span>
               {figurine.model_url && (
-                <Box size={14} className="text-figuro-accent flex-shrink-0" title="3D Model Available" />
+                <span title="3D Model Available">
+                  <Box size={14} className="text-figuro-accent flex-shrink-0" />
+                </span>
               )}
             </span>
             <div className="flex items-center gap-1 ml-2 flex-shrink-0">
