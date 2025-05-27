@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -351,7 +350,7 @@ const Studio = () => {
                       <ModelViewer 
                         modelUrl={displayModelUrl} 
                         isLoading={isGenerating}
-                        progress={progress}
+                        progress={progress.progress}
                         errorMessage={progress.status === 'error' ? progress.message : undefined}
                         onCustomModelLoad={(url) => setCustomModelUrl(url)}
                       />
