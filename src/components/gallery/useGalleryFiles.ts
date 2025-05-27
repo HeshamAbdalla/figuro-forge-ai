@@ -87,13 +87,102 @@ export const useGalleryFiles = () => {
     }
   };
 
-  // Load all images and models from the bucket - made useCallback for better optimization
+  // Function to list files from the figurine-models bucket (text-to-3D models)
+  const listModelFiles = async (): Promise<BucketImage[]> => {
+    try {
+      console.log('🔄 [GALLERY] Fetching text-to-3D models from figurine-models bucket...');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        console.log('ℹ️ [GALLERY] No authenticated user, skipping model files');
+        return [];
+      }
+      
+      // List files in user's folder in the figurine-models bucket
+      const userPath = `${session.user.id}`;
+      const { data: folders, error: foldersError } = await supabase
+        .storage
+        .from('figurine-models')
+        .list(userPath, {
+          limit: 100,
+          sortBy: { column: 'created_at', order: 'desc' }
+        });
+      
+      if (foldersError) {
+        console.warn('⚠️ [GALLERY] Error listing model folders:', foldersError);
+        return [];
+      }
+      
+      if (!folders || folders.length === 0) {
+        console.log('ℹ️ [GALLERY] No model folders found for user');
+        return [];
+      }
+      
+      let allModelFiles: BucketImage[] = [];
+      
+      // Check both models and thumbnails subfolders
+      for (const folder of folders) {
+        if (folder.name === 'models' || folder.name === 'thumbnails') {
+          const folderPath = `${userPath}/${folder.name}`;
+          
+          const { data: files, error: filesError } = await supabase
+            .storage
+            .from('figurine-models')
+            .list(folderPath, {
+              limit: 100,
+              sortBy: { column: 'created_at', order: 'desc' }
+            });
+            
+          if (filesError) {
+            console.warn(`⚠️ [GALLERY] Error listing files in ${folderPath}:`, filesError);
+            continue;
+          }
+          
+          if (files && files.length > 0) {
+            const processedFiles = files
+              .filter(file => file.id !== null) // Only actual files, not folders
+              .map(file => {
+                const fullPath = `${folderPath}/${file.name}`;
+                const { data: publicUrlData } = supabase.storage
+                  .from('figurine-models')
+                  .getPublicUrl(fullPath);
+                
+                return {
+                  name: file.name,
+                  fullPath: fullPath,
+                  url: publicUrlData.publicUrl,
+                  id: file.id || fullPath,
+                  created_at: file.created_at || new Date().toISOString(),
+                  type: getFileType(file.name) as 'image' | '3d-model'
+                };
+              });
+            
+            allModelFiles = [...allModelFiles, ...processedFiles];
+          }
+        }
+      }
+      
+      console.log(`✅ [GALLERY] Found ${allModelFiles.length} model files`);
+      return allModelFiles;
+    } catch (error) {
+      console.error('❌ [GALLERY] Error fetching model files:', error);
+      return [];
+    }
+  };
+
+  // Load all images and models from both buckets - made useCallback for better optimization
   const fetchImagesFromBucket = useCallback(async () => {
     console.log('🔄 [GALLERY] Starting gallery files fetch...');
     setIsLoading(true);
     try {
-      // Get all files recursively, starting from root
-      const allFiles = await listFilesRecursively();
+      // Get all files from both sources in parallel
+      const [imageFiles, modelFiles] = await Promise.all([
+        listFilesRecursively(), // From figurine-images bucket
+        listModelFiles()        // From figurine-models bucket
+      ]);
+      
+      // Combine all files
+      const allFiles = [...imageFiles, ...modelFiles];
       
       // Sort by creation date (newest first)
       allFiles.sort((a, b) => 
@@ -101,9 +190,9 @@ export const useGalleryFiles = () => {
       );
       
       setImages(allFiles);
-      console.log(`✅ [GALLERY] Loaded ${allFiles.length} files from gallery`);
+      console.log(`✅ [GALLERY] Loaded ${allFiles.length} files from gallery (${imageFiles.length} images, ${modelFiles.length} models)`);
     } catch (error) {
-      console.error('❌ [GALLERY] Error loading files from bucket:', error);
+      console.error('❌ [GALLERY] Error loading files from buckets:', error);
       toast({
         title: "Error loading gallery",
         description: "Could not load the gallery items. Please try again.",
@@ -117,21 +206,32 @@ export const useGalleryFiles = () => {
   useEffect(() => {
     fetchImagesFromBucket();
     
-    // Set up a subscription to listen for storage changes
-    const channel = supabase
-      .channel('storage-changes')
+    // Set up subscriptions to listen for storage changes in both buckets
+    const imagesChannel = supabase
+      .channel('storage-images-changes')
       .on('postgres_changes', 
           { event: '*', schema: 'storage', table: 'objects', filter: "bucket_id=eq.figurine-images" }, 
           () => {
-            // When storage changes, refetch the files
-            console.log('🔄 [GALLERY] Storage changed, refetching files...');
+            console.log('🔄 [GALLERY] Figurine-images storage changed, refetching files...');
+            fetchImagesFromBucket();
+          }
+      )
+      .subscribe();
+      
+    const modelsChannel = supabase
+      .channel('storage-models-changes')
+      .on('postgres_changes', 
+          { event: '*', schema: 'storage', table: 'objects', filter: "bucket_id=eq.figurine-models" }, 
+          () => {
+            console.log('🔄 [GALLERY] Figurine-models storage changed, refetching files...');
             fetchImagesFromBucket();
           }
       )
       .subscribe();
       
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(imagesChannel);
+      supabase.removeChannel(modelsChannel);
     };
   }, [fetchImagesFromBucket]);
 

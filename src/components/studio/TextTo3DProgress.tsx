@@ -1,9 +1,10 @@
 
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, CheckCircle, AlertCircle, Download, CloudDownload } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Download, CloudDownload, Eye, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 interface TextTo3DProgressProps {
   taskId: string | null;
@@ -52,13 +53,13 @@ const getStatusIcon = (status: string, downloadStatus?: string) => {
 const getStatusText = (status: string, downloadStatus?: string) => {
   if (status === 'completed' || status === 'succeeded' || status === 'SUCCEEDED') {
     if (downloadStatus === 'downloading') {
-      return 'Saving model to storage...';
+      return 'Saving model to your collection...';
     }
     if (downloadStatus === 'completed') {
-      return '3D model created and saved successfully!';
+      return '3D model created and saved to your collection!';
     }
     if (downloadStatus === 'failed') {
-      return '3D model created (saving to storage failed)';
+      return '3D model created (saving to collection failed)';
     }
   }
   
@@ -92,11 +93,18 @@ const TextTo3DProgress = ({
   onDownload, 
   onViewModel 
 }: TextTo3DProgressProps) => {
+  const navigate = useNavigate();
+  
   if (!taskId && !status) return null;
 
   const isCompleted = status === 'completed' || status === 'succeeded' || status === 'SUCCEEDED';
   const isFailed = status === 'failed' || status === 'error' || status === 'FAILED';
   const isDownloading = downloadStatus === 'downloading';
+  const isSavedToCollection = downloadStatus === 'completed';
+
+  const handleViewCollection = () => {
+    navigate('/profile/figurines');
+  };
 
   return (
     <Card className="glass-panel border-white/20 backdrop-blur-sm p-6">
@@ -117,8 +125,8 @@ const TextTo3DProgress = ({
               )}
               {downloadStatus && downloadStatus !== 'pending' && (
                 <p className="text-xs text-white/50">
-                  Storage: {downloadStatus === 'completed' ? 'Saved' : 
-                           downloadStatus === 'downloading' ? 'Saving...' : 
+                  Storage: {downloadStatus === 'completed' ? 'Saved to your collection' : 
+                           downloadStatus === 'downloading' ? 'Saving to collection...' : 
                            downloadStatus === 'failed' ? 'Save failed' : downloadStatus}
                 </p>
               )}
@@ -144,8 +152,21 @@ const TextTo3DProgress = ({
                 onClick={onViewModel}
                 className="flex-1 bg-figuro-accent hover:bg-figuro-accent-hover"
               >
+                <Eye size={16} className="mr-2" />
                 View 3D Model
               </Button>
+              
+              {isSavedToCollection && (
+                <Button
+                  onClick={handleViewCollection}
+                  variant="outline"
+                  className="border-white/20 hover:border-white/40 bg-white/5"
+                >
+                  <FolderOpen size={16} className="mr-2" />
+                  View Collection
+                </Button>
+              )}
+              
               {onDownload && (
                 <Button
                   onClick={onDownload}
@@ -165,9 +186,32 @@ const TextTo3DProgress = ({
           )}
 
           {downloadStatus === 'failed' && modelUrl && (
-            <p className="text-sm text-yellow-400">
-              Model created successfully but couldn't be saved to permanent storage. You can still view it, but the link may expire.
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-yellow-400">
+                Model created successfully but couldn't be saved to your collection. You can still view and download it, but the link may expire.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={onViewModel}
+                  size="sm"
+                  className="bg-figuro-accent hover:bg-figuro-accent-hover"
+                >
+                  <Eye size={14} className="mr-2" />
+                  View Model
+                </Button>
+                {onDownload && (
+                  <Button
+                    onClick={onDownload}
+                    size="sm"
+                    variant="outline"
+                    className="border-white/20 hover:border-white/40 bg-white/5"
+                  >
+                    <Download size={14} className="mr-2" />
+                    Download
+                  </Button>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </motion.div>

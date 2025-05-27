@@ -17,62 +17,104 @@ const FigurineGallery = () => {
   const { toast } = useToast();
 
   const handleDownload = async (figurine: Figurine) => {
-    const imageUrl = figurine.saved_image_url || figurine.image_url;
-    if (!imageUrl) {
-      toast({
-        title: "Download failed",
-        description: "No image available for download",
-        variant: "destructive"
-      });
-      return;
-    }
+    const isTextTo3D = figurine.style === 'text-to-3d' || figurine.title.startsWith('Text-to-3D:');
     
-    try {
-      setIsDownloading(true);
-      
-      // Clean the URL by removing any cache busting parameters
-      const cleanUrl = imageUrl.split('?')[0];
-      
-      console.log("Starting download for:", cleanUrl);
-      
-      // Fetch the image data as a blob
-      const response = await fetch(cleanUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    if (isTextTo3D && figurine.model_url) {
+      // Download 3D model for text-to-3D figurines
+      try {
+        setIsDownloading(true);
+        
+        const cleanUrl = figurine.model_url.split('?')[0];
+        console.log("Starting 3D model download for:", cleanUrl);
+        
+        const response = await fetch(cleanUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch model: ${response.status} ${response.statusText}`);
+        }
+        
+        const blob = await response.blob();
+        console.log("Model blob received:", blob.type, blob.size);
+        
+        const blobUrl = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `model-${figurine.title.replace(/\s+/g, '-')}-${figurine.id.substring(0, 8)}.glb`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        toast({
+          title: "Download started",
+          description: "Your 3D model is being downloaded",
+        });
+        
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+          setIsDownloading(false);
+        }, 1000);
+      } catch (error) {
+        console.error("Error downloading 3D model:", error);
+        setIsDownloading(false);
+        toast({
+          title: "Download failed",
+          description: "There was a problem downloading the 3D model",
+          variant: "destructive"
+        });
+      }
+    } else {
+      // Download image for traditional figurines
+      const imageUrl = figurine.saved_image_url || figurine.image_url;
+      if (!imageUrl) {
+        toast({
+          title: "Download failed",
+          description: "No image available for download",
+          variant: "destructive"
+        });
+        return;
       }
       
-      const blob = await response.blob();
-      console.log("Blob received:", blob.type, blob.size);
-      
-      // Create an object URL for the blob
-      const blobUrl = URL.createObjectURL(blob);
-      
-      // Create a temporary anchor element and trigger the download
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `figurine-${figurine.title.replace(/\s+/g, '-')}-${figurine.id.substring(0, 8)}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-      toast({
-        title: "Download started",
-        description: "Your figurine image is being downloaded",
-      });
-      
-      // Revoke the object URL after a delay to ensure download starts
-      setTimeout(() => {
-        URL.revokeObjectURL(blobUrl);
+      try {
+        setIsDownloading(true);
+        
+        const cleanUrl = imageUrl.split('?')[0];
+        console.log("Starting image download for:", cleanUrl);
+        
+        const response = await fetch(cleanUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+        }
+        
+        const blob = await response.blob();
+        console.log("Image blob received:", blob.type, blob.size);
+        
+        const blobUrl = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `figurine-${figurine.title.replace(/\s+/g, '-')}-${figurine.id.substring(0, 8)}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        toast({
+          title: "Download started",
+          description: "Your figurine image is being downloaded",
+        });
+        
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+          setIsDownloading(false);
+        }, 1000);
+      } catch (error) {
+        console.error("Error downloading figurine:", error);
         setIsDownloading(false);
-      }, 1000);
-    } catch (error) {
-      console.error("Error downloading figurine:", error);
-      setIsDownloading(false);
-      toast({
-        title: "Download failed",
-        description: "There was a problem downloading the figurine image",
-        variant: "destructive"
-      });
+        toast({
+          title: "Download failed",
+          description: "There was a problem downloading the figurine image",
+          variant: "destructive"
+        });
+      }
     }
   };
 

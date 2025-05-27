@@ -21,16 +21,37 @@ export const useFigurines = () => {
         return;
       }
       
-      const { data, error } = await supabase
+      console.log('🔄 [FIGURINES] Fetching figurines and text-to-3D models...');
+      
+      // Fetch traditional figurines
+      const { data: figurinesData, error: figurinesError } = await supabase
         .from('figurines')
         .select('*')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
           
-      if (error) throw error;
+      if (figurinesError) throw figurinesError;
       
-      // Make sure all required properties exist in the data by casting to our Figurine type
-      const processedData = (data || []).map(figurine => {
+      // Fetch text-to-3D conversion tasks (completed ones)
+      const { data: conversionData, error: conversionError } = await supabase
+        .from('conversion_tasks')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('status', 'SUCCEEDED')
+        .order('created_at', { ascending: false });
+      
+      if (conversionError) {
+        console.warn('Failed to fetch conversion tasks:', conversionError);
+        // Don't throw error, just continue with figurines only
+      }
+      
+      console.log('✅ [FIGURINES] Fetched data:', {
+        figurines: figurinesData?.length || 0,
+        conversions: conversionData?.length || 0
+      });
+      
+      // Process traditional figurines
+      const processedFigurines = (figurinesData || []).map(figurine => {
         // Clean image URLs from any cache busting parameters
         let imageUrl = figurine.image_url || "";
         let savedImageUrl = figurine.saved_image_url || null;
@@ -71,8 +92,36 @@ export const useFigurines = () => {
         };
       });
       
-      setFigurines(processedData);
+      // Process text-to-3D conversions and convert them to Figurine format
+      const processedConversions = (conversionData || []).map(conversion => {
+        // Use local URLs if available, fallback to original URLs
+        const modelUrl = conversion.local_model_url || conversion.model_url || null;
+        const thumbnailUrl = conversion.local_thumbnail_url || conversion.thumbnail_url || null;
+        
+        return {
+          id: conversion.id,
+          title: `Text-to-3D: ${conversion.prompt?.substring(0, 30) || 'Generated Model'}${conversion.prompt && conversion.prompt.length > 30 ? '...' : ''}`,
+          prompt: conversion.prompt || "",
+          style: conversion.art_style || "text-to-3d",
+          image_url: thumbnailUrl || "", // Use thumbnail as the preview image
+          saved_image_url: thumbnailUrl,
+          model_url: modelUrl,
+          created_at: conversion.created_at || new Date().toISOString(),
+          user_id: conversion.user_id,
+          is_public: false // Text-to-3D models are private by default
+        };
+      });
+      
+      // Combine and sort by creation date
+      const allFigurines = [...processedFigurines, ...processedConversions];
+      allFigurines.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      
+      setFigurines(allFigurines);
       setError(null);
+      
+      console.log(`✅ [FIGURINES] Combined ${allFigurines.length} total items`);
     } catch (err: any) {
       console.error('Error fetching figurines:', err);
       setError('Failed to load your figurines');
@@ -89,8 +138,8 @@ export const useFigurines = () => {
   useEffect(() => {
     fetchFigurines();
     
-    // Subscribe to changes in the figurines table
-    const subscription = supabase
+    // Subscribe to changes in both tables
+    const figurinesSubscription = supabase
       .channel('figurines-channel')
       .on('postgres_changes', 
           { event: '*', schema: 'public', table: 'figurines' }, 
@@ -101,8 +150,23 @@ export const useFigurines = () => {
       )
       .subscribe();
       
+    const conversionsSubscription = supabase
+      .channel('conversions-channel')
+      .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'conversion_tasks' }, 
+          (payload) => {
+            // Only refresh when a task is completed
+            if (payload.new && payload.new.status === 'SUCCEEDED') {
+              console.log("Text-to-3D conversion completed, refreshing data");
+              fetchFigurines();
+            }
+          }
+      )
+      .subscribe();
+      
     return () => {
-      subscription.unsubscribe();
+      figurinesSubscription.unsubscribe();
+      conversionsSubscription.unsubscribe();
     };
   }, [fetchFigurines]);
 

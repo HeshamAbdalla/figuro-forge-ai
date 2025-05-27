@@ -23,6 +23,9 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
   const { imageError, handleImageError } = useGalleryItemState(file);
   const { secureDownload, isDownloading } = useSecureDownload();
 
+  // Check if this is a text-to-3D generated file
+  const isTextTo3DFile = file.fullPath?.includes('figurine-models/') || false;
+
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -48,7 +51,7 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
   };
 
   return (
-    <div className="glass-panel rounded-lg overflow-hidden group hover:scale-105 transition-transform duration-200">
+    <div className={`glass-panel rounded-lg overflow-hidden group hover:scale-105 transition-transform duration-200 ${isTextTo3DFile ? 'ring-1 ring-figuro-accent/30' : ''}`}>
       <div className="relative">
         <GalleryItemPreview 
           file={file}
@@ -63,6 +66,15 @@ const GalleryItem: React.FC<GalleryItemProps> = ({
           onView={handleView}
           onGenerate3D={handleGenerate3D}
         />
+        
+        {/* Badge for text-to-3D files */}
+        {isTextTo3DFile && (
+          <div className="absolute top-2 left-2 z-10">
+            <div className="bg-figuro-accent/80 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+              Text-to-3D
+            </div>
+          </div>
+        )}
       </div>
       
       <GalleryItemFooter file={file} />
