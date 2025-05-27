@@ -2,14 +2,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-export type TabKey = 'create' | 'gallery';
+export type TabKey = 'image-to-3d' | 'text-to-3d' | 'gallery';
 
 interface UseTabNavigationProps {
   defaultTab?: TabKey;
   tabs: TabKey[];
 }
 
-export const useTabNavigation = ({ defaultTab = 'create', tabs }: UseTabNavigationProps) => {
+export const useTabNavigation = ({ defaultTab = 'image-to-3d', tabs }: UseTabNavigationProps) => {
   const [activeTab, setActiveTab] = useState<TabKey>(defaultTab);
   const navigate = useNavigate();
   const location = useLocation();

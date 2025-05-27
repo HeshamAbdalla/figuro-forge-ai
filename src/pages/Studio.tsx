@@ -7,6 +7,7 @@ import { FigurineGallery } from "@/components/figurine";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
+import { useTabNavigation } from "@/hooks/useTabNavigation";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,6 @@ import UploadModelModal from "@/components/UploadModelModal";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import VantaBackground from "@/components/VantaBackground";
 import { motion } from "framer-motion";
 import CompactStudioHeader from "@/components/studio/CompactStudioHeader";
@@ -23,6 +23,7 @@ import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
 import StreamlinedImagePreview from "@/components/studio/StreamlinedImagePreview";
 import TextTo3DForm from "@/components/studio/TextTo3DForm";
 import TextTo3DProgress from "@/components/studio/TextTo3DProgress";
+import EnhancedStudioTabs from "@/components/studio/EnhancedStudioTabs";
 import Generate3DConfigModal from "@/components/gallery/Generate3DConfigModal";
 import Generate3DModal from "@/components/gallery/Generate3DModal";
 import type { Generate3DConfig } from "@/components/gallery/types/conversion";
@@ -34,10 +35,8 @@ const Studio = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [generationModalOpen, setGenerationModalOpen] = useState(false);
-  const [showTextTo3D, setShowTextTo3D] = useState(false);
   const [textTo3DProgress, setTextTo3DProgress] = useState({ status: '', progress: 0, modelUrl: '' });
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("create");
   
   const {
     isGeneratingImage,
@@ -58,6 +57,11 @@ const Studio = () => {
     generateModel: generateTextTo3DModel,
     setCurrentTaskId
   } = useTextTo3D();
+
+  const { activeTab, setActiveTab } = useTabNavigation({
+    defaultTab: 'image-to-3d',
+    tabs: ['image-to-3d', 'text-to-3d', 'gallery']
+  });
 
   const { user: authUser, signOut } = useAuth();
   const navigate = useNavigate();
@@ -261,15 +265,140 @@ const Studio = () => {
     }
   };
 
-  const handleToggleTextTo3D = () => {
-    setShowTextTo3D(!showTextTo3D);
-  };
-
   // Determine which model URL to display - custom, text-to-3D generated, or image-to-3D converted
   const displayModelUrl = customModelUrl || textTo3DProgress.modelUrl || progress.modelUrl;
 
   // Determine if ModelViewer should show loading - only when not converting AND there's a model to load
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
+
+  const renderTabContent = () => {
+    if (!authUser) {
+      return (
+        <motion.div 
+          className="text-center py-16 glass-panel rounded-xl max-w-md mx-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-xl font-semibold text-gradient mb-3">Authentication Required</h2>
+          <p className="text-white/70 mb-4 text-sm">Sign in to start creating figurines</p>
+          <Button onClick={handleSignIn} className="bg-figuro-accent hover:bg-figuro-accent-hover">
+            Sign In / Sign Up
+          </Button>
+        </motion.div>
+      );
+    }
+
+    switch (activeTab) {
+      case 'image-to-3d':
+        return (
+          <motion.div 
+            className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl mx-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, staggerChildren: 0.1 }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-4"
+            >
+              <EnhancedPromptForm 
+                onGenerate={onGenerate} 
+                isGenerating={isGeneratingImage}
+              />
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <StreamlinedImagePreview 
+                imageSrc={generatedImage} 
+                isLoading={isGeneratingImage}
+                onConvertTo3D={handleOpenConfigModal}
+                isConverting={isGenerating}
+              />
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <ModelViewer 
+                modelUrl={displayModelUrl} 
+                isLoading={shouldModelViewerLoad && !displayModelUrl}
+                errorMessage={progress.status === 'error' ? progress.message : undefined}
+                onCustomModelLoad={(url) => setCustomModelUrl(url)}
+              />
+            </motion.div>
+          </motion.div>
+        );
+
+      case 'text-to-3d':
+        return (
+          <motion.div 
+            className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl mx-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, staggerChildren: 0.1 }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-4"
+            >
+              <TextTo3DForm 
+                onGenerate={handleTextTo3D}
+                isGenerating={isGeneratingTextTo3D}
+              />
+              {currentTaskId && (
+                <TextTo3DProgress
+                  taskId={currentTaskId}
+                  status={textTo3DProgress.status}
+                  progress={textTo3DProgress.progress}
+                  modelUrl={textTo3DProgress.modelUrl}
+                  onViewModel={() => {/* TODO: implement view model */}}
+                  onDownload={() => {/* TODO: implement download */}}
+                />
+              )}
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <ModelViewer 
+                modelUrl={displayModelUrl} 
+                isLoading={shouldModelViewerLoad && !displayModelUrl}
+                errorMessage={progress.status === 'error' ? progress.message : undefined}
+                onCustomModelLoad={(url) => setCustomModelUrl(url)}
+              />
+            </motion.div>
+          </motion.div>
+        );
+
+      case 'gallery':
+        return (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="max-w-6xl mx-auto"
+          >
+            <FigurineGallery />
+          </motion.div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-figuro-dark overflow-hidden relative">
@@ -288,132 +417,18 @@ const Studio = () => {
             >
               <StudioConfigPanel
                 onUploadModel={() => setUploadModalOpen(true)}
-                onTextTo3D={handleToggleTextTo3D}
                 user={authUser}
                 onSignIn={handleSignIn}
                 onSignOut={handleSignOut}
               />
             </motion.div>
             
-            <Tabs 
-              defaultValue="create" 
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="w-full"
-            >
-              <TabsList className="grid grid-cols-2 w-80 mx-auto mb-6 bg-white/10 backdrop-blur-sm">
-                <TabsTrigger value="create" className="data-[state=active]:text-white data-[state=active]:bg-figuro-accent">
-                  Studio
-                </TabsTrigger>
-                <TabsTrigger value="gallery" className="data-[state=active]:text-white data-[state=active]:bg-figuro-accent">
-                  Gallery
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="create" className="mt-0">
-                {!authUser ? (
-                  <motion.div 
-                    className="text-center py-16 glass-panel rounded-xl max-w-md mx-auto"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <h2 className="text-xl font-semibold text-gradient mb-3">Authentication Required</h2>
-                    <p className="text-white/70 mb-4 text-sm">Sign in to start creating figurines</p>
-                    <Button onClick={handleSignIn} className="bg-figuro-accent hover:bg-figuro-accent-hover">
-                      Sign In / Sign Up
-                    </Button>
-                  </motion.div>
-                ) : (
-                  <motion.div 
-                    className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl mx-auto"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5, staggerChildren: 0.1 }}
-                  >
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="space-y-4"
-                    >
-                      {showTextTo3D ? (
-                        <>
-                          <TextTo3DForm 
-                            onGenerate={handleTextTo3D}
-                            isGenerating={isGeneratingTextTo3D}
-                          />
-                          {currentTaskId && (
-                            <TextTo3DProgress
-                              taskId={currentTaskId}
-                              status={textTo3DProgress.status}
-                              progress={textTo3DProgress.progress}
-                              modelUrl={textTo3DProgress.modelUrl}
-                              onViewModel={() => {/* TODO: implement view model */}}
-                              onDownload={() => {/* TODO: implement download */}}
-                            />
-                          )}
-                        </>
-                      ) : (
-                        <EnhancedPromptForm 
-                          onGenerate={onGenerate} 
-                          isGenerating={isGeneratingImage}
-                        />
-                      )}
-                    </motion.div>
-                    
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.1 }}
-                    >
-                      {!showTextTo3D && (
-                        <StreamlinedImagePreview 
-                          imageSrc={generatedImage} 
-                          isLoading={isGeneratingImage}
-                          onConvertTo3D={handleOpenConfigModal}
-                          isConverting={isGenerating}
-                        />
-                      )}
-                    </motion.div>
-                    
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.2 }}
-                    >
-                      <ModelViewer 
-                        modelUrl={displayModelUrl} 
-                        isLoading={shouldModelViewerLoad && !displayModelUrl}
-                        errorMessage={progress.status === 'error' ? progress.message : undefined}
-                        onCustomModelLoad={(url) => setCustomModelUrl(url)}
-                      />
-                    </motion.div>
-                  </motion.div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="gallery" className="mt-0">
-                {authUser ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5 }}
-                    className="max-w-6xl mx-auto"
-                  >
-                    <FigurineGallery />
-                  </motion.div>
-                ) : (
-                  <div className="text-center py-16 glass-panel rounded-xl max-w-md mx-auto">
-                    <h2 className="text-xl font-semibold text-gradient mb-3">Gallery Access</h2>
-                    <p className="text-white/70 mb-4 text-sm">Sign in to view your collection</p>
-                    <Button onClick={handleSignIn} className="bg-figuro-accent hover:bg-figuro-accent-hover">
-                      Sign In / Sign Up
-                    </Button>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
+            <EnhancedStudioTabs
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+            
+            {renderTabContent()}
           </div>
         </section>
         
