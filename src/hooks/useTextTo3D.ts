@@ -17,6 +17,7 @@ export interface TextTo3DProgress {
   modelUrl: string;
   taskId?: string;
   thumbnailUrl?: string;
+  downloadStatus?: string;
 }
 
 export const useTextTo3D = () => {
@@ -25,7 +26,8 @@ export const useTextTo3D = () => {
   const [progress, setProgress] = useState<TextTo3DProgress>({
     status: '',
     progress: 0,
-    modelUrl: ''
+    modelUrl: '',
+    downloadStatus: 'pending'
   });
   const { toast } = useToast();
 
@@ -48,27 +50,51 @@ export const useTextTo3D = () => {
 
       console.log('📊 [TEXT-TO-3D] Status update:', data);
 
-      // Update progress
+      // Update progress with download status
       const newProgress: TextTo3DProgress = {
         status: data.status,
         progress: data.progress || 0,
         modelUrl: data.modelUrl || '',
         taskId: taskId,
-        thumbnailUrl: data.thumbnailUrl
+        thumbnailUrl: data.thumbnailUrl,
+        downloadStatus: data.downloadStatus || 'pending'
       };
 
       setProgress(newProgress);
 
-      // Check if completed
+      // Check if completed and downloaded
       if (data.status === 'SUCCEEDED' || data.status === 'completed') {
-        setIsGenerating(false);
-        setProgress(prev => ({ ...prev, progress: 100 }));
+        // If download is still in progress, continue polling
+        if (data.downloadStatus === 'downloading') {
+          console.log('📥 [TEXT-TO-3D] Model downloaded, saving to storage...');
+          setTimeout(() => checkStatus(taskId), 3000);
+          return;
+        }
         
-        toast({
-          title: "3D Model Generated",
-          description: "Your text-to-3D model has been created successfully!",
-        });
-        return;
+        // If download completed successfully
+        if (data.downloadStatus === 'completed') {
+          setIsGenerating(false);
+          setProgress(prev => ({ ...prev, progress: 100 }));
+          
+          toast({
+            title: "3D Model Generated",
+            description: "Your text-to-3D model has been created and saved successfully!",
+          });
+          return;
+        }
+        
+        // If download failed but we have the original URL
+        if (data.downloadStatus === 'failed' && data.modelUrl) {
+          setIsGenerating(false);
+          setProgress(prev => ({ ...prev, progress: 100 }));
+          
+          toast({
+            title: "3D Model Generated",
+            description: "Your 3D model is ready, but saving to storage failed. You can still view it.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       // Check if failed
@@ -88,7 +114,8 @@ export const useTextTo3D = () => {
       setProgress(prev => ({ 
         ...prev, 
         status: 'error', 
-        progress: 0 
+        progress: 0,
+        downloadStatus: 'failed'
       }));
       
       toast({
@@ -118,7 +145,8 @@ export const useTextTo3D = () => {
     setProgress({
       status: 'starting',
       progress: 0,
-      modelUrl: ''
+      modelUrl: '',
+      downloadStatus: 'pending'
     });
 
     try {
@@ -145,7 +173,8 @@ export const useTextTo3D = () => {
         status: 'processing',
         progress: 10,
         modelUrl: '',
-        taskId: taskId
+        taskId: taskId,
+        downloadStatus: 'pending'
       });
       
       toast({
@@ -169,7 +198,8 @@ export const useTextTo3D = () => {
       setProgress({
         status: 'error',
         progress: 0,
-        modelUrl: ''
+        modelUrl: '',
+        downloadStatus: 'failed'
       });
       
       const errorMessage = error instanceof Error ? error.message : "Failed to generate 3D model";
@@ -191,7 +221,8 @@ export const useTextTo3D = () => {
     setProgress({
       status: '',
       progress: 0,
-      modelUrl: ''
+      modelUrl: '',
+      downloadStatus: 'pending'
     });
     setCurrentTaskId(null);
     setIsGenerating(false);

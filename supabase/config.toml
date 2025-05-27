@@ -28,3 +28,9 @@ verify_jwt = true
 
 [functions.webhook-stripe]
 verify_jwt = false
+
+[functions.text-to-3d]
+verify_jwt = true
+
+[functions.check-text-to-3d-status]
+verify_jwt = true

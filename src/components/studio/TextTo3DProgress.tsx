@@ -1,7 +1,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, CheckCircle, AlertCircle, Download } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Download, CloudDownload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
@@ -11,11 +11,24 @@ interface TextTo3DProgressProps {
   progress: number;
   modelUrl?: string;
   thumbnailUrl?: string;
+  downloadStatus?: string;
   onDownload?: () => void;
   onViewModel?: () => void;
 }
 
-const getStatusIcon = (status: string) => {
+const getStatusIcon = (status: string, downloadStatus?: string) => {
+  if (status === 'completed' || status === 'succeeded' || status === 'SUCCEEDED') {
+    if (downloadStatus === 'downloading') {
+      return <CloudDownload className="animate-pulse text-figuro-accent" size={20} />;
+    }
+    if (downloadStatus === 'completed') {
+      return <CheckCircle className="text-green-400" size={20} />;
+    }
+    if (downloadStatus === 'failed') {
+      return <AlertCircle className="text-yellow-400" size={20} />;
+    }
+  }
+  
   switch (status) {
     case 'processing':
     case 'pending':
@@ -36,7 +49,19 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-const getStatusText = (status: string) => {
+const getStatusText = (status: string, downloadStatus?: string) => {
+  if (status === 'completed' || status === 'succeeded' || status === 'SUCCEEDED') {
+    if (downloadStatus === 'downloading') {
+      return 'Saving model to storage...';
+    }
+    if (downloadStatus === 'completed') {
+      return '3D model created and saved successfully!';
+    }
+    if (downloadStatus === 'failed') {
+      return '3D model created (saving to storage failed)';
+    }
+  }
+  
   switch (status) {
     case 'processing':
     case 'pending':
@@ -63,6 +88,7 @@ const TextTo3DProgress = ({
   progress, 
   modelUrl, 
   thumbnailUrl,
+  downloadStatus,
   onDownload, 
   onViewModel 
 }: TextTo3DProgressProps) => {
@@ -70,6 +96,7 @@ const TextTo3DProgress = ({
 
   const isCompleted = status === 'completed' || status === 'succeeded' || status === 'SUCCEEDED';
   const isFailed = status === 'failed' || status === 'error' || status === 'FAILED';
+  const isDownloading = downloadStatus === 'downloading';
 
   return (
     <Card className="glass-panel border-white/20 backdrop-blur-sm p-6">
@@ -80,13 +107,20 @@ const TextTo3DProgress = ({
       >
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            {getStatusIcon(status)}
+            {getStatusIcon(status, downloadStatus)}
             <div>
               <h3 className="text-lg font-semibold text-white">
-                {getStatusText(status)}
+                {getStatusText(status, downloadStatus)}
               </h3>
               {taskId && (
                 <p className="text-sm text-white/70">Task ID: {taskId.substring(0, 8)}...</p>
+              )}
+              {downloadStatus && downloadStatus !== 'pending' && (
+                <p className="text-xs text-white/50">
+                  Storage: {downloadStatus === 'completed' ? 'Saved' : 
+                           downloadStatus === 'downloading' ? 'Saving...' : 
+                           downloadStatus === 'failed' ? 'Save failed' : downloadStatus}
+                </p>
               )}
             </div>
           </div>
@@ -98,13 +132,13 @@ const TextTo3DProgress = ({
                 <span>{Math.round(progress)}%</span>
               </div>
               <Progress 
-                value={progress} 
+                value={isDownloading ? 95 : progress} 
                 className="bg-white/10" 
               />
             </div>
           )}
 
-          {isCompleted && modelUrl && (
+          {isCompleted && modelUrl && !isDownloading && (
             <div className="flex gap-2 pt-2">
               <Button
                 onClick={onViewModel}
@@ -127,6 +161,12 @@ const TextTo3DProgress = ({
           {isFailed && (
             <p className="text-sm text-red-400">
               Something went wrong while creating your 3D model. Please try again.
+            </p>
+          )}
+
+          {downloadStatus === 'failed' && modelUrl && (
+            <p className="text-sm text-yellow-400">
+              Model created successfully but couldn't be saved to permanent storage. You can still view it, but the link may expire.
             </p>
           )}
         </div>

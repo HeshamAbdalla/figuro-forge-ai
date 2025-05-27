@@ -13,42 +13,69 @@ export type Database = {
         Row: {
           art_style: string | null
           created_at: string
+          download_error: string | null
+          download_status: string | null
+          generate_texture: boolean | null
+          generation_mode: string | null
           id: string
+          local_model_url: string | null
+          local_thumbnail_url: string | null
           model_url: string | null
           negative_prompt: string | null
           prompt: string | null
+          seed_value: number | null
           status: string
+          target_polycount: number | null
           task_id: string
           task_type: string
           thumbnail_url: string | null
+          topology_type: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           art_style?: string | null
           created_at?: string
+          download_error?: string | null
+          download_status?: string | null
+          generate_texture?: boolean | null
+          generation_mode?: string | null
           id?: string
+          local_model_url?: string | null
+          local_thumbnail_url?: string | null
           model_url?: string | null
           negative_prompt?: string | null
           prompt?: string | null
+          seed_value?: number | null
           status?: string
+          target_polycount?: number | null
           task_id: string
           task_type?: string
           thumbnail_url?: string | null
+          topology_type?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           art_style?: string | null
           created_at?: string
+          download_error?: string | null
+          download_status?: string | null
+          generate_texture?: boolean | null
+          generation_mode?: string | null
           id?: string
+          local_model_url?: string | null
+          local_thumbnail_url?: string | null
           model_url?: string | null
           negative_prompt?: string | null
           prompt?: string | null
+          seed_value?: number | null
           status?: string
+          target_polycount?: number | null
           task_id?: string
           task_type?: string
           thumbnail_url?: string | null
+          topology_type?: string | null
           updated_at?: string
           user_id?: string
         }
