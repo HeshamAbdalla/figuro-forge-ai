@@ -34,15 +34,26 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState("isometric");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSubmissionTime, setLastSubmissionTime] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Enhanced validation and rate limiting
     if (!prompt.trim() || isSubmitting || isGenerating) return;
+    
+    // Rate limiting: prevent submissions within 2 seconds
+    const now = Date.now();
+    if (now - lastSubmissionTime < 2000) {
+      console.log(`🚫 [FORM] Submission rate limited - ${now - lastSubmissionTime}ms since last submission`);
+      return;
+    }
     
     console.log(`🎯 [FORM] Form submission started for prompt: "${prompt}"`);
     
-    // Immediately set local submitting state to prevent multiple submissions
+    // Immediately set local submitting state and update timestamp
     setIsSubmitting(true);
+    setLastSubmissionTime(now);
     
     try {
       // Call the onGenerate function
@@ -51,11 +62,11 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
     } catch (error) {
       console.error(`❌ [FORM] Form submission error for prompt: "${prompt}"`, error);
     } finally {
-      // Reset submitting state after a short delay to prevent rapid resubmissions
+      // Reset submitting state after a delay to prevent rapid resubmissions
       setTimeout(() => {
         setIsSubmitting(false);
         console.log(`🔓 [FORM] Form submission lock released for prompt: "${prompt}"`);
-      }, 1000);
+      }, 2000); // Increased delay for better stability
     }
   };
 

@@ -9,6 +9,7 @@ import LoadingSpinner from "@/components/model-viewer/LoadingSpinner";
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
 import { useOptimizedModelLoader } from "@/components/model-viewer/hooks/useOptimizedModelLoader";
 import { disposeModel, simplifyModelForPreview } from "@/components/model-viewer/utils/modelUtils";
+import { webGLContextTracker } from "@/components/model-viewer/utils/resourceManager";
 import ModelPlaceholder from "./ModelPlaceholder";
 
 interface ModelPreviewProps {
@@ -38,17 +39,16 @@ const isUrlExpiredOrInvalid = (url: string): boolean => {
 const ModelContent = ({ 
   modelUrl, 
   isVisible,
-  onModelError 
+  onModelError,
+  modelId
 }: { 
   modelUrl: string; 
   isVisible: boolean;
   onModelError: (error: any) => void;
+  modelId: string;
 }) => {
   const [urlValidated, setUrlValidated] = useState<boolean | null>(null);
   const processedModelRef = useRef<THREE.Group | null>(null);
-  
-  // Create a stable ID based on the URL to prevent reloads
-  const modelIdRef = useRef(`preview-${modelUrl.split('/').pop()?.split('?')[0]}-${Math.random().toString(36).substring(2, 9)}`);
   
   // Clean URL from query parameters to prevent cache busting which causes reloads
   const cleanUrl = useMemo(() => {
@@ -91,7 +91,8 @@ const ModelContent = ({
   const { loading, model, error } = useOptimizedModelLoader({ 
     modelSource: urlValidated === true ? cleanUrl : null,
     visible: isVisible && urlValidated === true,
-    modelId: modelIdRef.current,
+    modelId: modelId,
+    priority: 1, // Lower priority for previews
     onError: (err) => {
       console.error(`Error loading model ${cleanUrl}:`, err);
       onModelError(err);
@@ -150,11 +151,26 @@ const ModelContent = ({
 const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [contextLost, setContextLost] = useState(false);
   const { targetRef, isIntersecting, wasEverVisible } = useIntersectionObserver({
     rootMargin: '200px',
     threshold: 0.1,
     once: true
   });
+  
+  // Generate stable model ID that won't change between renders
+  const stableModelId = useMemo(() => {
+    // Create ID from URL without query params for stability
+    try {
+      const url = new URL(modelUrl);
+      const pathParts = url.pathname.split('/');
+      const filename = pathParts[pathParts.length - 1]?.split('.')[0] || 'unknown';
+      return `preview-${filename}-${url.hostname.replace(/\./g, '-')}`;
+    } catch (e) {
+      // Fallback for invalid URLs
+      return `preview-${fileName.replace(/\W/g, '')}-${Math.abs(modelUrl.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0))}`;
+    }
+  }, [modelUrl, fileName]);
   
   // Clean URL from query params for better caching
   const cleanModelUrl = useMemo(() => {
@@ -186,6 +202,9 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
         message = "Model blocked by CORS policy";
       } else if (error.message.includes('404') || error.message.includes('Not Found')) {
         message = "Model file not found";
+      } else if (error.message.includes('context')) {
+        message = "WebGL context error";
+        setContextLost(true);
       }
     }
     
@@ -193,11 +212,27 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
     setHasError(true);
   };
 
+  // Handle WebGL context loss
+  const handleContextLoss = () => {
+    console.warn(`WebGL context lost for model preview: ${fileName}`);
+    setContextLost(true);
+    setHasError(true);
+    setErrorMessage("WebGL context lost - too many 3D models");
+  };
+
   // Reset error state when URL changes
   useEffect(() => {
     setHasError(false);
     setErrorMessage("");
+    setContextLost(false);
   }, [cleanModelUrl]);
+
+  // Monitor WebGL context usage
+  useEffect(() => {
+    if (isIntersecting && webGLContextTracker.isNearingLimit()) {
+      console.warn(`WebGL context limit approaching. Active contexts: ${webGLContextTracker.getActiveContextCount()}`);
+    }
+  }, [isIntersecting]);
 
   // If there's an error, show the placeholder with error info
   if (hasError) {
@@ -208,30 +243,56 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
     );
   }
 
-  // Create unique ID for this preview canvas to avoid conflicts
-  const canvasId = useRef(`canvas-${fileName.replace(/\W/g, '')}-${Math.random().toString(36).substring(2, 10)}`);
+  // Don't render anything if context is lost
+  if (contextLost) {
+    return (
+      <div className="w-full h-full">
+        <ModelPlaceholder fileName={`${fileName} (WebGL limit reached)`} />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full" ref={targetRef as React.RefObject<HTMLDivElement>}>
       {(isIntersecting || wasEverVisible) ? (
         <ErrorBoundary fallback={<ModelPlaceholder fileName={fileName} />} onError={handleError}>
           <Canvas 
-            id={canvasId.current}
+            id={`canvas-${stableModelId}`}
             shadows 
             gl={{ 
               powerPreference: "low-power",
               antialias: false,
               depth: true,
               stencil: false,
-              alpha: true
+              alpha: true,
+              preserveDrawingBuffer: false,
+              failIfMajorPerformanceCaveat: true
             }}
-            dpr={[0.8, 1]}
+            dpr={[0.5, 1]} // Lower DPR for previews
             style={{pointerEvents: "none"}}
             frameloop="demand"
+            onContextMenu={(e) => e.preventDefault()}
+            onCreated={({ gl }) => {
+              // Register context creation
+              webGLContextTracker.registerContext();
+              
+              // Handle context loss
+              gl.domElement.addEventListener('webglcontextlost', (event) => {
+                event.preventDefault();
+                handleContextLoss();
+              });
+              
+              // Handle context restore
+              gl.domElement.addEventListener('webglcontextrestored', () => {
+                console.log(`WebGL context restored for: ${fileName}`);
+                setContextLost(false);
+                setHasError(false);
+              });
+            }}
           >
             <color attach="background" args={['#1a1a1a']} />
-            <ambientLight intensity={0.5} />
-            <directionalLight position={[10, 10, 5]} intensity={1} />
+            <ambientLight intensity={0.3} />
+            <directionalLight position={[5, 5, 5]} intensity={0.5} />
             <PerspectiveCamera makeDefault position={[0, 0, 5]} />
             
             <Suspense fallback={<LoadingSpinner />}>
@@ -239,12 +300,13 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
                 modelUrl={cleanModelUrl} 
                 isVisible={isIntersecting || wasEverVisible}
                 onModelError={handleError}
+                modelId={stableModelId}
               />
             </Suspense>
             
             <OrbitControls 
               autoRotate={false}
-              autoRotateSpeed={1.5}
+              autoRotateSpeed={0.5}
               enablePan={false}
               enableZoom={false}
               enableRotate={false}
