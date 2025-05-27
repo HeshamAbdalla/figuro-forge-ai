@@ -57,7 +57,7 @@ export const useGallery3DGeneration = () => {
         onProgressUpdate: updateProgress,
         onSuccess: (modelUrl: string, thumbnailUrl?: string) => {
           console.log('✅ [GALLERY] 3D conversion completed successfully');
-          setIsGenerating(false); // Set to false only on success
+          setIsGenerating(false);
           toast({
             title: "3D Model Generated",
             description: "Your 3D model has been created and saved to the gallery",
@@ -66,27 +66,32 @@ export const useGallery3DGeneration = () => {
         },
         onError: (error: string) => {
           console.error('❌ [GALLERY] 3D conversion failed:', error);
-          setIsGenerating(false); // Set to false only on error
+          setIsGenerating(false);
           updateProgress({
             status: 'error',
             progress: 0,
             message: error
           });
           
-          // Show upgrade prompt for limit-related errors
+          // Provide user-friendly error messages
+          let userMessage = error;
+          let toastTitle = "3D Generation Failed";
+          
           if (error.includes('limit') || error.includes('upgrade')) {
-            toast({
-              title: "3D Conversion Limit Reached",
-              description: error,
-              variant: "destructive"
-            });
-          } else {
-            toast({
-              title: "3D Generation Failed",
-              description: error,
-              variant: "destructive"
-            });
+            toastTitle = "3D Conversion Limit Reached";
+          } else if (error.includes('image format') || error.includes('Invalid image')) {
+            userMessage = "The image format is not supported. Please try with a different image or format.";
+          } else if (error.includes('rate limit')) {
+            userMessage = "Service is temporarily busy. Please try again in a few minutes.";
+          } else if (error.includes('authentication')) {
+            userMessage = "Authentication error. Please try signing in again.";
           }
+          
+          toast({
+            title: toastTitle,
+            description: userMessage,
+            variant: "destructive"
+          });
         }
       };
 
@@ -110,7 +115,6 @@ export const useGallery3DGeneration = () => {
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate 3D model';
       
-      // Set isGenerating to false on catch block error
       setIsGenerating(false);
       
       updateProgress({
@@ -119,22 +123,28 @@ export const useGallery3DGeneration = () => {
         message: errorMessage
       });
       
-      // Show upgrade prompt for limit-related errors
+      // Provide user-friendly error messages
+      let userMessage = errorMessage;
+      let toastTitle = "3D Generation Failed";
+      
       if (errorMessage.includes('limit') || errorMessage.includes('upgrade')) {
-        toast({
-          title: "3D Conversion Limit Reached",
-          description: errorMessage,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "3D Generation Failed",
-          description: errorMessage,
-          variant: "destructive"
-        });
+        toastTitle = "3D Conversion Limit Reached";
+      } else if (errorMessage.includes('image format') || errorMessage.includes('Invalid image')) {
+        userMessage = "The image format is not supported. Please try with a different image or format.";
+      } else if (errorMessage.includes('rate limit')) {
+        userMessage = "Service is temporarily busy. Please try again in a few minutes.";
+      } else if (errorMessage.includes('authentication')) {
+        userMessage = "Authentication error. Please try signing in again.";
+      } else if (errorMessage.includes('Failed to convert image to base64')) {
+        userMessage = "Unable to process the image. Please try generating a new image or using a different format.";
       }
+      
+      toast({
+        title: toastTitle,
+        description: userMessage,
+        variant: "destructive"
+      });
     }
-    // Removed the finally block that was setting isGenerating to false
   };
 
   return {

@@ -118,6 +118,7 @@ serve(async (req: Request) => {
     }
 
     console.log("🔧 [CONVERT-TO-3D] Processing with config:", config)
+    console.log("📊 [CONVERT-TO-3D] Image data type:", imageBase64 ? 'base64' : 'url')
 
     // Get Meshy.ai API key from environment variables
     const MESHY_API_KEY = Deno.env.get('MESHY_API_KEY')
@@ -129,11 +130,39 @@ serve(async (req: Request) => {
       )
     }
     
-    console.log("🔄 [CONVERT-TO-3D] Creating 3D conversion request with correct API endpoint...")
+    console.log("🔄 [CONVERT-TO-3D] Creating 3D conversion request with Meshy API...")
     
     // Step 1: Prepare the request payload with correct structure for Meshy API v1
-    const requestPayload: any = {
-      image_url: imageUrl || imageBase64
+    const requestPayload: any = {}
+    
+    // Use base64 data if available, otherwise use URL
+    if (imageBase64) {
+      // Ensure base64 string has proper data URI format
+      if (!imageBase64.startsWith('data:')) {
+        console.error("❌ [CONVERT-TO-3D] Invalid base64 format, missing data URI prefix")
+        return new Response(
+          JSON.stringify({ error: 'Invalid image format. Base64 data must include data URI prefix.' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        )
+      }
+      requestPayload.image_url = imageBase64
+      console.log("📷 [CONVERT-TO-3D] Using base64 image data")
+    } else {
+      // Validate HTTP URL format
+      try {
+        const url = new URL(imageUrl)
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          throw new Error('URL must use HTTP or HTTPS protocol')
+        }
+        requestPayload.image_url = imageUrl
+        console.log("🌐 [CONVERT-TO-3D] Using HTTP image URL:", imageUrl)
+      } catch (urlError) {
+        console.error("❌ [CONVERT-TO-3D] Invalid image URL format:", urlError)
+        return new Response(
+          JSON.stringify({ error: 'Invalid image URL format. Must be a valid HTTP/HTTPS URL.' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        )
+      }
     }
     
     // Add optional configuration if provided
@@ -146,8 +175,8 @@ serve(async (req: Request) => {
       requestPayload.art_style = config.art_style
     }
 
-    console.log("📤 [CONVERT-TO-3D] Sending request to correct Meshy API endpoint...")
-    console.log("🔧 [CONVERT-TO-3D] Request payload:", requestPayload)
+    console.log("📤 [CONVERT-TO-3D] Sending request to Meshy API endpoint...")
+    console.log("🔧 [CONVERT-TO-3D] Request payload keys:", Object.keys(requestPayload))
 
     // Using the correct v1 API endpoint for image-to-3d
     const response = await fetch('https://api.meshy.ai/v1/image-to-3d', {
@@ -170,7 +199,7 @@ serve(async (req: Request) => {
       if (response.status === 429) {
         userMessage = 'Meshy API rate limit exceeded. Please try again in a few minutes.'
       } else if (response.status === 400) {
-        userMessage = 'Invalid image format or configuration. Please try a different image or settings.'
+        userMessage = 'Invalid image format or configuration. Please try a different image or check the image format.'
       } else if (response.status === 401) {
         userMessage = 'Meshy API authentication failed. Please contact support.'
       } else if (response.status === 404) {
@@ -211,7 +240,7 @@ serve(async (req: Request) => {
         task_id: taskId,
         status: 'processing',
         created_at: new Date().toISOString(),
-        image_url: imageUrl || 'base64-image',
+        image_url: imageBase64 ? 'base64-image' : imageUrl,
         user_id: userId,
         config: config
       }).select()

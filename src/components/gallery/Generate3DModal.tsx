@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, XCircle, Loader2, Box } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Box, AlertTriangle } from 'lucide-react';
 
 interface Generate3DModalProps {
   open: boolean;
@@ -58,6 +58,17 @@ const Generate3DModal: React.FC<Generate3DModalProps> = ({
     }
   };
 
+  const getProgressColor = () => {
+    switch (progress.status) {
+      case 'error':
+        return 'bg-red-500';
+      case 'completed':
+        return 'bg-green-500';
+      default:
+        return 'bg-figuro-accent';
+    }
+  };
+
   const handleClose = () => {
     // Only allow closing if not actively converting or downloading
     if (progress.status !== 'converting' && progress.status !== 'downloading') {
@@ -74,6 +85,8 @@ const Generate3DModal: React.FC<Generate3DModalProps> = ({
     }
     onOpenChange(newOpen);
   };
+
+  const isProcessing = progress.status === 'converting' || progress.status === 'downloading';
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -101,6 +114,24 @@ const Generate3DModal: React.FC<Generate3DModalProps> = ({
             </div>
           </div>
 
+          {/* Error Details */}
+          {progress.status === 'error' && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-red-400 mb-2">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="font-medium">Conversion Failed</span>
+              </div>
+              <p className="text-sm text-red-300">
+                {progress.message.includes('limit') 
+                  ? 'You have reached your conversion limit. Please upgrade your plan to continue.'
+                  : progress.message.includes('image format')
+                  ? 'The image format is not supported. Please try with a different image.'
+                  : 'An error occurred during conversion. Please try again.'
+                }
+              </p>
+            </div>
+          )}
+
           {/* Thumbnail Preview */}
           {progress.thumbnailUrl && (
             <div className="flex flex-col items-center space-y-2">
@@ -121,9 +152,12 @@ const Generate3DModal: React.FC<Generate3DModalProps> = ({
           )}
 
           {/* Progress Bar */}
-          {(progress.status === 'converting' || progress.status === 'downloading') && (
+          {isProcessing && (
             <div className="space-y-2">
-              <Progress value={progress.progress} className="w-full" />
+              <Progress 
+                value={progress.progress} 
+                className="w-full"
+              />
               <div className="flex justify-between text-sm text-white/60">
                 <span>Progress</span>
                 <span>{Math.round(progress.progress)}%</span>
@@ -139,23 +173,27 @@ const Generate3DModal: React.FC<Generate3DModalProps> = ({
                 onClick={handleClose}
                 className="border-white/10"
               >
-                Try Again
+                Close
               </Button>
             )}
             
             <Button
               onClick={handleClose}
-              disabled={progress.status === 'converting' || progress.status === 'downloading'}
+              disabled={isProcessing}
               className={
                 progress.status === 'completed' 
                   ? 'bg-green-500 hover:bg-green-600' 
+                  : progress.status === 'error'
+                  ? 'bg-red-500 hover:bg-red-600'
                   : 'bg-figuro-accent hover:bg-figuro-accent-hover'
               }
             >
-              {progress.status === 'converting' || progress.status === 'downloading' 
+              {isProcessing
                 ? 'Generating...' 
                 : progress.status === 'completed'
                 ? 'Done'
+                : progress.status === 'error'
+                ? 'Try Again'
                 : 'Close'
               }
             </Button>
@@ -166,6 +204,9 @@ const Generate3DModal: React.FC<Generate3DModalProps> = ({
             <div className="text-center text-sm text-white/60 border-t border-white/10 pt-4">
               <p>This process typically takes 2-5 minutes.</p>
               <p>Please keep this window open.</p>
+              {progress.message.includes('Converting image format') && (
+                <p className="text-figuro-accent mt-2">Processing image data...</p>
+              )}
             </div>
           )}
         </div>
