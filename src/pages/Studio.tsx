@@ -6,6 +6,7 @@ import ModelViewer from "@/components/ModelViewer";
 import { FigurineGallery } from "@/components/figurine";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
+import { useTextTo3D } from "@/hooks/useTextTo3D";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,8 @@ import CompactStudioHeader from "@/components/studio/CompactStudioHeader";
 import StudioConfigPanel from "@/components/studio/StudioConfigPanel";
 import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
 import StreamlinedImagePreview from "@/components/studio/StreamlinedImagePreview";
+import TextTo3DForm from "@/components/studio/TextTo3DForm";
+import TextTo3DProgress from "@/components/studio/TextTo3DProgress";
 import Generate3DConfigModal from "@/components/gallery/Generate3DConfigModal";
 import Generate3DModal from "@/components/gallery/Generate3DModal";
 import type { Generate3DConfig } from "@/components/gallery/types/conversion";
@@ -31,6 +34,8 @@ const Studio = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [generationModalOpen, setGenerationModalOpen] = useState(false);
+  const [showTextTo3D, setShowTextTo3D] = useState(false);
+  const [textTo3DProgress, setTextTo3DProgress] = useState({ status: '', progress: 0, modelUrl: '' });
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("create");
   
@@ -46,6 +51,13 @@ const Studio = () => {
     generate3DModel,
     resetProgress
   } = useGallery3DGeneration();
+
+  const {
+    isGenerating: isGeneratingTextTo3D,
+    currentTaskId,
+    generateModel: generateTextTo3DModel,
+    setCurrentTaskId
+  } = useTextTo3D();
 
   const { user: authUser, signOut } = useAuth();
   const navigate = useNavigate();
@@ -199,6 +211,27 @@ const Studio = () => {
     await generate3DModel(generatedImage, fileName, config);
   };
 
+  // Handler for Text to 3D generation
+  const handleTextTo3D = async (prompt: string, artStyle: string, negativePrompt: string) => {
+    if (!authUser) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to generate 3D models",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    const result = await generateTextTo3DModel(prompt, artStyle, negativePrompt);
+    
+    if (result.success && result.taskId) {
+      // Start polling for progress (this would be implemented similarly to the existing 3D conversion)
+      setTextTo3DProgress({ status: 'processing', progress: 10, modelUrl: '' });
+      // TODO: Implement polling mechanism for text to 3D progress
+    }
+  };
+
   // Handle model upload from modal
   const handleModelUpload = (url: string, file: File) => {
     setCustomModelUrl(url);
@@ -228,11 +261,15 @@ const Studio = () => {
     }
   };
 
-  // Determine which model URL to display - custom or generated from the 3D conversion
-  const displayModelUrl = customModelUrl || progress.modelUrl;
+  const handleToggleTextTo3D = () => {
+    setShowTextTo3D(!showTextTo3D);
+  };
+
+  // Determine which model URL to display - custom, text-to-3D generated, or image-to-3D converted
+  const displayModelUrl = customModelUrl || textTo3DProgress.modelUrl || progress.modelUrl;
 
   // Determine if ModelViewer should show loading - only when not converting AND there's a model to load
-  const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !!displayModelUrl;
+  const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
   return (
     <div className="min-h-screen bg-figuro-dark overflow-hidden relative">
@@ -251,6 +288,7 @@ const Studio = () => {
             >
               <StudioConfigPanel
                 onUploadModel={() => setUploadModalOpen(true)}
+                onTextTo3D={handleToggleTextTo3D}
                 user={authUser}
                 onSignIn={handleSignIn}
                 onSignOut={handleSignOut}
@@ -297,11 +335,31 @@ const Studio = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5 }}
+                      className="space-y-4"
                     >
-                      <EnhancedPromptForm 
-                        onGenerate={onGenerate} 
-                        isGenerating={isGeneratingImage}
-                      />
+                      {showTextTo3D ? (
+                        <>
+                          <TextTo3DForm 
+                            onGenerate={handleTextTo3D}
+                            isGenerating={isGeneratingTextTo3D}
+                          />
+                          {currentTaskId && (
+                            <TextTo3DProgress
+                              taskId={currentTaskId}
+                              status={textTo3DProgress.status}
+                              progress={textTo3DProgress.progress}
+                              modelUrl={textTo3DProgress.modelUrl}
+                              onViewModel={() => {/* TODO: implement view model */}}
+                              onDownload={() => {/* TODO: implement download */}}
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <EnhancedPromptForm 
+                          onGenerate={onGenerate} 
+                          isGenerating={isGeneratingImage}
+                        />
+                      )}
                     </motion.div>
                     
                     <motion.div
@@ -309,12 +367,14 @@ const Studio = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5, delay: 0.1 }}
                     >
-                      <StreamlinedImagePreview 
-                        imageSrc={generatedImage} 
-                        isLoading={isGeneratingImage}
-                        onConvertTo3D={handleOpenConfigModal}
-                        isConverting={isGenerating}
-                      />
+                      {!showTextTo3D && (
+                        <StreamlinedImagePreview 
+                          imageSrc={generatedImage} 
+                          isLoading={isGeneratingImage}
+                          onConvertTo3D={handleOpenConfigModal}
+                          isConverting={isGenerating}
+                        />
+                      )}
                     </motion.div>
                     
                     <motion.div

@@ -3,11 +3,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Settings, Upload, ChevronDown, ChevronUp } from "lucide-react";
+import { Settings, Upload, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 interface StudioConfigPanelProps {
   onUploadModel: () => void;
+  onTextTo3D?: () => void;
   user: any;
   onSignIn: () => void;
   onSignOut: () => void;
@@ -15,6 +16,7 @@ interface StudioConfigPanelProps {
 
 const StudioConfigPanel = ({
   onUploadModel,
+  onTextTo3D,
   user,
   onSignIn,
   onSignOut
@@ -52,6 +54,19 @@ const StudioConfigPanel = ({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Text to 3D Button */}
+          {onTextTo3D && (
+            <Button
+              onClick={onTextTo3D}
+              variant="outline"
+              className="w-full border-figuro-accent/30 hover:border-figuro-accent/50 bg-figuro-accent/10 text-figuro-accent hover:bg-figuro-accent/20"
+              disabled={!user}
+            >
+              <Sparkles size={16} className="mr-2" />
+              Text to 3D
+            </Button>
+          )}
 
           {/* Model Upload */}
           <Button
