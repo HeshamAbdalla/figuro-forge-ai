@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -252,6 +253,9 @@ const Studio = () => {
   // Determine which model URL to display - custom or generated from the 3D conversion
   const displayModelUrl = customModelUrl || progress.modelUrl;
 
+  // Determine if ModelViewer should show loading - only when not converting AND there's a model to load
+  const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !!displayModelUrl;
+
   return (
     <div className="min-h-screen bg-figuro-dark overflow-hidden relative">
       <VantaBackground>
@@ -349,8 +353,7 @@ const Studio = () => {
                     >
                       <ModelViewer 
                         modelUrl={displayModelUrl} 
-                        isLoading={isGenerating}
-                        progress={progress.progress}
+                        isLoading={shouldModelViewerLoad && !displayModelUrl}
                         errorMessage={progress.status === 'error' ? progress.message : undefined}
                         onCustomModelLoad={(url) => setCustomModelUrl(url)}
                       />
