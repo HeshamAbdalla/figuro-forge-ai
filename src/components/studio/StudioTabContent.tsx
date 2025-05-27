@@ -1,6 +1,7 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { FigurineGallery } from "@/components/figurine";
 import ModelViewer from "@/components/ModelViewer";
 import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
@@ -174,9 +175,13 @@ const StudioTabContent = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="max-w-6xl mx-auto"
+          className="max-w-6xl mx-auto h-[600px]"
         >
-          <FigurineGallery />
+          <ScrollArea className="h-full">
+            <div className="pr-4">
+              <FigurineGallery />
+            </div>
+          </ScrollArea>
         </motion.div>
       );
 
