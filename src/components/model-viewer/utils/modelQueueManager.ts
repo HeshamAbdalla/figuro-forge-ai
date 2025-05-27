@@ -32,13 +32,22 @@ class ModelQueueManager {
   }
 
   /**
+   * Type guard to check if performance.memory is available
+   */
+  private hasMemoryInfo(): boolean {
+    return typeof performance !== 'undefined' && 
+           performance.memory !== undefined && 
+           typeof performance.memory.usedJSHeapSize === 'number';
+  }
+
+  /**
    * Monitor performance and adjust queue settings
    */
   private monitorPerformance(): void {
     setInterval(() => {
-      // Check memory usage and adjust max concurrent loads
-      if (performance.memory && performance.memory.usedJSHeapSize) {
-        const memoryUsageMB = performance.memory.usedJSHeapSize / (1024 * 1024);
+      // Check memory usage and adjust max concurrent loads with type guard
+      if (this.hasMemoryInfo()) {
+        const memoryUsageMB = performance.memory!.usedJSHeapSize / (1024 * 1024);
         
         if (memoryUsageMB > 500) { // High memory usage
           this.maxConcurrent = 1;
@@ -330,8 +339,8 @@ class ModelQueueManager {
     activeContexts: number;
     queueEfficiency: number;
   } {
-    const memoryUsage = performance.memory ? 
-      performance.memory.usedJSHeapSize / (1024 * 1024) : undefined;
+    const memoryUsage = this.hasMemoryInfo() ? 
+      performance.memory!.usedJSHeapSize / (1024 * 1024) : undefined;
     
     const histories = Array.from(this.loadHistory.values());
     const totalAttempts = histories.reduce((sum, h) => sum + h.attempts, 0);

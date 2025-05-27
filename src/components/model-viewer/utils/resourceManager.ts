@@ -59,7 +59,7 @@ export const cleanupResources = (
 class WebGLContextTracker {
   private static instance: WebGLContextTracker;
   private contextCount = 0;
-  private readonly MAX_CONTEXTS = 6; // Conservative limit for most browsers
+  private maxContexts = 6; // Changed from readonly to allow modification
   private disposalTimeouts: number[] = [];
   private contextCreationTimes: number[] = [];
   private lastContextError: number = 0;
@@ -76,6 +76,15 @@ class WebGLContextTracker {
       WebGLContextTracker.instance = new WebGLContextTracker();
     }
     return WebGLContextTracker.instance;
+  }
+
+  /**
+   * Type guard to check if performance.memory is available
+   */
+  private hasMemoryInfo(): boolean {
+    return typeof performance !== 'undefined' && 
+           performance.memory !== undefined && 
+           typeof performance.memory.usedJSHeapSize === 'number';
   }
 
   /**
@@ -100,12 +109,12 @@ class WebGLContextTracker {
         this.closeCircuitBreaker();
       }
       
-      // Memory-based context limit adjustment
-      if (performance.memory) {
-        const memoryUsageMB = performance.memory.usedJSHeapSize / (1024 * 1024);
+      // Memory-based context limit adjustment with type guard
+      if (this.hasMemoryInfo()) {
+        const memoryUsageMB = performance.memory!.usedJSHeapSize / (1024 * 1024);
         if (memoryUsageMB > 600) {
-          this.MAX_CONTEXTS = Math.max(2, this.MAX_CONTEXTS - 1);
-          console.warn(`[WebGL] High memory usage, reducing max contexts to ${this.MAX_CONTEXTS}`);
+          this.maxContexts = Math.max(2, this.maxContexts - 1);
+          console.warn(`[WebGL] High memory usage, reducing max contexts to ${this.maxContexts}`);
         }
       }
     }, 5000); // Check every 5 seconds
@@ -148,11 +157,11 @@ class WebGLContextTracker {
     this.contextCount++;
     this.contextCreationTimes.push(now);
     
-    console.log(`WebGL context created. Active contexts: ${this.contextCount}/${this.MAX_CONTEXTS}`);
+    console.log(`WebGL context created. Active contexts: ${this.contextCount}/${this.maxContexts}`);
     
     // Warn if approaching limit
-    if (this.contextCount > (this.MAX_CONTEXTS * 0.8)) {
-      console.warn(`[WebGL] Approaching context limit: ${this.contextCount}/${this.MAX_CONTEXTS}`);
+    if (this.contextCount > (this.maxContexts * 0.8)) {
+      console.warn(`[WebGL] Approaching context limit: ${this.contextCount}/${this.maxContexts}`);
     }
     
     return this.contextCount;
@@ -164,7 +173,7 @@ class WebGLContextTracker {
       if (this.contextCount > 0) {
         this.contextCount--;
       }
-      console.log(`WebGL context released. Active contexts: ${this.contextCount}/${this.MAX_CONTEXTS}`);
+      console.log(`WebGL context released. Active contexts: ${this.contextCount}/${this.maxContexts}`);
       
       // Remove this timeout from the array
       this.disposalTimeouts = this.disposalTimeouts.filter(id => id !== timeoutId);
@@ -181,12 +190,12 @@ class WebGLContextTracker {
   }
   
   public isNearingLimit(): boolean {
-    return this.contextCount > (this.MAX_CONTEXTS * 0.7) || this.isCircuitBreakerOpen;
+    return this.contextCount > (this.maxContexts * 0.7) || this.isCircuitBreakerOpen;
   }
   
   public canCreateContext(): boolean {
     return !this.isCircuitBreakerOpen && 
-           this.contextCount < this.MAX_CONTEXTS && 
+           this.contextCount < this.maxContexts && 
            (Date.now() - this.lastContextError) > 5000;
   }
   
@@ -195,7 +204,7 @@ class WebGLContextTracker {
   }
   
   public getMaxContexts(): number {
-    return this.MAX_CONTEXTS;
+    return this.maxContexts;
   }
 
   public recordContextError(): void {
@@ -218,7 +227,7 @@ class WebGLContextTracker {
     
     return {
       active: this.contextCount,
-      max: this.MAX_CONTEXTS,
+      max: this.maxContexts,
       circuitBreakerOpen: this.isCircuitBreakerOpen,
       recentCreations,
       canCreate: this.canCreateContext()
