@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
@@ -75,6 +74,9 @@ const Gallery = () => {
     handleViewImage
   });
 
+  // Improved modal visibility logic: keep modal open during conversion or when actively generating
+  const shouldShowGenerationModal = isGenerating || progress.status === 'converting' || progress.status === 'downloading';
+
   if (!user) {
     return (
       <>
@@ -120,7 +122,7 @@ const Gallery = () => {
         viewingImage={viewingImage}
         viewingImageName={viewingImageName}
         onCloseImageViewer={handleCloseImageViewer}
-        isGenerating={isGenerating}
+        isGenerating={shouldShowGenerationModal}
         progress={progress}
         onResetProgress={resetProgress}
         authPromptOpen={authPromptOpen}

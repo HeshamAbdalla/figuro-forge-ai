@@ -59,14 +59,24 @@ const Generate3DModal: React.FC<Generate3DModalProps> = ({
   };
 
   const handleClose = () => {
+    // Only allow closing if not actively converting or downloading
     if (progress.status !== 'converting' && progress.status !== 'downloading') {
       onClose();
       onOpenChange(false);
     }
   };
 
+  // Prevent closing the modal by clicking outside or escape key during conversion
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && (progress.status === 'converting' || progress.status === 'downloading')) {
+      // Don't allow closing during conversion
+      return;
+    }
+    onOpenChange(newOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md bg-figuro-dark border-white/10">
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-3">

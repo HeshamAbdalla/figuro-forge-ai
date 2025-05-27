@@ -56,6 +56,8 @@ export const useGallery3DGeneration = () => {
       const conversionCallbacks = {
         onProgressUpdate: updateProgress,
         onSuccess: (modelUrl: string, thumbnailUrl?: string) => {
+          console.log('✅ [GALLERY] 3D conversion completed successfully');
+          setIsGenerating(false); // Set to false only on success
           toast({
             title: "3D Model Generated",
             description: "Your 3D model has been created and saved to the gallery",
@@ -63,6 +65,8 @@ export const useGallery3DGeneration = () => {
           });
         },
         onError: (error: string) => {
+          console.error('❌ [GALLERY] 3D conversion failed:', error);
+          setIsGenerating(false); // Set to false only on error
           updateProgress({
             status: 'error',
             progress: 0,
@@ -106,6 +110,9 @@ export const useGallery3DGeneration = () => {
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate 3D model';
       
+      // Set isGenerating to false on catch block error
+      setIsGenerating(false);
+      
       updateProgress({
         status: 'error',
         progress: 0,
@@ -126,9 +133,8 @@ export const useGallery3DGeneration = () => {
           variant: "destructive"
         });
       }
-    } finally {
-      setIsGenerating(false);
     }
+    // Removed the finally block that was setting isGenerating to false
   };
 
   return {
