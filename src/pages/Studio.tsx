@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import ModelViewer from "@/components/ModelViewer";
 import { FigurineGallery } from "@/components/figurine";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
+import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,9 @@ import CompactStudioHeader from "@/components/studio/CompactStudioHeader";
 import StudioConfigPanel from "@/components/studio/StudioConfigPanel";
 import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
 import StreamlinedImagePreview from "@/components/studio/StreamlinedImagePreview";
+import Generate3DConfigModal from "@/components/gallery/Generate3DConfigModal";
+import Generate3DModal from "@/components/gallery/Generate3DModal";
+import type { Generate3DConfig } from "@/components/gallery/types/conversion";
 
 const Studio = () => {
   const [apiKey, setApiKey] = useState<string | "">("");
@@ -27,20 +31,24 @@ const Studio = () => {
   const [customModelUrl, setCustomModelUrl] = useState<string | null>(null);
   const [customModelFile, setCustomModelFile] = useState<File | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [generationModalOpen, setGenerationModalOpen] = useState(false);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("create");
   
   const {
     isGeneratingImage,
-    isConverting,
     generatedImage,
-    modelUrl,
     handleGenerate,
-    handleConvertTo3D,
     requiresApiKey,
-    conversionProgress,
-    conversionError
   } = useImageGeneration();
+
+  const {
+    isGenerating,
+    progress,
+    generate3DModel,
+    resetProgress
+  } = useGallery3DGeneration();
 
   const { user: authUser, signOut } = useAuth();
   const navigate = useNavigate();
@@ -77,6 +85,12 @@ const Studio = () => {
     // Show API input if requiresApiKey is true
     setShowApiInput(requiresApiKey);
   }, [requiresApiKey]);
+
+  // Watch for generation modal state changes
+  useEffect(() => {
+    const shouldShowGenerationModal = isGenerating || progress.status === 'converting' || progress.status === 'downloading';
+    setGenerationModalOpen(shouldShowGenerationModal);
+  }, [isGenerating, progress.status]);
 
   // Enhanced generation function with authentication check
   const onGenerate = async (prompt: string, style: string) => {
@@ -142,13 +156,18 @@ const Studio = () => {
       });
     }
   };
-  
-  // Handle model conversion with usage tracking and authentication
-  const handleConvertWithUsageTracking = async () => {
+
+  // Handler to open the config modal
+  const handleOpenConfigModal = () => {
     if (!generatedImage) {
+      toast({
+        title: "No image to convert",
+        description: "Please generate an image first before converting to 3D",
+        variant: "destructive",
+      });
       return;
     }
-    
+
     if (!authUser) {
       toast({
         title: "Authentication required",
@@ -157,7 +176,7 @@ const Studio = () => {
       navigate("/auth");
       return;
     }
-    
+
     const canConvert = canPerformAction("model_conversion");
     if (!canConvert) {
       toast({
@@ -167,6 +186,22 @@ const Studio = () => {
       });
       return;
     }
+
+    setConfigModalOpen(true);
+  };
+
+  // Handler to generate 3D model with config
+  const handleGenerate3DWithConfig = async (config: Generate3DConfig) => {
+    if (!generatedImage) {
+      toast({
+        title: "No image to convert",
+        description: "Please generate an image first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setConfigModalOpen(false);
     
     // Consume usage before conversion
     const consumed = await consumeAction("model_conversion");
@@ -178,9 +213,12 @@ const Studio = () => {
       });
       return;
     }
+
+    // Generate a filename for the conversion
+    const fileName = `studio-conversion-${Date.now()}.png`;
     
-    // Call the original conversion function
-    await handleConvertTo3D();
+    // Start the 3D generation process
+    await generate3DModel(generatedImage, fileName, config);
   };
 
   // Handle model upload from modal
@@ -205,8 +243,15 @@ const Studio = () => {
     navigate("/auth");
   };
 
-  // Determine which model URL to display - custom or generated
-  const displayModelUrl = customModelUrl || modelUrl;
+  const handleCloseGenerationModal = () => {
+    if (progress.status !== 'converting' && progress.status !== 'downloading') {
+      setGenerationModalOpen(false);
+      resetProgress();
+    }
+  };
+
+  // Determine which model URL to display - custom or generated from the 3D conversion
+  const displayModelUrl = customModelUrl || progress.modelUrl;
 
   return (
     <div className="min-h-screen bg-figuro-dark overflow-hidden relative">
@@ -293,8 +338,8 @@ const Studio = () => {
                       <StreamlinedImagePreview 
                         imageSrc={generatedImage} 
                         isLoading={isGeneratingImage}
-                        onConvertTo3D={handleConvertWithUsageTracking}
-                        isConverting={isConverting}
+                        onConvertTo3D={handleOpenConfigModal}
+                        isConverting={isGenerating}
                       />
                     </motion.div>
                     
@@ -305,9 +350,9 @@ const Studio = () => {
                     >
                       <ModelViewer 
                         modelUrl={displayModelUrl} 
-                        isLoading={isConverting}
-                        progress={conversionProgress}
-                        errorMessage={conversionError}
+                        isLoading={isGenerating}
+                        progress={progress}
+                        errorMessage={progress.status === 'error' ? progress.message : undefined}
                         onCustomModelLoad={(url) => setCustomModelUrl(url)}
                       />
                     </motion.div>
@@ -347,6 +392,23 @@ const Studio = () => {
         isOpen={uploadModalOpen}
         onOpenChange={setUploadModalOpen}
         onModelUpload={handleModelUpload}
+      />
+
+      {/* 3D Configuration Modal */}
+      <Generate3DConfigModal
+        open={configModalOpen}
+        onOpenChange={setConfigModalOpen}
+        onGenerate={handleGenerate3DWithConfig}
+        imageUrl={generatedImage || ""}
+        imageName="Studio Generated Image"
+      />
+
+      {/* 3D Generation Progress Modal */}
+      <Generate3DModal
+        open={generationModalOpen}
+        onOpenChange={setGenerationModalOpen}
+        progress={progress}
+        onClose={handleCloseGenerationModal}
       />
     </div>
   );
