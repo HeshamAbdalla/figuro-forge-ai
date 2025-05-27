@@ -14,7 +14,7 @@ export const useGallery3DGeneration = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const { progress, updateProgress, resetProgress } = useConversionProgress();
   const { toast } = useToast();
-  const { canPerformAction, checkSubscription } = useSubscription();
+  const { canPerformAction, checkSubscription, consumeAction } = useSubscription();
 
   const generate3DModel = async (imageUrl: string, fileName: string, config?: Generate3DConfig) => {
     try {
@@ -35,6 +35,12 @@ export const useGallery3DGeneration = () => {
 
       // Check if user can perform model conversion
       if (!canPerformAction('model_conversion')) {
+        throw new Error('You have reached your 3D model conversion limit. Please upgrade your plan to continue.');
+      }
+
+      // Consume usage before conversion
+      const consumed = await consumeAction("model_conversion");
+      if (!consumed) {
         throw new Error('You have reached your 3D model conversion limit. Please upgrade your plan to continue.');
       }
 
@@ -80,7 +86,7 @@ export const useGallery3DGeneration = () => {
         }
       };
 
-      // Start conversion
+      // Start conversion with user config or defaults
       const taskId = await startConversion(
         imageUrl,
         config || defaultConfig,

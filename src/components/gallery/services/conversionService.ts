@@ -22,18 +22,22 @@ export const startConversion = async (
       message: 'Starting 3D conversion...'
     });
 
+    // Use the provided config or fall back to defaults
+    const finalConfig: Generate3DConfig = {
+      art_style: config.art_style || 'realistic',
+      ai_model: config.ai_model || 'meshy-5',
+      topology: config.topology || 'quad',
+      target_polycount: config.target_polycount || 20000,
+      texture_richness: config.texture_richness || 'high',
+      moderation: config.moderation !== undefined ? config.moderation : true,
+      negative_prompt: config.negative_prompt
+    };
+
     // Call the convert-to-3d edge function with configuration
     const { data, error } = await supabase.functions.invoke('convert-to-3d', {
       body: { 
         imageUrl,
-        config: config || {
-          art_style: 'realistic',
-          ai_model: 'meshy-5',
-          topology: 'quad',
-          target_polycount: 20000,
-          texture_richness: 'high',
-          moderation: true
-        }
+        config: finalConfig
       }
     });
 

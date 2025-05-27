@@ -18,7 +18,7 @@ export const useGalleryHandlers = ({
   const { user } = useAuth();
   const navigate = useNavigate();
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
-  const { canPerformAction, consumeAction } = useSubscription();
+  const { canPerformAction } = useSubscription();
 
   // Handle download functionality
   const handleDownload = (url: string, name: string) => {
@@ -45,7 +45,7 @@ export const useGalleryHandlers = ({
     }
   };
 
-  // Handle 3D generation with subscription usage tracking
+  // Handle 3D generation - open config modal if authenticated and within limits
   const handleGenerate3D = async (imageUrl: string, imageName: string) => {
     if (!user) {
       setAuthPromptOpen(true);
@@ -59,13 +59,7 @@ export const useGalleryHandlers = ({
       return;
     }
     
-    // Consume usage before generation
-    const consumed = await consumeAction("model_conversion");
-    if (!consumed) {
-      setAuthPromptOpen(true);
-      return;
-    }
-    
+    // Open the config modal instead of immediately starting conversion
     generate3DModel(imageUrl, imageName);
   };
 
