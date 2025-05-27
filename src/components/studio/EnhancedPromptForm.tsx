@@ -33,21 +33,45 @@ interface EnhancedPromptFormProps {
 const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProps) => {
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState("isometric");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim()) return;
-    onGenerate(prompt, style);
+    if (!prompt.trim() || isSubmitting || isGenerating) return;
+    
+    console.log(`🎯 [FORM] Form submission started for prompt: "${prompt}"`);
+    
+    // Immediately set local submitting state to prevent multiple submissions
+    setIsSubmitting(true);
+    
+    try {
+      // Call the onGenerate function
+      await onGenerate(prompt, style);
+      console.log(`✅ [FORM] Form submission completed for prompt: "${prompt}"`);
+    } catch (error) {
+      console.error(`❌ [FORM] Form submission error for prompt: "${prompt}"`, error);
+    } finally {
+      // Reset submitting state after a short delay to prevent rapid resubmissions
+      setTimeout(() => {
+        setIsSubmitting(false);
+        console.log(`🔓 [FORM] Form submission lock released for prompt: "${prompt}"`);
+      }, 1000);
+    }
   };
 
   const handleQuickPrompt = (quickPrompt: string) => {
+    if (isSubmitting || isGenerating) return;
     setPrompt(quickPrompt);
   };
 
   const handleRandomPrompt = () => {
+    if (isSubmitting || isGenerating) return;
     const randomPrompt = QUICK_PROMPTS[Math.floor(Math.random() * QUICK_PROMPTS.length)];
     setPrompt(randomPrompt);
   };
+
+  // Determine if the form should be disabled
+  const isDisabled = isGenerating || isSubmitting || !prompt.trim();
 
   return (
     <motion.div
@@ -63,6 +87,7 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
             className="bg-white/10 border-white/20 text-white resize-none h-20"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
+            disabled={isSubmitting || isGenerating}
           />
           
           <div className="flex flex-wrap gap-1">
@@ -73,7 +98,8 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
                 variant="ghost"
                 size="sm"
                 onClick={() => handleQuickPrompt(quickPrompt)}
-                className="text-xs text-white/60 hover:text-white hover:bg-white/5 h-6 px-2"
+                disabled={isSubmitting || isGenerating}
+                className="text-xs text-white/60 hover:text-white hover:bg-white/5 h-6 px-2 disabled:opacity-50"
               >
                 {quickPrompt}
               </Button>
@@ -83,7 +109,8 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
               variant="ghost"
               size="sm"
               onClick={handleRandomPrompt}
-              className="text-xs text-white/60 hover:text-white hover:bg-white/5 h-6 px-2"
+              disabled={isSubmitting || isGenerating}
+              className="text-xs text-white/60 hover:text-white hover:bg-white/5 h-6 px-2 disabled:opacity-50"
             >
               <Shuffle size={12} className="mr-1" />
               Random
@@ -91,8 +118,8 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
           </div>
         </div>
         
-        <Select value={style} onValueChange={setStyle}>
-          <SelectTrigger className="bg-white/10 border-white/20 text-white h-9">
+        <Select value={style} onValueChange={setStyle} disabled={isSubmitting || isGenerating}>
+          <SelectTrigger className="bg-white/10 border-white/20 text-white h-9 disabled:opacity-50">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="bg-figuro-darker border-white/20 backdrop-blur-md">
@@ -109,13 +136,13 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
         
         <Button
           type="submit"
-          className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-10"
-          disabled={isGenerating || !prompt.trim()}
+          className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-10 disabled:opacity-50"
+          disabled={isDisabled}
         >
-          {isGenerating ? (
+          {(isGenerating || isSubmitting) ? (
             <>
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-              Generating...
+              {isSubmitting ? "Starting..." : "Generating..."}
             </>
           ) : (
             <>

@@ -23,6 +23,11 @@ export const useImageGeneration = () => {
   const [generationMethod, setGenerationMethod] = useState<"edge" | "direct" | null>(null);
   const [conversionProgress, setConversionProgress] = useState(0);
   const [conversionError, setConversionError] = useState<string | null>(null);
+  
+  // Request deduplication refs
+  const isGenerationInProgress = useRef(false);
+  const currentRequestId = useRef<string | null>(null);
+  
   const eventSourceRef = useRef<EventSource | null>(null);
   const currentTaskRef = useRef<string | null>(null);
   const modelUrlRef = useRef<string | null>(null);
@@ -430,13 +435,35 @@ export const useImageGeneration = () => {
     return () => clearInterval(checkInterval);
   };
 
-  // Generate image using a single generation attempt strategy
+  // Generate image using a single generation attempt strategy with request deduplication
   const handleGenerate = async (prompt: string, style: string, apiKey: string = "", preGeneratedImageUrl?: string): Promise<GenerateResult> => {
+    // Create a unique request ID for this generation
+    const requestId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    console.log(`🎯 [GENERATION] Starting generation request ${requestId} for prompt: "${prompt}"`);
+    
+    // Check if a generation is already in progress
+    if (isGenerationInProgress.current) {
+      console.log(`⚠️ [GENERATION] Request ${requestId} blocked - generation already in progress (${currentRequestId.current})`);
+      toast({
+        title: "Generation in progress",
+        description: "Please wait for the current generation to complete",
+        variant: "default",
+      });
+      return { success: false, needsApiKey: false, error: "Generation already in progress" };
+    }
+
     // Check authentication first
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       throw new Error('Authentication required to generate figurines');
     }
+
+    // Set the generation lock
+    isGenerationInProgress.current = true;
+    currentRequestId.current = requestId;
+    
+    console.log(`🔒 [GENERATION] Request ${requestId} acquired generation lock`);
 
     const savedApiKey = localStorage.getItem("tempHuggingFaceApiKey") || apiKey;
     
@@ -462,7 +489,7 @@ export const useImageGeneration = () => {
         imageBlob = await response.blob();
       } else {
         // Make a single generation request to the service layer
-        console.log("Making single generation request to service layer");
+        console.log(`🚀 [GENERATION] Request ${requestId} making API call to service layer`);
         const result = await generateImage(prompt, style, savedApiKey);
         
         if (result.error) {
@@ -482,6 +509,8 @@ export const useImageGeneration = () => {
         
         imageBlob = result.blob;
         imageUrl = result.url;
+        
+        console.log(`✅ [GENERATION] Request ${requestId} successfully generated image via ${result.method} method`);
       }
       
       // Save the figurine to Supabase if we have an image
@@ -498,9 +527,10 @@ export const useImageGeneration = () => {
           
           if (figurineId) {
             setCurrentFigurineId(figurineId);
+            console.log(`💾 [GENERATION] Request ${requestId} saved figurine with ID: ${figurineId}`);
           }
         } catch (saveError) {
-          console.error("Error saving figurine:", saveError);
+          console.error(`❌ [GENERATION] Request ${requestId} error saving figurine:`, saveError);
           toast({
             title: "Save failed",
             description: "Image generated but failed to save to database",
@@ -510,9 +540,10 @@ export const useImageGeneration = () => {
         }
       }
       
+      console.log(`🎉 [GENERATION] Request ${requestId} completed successfully`);
       return { success: true, needsApiKey: false };
     } catch (error) {
-      console.error("Generation error:", error);
+      console.error(`❌ [GENERATION] Request ${requestId} failed:`, error);
       
       toast({
         title: "Generation failed",
@@ -527,6 +558,10 @@ export const useImageGeneration = () => {
       };
     } finally {
       setIsGeneratingImage(false);
+      // Release the generation lock
+      isGenerationInProgress.current = false;
+      currentRequestId.current = null;
+      console.log(`🔓 [GENERATION] Request ${requestId} released generation lock`);
     }
   };
 
