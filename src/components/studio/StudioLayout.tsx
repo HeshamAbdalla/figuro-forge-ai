@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import UploadModelModal from "@/components/UploadModelModal";
 import VantaBackground from "@/components/VantaBackground";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
 import CompactStudioHeader from "@/components/studio/CompactStudioHeader";
 import StudioConfigPanel from "@/components/studio/StudioConfigPanel";
@@ -80,55 +81,57 @@ const StudioLayout = ({
   }, [isGenerating, progress.status, setGenerationModalOpen]);
 
   return (
-    <div className="min-h-screen bg-figuro-dark overflow-hidden relative">
+    <div className="min-h-screen bg-figuro-dark overflow-hidden relative flex flex-col">
       <VantaBackground>
         <Header />
         
-        <section className="pt-20 pb-12">
-          <div className="container mx-auto px-4 max-w-7xl">
-            <CompactStudioHeader />
-            
-            <motion.div 
-              className="mb-6"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <StudioConfigPanel
-                onUploadModel={() => setUploadModalOpen(true)}
-                user={authUser}
-                onSignIn={handleSignIn}
-                onSignOut={handleSignOut}
+        <ScrollArea className="flex-1 pt-20">
+          <section className="pb-12">
+            <div className="container mx-auto px-4 max-w-7xl">
+              <CompactStudioHeader />
+              
+              <motion.div 
+                className="mb-6"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <StudioConfigPanel
+                  onUploadModel={() => setUploadModalOpen(true)}
+                  user={authUser}
+                  onSignIn={handleSignIn}
+                  onSignOut={handleSignOut}
+                />
+              </motion.div>
+              
+              <EnhancedStudioTabs
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
               />
-            </motion.div>
-            
-            <EnhancedStudioTabs
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-            />
-            
-            <StudioTabContent
-              activeTab={activeTab}
-              authUser={authUser}
-              generatedImage={generatedImage}
-              isGeneratingImage={isGeneratingImage}
-              isGenerating={isGenerating}
-              isGeneratingTextTo3D={isGeneratingTextTo3D}
-              currentTaskId={currentTaskId}
-              textTo3DProgress={textTo3DProgress}
-              displayModelUrl={displayModelUrl}
-              shouldModelViewerLoad={shouldModelViewerLoad}
-              progress={progress}
-              onGenerate={onGenerate}
-              handleOpenConfigModal={handleOpenConfigModal}
-              handleTextTo3D={handleTextTo3D}
-              handleSignIn={handleSignIn}
-              setCustomModelUrl={setCustomModelUrl}
-            />
-          </div>
-        </section>
-        
-        <Footer />
+              
+              <StudioTabContent
+                activeTab={activeTab}
+                authUser={authUser}
+                generatedImage={generatedImage}
+                isGeneratingImage={isGeneratingImage}
+                isGenerating={isGenerating}
+                isGeneratingTextTo3D={isGeneratingTextTo3D}
+                currentTaskId={currentTaskId}
+                textTo3DProgress={textTo3DProgress}
+                displayModelUrl={displayModelUrl}
+                shouldModelViewerLoad={shouldModelViewerLoad}
+                progress={progress}
+                onGenerate={onGenerate}
+                handleOpenConfigModal={handleOpenConfigModal}
+                handleTextTo3D={handleTextTo3D}
+                handleSignIn={handleSignIn}
+                setCustomModelUrl={setCustomModelUrl}
+              />
+            </div>
+          </section>
+          
+          <Footer />
+        </ScrollArea>
       </VantaBackground>
 
       {/* Upload Model Modal */}
