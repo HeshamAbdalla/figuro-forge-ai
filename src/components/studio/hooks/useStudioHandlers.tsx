@@ -169,13 +169,8 @@ export const useStudioHandlers = ({
       return;
     }
 
-    const result = await generateTextTo3DModel(prompt, artStyle, negativePrompt);
-    
-    if (result.success && result.taskId) {
-      // Start polling for progress (this would be implemented similarly to the existing 3D conversion)
-      setTextTo3DProgress({ status: 'processing', progress: 10, modelUrl: '' });
-      // TODO: Implement polling mechanism for text to 3D progress
-    }
+    // The generateTextTo3DModel function now handles its own progress tracking
+    await generateTextTo3DModel(prompt, artStyle, negativePrompt);
   };
 
   // Handle model upload from modal

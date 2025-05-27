@@ -109,25 +109,31 @@ serve(async (req) => {
     const meshyData = await meshyResponse.json();
     console.log('📊 [TEXT-TO-3D] Meshy API success response:', meshyData);
 
-    // Store task info in conversion_tasks table
+    // Store task info in conversion_tasks table with proper error handling
     const taskId = meshyData.result;
-    const { error: storeError } = await supabase
-      .from('conversion_tasks')
-      .insert({
-        task_id: taskId,
-        user_id: user.id,
-        status: 'processing',
-        task_type: 'text_to_3d',
-        prompt: prompt,
-        art_style: art_style,
-        negative_prompt: negative_prompt
-      });
+    
+    try {
+      const { error: storeError } = await supabase
+        .from('conversion_tasks')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          status: 'processing',
+          task_type: 'text_to_3d',
+          prompt: prompt,
+          art_style: art_style,
+          negative_prompt: negative_prompt || null
+        });
 
-    if (storeError) {
-      console.error('❌ [TEXT-TO-3D] Error storing task:', storeError);
-      // Don't throw here, as the task was created successfully in Meshy
-    } else {
-      console.log('💾 [TEXT-TO-3D] Stored task info. Task ID:', taskId);
+      if (storeError) {
+        console.error('❌ [TEXT-TO-3D] Error storing task:', storeError);
+        // Don't throw here, as the task was created successfully in Meshy
+      } else {
+        console.log('💾 [TEXT-TO-3D] Stored task info. Task ID:', taskId);
+      }
+    } catch (dbError) {
+      console.error('❌ [TEXT-TO-3D] Database error:', dbError);
+      // Continue execution even if database storage fails
     }
 
     console.log('✅ [TEXT-TO-3D] Task created successfully with ID:', taskId);

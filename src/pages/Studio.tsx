@@ -20,9 +20,7 @@ const Studio = () => {
     configModalOpen,
     setConfigModalOpen,
     generationModalOpen,
-    setGenerationModalOpen,
-    textTo3DProgress,
-    setTextTo3DProgress
+    setGenerationModalOpen
   } = useStudioState();
 
   const {
@@ -41,7 +39,9 @@ const Studio = () => {
   const {
     isGenerating: isGeneratingTextTo3D,
     currentTaskId,
+    progress: textTo3DProgress,
     generateModel: generateTextTo3DModel,
+    resetProgress: resetTextTo3DProgress,
     setCurrentTaskId
   } = useTextTo3D();
 
@@ -67,7 +67,7 @@ const Studio = () => {
     setCustomModelFile,
     setConfigModalOpen,
     setGenerationModalOpen,
-    setTextTo3DProgress,
+    setTextTo3DProgress: () => {}, // Not needed anymore
     handleGenerate,
     generate3DModel,
     generateTextTo3DModel,

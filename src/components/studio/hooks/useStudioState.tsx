@@ -9,11 +9,6 @@ export const useStudioState = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [generationModalOpen, setGenerationModalOpen] = useState(false);
-  const [textTo3DProgress, setTextTo3DProgress] = useState({ 
-    status: '', 
-    progress: 0, 
-    modelUrl: '' 
-  });
 
   // Check for authenticated user
   useEffect(() => {
@@ -46,8 +41,6 @@ export const useStudioState = () => {
     configModalOpen,
     setConfigModalOpen,
     generationModalOpen,
-    setGenerationModalOpen,
-    textTo3DProgress,
-    setTextTo3DProgress
+    setGenerationModalOpen
   };
 };

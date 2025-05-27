@@ -9,6 +9,51 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      conversion_tasks: {
+        Row: {
+          art_style: string | null
+          created_at: string
+          id: string
+          model_url: string | null
+          negative_prompt: string | null
+          prompt: string | null
+          status: string
+          task_id: string
+          task_type: string
+          thumbnail_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          art_style?: string | null
+          created_at?: string
+          id?: string
+          model_url?: string | null
+          negative_prompt?: string | null
+          prompt?: string | null
+          status?: string
+          task_id: string
+          task_type?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          art_style?: string | null
+          created_at?: string
+          id?: string
+          model_url?: string | null
+          negative_prompt?: string | null
+          prompt?: string | null
+          status?: string
+          task_id?: string
+          task_type?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       figurines: {
         Row: {
           created_at: string | null

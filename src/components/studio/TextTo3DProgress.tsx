@@ -10,6 +10,7 @@ interface TextTo3DProgressProps {
   status: string;
   progress: number;
   modelUrl?: string;
+  thumbnailUrl?: string;
   onDownload?: () => void;
   onViewModel?: () => void;
 }
@@ -18,12 +19,17 @@ const getStatusIcon = (status: string) => {
   switch (status) {
     case 'processing':
     case 'pending':
+    case 'IN_PROGRESS':
+    case 'PENDING':
+    case 'starting':
       return <Loader2 className="animate-spin text-figuro-accent" size={20} />;
     case 'completed':
     case 'succeeded':
+    case 'SUCCEEDED':
       return <CheckCircle className="text-green-400" size={20} />;
     case 'failed':
     case 'error':
+    case 'FAILED':
       return <AlertCircle className="text-red-400" size={20} />;
     default:
       return <Loader2 className="animate-spin text-figuro-accent" size={20} />;
@@ -34,12 +40,17 @@ const getStatusText = (status: string) => {
   switch (status) {
     case 'processing':
     case 'pending':
+    case 'IN_PROGRESS':
+    case 'PENDING':
+    case 'starting':
       return 'Creating your 3D model...';
     case 'completed':
     case 'succeeded':
+    case 'SUCCEEDED':
       return '3D model created successfully!';
     case 'failed':
     case 'error':
+    case 'FAILED':
       return 'Failed to create 3D model';
     default:
       return 'Processing...';
@@ -51,13 +62,14 @@ const TextTo3DProgress = ({
   status, 
   progress, 
   modelUrl, 
+  thumbnailUrl,
   onDownload, 
   onViewModel 
 }: TextTo3DProgressProps) => {
-  if (!taskId) return null;
+  if (!taskId && !status) return null;
 
-  const isCompleted = status === 'completed' || status === 'succeeded';
-  const isFailed = status === 'failed' || status === 'error';
+  const isCompleted = status === 'completed' || status === 'succeeded' || status === 'SUCCEEDED';
+  const isFailed = status === 'failed' || status === 'error' || status === 'FAILED';
 
   return (
     <Card className="glass-panel border-white/20 backdrop-blur-sm p-6">
@@ -73,7 +85,9 @@ const TextTo3DProgress = ({
               <h3 className="text-lg font-semibold text-white">
                 {getStatusText(status)}
               </h3>
-              <p className="text-sm text-white/70">Task ID: {taskId.substring(0, 8)}...</p>
+              {taskId && (
+                <p className="text-sm text-white/70">Task ID: {taskId.substring(0, 8)}...</p>
+              )}
             </div>
           </div>
 
@@ -98,13 +112,15 @@ const TextTo3DProgress = ({
               >
                 View 3D Model
               </Button>
-              <Button
-                onClick={onDownload}
-                variant="outline"
-                className="border-white/20 hover:border-white/40 bg-white/5"
-              >
-                <Download size={16} />
-              </Button>
+              {onDownload && (
+                <Button
+                  onClick={onDownload}
+                  variant="outline"
+                  className="border-white/20 hover:border-white/40 bg-white/5"
+                >
+                  <Download size={16} />
+                </Button>
+              )}
             </div>
           )}
 

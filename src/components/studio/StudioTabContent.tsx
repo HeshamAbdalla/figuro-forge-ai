@@ -17,7 +17,7 @@ interface StudioTabContentProps {
   isGenerating: boolean;
   isGeneratingTextTo3D: boolean;
   currentTaskId: string | null;
-  textTo3DProgress: { status: string; progress: number; modelUrl: string };
+  textTo3DProgress: { status: string; progress: number; modelUrl: string; taskId?: string; thumbnailUrl?: string };
   displayModelUrl: string | null;
   shouldModelViewerLoad: boolean;
   progress: any;
@@ -130,14 +130,25 @@ const StudioTabContent = ({
               onGenerate={handleTextTo3D}
               isGenerating={isGeneratingTextTo3D}
             />
-            {currentTaskId && (
+            {(currentTaskId || textTo3DProgress.status) && (
               <TextTo3DProgress
-                taskId={currentTaskId}
+                taskId={currentTaskId || textTo3DProgress.taskId || null}
                 status={textTo3DProgress.status}
                 progress={textTo3DProgress.progress}
                 modelUrl={textTo3DProgress.modelUrl}
-                onViewModel={() => {/* TODO: implement view model */}}
-                onDownload={() => {/* TODO: implement download */}}
+                thumbnailUrl={textTo3DProgress.thumbnailUrl}
+                onViewModel={() => {
+                  // Model is already displayed in the ModelViewer component
+                  console.log('Model already displayed in viewer');
+                }}
+                onDownload={() => {
+                  if (textTo3DProgress.modelUrl) {
+                    const link = document.createElement('a');
+                    link.href = textTo3DProgress.modelUrl;
+                    link.download = 'text-to-3d-model.glb';
+                    link.click();
+                  }
+                }}
               />
             )}
           </motion.div>
@@ -150,7 +161,7 @@ const StudioTabContent = ({
             <ModelViewer 
               modelUrl={displayModelUrl} 
               isLoading={shouldModelViewerLoad && !displayModelUrl}
-              errorMessage={progress.status === 'error' ? progress.message : undefined}
+              errorMessage={textTo3DProgress.status === 'error' ? 'Failed to generate 3D model' : undefined}
               onCustomModelLoad={(url) => setCustomModelUrl(url)}
             />
           </motion.div>
