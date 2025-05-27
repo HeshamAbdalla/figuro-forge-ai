@@ -66,8 +66,32 @@ serve(async (req) => {
 
     console.log('✅ [TEXT-TO-3D] Usage consumed successfully');
 
-    // Parse request body
-    const { prompt, art_style = 'realistic', negative_prompt = '' } = await req.json();
+    // Parse request body - handle both old format and new config format
+    const requestBody = await req.json();
+    
+    let prompt, artStyle, negativePrompt, mode, targetPolycount, topologyType, texture, seedValue;
+    
+    if (requestBody.prompt && typeof requestBody.prompt === 'string') {
+      // New config format
+      ({
+        prompt,
+        artStyle = 'realistic',
+        negativePrompt = '',
+        mode = 'preview',
+        targetPolycount,
+        topologyType,
+        texture,
+        seedValue
+      } = requestBody);
+    } else {
+      // Legacy format for backward compatibility
+      ({
+        prompt,
+        art_style: artStyle = 'realistic',
+        negative_prompt: negativePrompt = ''
+      } = requestBody);
+      mode = 'preview';
+    }
 
     if (!prompt) {
       throw new Error('Prompt is required');
@@ -80,6 +104,32 @@ serve(async (req) => {
     }
 
     console.log('🔧 [TEXT-TO-3D] Processing text to 3D request with prompt:', prompt);
+    console.log('🔧 [TEXT-TO-3D] Configuration:', { artStyle, mode, targetPolycount, topologyType, texture });
+
+    // Prepare Meshy API request body
+    const meshyRequestBody: any = {
+      mode: mode,
+      prompt: prompt,
+      art_style: artStyle,
+      negative_prompt: negativePrompt
+    };
+
+    // Add advanced options if provided
+    if (targetPolycount) {
+      meshyRequestBody.target_polycount = targetPolycount;
+    }
+    
+    if (topologyType) {
+      meshyRequestBody.topology = topologyType;
+    }
+    
+    if (texture !== undefined) {
+      meshyRequestBody.texture = texture;
+    }
+    
+    if (seedValue !== undefined) {
+      meshyRequestBody.seed = seedValue;
+    }
 
     // Call Meshy Text to 3D API
     console.log('📤 [TEXT-TO-3D] Sending request to Meshy Text to 3D API...');
@@ -90,12 +140,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${meshyApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        mode: 'preview',
-        prompt: prompt,
-        art_style: art_style,
-        negative_prompt: negative_prompt
-      }),
+      body: JSON.stringify(meshyRequestBody),
     });
 
     console.log('📊 [TEXT-TO-3D] Meshy API response status:', meshyResponse.status);
@@ -121,8 +166,13 @@ serve(async (req) => {
           status: 'processing',
           task_type: 'text_to_3d',
           prompt: prompt,
-          art_style: art_style,
-          negative_prompt: negative_prompt || null
+          art_style: artStyle,
+          negative_prompt: negativePrompt || null,
+          generation_mode: mode,
+          target_polycount: targetPolycount,
+          topology_type: topologyType,
+          generate_texture: texture,
+          seed_value: seedValue
         });
 
       if (storeError) {

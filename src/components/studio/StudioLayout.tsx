@@ -11,9 +11,11 @@ import StudioConfigPanel from "@/components/studio/StudioConfigPanel";
 import EnhancedStudioTabs from "@/components/studio/EnhancedStudioTabs";
 import Generate3DConfigModal from "@/components/gallery/Generate3DConfigModal";
 import Generate3DModal from "@/components/gallery/Generate3DModal";
+import TextTo3DConfigModal from "@/components/studio/TextTo3DConfigModal";
 import StudioTabContent from "@/components/studio/StudioTabContent";
 import type { TabKey } from "@/hooks/useTabNavigation";
 import type { Generate3DConfig } from "@/components/gallery/types/conversion";
+import type { TextTo3DConfig } from "@/components/studio/types/textTo3DConfig";
 
 interface StudioLayoutProps {
   activeTab: TabKey;
@@ -32,12 +34,17 @@ interface StudioLayoutProps {
   setUploadModalOpen: (open: boolean) => void;
   configModalOpen: boolean;
   setConfigModalOpen: (open: boolean) => void;
+  textTo3DConfigModalOpen: boolean;
+  setTextTo3DConfigModalOpen: (open: boolean) => void;
+  textTo3DConfigPrompt: string;
   generationModalOpen: boolean;
   setGenerationModalOpen: (open: boolean) => void;
   onGenerate: (prompt: string, style: string) => Promise<void>;
   handleOpenConfigModal: () => void;
   handleGenerate3DWithConfig: (config: Generate3DConfig) => Promise<void>;
   handleTextTo3D: (prompt: string, artStyle: string, negativePrompt: string) => Promise<void>;
+  handleOpenTextTo3DConfigModal: (prompt: string) => void;
+  handleTextTo3DWithConfig: (config: TextTo3DConfig) => Promise<void>;
   handleModelUpload: (url: string, file: File) => void;
   handleSignOut: () => Promise<void>;
   handleSignIn: () => void;
@@ -62,12 +69,17 @@ const StudioLayout = ({
   setUploadModalOpen,
   configModalOpen,
   setConfigModalOpen,
+  textTo3DConfigModalOpen,
+  setTextTo3DConfigModalOpen,
+  textTo3DConfigPrompt,
   generationModalOpen,
   setGenerationModalOpen,
   onGenerate,
   handleOpenConfigModal,
   handleGenerate3DWithConfig,
   handleTextTo3D,
+  handleOpenTextTo3DConfigModal,
+  handleTextTo3DWithConfig,
   handleModelUpload,
   handleSignOut,
   handleSignIn,
@@ -124,6 +136,7 @@ const StudioLayout = ({
                 onGenerate={onGenerate}
                 handleOpenConfigModal={handleOpenConfigModal}
                 handleTextTo3D={handleTextTo3D}
+                handleOpenTextTo3DConfigModal={handleOpenTextTo3DConfigModal}
                 handleSignIn={handleSignIn}
                 setCustomModelUrl={setCustomModelUrl}
               />
@@ -148,6 +161,15 @@ const StudioLayout = ({
         onGenerate={handleGenerate3DWithConfig}
         imageUrl={generatedImage || ""}
         imageName="Studio Generated Image"
+      />
+
+      {/* Text to 3D Configuration Modal */}
+      <TextTo3DConfigModal
+        open={textTo3DConfigModalOpen}
+        onOpenChange={setTextTo3DConfigModalOpen}
+        onGenerate={handleTextTo3DWithConfig}
+        isGenerating={isGeneratingTextTo3D}
+        initialPrompt={textTo3DConfigPrompt}
       />
 
       {/* 3D Generation Progress Modal */}

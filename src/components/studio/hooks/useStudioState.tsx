@@ -8,7 +8,9 @@ export const useStudioState = () => {
   const [customModelFile, setCustomModelFile] = useState<File | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [textTo3DConfigModalOpen, setTextTo3DConfigModalOpen] = useState(false);
   const [generationModalOpen, setGenerationModalOpen] = useState(false);
+  const [textTo3DConfigPrompt, setTextTo3DConfigPrompt] = useState("");
 
   // Check for authenticated user
   useEffect(() => {
@@ -40,7 +42,11 @@ export const useStudioState = () => {
     setUploadModalOpen,
     configModalOpen,
     setConfigModalOpen,
+    textTo3DConfigModalOpen,
+    setTextTo3DConfigModalOpen,
     generationModalOpen,
-    setGenerationModalOpen
+    setGenerationModalOpen,
+    textTo3DConfigPrompt,
+    setTextTo3DConfigPrompt
   };
 };

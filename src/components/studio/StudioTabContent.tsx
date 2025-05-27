@@ -25,6 +25,7 @@ interface StudioTabContentProps {
   onGenerate: (prompt: string, style: string) => Promise<void>;
   handleOpenConfigModal: () => void;
   handleTextTo3D: (prompt: string, artStyle: string, negativePrompt: string) => Promise<void>;
+  handleOpenTextTo3DConfigModal: (prompt: string) => void;
   handleSignIn: () => void;
   setCustomModelUrl: (url: string | null) => void;
 }
@@ -44,6 +45,7 @@ const StudioTabContent = ({
   onGenerate,
   handleOpenConfigModal,
   handleTextTo3D,
+  handleOpenTextTo3DConfigModal,
   handleSignIn,
   setCustomModelUrl
 }: StudioTabContentProps) => {
@@ -129,6 +131,7 @@ const StudioTabContent = ({
           >
             <TextTo3DForm 
               onGenerate={handleTextTo3D}
+              onOpenConfigModal={handleOpenTextTo3DConfigModal}
               isGenerating={isGeneratingTextTo3D}
             />
             {(currentTaskId || textTo3DProgress.status) && (

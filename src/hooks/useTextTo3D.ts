@@ -2,6 +2,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import type { TextTo3DConfig } from "@/components/studio/types/textTo3DConfig";
 
 export interface TextTo3DResult {
   success: boolean;
@@ -103,6 +104,15 @@ export const useTextTo3D = () => {
     artStyle: string, 
     negativePrompt: string = ""
   ): Promise<TextTo3DResult> => {
+    return generateModelWithConfig({
+      prompt,
+      artStyle,
+      negativePrompt,
+      mode: "preview"
+    });
+  };
+
+  const generateModelWithConfig = async (config: TextTo3DConfig): Promise<TextTo3DResult> => {
     setIsGenerating(true);
     setCurrentTaskId(null);
     setProgress({
@@ -112,14 +122,10 @@ export const useTextTo3D = () => {
     });
 
     try {
-      console.log("🔄 [TEXT-TO-3D] Starting text to 3D generation...");
+      console.log("🔄 [TEXT-TO-3D] Starting text to 3D generation with config:", config);
       
       const { data, error } = await supabase.functions.invoke('text-to-3d', {
-        body: {
-          prompt,
-          art_style: artStyle,
-          negative_prompt: negativePrompt
-        }
+        body: config
       });
 
       if (error) {
@@ -196,6 +202,7 @@ export const useTextTo3D = () => {
     currentTaskId,
     progress,
     generateModel,
+    generateModelWithConfig,
     resetProgress,
     setCurrentTaskId
   };

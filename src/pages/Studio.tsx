@@ -19,8 +19,12 @@ const Studio = () => {
     setUploadModalOpen,
     configModalOpen,
     setConfigModalOpen,
+    textTo3DConfigModalOpen,
+    setTextTo3DConfigModalOpen,
     generationModalOpen,
-    setGenerationModalOpen
+    setGenerationModalOpen,
+    textTo3DConfigPrompt,
+    setTextTo3DConfigPrompt
   } = useStudioState();
 
   const {
@@ -41,6 +45,7 @@ const Studio = () => {
     currentTaskId,
     progress: textTo3DProgress,
     generateModel: generateTextTo3DModel,
+    generateModelWithConfig: generateTextTo3DModelWithConfig,
     resetProgress: resetTextTo3DProgress,
     setCurrentTaskId
   } = useTextTo3D();
@@ -57,6 +62,8 @@ const Studio = () => {
     handleOpenConfigModal,
     handleGenerate3DWithConfig,
     handleTextTo3D,
+    handleOpenTextTo3DConfigModal,
+    handleTextTo3DWithConfig,
     handleModelUpload,
     handleSignOut,
     handleSignIn,
@@ -66,11 +73,13 @@ const Studio = () => {
     setCustomModelUrl,
     setCustomModelFile,
     setConfigModalOpen,
+    setTextTo3DConfigModalOpen,
     setGenerationModalOpen,
-    setTextTo3DProgress: () => {}, // Not needed anymore
+    setTextTo3DConfigPrompt,
     handleGenerate,
     generate3DModel,
     generateTextTo3DModel,
+    generateTextTo3DModelWithConfig,
     resetProgress
   });
 
@@ -98,12 +107,17 @@ const Studio = () => {
       setUploadModalOpen={setUploadModalOpen}
       configModalOpen={configModalOpen}
       setConfigModalOpen={setConfigModalOpen}
+      textTo3DConfigModalOpen={textTo3DConfigModalOpen}
+      setTextTo3DConfigModalOpen={setTextTo3DConfigModalOpen}
+      textTo3DConfigPrompt={textTo3DConfigPrompt}
       generationModalOpen={generationModalOpen}
       setGenerationModalOpen={setGenerationModalOpen}
       onGenerate={onGenerate}
       handleOpenConfigModal={handleOpenConfigModal}
       handleGenerate3DWithConfig={handleGenerate3DWithConfig}
       handleTextTo3D={handleTextTo3D}
+      handleOpenTextTo3DConfigModal={handleOpenTextTo3DConfigModal}
+      handleTextTo3DWithConfig={handleTextTo3DWithConfig}
       handleModelUpload={handleModelUpload}
       handleSignOut={handleSignOut}
       handleSignIn={handleSignIn}

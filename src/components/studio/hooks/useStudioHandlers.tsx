@@ -1,19 +1,23 @@
+
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
 import type { Generate3DConfig } from "@/components/gallery/types/conversion";
+import type { TextTo3DConfig } from "@/components/studio/types/textTo3DConfig";
 
 interface UseStudioHandlersProps {
   generatedImage: string | null;
   setCustomModelUrl: (url: string | null) => void;
   setCustomModelFile: (file: File | null) => void;
   setConfigModalOpen: (open: boolean) => void;
+  setTextTo3DConfigModalOpen: (open: boolean) => void;
   setGenerationModalOpen: (open: boolean) => void;
-  setTextTo3DProgress: (progress: { status: string; progress: number; modelUrl: string }) => void;
+  setTextTo3DConfigPrompt: (prompt: string) => void;
   handleGenerate: (prompt: string, style: string, apiKey: string) => Promise<any>;
   generate3DModel: (image: string, fileName: string, config: Generate3DConfig, shouldUpdateExisting?: boolean) => Promise<void>;
   generateTextTo3DModel: (prompt: string, artStyle: string, negativePrompt: string) => Promise<any>;
+  generateTextTo3DModelWithConfig: (config: TextTo3DConfig) => Promise<any>;
   resetProgress: () => void;
 }
 
@@ -22,11 +26,13 @@ export const useStudioHandlers = ({
   setCustomModelUrl,
   setCustomModelFile,
   setConfigModalOpen,
+  setTextTo3DConfigModalOpen,
   setGenerationModalOpen,
-  setTextTo3DProgress,
+  setTextTo3DConfigPrompt,
   handleGenerate,
   generate3DModel,
   generateTextTo3DModel,
+  generateTextTo3DModelWithConfig,
   resetProgress
 }: UseStudioHandlersProps) => {
   const { toast } = useToast();
@@ -157,7 +163,7 @@ export const useStudioHandlers = ({
     await generate3DModel(generatedImage, fileName, config, true);
   };
 
-  // Handler for Text to 3D generation
+  // Handler for Text to 3D generation (quick)
   const handleTextTo3D = async (prompt: string, artStyle: string, negativePrompt: string) => {
     if (!authUser) {
       toast({
@@ -171,6 +177,61 @@ export const useStudioHandlers = ({
 
     // The generateTextTo3DModel function now handles its own progress tracking
     await generateTextTo3DModel(prompt, artStyle, negativePrompt);
+  };
+
+  // Handler to open text-to-3D config modal
+  const handleOpenTextTo3DConfigModal = (prompt: string) => {
+    if (!authUser) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to generate 3D models",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    const canConvert = canPerformAction("model_conversion");
+    if (!canConvert) {
+      toast({
+        title: "Usage limit reached",
+        description: "You've reached your monthly model conversion limit",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTextTo3DConfigPrompt(prompt);
+    setTextTo3DConfigModalOpen(true);
+  };
+
+  // Handler for Text to 3D generation with config
+  const handleTextTo3DWithConfig = async (config: TextTo3DConfig) => {
+    if (!authUser) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to generate 3D models",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    setTextTo3DConfigModalOpen(false);
+    
+    // Consume usage before generation
+    const consumed = await consumeAction("model_conversion");
+    if (!consumed) {
+      toast({
+        title: "Usage limit reached",
+        description: "You've reached your monthly model conversion limit",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Generate with the advanced configuration
+    await generateTextTo3DModelWithConfig(config);
   };
 
   // Handle model upload from modal
@@ -205,6 +266,8 @@ export const useStudioHandlers = ({
     handleOpenConfigModal,
     handleGenerate3DWithConfig,
     handleTextTo3D,
+    handleOpenTextTo3DConfigModal,
+    handleTextTo3DWithConfig,
     handleModelUpload,
     handleSignOut,
     handleSignIn,
