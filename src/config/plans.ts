@@ -8,6 +8,7 @@ export interface PlanConfig {
   limits: {
     monthlyCredits: number;
     imageGenerationsPerDay: number;
+    imageGenerationsPerMonth: number;
     modelConversionsPerMonth: number;
     isUnlimited: boolean;
   };
@@ -27,6 +28,7 @@ export const PLANS: Record<string, PlanConfig> = {
     features: [
       '3 credits per month',
       '3 image generations per day',
+      '30 image generations per month',
       '1 3D model conversion per month',
       'Personal use license',
       'Access to basic gallery',
@@ -34,6 +36,7 @@ export const PLANS: Record<string, PlanConfig> = {
     limits: {
       monthlyCredits: 3,
       imageGenerationsPerDay: 3,
+      imageGenerationsPerMonth: 30,
       modelConversionsPerMonth: 1,
       isUnlimited: false,
     },
@@ -51,6 +54,7 @@ export const PLANS: Record<string, PlanConfig> = {
     features: [
       '25 credits per month',
       '20 image generations per day',
+      '600 image generations per month',
       '5 3D model conversions per month',
       'Personal use license',
       'Access to full gallery',
@@ -59,6 +63,7 @@ export const PLANS: Record<string, PlanConfig> = {
     limits: {
       monthlyCredits: 25,
       imageGenerationsPerDay: 20,
+      imageGenerationsPerMonth: 600,
       modelConversionsPerMonth: 5,
       isUnlimited: false,
     },
@@ -76,6 +81,7 @@ export const PLANS: Record<string, PlanConfig> = {
     features: [
       '120 credits per month',
       '100 image generations per day',
+      '3000 image generations per month',
       '20 3D model conversions per month',
       'Personal use license',
       'Access to exclusive models',
@@ -85,6 +91,7 @@ export const PLANS: Record<string, PlanConfig> = {
     limits: {
       monthlyCredits: 120,
       imageGenerationsPerDay: 100,
+      imageGenerationsPerMonth: 3000,
       modelConversionsPerMonth: 20,
       isUnlimited: false,
     },
@@ -111,6 +118,7 @@ export const PLANS: Record<string, PlanConfig> = {
     limits: {
       monthlyCredits: 999999,
       imageGenerationsPerDay: 999999,
+      imageGenerationsPerMonth: 999999,
       modelConversionsPerMonth: 999999,
       isUnlimited: true,
     },
