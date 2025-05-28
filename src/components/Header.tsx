@@ -84,10 +84,10 @@ const Header = () => {
             Gallery
           </Link>
           <Link 
-            to="/community" 
+            to="/solutions" 
             className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
           >
-            Community
+            Solutions
           </Link>
           {user ? (
             <Link 
@@ -209,11 +209,11 @@ const Header = () => {
                 Gallery
               </Link>
               <Link 
-                to="/community" 
+                to="/solutions" 
                 className="text-white py-2 px-4 rounded-md hover:bg-white/10 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Community
+                Solutions
               </Link>
               {user ? (
                 <Link 
