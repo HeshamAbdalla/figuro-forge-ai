@@ -7,7 +7,7 @@ import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { downloadAndSaveModel } from "@/utils/modelUtils";
 
 // Define the return type for handleGenerate to make it consistent
-type GenerateResult = {
+export type GenerateResult = {
   success: boolean;
   needsApiKey: boolean;
   error?: string;
