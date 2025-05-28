@@ -21,6 +21,9 @@ import Docs from "@/pages/Docs";
 import Introduction from "@/pages/docs/Introduction";
 import CreatingYourFirstFigurine from "@/pages/docs/CreatingYourFirstFigurine";
 import UnderstandingArtStyles from "@/pages/docs/UnderstandingArtStyles";
+import PromptEngineeringTips from "@/pages/docs/PromptEngineeringTips";
+import CombiningMultipleStyles from "@/pages/docs/CombiningMultipleStyles";
+import PreparingModelsForPrinting from "@/pages/docs/PreparingModelsForPrinting";
 import NotFound from "@/pages/NotFound";
 import Studio from "@/pages/Studio";
 import Profile from "@/pages/Profile";
@@ -64,6 +67,9 @@ function App() {
                 <Route path="/docs/introduction" element={<Introduction />} />
                 <Route path="/docs/creating-your-first-figurine" element={<CreatingYourFirstFigurine />} />
                 <Route path="/docs/understanding-art-styles" element={<UnderstandingArtStyles />} />
+                <Route path="/docs/prompt-engineering-tips" element={<PromptEngineeringTips />} />
+                <Route path="/docs/combining-multiple-styles" element={<CombiningMultipleStyles />} />
+                <Route path="/docs/preparing-models-for-printing" element={<PreparingModelsForPrinting />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/complete-profile" element={<CompleteProfile />} />
                 <Route path="/studio" element={<Studio />} />

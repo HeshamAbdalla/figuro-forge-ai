@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
@@ -178,13 +177,40 @@ const Docs = () => {
                   <CardContent>
                     <ul className="space-y-2">
                       <li>
-                        <a href="#" className="text-figuro-accent hover:underline">Prompt engineering tips</a>
+                        <a 
+                          href="/docs/prompt-engineering-tips" 
+                          className="text-figuro-accent hover:underline cursor-pointer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate("/docs/prompt-engineering-tips");
+                          }}
+                        >
+                          Prompt engineering tips
+                        </a>
                       </li>
                       <li>
-                        <a href="#" className="text-figuro-accent hover:underline">Combining multiple styles</a>
+                        <a 
+                          href="/docs/combining-multiple-styles" 
+                          className="text-figuro-accent hover:underline cursor-pointer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate("/docs/combining-multiple-styles");
+                          }}
+                        >
+                          Combining multiple styles
+                        </a>
                       </li>
                       <li>
-                        <a href="#" className="text-figuro-accent hover:underline">Preparing models for printing</a>
+                        <a 
+                          href="/docs/preparing-models-for-printing" 
+                          className="text-figuro-accent hover:underline cursor-pointer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate("/docs/preparing-models-for-printing");
+                          }}
+                        >
+                          Preparing models for printing
+                        </a>
                       </li>
                     </ul>
                   </CardContent>
