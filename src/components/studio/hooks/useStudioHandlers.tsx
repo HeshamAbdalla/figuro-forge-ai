@@ -2,6 +2,9 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
+import type { GenerateResult } from "@/hooks/useImageGeneration";
+import type { TextTo3DResult } from "@/hooks/useTextTo3D";
+import type { TextTo3DConfig } from "@/components/studio/types/textTo3DConfig";
 
 interface UseStudioHandlersProps {
   generatedImage: string | null;
@@ -11,10 +14,10 @@ interface UseStudioHandlersProps {
   setTextTo3DConfigModalOpen: (open: boolean) => void;
   setGenerationModalOpen: (open: boolean) => void;
   setTextTo3DConfigPrompt: (prompt: string) => void;
-  handleGenerate: (prompt: string, style: string) => Promise<void>;
+  handleGenerate: (prompt: string, style: string, apiKey?: string, preGeneratedImageUrl?: string) => Promise<GenerateResult>;
   generate3DModel: (imageUrl: string, fileName: string, config?: any) => Promise<void>;
-  generateTextTo3DModel: (prompt: string, artStyle: string, negativePrompt: string) => Promise<void>;
-  generateTextTo3DModelWithConfig: (config: any) => Promise<void>;
+  generateTextTo3DModel: (prompt: string, artStyle: string, negativePrompt?: string) => Promise<TextTo3DResult>;
+  generateTextTo3DModelWithConfig: (config: TextTo3DConfig) => Promise<TextTo3DResult>;
   resetProgress: () => void;
 }
 
@@ -38,7 +41,10 @@ export const useStudioHandlers = ({
 
   const onGenerate = async (prompt: string, style: string) => {
     try {
-      await handleGenerate(prompt, style);
+      const result = await handleGenerate(prompt, style);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate image');
+      }
     } catch (error) {
       console.error('Failed to generate image:', error);
       toast({
@@ -98,7 +104,10 @@ export const useStudioHandlers = ({
 
   const handleTextTo3D = async (prompt: string, artStyle: string, negativePrompt: string) => {
     try {
-      await generateTextTo3DModel(prompt, artStyle, negativePrompt);
+      const result = await generateTextTo3DModel(prompt, artStyle, negativePrompt);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate 3D model from text');
+      }
     } catch (error) {
       console.error('Failed to generate text-to-3D:', error);
       toast({
@@ -117,9 +126,17 @@ export const useStudioHandlers = ({
   const handleTextTo3DWithConfig = async (config: any) => {
     try {
       setTextTo3DConfigModalOpen(false);
-      await generateTextTo3DModelWithConfig(config);
+      const result = await generateTextTo3DModelWithConfig(config);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate 3D model with config');
+      }
     } catch (error) {
       console.error('Failed to generate text-to-3D with config:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate 3D model with config. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
