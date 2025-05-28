@@ -18,6 +18,9 @@ import Gallery from "@/pages/Gallery";
 import Community from "@/pages/Community";
 import Resources from "@/pages/Resources";
 import Docs from "@/pages/Docs";
+import Introduction from "@/pages/docs/Introduction";
+import CreatingYourFirstFigurine from "@/pages/docs/CreatingYourFirstFigurine";
+import UnderstandingArtStyles from "@/pages/docs/UnderstandingArtStyles";
 import NotFound from "@/pages/NotFound";
 import Studio from "@/pages/Studio";
 import Profile from "@/pages/Profile";
@@ -58,6 +61,9 @@ function App() {
                 <Route path="/community" element={<Community />} />
                 <Route path="/resources" element={<Resources />} />
                 <Route path="/docs" element={<Docs />} />
+                <Route path="/docs/introduction" element={<Introduction />} />
+                <Route path="/docs/creating-your-first-figurine" element={<CreatingYourFirstFigurine />} />
+                <Route path="/docs/understanding-art-styles" element={<UnderstandingArtStyles />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/complete-profile" element={<CompleteProfile />} />
                 <Route path="/studio" element={<Studio />} />

@@ -17,10 +17,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger
 } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ArrowRight, BookOpen, Lightbulb, Palette } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Docs = () => {
   const [openItem, setOpenItem] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const toggleItem = (id: string) => {
     setOpenItem(openItem === id ? null : id);
@@ -83,27 +85,91 @@ const Docs = () => {
             </div>
             
             <TabsContent value="guides">
+              {/* Getting Started Section */}
+              <motion.div 
+                className="mb-12"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
+                <h2 className="text-2xl font-bold text-white mb-6">Getting Started</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card 
+                    className="bg-white/5 border-white/10 cursor-pointer hover:bg-white/10 transition-colors"
+                    onClick={() => navigate("/docs/introduction")}
+                  >
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <BookOpen className="w-8 h-8 text-figuro-accent" />
+                        <div>
+                          <CardTitle className="text-white">Introduction to Figuro.AI</CardTitle>
+                          <CardDescription className="text-white/70">Learn the basics and core concepts</CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-white/70 text-sm mb-4">
+                        Discover what Figuro.AI can do, who can use it, and how our AI-powered platform transforms text into 3D figurines.
+                      </p>
+                      <Button variant="ghost" className="w-full justify-between text-figuro-accent hover:bg-figuro-accent/20">
+                        Read Guide
+                        <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card 
+                    className="bg-white/5 border-white/10 cursor-pointer hover:bg-white/10 transition-colors"
+                    onClick={() => navigate("/docs/creating-your-first-figurine")}
+                  >
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <Lightbulb className="w-8 h-8 text-figuro-accent" />
+                        <div>
+                          <CardTitle className="text-white">Creating Your First Figurine</CardTitle>
+                          <CardDescription className="text-white/70">Step-by-step tutorial</CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-white/70 text-sm mb-4">
+                        Follow our detailed walkthrough to create your first 3D figurine, from writing prompts to downloading your model.
+                      </p>
+                      <Button variant="ghost" className="w-full justify-between text-figuro-accent hover:bg-figuro-accent/20">
+                        Start Tutorial
+                        <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card 
+                    className="bg-white/5 border-white/10 cursor-pointer hover:bg-white/10 transition-colors"
+                    onClick={() => navigate("/docs/understanding-art-styles")}
+                  >
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <Palette className="w-8 h-8 text-figuro-accent" />
+                        <div>
+                          <CardTitle className="text-white">Understanding Art Styles</CardTitle>
+                          <CardDescription className="text-white/70">Master different visual styles</CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-white/70 text-sm mb-4">
+                        Learn about Realistic, Cartoon, Anime, and Fantasy styles to choose the perfect look for your figurines.
+                      </p>
+                      <Button variant="ghost" className="w-full justify-between text-figuro-accent hover:bg-figuro-accent/20">
+                        Explore Styles
+                        <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </motion.div>
+
+              {/* Additional Resources */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="bg-white/5 border-white/10">
-                  <CardHeader>
-                    <CardTitle>Getting Started</CardTitle>
-                    <CardDescription className="text-white/70">Learn the basics of Figuro.AI</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      <li>
-                        <a href="#" className="text-figuro-accent hover:underline">Introduction to Figuro.AI</a>
-                      </li>
-                      <li>
-                        <a href="#" className="text-figuro-accent hover:underline">Creating your first figurine</a>
-                      </li>
-                      <li>
-                        <a href="#" className="text-figuro-accent hover:underline">Understanding art styles</a>
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-                
                 <Card className="bg-white/5 border-white/10">
                   <CardHeader>
                     <CardTitle>Advanced Techniques</CardTitle>
@@ -159,6 +225,26 @@ const Docs = () => {
                       </li>
                       <li>
                         <a href="#" className="text-figuro-accent hover:underline">Building a collection</a>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white/5 border-white/10">
+                  <CardHeader>
+                    <CardTitle>Best Practices</CardTitle>
+                    <CardDescription className="text-white/70">Tips from experienced users</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      <li>
+                        <a href="#" className="text-figuro-accent hover:underline">Optimizing for 3D printing</a>
+                      </li>
+                      <li>
+                        <a href="#" className="text-figuro-accent hover:underline">Creating series collections</a>
+                      </li>
+                      <li>
+                        <a href="#" className="text-figuro-accent hover:underline">Quality guidelines</a>
                       </li>
                     </ul>
                   </CardContent>
