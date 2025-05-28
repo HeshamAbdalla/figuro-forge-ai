@@ -3,13 +3,14 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, Wand2, Image as ImageIcon, ArrowRight } from "lucide-react";
+import { Download, Wand2, Image as ImageIcon, ArrowRight, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface StreamlinedImagePreviewProps {
   imageSrc: string | null;
   isLoading: boolean;
   onConvertTo3D: () => void;
+  onOpenConfig: () => void;
   isConverting: boolean;
 }
 
@@ -17,6 +18,7 @@ const StreamlinedImagePreview = ({
   imageSrc, 
   isLoading, 
   onConvertTo3D, 
+  onOpenConfig,
   isConverting 
 }: StreamlinedImagePreviewProps) => {
   const { toast } = useToast();
@@ -139,24 +141,37 @@ const StreamlinedImagePreview = ({
           </Button>
         )}
         
-        <Button
-          onClick={onConvertTo3D}
-          disabled={!imageSrc || isConverting || isLoading || imageError}
-          className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-9 font-medium"
-        >
-          {isConverting ? (
-            <>
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-              Converting to 3D...
-            </>
-          ) : (
-            <>
-              <Wand2 size={16} className="mr-2" />
-              Convert to 3D
-              <ArrowRight size={14} className="ml-1" />
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpenConfig}
+            disabled={!imageSrc || isConverting || isLoading || imageError}
+            className="border-white/20 hover:border-white/40 bg-white/5 h-9"
+          >
+            <Settings size={14} className="mr-1" />
+            Config
+          </Button>
+          
+          <Button
+            onClick={onConvertTo3D}
+            disabled={!imageSrc || isConverting || isLoading || imageError}
+            className="flex-1 bg-figuro-accent hover:bg-figuro-accent-hover h-9 font-medium"
+          >
+            {isConverting ? (
+              <>
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                Converting...
+              </>
+            ) : (
+              <>
+                <Wand2 size={16} className="mr-2" />
+                Convert to 3D
+                <ArrowRight size={14} className="ml-1" />
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </motion.div>
   );

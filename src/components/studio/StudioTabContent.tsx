@@ -6,6 +6,7 @@ import { FigurineGallery } from "@/components/figurine";
 import ModelViewer from "@/components/ModelViewer";
 import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
 import StreamlinedImagePreview from "@/components/studio/StreamlinedImagePreview";
+import ImageTo3DProgress from "@/components/studio/ImageTo3DProgress";
 import TextTo3DForm from "@/components/studio/TextTo3DForm";
 import TextTo3DProgress from "@/components/studio/TextTo3DProgress";
 import MiniGalleryCarousel from "@/components/studio/MiniGalleryCarousel";
@@ -26,6 +27,7 @@ interface StudioTabContentProps {
   progress: any;
   onGenerate: (prompt: string, style: string) => Promise<void>;
   handleOpenConfigModal: () => void;
+  handleQuickConvert: () => void;
   handleTextTo3D: (prompt: string, artStyle: string, negativePrompt: string) => Promise<void>;
   handleOpenTextTo3DConfigModal: (prompt: string) => void;
   handleSignIn: () => void;
@@ -46,6 +48,7 @@ const StudioTabContent = ({
   progress,
   onGenerate,
   handleOpenConfigModal,
+  handleQuickConvert,
   handleTextTo3D,
   handleOpenTextTo3DConfigModal,
   handleSignIn,
@@ -90,6 +93,19 @@ const StudioTabContent = ({
               isGenerating={isGeneratingImage}
             />
             
+            {/* Image-to-3D Progress Component */}
+            <ImageTo3DProgress
+              isGenerating={isGenerating}
+              progress={progress}
+              onViewModel={(url) => setCustomModelUrl(url)}
+              onDownload={(url) => {
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'image-to-3d-model.glb';
+                link.click();
+              }}
+            />
+            
             <MiniGalleryCarousel 
               figurines={figurines.slice(0, 6)}
               onCreateNew={() => onGenerate("", "isometric")}
@@ -104,7 +120,8 @@ const StudioTabContent = ({
             <StreamlinedImagePreview 
               imageSrc={generatedImage} 
               isLoading={isGeneratingImage}
-              onConvertTo3D={handleOpenConfigModal}
+              onConvertTo3D={handleQuickConvert}
+              onOpenConfig={handleOpenConfigModal}
               isConverting={isGenerating}
             />
           </motion.div>

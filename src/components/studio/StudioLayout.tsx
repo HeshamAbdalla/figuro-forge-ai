@@ -5,7 +5,7 @@ import StudioProgressHeader from "./StudioProgressHeader";
 import StudioTabContent from "./StudioTabContent";
 import StudioConfigPanel from "./StudioConfigPanel";
 import TextTo3DConfigModal from "./TextTo3DConfigModal";
-import Generate3DModal from "@/components/gallery/Generate3DModal";
+import ImageTo3DConfigModal from "./ImageTo3DConfigModal";
 import UploadModelModal from "@/components/UploadModelModal";
 import type { TabKey } from "@/hooks/useTabNavigation";
 
@@ -34,6 +34,7 @@ interface StudioLayoutProps {
   onGenerate: (prompt: string, style: string) => Promise<void>;
   handleOpenConfigModal: () => void;
   handleGenerate3DWithConfig: (config: any) => Promise<void>;
+  handleQuickConvert: () => void;
   handleTextTo3D: (prompt: string, artStyle: string, negativePrompt: string) => Promise<void>;
   handleOpenTextTo3DConfigModal: (prompt: string) => void;
   handleTextTo3DWithConfig: (config: any) => Promise<void>;
@@ -69,6 +70,7 @@ const StudioLayout = ({
   onGenerate,
   handleOpenConfigModal,
   handleGenerate3DWithConfig,
+  handleQuickConvert,
   handleTextTo3D,
   handleOpenTextTo3DConfigModal,
   handleTextTo3DWithConfig,
@@ -113,6 +115,7 @@ const StudioLayout = ({
             progress={progress}
             onGenerate={onGenerate}
             handleOpenConfigModal={handleOpenConfigModal}
+            handleQuickConvert={handleQuickConvert}
             handleTextTo3D={handleTextTo3D}
             handleOpenTextTo3DConfigModal={handleOpenTextTo3DConfigModal}
             handleSignIn={handleSignIn}
@@ -120,7 +123,7 @@ const StudioLayout = ({
           />
           
           {/* Modals */}
-          <Generate3DModal
+          <ImageTo3DConfigModal
             open={configModalOpen}
             onOpenChange={setConfigModalOpen}
             onGenerate={handleGenerate3DWithConfig}

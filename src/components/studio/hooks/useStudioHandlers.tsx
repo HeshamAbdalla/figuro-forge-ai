@@ -1,9 +1,7 @@
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/components/auth/AuthProvider";
-import { useSubscription } from "@/hooks/useSubscription";
+
 import { useNavigate } from "react-router-dom";
-import type { Generate3DConfig } from "@/components/gallery/types/conversion";
-import type { TextTo3DConfig } from "@/components/studio/types/textTo3DConfig";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
 
 interface UseStudioHandlersProps {
   generatedImage: string | null;
@@ -13,10 +11,10 @@ interface UseStudioHandlersProps {
   setTextTo3DConfigModalOpen: (open: boolean) => void;
   setGenerationModalOpen: (open: boolean) => void;
   setTextTo3DConfigPrompt: (prompt: string) => void;
-  handleGenerate: (prompt: string, style: string, apiKey: string) => Promise<any>;
-  generate3DModel: (image: string, fileName: string, config: Generate3DConfig, shouldUpdateExisting?: boolean) => Promise<void>;
-  generateTextTo3DModel: (prompt: string, artStyle: string, negativePrompt: string) => Promise<any>;
-  generateTextTo3DModelWithConfig: (config: TextTo3DConfig) => Promise<any>;
+  handleGenerate: (prompt: string, style: string) => Promise<void>;
+  generate3DModel: (imageUrl: string, fileName: string, config?: any) => Promise<void>;
+  generateTextTo3DModel: (prompt: string, artStyle: string, negativePrompt: string) => Promise<void>;
+  generateTextTo3DModelWithConfig: (config: any) => Promise<void>;
   resetProgress: () => void;
 }
 
@@ -34,239 +32,128 @@ export const useStudioHandlers = ({
   generateTextTo3DModelWithConfig,
   resetProgress
 }: UseStudioHandlersProps) => {
-  const { toast } = useToast();
-  const { user: authUser, signOut } = useAuth();
   const navigate = useNavigate();
-  const { canPerformAction, consumeAction } = useSubscription();
+  const { signOut } = useAuth();
+  const { toast } = useToast();
 
-  // Enhanced generation function with authentication check
   const onGenerate = async (prompt: string, style: string) => {
-    // Reset custom model when generating a new image
-    setCustomModelUrl(null);
-    setCustomModelFile(null);
-    
-    // REQUIRE authentication for figurine creation
-    if (!authUser) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to generate and save figurines",
-        variant: "destructive",
-      });
-      navigate("/auth");
-      return;
-    }
-    
-    const canGenerate = canPerformAction("image_generation");
-    if (!canGenerate) {
-      toast({
-        title: "Usage limit reached",
-        description: "You've reached your daily image generation limit",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Consume usage before generation
-    const consumed = await consumeAction("image_generation");
-    if (!consumed) {
-      toast({
-        title: "Usage limit reached",
-        description: "You've reached your daily image generation limit",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Call the handleGenerate function with improved error handling
     try {
-      const result = await handleGenerate(prompt, style, ""); // No API key needed anymore
-      
-      if (!result.success) {
-        toast({
-          title: "Generation Failed",
-          description: result.error || "Failed to generate image. Please try again.",
-          variant: "destructive",
-        });
-      }
+      await handleGenerate(prompt, style);
     } catch (error) {
-      console.error("Error in image generation:", error);
+      console.error('Failed to generate image:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
+        title: "Generation Failed",
+        description: "Failed to generate image. Please try again.",
+        variant: "destructive"
       });
     }
   };
 
-  // Handler to open the config modal
   const handleOpenConfigModal = () => {
     if (!generatedImage) {
       toast({
         title: "No image to convert",
-        description: "Please generate an image first before converting to 3D",
-        variant: "destructive",
+        description: "Please generate an image first",
+        variant: "destructive"
       });
       return;
     }
-
-    if (!authUser) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to convert models",
-      });
-      navigate("/auth");
-      return;
-    }
-
-    const canConvert = canPerformAction("model_conversion");
-    if (!canConvert) {
-      toast({
-        title: "Usage limit reached",
-        description: "You've reached your monthly model conversion limit",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setConfigModalOpen(true);
   };
 
-  // Handler to generate 3D model with config
-  const handleGenerate3DWithConfig = async (config: Generate3DConfig) => {
+  const handleQuickConvert = async () => {
     if (!generatedImage) {
       toast({
         title: "No image to convert",
         description: "Please generate an image first",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
 
-    setConfigModalOpen(false);
-    
-    // Consume usage before conversion
-    const consumed = await consumeAction("model_conversion");
-    if (!consumed) {
-      toast({
-        title: "Usage limit reached",
-        description: "You've reached your monthly model conversion limit",
-        variant: "destructive",
-      });
-      return;
+    try {
+      await generate3DModel(generatedImage, 'generated-image.png');
+    } catch (error) {
+      console.error('Failed to convert to 3D:', error);
     }
-
-    // Generate a filename for the conversion
-    const fileName = `studio-conversion-${Date.now()}.png`;
-    
-    // Start the 3D generation process with shouldUpdateExisting = true for studio
-    await generate3DModel(generatedImage, fileName, config, true);
   };
 
-  // Handler for Text to 3D generation (quick)
+  const handleGenerate3DWithConfig = async (config: any) => {
+    if (!generatedImage) {
+      toast({
+        title: "No image to convert",
+        description: "Please generate an image first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setConfigModalOpen(false);
+      await generate3DModel(generatedImage, 'generated-image.png', config);
+    } catch (error) {
+      console.error('Failed to convert to 3D with config:', error);
+    }
+  };
+
   const handleTextTo3D = async (prompt: string, artStyle: string, negativePrompt: string) => {
-    if (!authUser) {
+    try {
+      await generateTextTo3DModel(prompt, artStyle, negativePrompt);
+    } catch (error) {
+      console.error('Failed to generate text-to-3D:', error);
       toast({
-        title: "Authentication required",
-        description: "Please sign in to generate 3D models",
-        variant: "destructive",
+        title: "Generation Failed",
+        description: "Failed to generate 3D model from text. Please try again.",
+        variant: "destructive"
       });
-      navigate("/auth");
-      return;
     }
-
-    // The generateTextTo3DModel function now handles its own progress tracking
-    await generateTextTo3DModel(prompt, artStyle, negativePrompt);
   };
 
-  // Handler to open text-to-3D config modal
   const handleOpenTextTo3DConfigModal = (prompt: string) => {
-    if (!authUser) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to generate 3D models",
-        variant: "destructive",
-      });
-      navigate("/auth");
-      return;
-    }
-
-    const canConvert = canPerformAction("model_conversion");
-    if (!canConvert) {
-      toast({
-        title: "Usage limit reached",
-        description: "You've reached your monthly model conversion limit",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setTextTo3DConfigPrompt(prompt);
     setTextTo3DConfigModalOpen(true);
   };
 
-  // Handler for Text to 3D generation with config
-  const handleTextTo3DWithConfig = async (config: TextTo3DConfig) => {
-    if (!authUser) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to generate 3D models",
-        variant: "destructive",
-      });
-      navigate("/auth");
-      return;
+  const handleTextTo3DWithConfig = async (config: any) => {
+    try {
+      setTextTo3DConfigModalOpen(false);
+      await generateTextTo3DModelWithConfig(config);
+    } catch (error) {
+      console.error('Failed to generate text-to-3D with config:', error);
     }
-
-    setTextTo3DConfigModalOpen(false);
-    
-    // Consume usage before generation
-    const consumed = await consumeAction("model_conversion");
-    if (!consumed) {
-      toast({
-        title: "Usage limit reached",
-        description: "You've reached your monthly model conversion limit",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Generate with the advanced configuration
-    await generateTextTo3DModelWithConfig(config);
   };
 
-  // Handle model upload from modal - updated signature
-  const handleModelUpload = async (figurineId: string, file: File): Promise<void> => {
+  const handleModelUpload = async (figurineId: string, file: File) => {
     try {
-      // Create object URL for the uploaded file
-      const url = URL.createObjectURL(file);
-      
-      setCustomModelUrl(url);
+      const objectUrl = URL.createObjectURL(file);
+      setCustomModelUrl(objectUrl);
       setCustomModelFile(file);
       
       toast({
         title: "Model uploaded",
-        description: `${file.name} has been loaded successfully`,
+        description: "Your 3D model has been loaded successfully",
       });
     } catch (error) {
-      console.error("Error uploading model:", error);
+      console.error('Failed to upload model:', error);
       toast({
         title: "Upload failed",
-        description: "There was an error processing your model",
+        description: "Failed to upload model. Please try again.",
         variant: "destructive"
       });
-      throw error;
     }
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    toast({
-      title: "Signed out",
-      description: "You have been signed out successfully",
-    });
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Failed to sign out:', error);
+    }
   };
 
   const handleSignIn = () => {
-    navigate("/auth");
+    navigate('/auth');
   };
 
   const handleCloseGenerationModal = () => {
@@ -277,6 +164,7 @@ export const useStudioHandlers = ({
   return {
     onGenerate,
     handleOpenConfigModal,
+    handleQuickConvert,
     handleGenerate3DWithConfig,
     handleTextTo3D,
     handleOpenTextTo3DConfigModal,

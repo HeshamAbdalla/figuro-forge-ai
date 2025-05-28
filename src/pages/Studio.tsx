@@ -60,6 +60,7 @@ const Studio = () => {
   const {
     onGenerate,
     handleOpenConfigModal,
+    handleQuickConvert,
     handleGenerate3DWithConfig,
     handleTextTo3D,
     handleOpenTextTo3DConfigModal,
@@ -115,6 +116,7 @@ const Studio = () => {
       onGenerate={onGenerate}
       handleOpenConfigModal={handleOpenConfigModal}
       handleGenerate3DWithConfig={handleGenerate3DWithConfig}
+      handleQuickConvert={handleQuickConvert}
       handleTextTo3D={handleTextTo3D}
       handleOpenTextTo3DConfigModal={handleOpenTextTo3DConfigModal}
       handleTextTo3DWithConfig={handleTextTo3DWithConfig}
