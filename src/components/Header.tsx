@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
@@ -72,10 +71,10 @@ const Header = () => {
         {/* Desktop Navigation - Always visible on desktop */}
         <nav className="hidden md:flex items-center gap-6">
           <Link 
-            to="/studio" 
+            to={user ? "/studio" : "/"} 
             className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
           >
-            Studio
+            {user ? "Studio" : "Home"}
           </Link>
           <Link 
             to="/gallery" 
@@ -195,11 +194,11 @@ const Header = () => {
           >
             <div className="container mx-auto py-4 flex flex-col space-y-4 px-4">
               <Link 
-                to="/studio" 
+                to={user ? "/studio" : "/"} 
                 className="text-white py-2 px-4 rounded-md hover:bg-white/10 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Studio
+                {user ? "Studio" : "Home"}
               </Link>
               <Link 
                 to="/gallery" 
