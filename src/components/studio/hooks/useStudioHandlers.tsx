@@ -1,4 +1,3 @@
-
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -234,14 +233,28 @@ export const useStudioHandlers = ({
     await generateTextTo3DModelWithConfig(config);
   };
 
-  // Handle model upload from modal
-  const handleModelUpload = (url: string, file: File) => {
-    setCustomModelUrl(url);
-    setCustomModelFile(file);
-    toast({
-      title: "Model uploaded",
-      description: `${file.name} has been loaded successfully`,
-    });
+  // Handle model upload from modal - updated signature
+  const handleModelUpload = async (figurineId: string, file: File): Promise<void> => {
+    try {
+      // Create object URL for the uploaded file
+      const url = URL.createObjectURL(file);
+      
+      setCustomModelUrl(url);
+      setCustomModelFile(file);
+      
+      toast({
+        title: "Model uploaded",
+        description: `${file.name} has been loaded successfully`,
+      });
+    } catch (error) {
+      console.error("Error uploading model:", error);
+      toast({
+        title: "Upload failed",
+        description: "There was an error processing your model",
+        variant: "destructive"
+      });
+      throw error;
+    }
   };
 
   const handleSignOut = async () => {

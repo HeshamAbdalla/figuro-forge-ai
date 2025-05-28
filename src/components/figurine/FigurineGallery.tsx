@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Figurine } from '@/types/figurine';
 import FigurineList from './FigurineList';
@@ -179,10 +178,13 @@ const FigurineGallery = () => {
     setUploadModalOpen(true);
   };
 
-  const handleModelUpload = async (url: string, file: File) => {
+  const handleModelUpload = async (figurineId: string, file: File) => {
     if (!selectedFigurine) return;
     
     try {
+      // Create object URL for the uploaded file
+      const url = URL.createObjectURL(file);
+      
       await updateFigurineWithModelUrl(selectedFigurine.id, url);
       
       toast({
@@ -224,9 +226,10 @@ const FigurineGallery = () => {
       />
 
       <UploadModelModal
-        isOpen={uploadModalOpen}
+        open={uploadModalOpen}
         onOpenChange={setUploadModalOpen}
-        onModelUpload={handleModelUpload}
+        onUpload={handleModelUpload}
+        figurineId={selectedFigurine?.id || ""}
       />
     </>
   );

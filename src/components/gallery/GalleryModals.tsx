@@ -34,6 +34,8 @@ interface GalleryModalsProps {
   progress: ConversionProgress;
   onGeneration3DOpenChange: (open: boolean) => void;
   onResetProgress: () => void;
+  onGenerate: (config: any) => Promise<void>;
+  sourceImageUrl: string | null;
 
   // Auth prompt props
   authPromptOpen: boolean;
@@ -55,6 +57,8 @@ const GalleryModals: React.FC<GalleryModalsProps> = ({
   progress,
   onGeneration3DOpenChange,
   onResetProgress,
+  onGenerate,
+  sourceImageUrl,
   authPromptOpen,
   onAuthPromptChange
 }) => {
@@ -82,8 +86,9 @@ const GalleryModals: React.FC<GalleryModalsProps> = ({
       <Generate3DModal 
         open={isGenerating}
         onOpenChange={onGeneration3DOpenChange}
-        progress={progress}
-        onClose={onResetProgress}
+        onGenerate={onGenerate}
+        isGenerating={isGenerating}
+        imageUrl={sourceImageUrl}
       />
 
       {/* Centralized Auth Prompt Modal - handles all auth prompts from secure downloads */}

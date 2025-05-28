@@ -1,27 +1,40 @@
 
-import React, { useState } from "react";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import GalleryContent from "@/components/gallery/GalleryContent";
+import GalleryModals from "@/components/gallery/GalleryModals";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
-import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
 import { useImageViewer } from "@/components/gallery/useImageViewer";
-import { useGalleryHandlers } from "@/components/gallery/hooks/useGalleryHandlers";
-import GalleryAuthSection from "@/components/gallery/GalleryAuthSection";
-import GalleryContent from "@/components/gallery/GalleryContent";
-import Generate3DConfigModal from "@/components/gallery/Generate3DConfigModal";
-import type { Generate3DConfig } from "@/components/gallery/types/conversion";
+import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
 
 const Gallery = () => {
+  const { files, isLoading, error, refetch } = useGalleryFiles();
+  const [authPromptOpen, setAuthPromptOpen] = useState(false);
+  const { toast } = useToast();
   const { user } = useAuth();
-  const [configModalOpen, setConfigModalOpen] = useState(false);
-  const [selectedImageUrl, setSelectedImageUrl] = useState<string>("");
-  const [selectedImageName, setSelectedImageName] = useState<string>("");
-  
+
   const {
-    images,
-    isLoading,
-    fetchImagesFromBucket
-  } = useGalleryFiles();
+    viewingModel,
+    viewingFileName,
+    modelViewerOpen,
+    setModelViewerOpen,
+    onCloseModelViewer,
+    onViewModel
+  } = useModelViewer();
+
+  const {
+    viewingImage,
+    viewingImageName,
+    imageViewerOpen,
+    setImageViewerOpen,
+    onCloseImageViewer,
+    onViewImage
+  } = useImageViewer();
 
   const {
     isGenerating,
@@ -30,114 +43,82 @@ const Gallery = () => {
     resetProgress
   } = useGallery3DGeneration();
 
-  const {
-    viewingModel,
-    viewingFileName,
-    modelViewerOpen,
-    setModelViewerOpen,
-    handleViewModel,
-    handleCloseModelViewer
-  } = useModelViewer();
-
-  const {
-    viewingImage,
-    viewingImageName,
-    imageViewerOpen,
-    setImageViewerOpen,
-    handleViewImage,
-    handleCloseImageViewer
-  } = useImageViewer();
-
-  // Handler to open the config modal
-  const handleOpenConfigModal = (imageUrl: string, imageName: string) => {
-    setSelectedImageUrl(imageUrl);
-    setSelectedImageName(imageName);
-    setConfigModalOpen(true);
+  const handleGeneration3DOpenChange = (open: boolean) => {
+    if (!open) {
+      resetProgress();
+    }
   };
 
-  // Handler to generate 3D model with config
-  const handleGenerate3DWithConfig = (config: Generate3DConfig) => {
-    setConfigModalOpen(false);
-    // For gallery conversions, don't update existing figurines (shouldUpdateExisting = false)
-    generate3DModel(selectedImageUrl, selectedImageName, config, false);
+  const handle3DGeneration = async (config: any) => {
+    if (!viewingImage) {
+      toast({
+        title: "No image selected",
+        description: "Please select an image to convert to 3D",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const fileName = viewingImageName || 'gallery-image.png';
+    await generate3DModel(viewingImage, fileName, config);
   };
 
-  const {
-    authPromptOpen,
-    setAuthPromptOpen,
-    handleDownload,
-    handleView,
-    handleGenerate3D,
-    handleNavigateToStudio,
-    handleUploadClick
-  } = useGalleryHandlers({
-    generate3DModel: handleOpenConfigModal, // Use the config modal handler instead
-    handleViewModel,
-    handleViewImage
-  });
-
-  // Improved modal visibility logic: keep modal open during conversion or when actively generating
-  const shouldShowGenerationModal = isGenerating || progress.status === 'converting' || progress.status === 'downloading';
-
-  if (!user) {
-    return (
-      <>
-        <GalleryAuthSection
-          images={images}
-          isLoading={isLoading}
-          authPromptOpen={authPromptOpen}
-          onAuthPromptChange={setAuthPromptOpen}
-          onDownload={handleDownload}
-          onView={handleView}
-          onGenerate3D={handleGenerate3D}
-          onNavigateToStudio={handleNavigateToStudio}
-          onUploadClick={handleUploadClick}
-        />
-        <Generate3DConfigModal
-          open={configModalOpen}
-          onOpenChange={setConfigModalOpen}
-          onGenerate={handleGenerate3DWithConfig}
-          imageUrl={selectedImageUrl}
-          imageName={selectedImageName}
-        />
-      </>
-    );
-  }
+  // Show auth prompt for downloads when not authenticated
+  const handleDownload = () => {
+    if (!user) {
+      setAuthPromptOpen(true);
+      return;
+    }
+    // Download logic would go here
+  };
 
   return (
-    <>
-      <GalleryContent
-        images={images}
-        isLoading={isLoading}
-        onDownload={handleDownload}
-        onView={handleView}
-        onGenerate3D={handleGenerate3D}
-        onNavigateToStudio={handleNavigateToStudio}
-        onUploadClick={handleUploadClick}
-        modelViewerOpen={modelViewerOpen}
-        setModelViewerOpen={setModelViewerOpen}
-        viewingModel={viewingModel}
-        viewingFileName={viewingFileName}
-        onCloseModelViewer={handleCloseModelViewer}
-        imageViewerOpen={imageViewerOpen}
-        setImageViewerOpen={setImageViewerOpen}
-        viewingImage={viewingImage}
-        viewingImageName={viewingImageName}
-        onCloseImageViewer={handleCloseImageViewer}
-        isGenerating={shouldShowGenerationModal}
-        progress={progress}
-        onResetProgress={resetProgress}
-        authPromptOpen={authPromptOpen}
-        onAuthPromptChange={setAuthPromptOpen}
-      />
-      <Generate3DConfigModal
-        open={configModalOpen}
-        onOpenChange={setConfigModalOpen}
-        onGenerate={handleGenerate3DWithConfig}
-        imageUrl={selectedImageUrl}
-        imageName={selectedImageName}
-      />
-    </>
+    <div className="min-h-screen bg-figuro-dark">
+      <Header />
+      
+      <main className="pt-24 pb-16">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <GalleryContent
+              files={files}
+              isLoading={isLoading}
+              error={error}
+              onViewModel={onViewModel}
+              onViewImage={onViewImage}
+              onDownload={handleDownload}
+              onRefresh={refetch}
+            />
+
+            <GalleryModals
+              modelViewerOpen={modelViewerOpen}
+              setModelViewerOpen={setModelViewerOpen}
+              viewingModel={viewingModel}
+              viewingFileName={viewingFileName}
+              onCloseModelViewer={onCloseModelViewer}
+              imageViewerOpen={imageViewerOpen}
+              setImageViewerOpen={setImageViewerOpen}
+              viewingImage={viewingImage}
+              viewingImageName={viewingImageName}
+              onCloseImageViewer={onCloseImageViewer}
+              isGenerating={isGenerating}
+              progress={progress}
+              onGeneration3DOpenChange={handleGeneration3DOpenChange}
+              onResetProgress={resetProgress}
+              onGenerate={handle3DGeneration}
+              sourceImageUrl={viewingImage}
+              authPromptOpen={authPromptOpen}
+              onAuthPromptChange={setAuthPromptOpen}
+            />
+          </motion.div>
+        </div>
+      </main>
+      
+      <Footer />
+    </div>
   );
 };
 
