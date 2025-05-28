@@ -6,12 +6,13 @@ import { Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface UploadModelModalProps {
-  isOpen: boolean;
+  open: boolean;
   onOpenChange: (open: boolean) => void;
-  onModelUpload: (url: string, file: File) => void;
+  onUpload: (figurineId: string, file: File) => Promise<void>;
+  figurineId: string;
 }
 
-const UploadModelModal = ({ isOpen, onOpenChange, onModelUpload }: UploadModelModalProps) => {
+const UploadModelModal = ({ open, onOpenChange, onUpload, figurineId }: UploadModelModalProps) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,11 +21,11 @@ const UploadModelModal = ({ isOpen, onOpenChange, onModelUpload }: UploadModelMo
 
   // Reset state when modal opens/closes
   React.useEffect(() => {
-    if (!isOpen) {
+    if (!open) {
       setSelectedFile(null);
       setIsLoading(false);
     }
-  }, [isOpen]);
+  }, [open]);
 
   // Handle drag events
   const handleDrag = (e: React.DragEvent) => {
@@ -91,7 +92,7 @@ const UploadModelModal = ({ isOpen, onOpenChange, onModelUpload }: UploadModelMo
   };
 
   // Upload the model
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!selectedFile || isLoading) return;
     
     setIsLoading(true);
@@ -99,24 +100,17 @@ const UploadModelModal = ({ isOpen, onOpenChange, onModelUpload }: UploadModelMo
     try {
       console.log("Processing file for upload:", selectedFile.name);
       
-      // Create temporary blob URL for download functionality
-      const objectUrl = URL.createObjectURL(selectedFile);
-      console.log("Created temporary URL for model:", objectUrl);
+      await onUpload(figurineId, selectedFile);
       
-      // Small timeout to ensure UI updates
-      setTimeout(() => {
-        onModelUpload(objectUrl, selectedFile);
-        
-        toast({
-          title: "Model uploaded",
-          description: `${selectedFile.name} has been loaded successfully`
-        });
-        
-        // Reset selection and close modal
-        setSelectedFile(null);
-        setIsLoading(false);
-        onOpenChange(false);
-      }, 100);
+      toast({
+        title: "Model uploaded",
+        description: `${selectedFile.name} has been loaded successfully`
+      });
+      
+      // Reset selection and close modal
+      setSelectedFile(null);
+      setIsLoading(false);
+      onOpenChange(false);
     } catch (error) {
       console.error("Upload error:", error);
       setIsLoading(false);
@@ -129,8 +123,8 @@ const UploadModelModal = ({ isOpen, onOpenChange, onModelUpload }: UploadModelMo
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!isLoading) onOpenChange(open);
+    <Dialog open={open} onOpenChange={(openState) => {
+      if (!isLoading) onOpenChange(openState);
     }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

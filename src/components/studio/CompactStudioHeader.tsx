@@ -2,7 +2,13 @@
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 
-const CompactStudioHeader = () => {
+interface CompactStudioHeaderProps {
+  authUser: any;
+  onSignOut: () => void;
+  onSignIn: () => void;
+}
+
+const CompactStudioHeader = ({ authUser, onSignOut, onSignIn }: CompactStudioHeaderProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
