@@ -1,6 +1,5 @@
 
 import React from "react";
-import Header from "@/components/Header";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
 import GalleryGrid from "@/components/gallery/GalleryGrid";
 import CallToAction from "@/components/gallery/CallToAction";
@@ -84,58 +83,55 @@ const GalleryContent: React.FC<GalleryContentProps> = ({
   onAuthPromptChange
 }) => {
   return (
-    <>
-      <Header />
-      <PageTransition>
-        <Helmet>
-          <title>Gallery - Figuro</title>
-          <meta name="description" content="Browse and manage your 3D models and images in your personal Figuro gallery." />
-        </Helmet>
+    <PageTransition>
+      <Helmet>
+        <title>Gallery - Figuro</title>
+        <meta name="description" content="Browse and manage your 3D models and images in your personal Figuro gallery." />
+      </Helmet>
 
-        <div className="min-h-screen bg-gradient-to-br from-figuro-dark via-figuro-dark to-figuro-accent/20 pt-24">
-          <div className="container mx-auto px-4 py-8">
-            <GalleryHeader onUploadClick={() => {}} />
-            
-            <GalleryGrid 
-              images={files}
-              isLoading={isLoading}
-              onDownload={onDownload}
-              onView={(url: string, fileName: string, fileType: 'image' | '3d-model') => {
-                if (fileType === '3d-model') {
-                  onViewModel(url, fileName);
-                } else {
-                  onViewImage(url, fileName);
-                }
-              }}
-              onGenerate3D={() => {}}
-            />
-            
-            <CallToAction onNavigateToStudio={() => {}} />
-          </div>
-
-          <GalleryModals
-            modelViewerOpen={modelViewerOpen}
-            setModelViewerOpen={setModelViewerOpen}
-            viewingModel={viewingModel}
-            viewingFileName={viewingFileName}
-            onCloseModelViewer={onCloseModelViewer}
-            imageViewerOpen={imageViewerOpen}
-            setImageViewerOpen={setImageViewerOpen}
-            viewingImage={viewingImage}
-            viewingImageName={viewingImageName}
-            onCloseImageViewer={onCloseImageViewer}
-            isGenerating={isGenerating}
-            progress={progress}
-            onGeneration3DOpenChange={onGeneration3DOpenChange}
-            onResetProgress={onResetProgress}
-            onGenerate={onGenerate}
-            sourceImageUrl={sourceImageUrl}
-            authPromptOpen={authPromptOpen}
-            onAuthPromptChange={onAuthPromptChange}
+      <div className="min-h-screen bg-gradient-to-br from-figuro-dark via-figuro-dark to-figuro-accent/20 pt-24">
+        <div className="container mx-auto px-4 py-8">
+          <GalleryHeader onUploadClick={() => {}} />
+          
+          <GalleryGrid 
+            images={files}
+            isLoading={isLoading}
+            onDownload={onDownload}
+            onView={(url: string, fileName: string, fileType: 'image' | '3d-model') => {
+              if (fileType === '3d-model') {
+                onViewModel(url, fileName);
+              } else {
+                onViewImage(url, fileName);
+              }
+            }}
+            onGenerate3D={() => {}}
           />
+          
+          <CallToAction onNavigateToStudio={() => {}} />
         </div>
-      </PageTransition>
-    </>
+
+        <GalleryModals
+          modelViewerOpen={modelViewerOpen}
+          setModelViewerOpen={setModelViewerOpen}
+          viewingModel={viewingModel}
+          viewingFileName={viewingFileName}
+          onCloseModelViewer={onCloseModelViewer}
+          imageViewerOpen={imageViewerOpen}
+          setImageViewerOpen={setImageViewerOpen}
+          viewingImage={viewingImage}
+          viewingImageName={viewingImageName}
+          onCloseImageViewer={onCloseImageViewer}
+          isGenerating={isGenerating}
+          progress={progress}
+          onGeneration3DOpenChange={onGeneration3DOpenChange}
+          onResetProgress={onResetProgress}
+          onGenerate={onGenerate}
+          sourceImageUrl={sourceImageUrl}
+          authPromptOpen={authPromptOpen}
+          onAuthPromptChange={onAuthPromptChange}
+        />
+      </div>
+    </PageTransition>
   );
 };
 
