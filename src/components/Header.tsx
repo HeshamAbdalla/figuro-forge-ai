@@ -83,17 +83,17 @@ const Header = () => {
             Gallery
           </Link>
           <Link 
-            to="/solutions" 
+            to={user ? "/profile" : "/solutions"} 
             className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
           >
-            Solutions
+            {user ? "Personal Hub" : "Solutions"}
           </Link>
           {user ? (
             <Link 
-              to="/profile" 
+              to="/docs" 
               className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
             >
-              Personal Hub
+              Docs
             </Link>
           ) : (
             <>
@@ -216,19 +216,19 @@ const Header = () => {
                 Gallery
               </Link>
               <Link 
-                to="/solutions" 
+                to={user ? "/profile" : "/solutions"} 
                 className="text-white py-2 px-4 rounded-md hover:bg-white/10 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Solutions
+                {user ? "Personal Hub" : "Solutions"}
               </Link>
               {user ? (
                 <Link 
-                  to="/profile" 
+                  to="/docs" 
                   className="text-white py-2 px-4 rounded-md hover:bg-white/10 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Personal Hub
+                  Docs
                 </Link>
               ) : (
                 <>
