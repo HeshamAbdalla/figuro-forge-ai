@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, ExternalLink, Image, Box, TrendingUp, Loader2 } from "lucide-react";
+import { CalendarClock, ExternalLink, Image, Box, TrendingUp, Loader2, Calendar } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { formatDate } from "@/lib/utils";
 import { PLANS } from "@/config/plans";
@@ -93,6 +93,9 @@ export const PlanSummary = () => {
   const dailyImageProgress = currentPlan.limits.isUnlimited ? 0 : 
     Math.min(100, ((subscription?.generation_count_today || 0) / currentPlan.limits.imageGenerationsPerDay) * 100);
   
+  const monthlyImageProgress = currentPlan.limits.isUnlimited ? 0 :
+    Math.min(100, ((subscription?.generation_count_this_month || 0) / currentPlan.limits.imageGenerationsPerMonth) * 100);
+  
   const monthlyModelProgress = currentPlan.limits.isUnlimited ? 0 :
     Math.min(100, ((subscription?.converted_3d_this_month || 0) / currentPlan.limits.modelConversionsPerMonth) * 100);
 
@@ -157,7 +160,7 @@ export const PlanSummary = () => {
         <CardContent className="p-6">
           <h3 className="text-xl font-semibold text-white mb-4">Usage Overview</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Daily Image Generations */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -180,6 +183,32 @@ export const PlanSummary = () => {
                 <div className="flex items-center gap-1 text-amber-400 text-sm">
                   <TrendingUp className="h-3 w-3" />
                   <span>Approaching daily limit</span>
+                </div>
+              )}
+            </div>
+
+            {/* Monthly Image Generations */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-green-400" />
+                  <span className="text-white font-medium">Images This Month</span>
+                </div>
+                <span className="text-white/70 text-sm">
+                  {subscription?.generation_count_this_month || 0} / {currentPlan.limits.isUnlimited ? '∞' : currentPlan.limits.imageGenerationsPerMonth}
+                </span>
+              </div>
+              {!currentPlan.limits.isUnlimited && (
+                <Progress 
+                  value={monthlyImageProgress} 
+                  className="h-2 bg-white/10"
+                  indicatorClassName={monthlyImageProgress >= 90 ? "bg-red-500" : monthlyImageProgress >= 70 ? "bg-amber-500" : "bg-green-400"}
+                />
+              )}
+              {monthlyImageProgress >= 90 && !currentPlan.limits.isUnlimited && (
+                <div className="flex items-center gap-1 text-amber-400 text-sm">
+                  <TrendingUp className="h-3 w-3" />
+                  <span>Approaching monthly limit</span>
                 </div>
               )}
             </div>

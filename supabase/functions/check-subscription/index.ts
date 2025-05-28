@@ -61,7 +61,8 @@ serve(async (req: Request) => {
           plan_type: 'free',
           status: 'active',
           generation_count_today: 0,
-          converted_3d_this_month: 0
+          converted_3d_this_month: 0,
+          generation_count_this_month: 0
         })
         .select()
         .single()
@@ -84,7 +85,8 @@ serve(async (req: Request) => {
           image_generations_used: 0,
           model_conversions_used: 0,
           generation_count_today: 0,
-          converted_3d_this_month: 0
+          converted_3d_this_month: 0,
+          generation_count_this_month: 0
         },
         limits: {
           image_generations_limit: 3,
@@ -93,6 +95,7 @@ serve(async (req: Request) => {
         status: 'active',
         generation_count_today: 0,
         converted_3d_this_month: 0,
+        generation_count_this_month: 0,
         last_generated_at: null
       }
 
@@ -101,7 +104,8 @@ serve(async (req: Request) => {
         isActive: responseData.is_active,
         status: responseData.status,
         generationCountToday: responseData.generation_count_today,
-        converted3dThisMonth: responseData.converted_3d_this_month
+        converted3dThisMonth: responseData.converted_3d_this_month,
+        generationCountThisMonth: responseData.generation_count_this_month
       })}`)
 
       return new Response(JSON.stringify(responseData), {
@@ -140,7 +144,8 @@ serve(async (req: Request) => {
         image_generations_used: subscription.generation_count_today || 0,
         model_conversions_used: subscription.converted_3d_this_month || 0,
         generation_count_today: subscription.generation_count_today || 0,
-        converted_3d_this_month: subscription.converted_3d_this_month || 0
+        converted_3d_this_month: subscription.converted_3d_this_month || 0,
+        generation_count_this_month: subscription.generation_count_this_month || 0
       },
       limits: {
         image_generations_limit: limits.image_generations_limit,
@@ -149,6 +154,7 @@ serve(async (req: Request) => {
       status: subscription.status,
       generation_count_today: subscription.generation_count_today || 0,
       converted_3d_this_month: subscription.converted_3d_this_month || 0,
+      generation_count_this_month: subscription.generation_count_this_month || 0,
       last_generated_at: subscription.last_generated_at
     }
 
@@ -157,7 +163,8 @@ serve(async (req: Request) => {
       isActive: responseData.is_active,
       status: responseData.status,
       generationCountToday: responseData.generation_count_today,
-      converted3dThisMonth: responseData.converted_3d_this_month
+      converted3dThisMonth: responseData.converted_3d_this_month,
+      generationCountThisMonth: responseData.generation_count_this_month
     })}`)
 
     return new Response(JSON.stringify(responseData), {

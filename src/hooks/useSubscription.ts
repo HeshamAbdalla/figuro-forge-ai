@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -13,6 +14,7 @@ export interface UsageStats {
   model_conversions_used: number;
   generation_count_today: number;
   converted_3d_this_month: number;
+  generation_count_this_month: number;
 }
 
 export interface SubscriptionData {
@@ -26,6 +28,7 @@ export interface SubscriptionData {
   status: 'active' | 'past_due' | 'canceled' | 'inactive' | 'expired';
   generation_count_today: number;
   converted_3d_this_month: number;
+  generation_count_this_month: number;
   last_generated_at: string | null;
 }
 

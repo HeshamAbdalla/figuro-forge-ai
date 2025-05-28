@@ -255,6 +255,7 @@ export type Database = {
           credits_remaining: number | null
           daily_reset_date: string | null
           expires_at: string | null
+          generation_count_this_month: number | null
           generation_count_today: number | null
           id: string
           last_generated_at: string | null
@@ -277,6 +278,7 @@ export type Database = {
           credits_remaining?: number | null
           daily_reset_date?: string | null
           expires_at?: string | null
+          generation_count_this_month?: number | null
           generation_count_today?: number | null
           id?: string
           last_generated_at?: string | null
@@ -299,6 +301,7 @@ export type Database = {
           credits_remaining?: number | null
           daily_reset_date?: string | null
           expires_at?: string | null
+          generation_count_this_month?: number | null
           generation_count_today?: number | null
           id?: string
           last_generated_at?: string | null
