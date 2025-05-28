@@ -24,7 +24,6 @@ const pricingPlans = [
       { name: "Commercial License", included: false },
       { name: "Priority Support", included: false },
     ],
-    buttonText: "Current Plan",
   },
   {
     id: "starter",
@@ -39,7 +38,6 @@ const pricingPlans = [
       { name: "Commercial License", included: false },
       { name: "Priority Support", included: false },
     ],
-    buttonText: "Subscribe",
     recommended: true,
   },
   {
@@ -55,7 +53,6 @@ const pricingPlans = [
       { name: "Commercial License", included: true },
       { name: "Priority Support", included: true },
     ],
-    buttonText: "Subscribe",
   },
   {
     id: "unlimited",
@@ -70,7 +67,6 @@ const pricingPlans = [
       { name: "Commercial License", included: true },
       { name: "Priority Support", included: true },
     ],
-    buttonText: "Subscribe",
   },
 ];
 
@@ -101,16 +97,36 @@ const Pricing = () => {
       });
     }
   }, [success, canceled]);
-  
-  const handleSubscribe = async (planId: string) => {
-    if (planId === currentPlan) {
-      return; // Already on this plan
+
+  // Function to get the correct button text based on authentication and plan status
+  const getButtonText = (planId: string) => {
+    // If user is not authenticated
+    if (!user) {
+      return planId === "free" ? "Signup" : "Subscribe";
     }
     
+    // If user is authenticated
+    if (currentPlan === planId) {
+      return "Current Plan";
+    }
+    
+    return "Subscribe";
+  };
+
+  // Function to check if button should be disabled
+  const isButtonDisabled = (planId: string) => {
+    return user && currentPlan === planId;
+  };
+  
+  const handleSubscribe = async (planId: string) => {
     // If user is not logged in, redirect to auth page
     if (!user) {
       navigate("/auth");
       return;
+    }
+
+    if (planId === currentPlan) {
+      return; // Already on this plan
     }
     
     // If user selects free plan, no need for payment
@@ -184,7 +200,7 @@ const Pricing = () => {
                     ? "border-2 border-figuro-accent" 
                     : "border border-gray-200"
                 } ${
-                  currentPlan === plan.id
+                  user && currentPlan === plan.id
                     ? "bg-gray-100/10"
                     : ""
                 }`}
@@ -194,7 +210,7 @@ const Pricing = () => {
                     RECOMMENDED
                   </div>
                 )}
-                {currentPlan === plan.id && !plan.recommended && (
+                {user && currentPlan === plan.id && !plan.recommended && (
                   <div className="bg-gray-600 text-white text-center py-1 text-sm font-medium">
                     CURRENT PLAN
                   </div>
@@ -224,19 +240,17 @@ const Pricing = () => {
                   <Button
                     onClick={() => handleSubscribe(plan.id)}
                     className={`w-full ${
-                      currentPlan === plan.id 
+                      isButtonDisabled(plan.id)
                         ? "bg-gray-500"
                         : plan.recommended 
                           ? "bg-figuro-accent hover:bg-figuro-accent-hover" 
                           : ""
                     }`}
-                    disabled={currentPlan === plan.id || loadingPlanId === plan.id}
+                    disabled={isButtonDisabled(plan.id) || loadingPlanId === plan.id}
                   >
                     {loadingPlanId === plan.id 
                       ? "Processing..." 
-                      : currentPlan === plan.id 
-                        ? "Current Plan" 
-                        : plan.buttonText}
+                      : getButtonText(plan.id)}
                   </Button>
                 </CardFooter>
               </Card>
