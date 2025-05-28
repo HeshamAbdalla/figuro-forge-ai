@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, Wand2, Image as ImageIcon } from "lucide-react";
+import { Download, Wand2, Image as ImageIcon, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface StreamlinedImagePreviewProps {
@@ -62,13 +62,38 @@ const StreamlinedImagePreview = ({
       transition={{ duration: 0.3 }}
       className="glass-panel rounded-xl overflow-hidden backdrop-blur-md border border-white/20 h-fit"
     >
+      <div className="p-3 border-b border-white/10">
+        <h3 className="text-lg font-medium text-white flex items-center gap-2">
+          <ImageIcon size={20} className="text-figuro-accent" />
+          Preview
+        </h3>
+        <p className="text-sm text-white/60 mt-1">
+          {isLoading ? "Generating your image..." : 
+           imageSrc ? "Ready to convert to 3D" : 
+           "Your generated image will appear here"}
+        </p>
+      </div>
+
       <div className="aspect-square relative">
         {isLoading ? (
           <div className="w-full h-full p-4 flex flex-col items-center justify-center">
             <Skeleton className="w-full h-full rounded-lg bg-white/5 loading-shine" />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <Wand2 className="text-figuro-accent h-8 w-8 mb-2 animate-pulse" />
-              <p className="text-white/70 text-sm">Generating...</p>
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              >
+                <Wand2 className="text-figuro-accent h-8 w-8 mb-2" />
+              </motion.div>
+              <p className="text-white/70 text-sm">Creating magic...</p>
+              <div className="w-32 h-1 bg-white/20 rounded-full mt-3 overflow-hidden">
+                <motion.div
+                  className="h-full bg-figuro-accent rounded-full"
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </div>
             </div>
           </div>
         ) : imageSrc ? (
@@ -86,10 +111,16 @@ const StreamlinedImagePreview = ({
             )}
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white/5 to-white/10">
             <div className="text-center text-white/30">
-              <ImageIcon size={32} className="mx-auto mb-2" />
-              <p className="text-sm">No image yet</p>
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <ImageIcon size={48} className="mx-auto mb-3" />
+              </motion.div>
+              <p className="text-sm">Your artwork will appear here</p>
+              <p className="text-xs mt-1 text-white/20">Start by generating an image</p>
             </div>
           </div>
         )}
@@ -104,24 +135,25 @@ const StreamlinedImagePreview = ({
             className="w-full border-white/20 hover:border-white/40 bg-white/5 h-8"
           >
             <Download size={14} className="mr-1" />
-            Save
+            Save Image
           </Button>
         )}
         
         <Button
           onClick={onConvertTo3D}
           disabled={!imageSrc || isConverting || isLoading || imageError}
-          className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8"
+          className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-9 font-medium"
         >
           {isConverting ? (
             <>
               <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-              Converting...
+              Converting to 3D...
             </>
           ) : (
             <>
-              <Wand2 size={14} className="mr-1" />
+              <Wand2 size={16} className="mr-2" />
               Convert to 3D
+              <ArrowRight size={14} className="ml-1" />
             </>
           )}
         </Button>

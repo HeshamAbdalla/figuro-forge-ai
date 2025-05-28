@@ -8,6 +8,8 @@ import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
 import StreamlinedImagePreview from "@/components/studio/StreamlinedImagePreview";
 import TextTo3DForm from "@/components/studio/TextTo3DForm";
 import TextTo3DProgress from "@/components/studio/TextTo3DProgress";
+import MiniGalleryCarousel from "@/components/studio/MiniGalleryCarousel";
+import { useFigurines } from "@/components/figurine/useFigurines";
 import type { TabKey } from "@/hooks/useTabNavigation";
 
 interface StudioTabContentProps {
@@ -49,6 +51,8 @@ const StudioTabContent = ({
   handleSignIn,
   setCustomModelUrl
 }: StudioTabContentProps) => {
+  const { figurines } = useFigurines();
+
   if (!authUser) {
     return (
       <motion.div 
@@ -70,7 +74,7 @@ const StudioTabContent = ({
     case 'image-to-3d':
       return (
         <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl mx-auto"
+          className="grid grid-cols-1 lg:grid-cols-4 gap-4 max-w-7xl mx-auto"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, staggerChildren: 0.1 }}
@@ -84,6 +88,11 @@ const StudioTabContent = ({
             <EnhancedPromptForm 
               onGenerate={onGenerate} 
               isGenerating={isGeneratingImage}
+            />
+            
+            <MiniGalleryCarousel 
+              figurines={figurines.slice(0, 6)}
+              onCreateNew={() => onGenerate("", "isometric")}
             />
           </motion.div>
           
@@ -104,6 +113,7 @@ const StudioTabContent = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
+            className="lg:col-span-2"
           >
             <ModelViewer 
               modelUrl={displayModelUrl} 
@@ -118,7 +128,7 @@ const StudioTabContent = ({
     case 'text-to-3d':
       return (
         <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl mx-auto"
+          className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl mx-auto"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, staggerChildren: 0.1 }}
@@ -155,12 +165,18 @@ const StudioTabContent = ({
                 }}
               />
             )}
+            
+            <MiniGalleryCarousel 
+              figurines={figurines.slice(0, 6)}
+              onCreateNew={() => handleTextTo3D("", "realistic", "")}
+            />
           </motion.div>
           
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
+            className="lg:col-span-2"
           >
             <ModelViewer 
               modelUrl={displayModelUrl} 

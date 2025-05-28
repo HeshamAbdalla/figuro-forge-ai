@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Wand2, Shuffle, Star } from "lucide-react";
+import { Wand2, Shuffle, Star, Sparkles, Dice6 } from "lucide-react";
 
 const ART_STYLES = [
   { id: "isometric", name: "Isometric", preview: "🎯" },
@@ -22,8 +22,21 @@ const QUICK_PROMPTS = [
   "Steampunk robot with brass gears", 
   "Cute anime girl with magic wand",
   "Low poly mountain landscape",
-  "Futuristic space ship"
+  "Futuristic space ship",
+  "Medieval knight with glowing armor",
+  "Mystical forest creature with wings",
+  "Retro robot with neon lights",
+  "Dragon breathing colorful flames",
+  "Fairy house in a mushroom"
 ];
+
+const SMART_SUGGESTIONS = {
+  fantasy: ["dragon", "wizard", "fairy", "unicorn", "magic crystal"],
+  scifi: ["robot", "spaceship", "alien", "laser weapon", "futuristic city"],
+  cute: ["puppy", "kitten", "bunny", "panda", "cartoon character"],
+  nature: ["tree", "flower", "mountain", "ocean", "forest"],
+  action: ["warrior", "ninja", "superhero", "racing car", "adventure"]
+};
 
 interface EnhancedPromptFormProps {
   onGenerate: (prompt: string, style: string) => void;
@@ -75,6 +88,22 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
     setPrompt(quickPrompt);
   };
 
+  const generateSmartPrompt = () => {
+    if (isSubmitting || isGenerating) return;
+    
+    const categories = Object.keys(SMART_SUGGESTIONS);
+    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+    const suggestions = SMART_SUGGESTIONS[randomCategory as keyof typeof SMART_SUGGESTIONS];
+    const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
+    
+    // Create a more detailed prompt
+    const adjectives = ["magical", "epic", "mysterious", "glowing", "ancient", "futuristic", "miniature"];
+    const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    
+    const generatedPrompt = `${randomAdjective} ${randomSuggestion} figurine`;
+    setPrompt(generatedPrompt);
+  };
+
   const handleRandomPrompt = () => {
     if (isSubmitting || isGenerating) return;
     const randomPrompt = QUICK_PROMPTS[Math.floor(Math.random() * QUICK_PROMPTS.length)];
@@ -91,41 +120,74 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
       transition={{ duration: 0.3 }}
       className="glass-panel p-4 rounded-xl backdrop-blur-md border border-white/20 h-fit"
     >
+      <div className="mb-4">
+        <h3 className="text-lg font-medium text-white mb-2 flex items-center gap-2">
+          <Wand2 size={20} className="text-figuro-accent" />
+          Image Generator
+        </h3>
+        <p className="text-sm text-white/60">
+          Describe your figurine and we'll create it for you
+        </p>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Textarea
-            placeholder="Describe your figurine..."
-            className="bg-white/10 border-white/20 text-white resize-none h-20"
+            placeholder="Describe your figurine in detail..."
+            className="bg-white/10 border-white/20 text-white resize-none h-20 placeholder:text-white/40"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             disabled={isSubmitting || isGenerating}
           />
           
-          <div className="flex flex-wrap gap-1">
-            {QUICK_PROMPTS.slice(0, 3).map((quickPrompt) => (
+          {/* Smart Suggestions */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 mb-2">
+              <Star size={14} className="text-figuro-accent" />
+              <span className="text-xs text-white/70">Quick Ideas:</span>
+            </div>
+            
+            <div className="flex flex-wrap gap-1">
+              {QUICK_PROMPTS.slice(0, 3).map((quickPrompt) => (
+                <Button
+                  key={quickPrompt}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleQuickPrompt(quickPrompt)}
+                  disabled={isSubmitting || isGenerating}
+                  className="text-xs text-white/60 hover:text-white hover:bg-white/5 h-6 px-2 disabled:opacity-50"
+                >
+                  {quickPrompt}
+                </Button>
+              ))}
+            </div>
+            
+            <div className="flex gap-2 mt-2">
               <Button
-                key={quickPrompt}
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => handleQuickPrompt(quickPrompt)}
+                onClick={generateSmartPrompt}
                 disabled={isSubmitting || isGenerating}
-                className="text-xs text-white/60 hover:text-white hover:bg-white/5 h-6 px-2 disabled:opacity-50"
+                className="text-xs text-figuro-accent hover:text-white hover:bg-figuro-accent/20 h-7 px-3 disabled:opacity-50 flex items-center gap-1"
               >
-                {quickPrompt}
+                <Dice6 size={12} />
+                Feeling Lucky?
               </Button>
-            ))}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleRandomPrompt}
-              disabled={isSubmitting || isGenerating}
-              className="text-xs text-white/60 hover:text-white hover:bg-white/5 h-6 px-2 disabled:opacity-50"
-            >
-              <Shuffle size={12} className="mr-1" />
-              Random
-            </Button>
+              
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleRandomPrompt}
+                disabled={isSubmitting || isGenerating}
+                className="text-xs text-white/60 hover:text-white hover:bg-white/5 h-7 px-3 disabled:opacity-50"
+              >
+                <Shuffle size={12} className="mr-1" />
+                Random
+              </Button>
+            </div>
           </div>
         </div>
         
@@ -158,7 +220,7 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
           ) : (
             <>
               <Wand2 size={16} className="mr-2" />
-              Generate
+              Generate Image
             </>
           )}
         </Button>
