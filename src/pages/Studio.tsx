@@ -4,6 +4,7 @@ import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGenerat
 import { useTextTo3D } from "@/hooks/useTextTo3D";
 import { useTabNavigation } from "@/hooks/useTabNavigation";
 import { useAuth } from "@/components/auth/AuthProvider";
+import Header from "@/components/Header";
 import StudioLayout from "@/components/studio/StudioLayout";
 import { useStudioState } from "@/components/studio/hooks/useStudioState";
 import { useStudioHandlers } from "@/components/studio/hooks/useStudioHandlers";
@@ -91,41 +92,46 @@ const Studio = () => {
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
   return (
-    <StudioLayout
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      authUser={authUser}
-      generatedImage={generatedImage}
-      isGeneratingImage={isGeneratingImage}
-      isGenerating={isGenerating}
-      isGeneratingTextTo3D={isGeneratingTextTo3D}
-      currentTaskId={currentTaskId}
-      progress={progress}
-      textTo3DProgress={textTo3DProgress}
-      displayModelUrl={displayModelUrl}
-      shouldModelViewerLoad={shouldModelViewerLoad}
-      uploadModalOpen={uploadModalOpen}
-      setUploadModalOpen={setUploadModalOpen}
-      configModalOpen={configModalOpen}
-      setConfigModalOpen={setConfigModalOpen}
-      textTo3DConfigModalOpen={textTo3DConfigModalOpen}
-      setTextTo3DConfigModalOpen={setTextTo3DConfigModalOpen}
-      textTo3DConfigPrompt={textTo3DConfigPrompt}
-      generationModalOpen={generationModalOpen}
-      setGenerationModalOpen={setGenerationModalOpen}
-      onGenerate={onGenerate}
-      handleOpenConfigModal={handleOpenConfigModal}
-      handleGenerate3DWithConfig={handleGenerate3DWithConfig}
-      handleQuickConvert={handleQuickConvert}
-      handleTextTo3D={handleTextTo3D}
-      handleOpenTextTo3DConfigModal={handleOpenTextTo3DConfigModal}
-      handleTextTo3DWithConfig={handleTextTo3DWithConfig}
-      handleModelUpload={handleModelUpload}
-      handleSignOut={handleSignOut}
-      handleSignIn={handleSignIn}
-      handleCloseGenerationModal={handleCloseGenerationModal}
-      setCustomModelUrl={setCustomModelUrl}
-    />
+    <div className="min-h-screen bg-figuro-dark">
+      <Header />
+      <div className="pt-20">
+        <StudioLayout
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          authUser={authUser}
+          generatedImage={generatedImage}
+          isGeneratingImage={isGeneratingImage}
+          isGenerating={isGenerating}
+          isGeneratingTextTo3D={isGeneratingTextTo3D}
+          currentTaskId={currentTaskId}
+          progress={progress}
+          textTo3DProgress={textTo3DProgress}
+          displayModelUrl={displayModelUrl}
+          shouldModelViewerLoad={shouldModelViewerLoad}
+          uploadModalOpen={uploadModalOpen}
+          setUploadModalOpen={setUploadModalOpen}
+          configModalOpen={configModalOpen}
+          setConfigModalOpen={setConfigModalOpen}
+          textTo3DConfigModalOpen={textTo3DConfigModalOpen}
+          setTextTo3DConfigModalOpen={setTextTo3DConfigModalOpen}
+          textTo3DConfigPrompt={textTo3DConfigPrompt}
+          generationModalOpen={generationModalOpen}
+          setGenerationModalOpen={setGenerationModalOpen}
+          onGenerate={onGenerate}
+          handleOpenConfigModal={handleOpenConfigModal}
+          handleGenerate3DWithConfig={handleGenerate3DWithConfig}
+          handleQuickConvert={handleQuickConvert}
+          handleTextTo3D={handleTextTo3D}
+          handleOpenTextTo3DConfigModal={handleOpenTextTo3DConfigModal}
+          handleTextTo3DWithConfig={handleTextTo3DWithConfig}
+          handleModelUpload={handleModelUpload}
+          handleSignOut={handleSignOut}
+          handleSignIn={handleSignIn}
+          handleCloseGenerationModal={handleCloseGenerationModal}
+          setCustomModelUrl={setCustomModelUrl}
+        />
+      </div>
+    </div>
   );
 };
 
