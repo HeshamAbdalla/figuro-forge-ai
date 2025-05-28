@@ -89,12 +89,21 @@ const Header = () => {
           >
             Community
           </Link>
-          <Link 
-            to="/pricing" 
-            className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
-          >
-            Pricing
-          </Link>
+          {user ? (
+            <Link 
+              to="/profile" 
+              className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
+            >
+              Personal Hub
+            </Link>
+          ) : (
+            <Link 
+              to="/pricing" 
+              className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
+            >
+              Pricing
+            </Link>
+          )}
         </nav>
         
         {/* Auth Section */}
@@ -206,13 +215,23 @@ const Header = () => {
               >
                 Community
               </Link>
-              <Link 
-                to="/pricing" 
-                className="text-white py-2 px-4 rounded-md hover:bg-white/10 transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Pricing
-              </Link>
+              {user ? (
+                <Link 
+                  to="/profile" 
+                  className="text-white py-2 px-4 rounded-md hover:bg-white/10 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Personal Hub
+                </Link>
+              ) : (
+                <Link 
+                  to="/pricing" 
+                  className="text-white py-2 px-4 rounded-md hover:bg-white/10 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Pricing
+                </Link>
+              )}
               
               {!user && (
                 <div className="pt-4 border-t border-white/10 flex flex-col space-y-3">
