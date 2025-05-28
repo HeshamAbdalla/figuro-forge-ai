@@ -9,14 +9,14 @@ export const useImageViewer = () => {
   const { toast } = useToast();
 
   // Handle closing image viewer and cleaning up resources
-  const handleCloseImageViewer = () => {
+  const onCloseImageViewer = () => {
     setImageViewerOpen(false);
     setViewingImage(null);
     setViewingImageName(undefined);
   };
 
   // Handle opening image viewer
-  const handleViewImage = (imageUrl: string, fileName?: string) => {
+  const onViewImage = (imageUrl: string, fileName?: string) => {
     // First make sure the URL is valid
     if (!imageUrl || typeof imageUrl !== 'string') {
       toast({
@@ -31,7 +31,7 @@ export const useImageViewer = () => {
     
     // First close any existing viewer to clean up resources
     if (imageViewerOpen) {
-      handleCloseImageViewer();
+      onCloseImageViewer();
       
       // Small timeout to ensure cleanup before opening new image
       setTimeout(() => {
@@ -51,7 +51,7 @@ export const useImageViewer = () => {
     viewingImageName,
     imageViewerOpen,
     setImageViewerOpen,
-    handleViewImage,
-    handleCloseImageViewer
+    onViewImage,
+    onCloseImageViewer
   };
 };

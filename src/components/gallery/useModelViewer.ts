@@ -35,7 +35,7 @@ export const useModelViewer = () => {
   }, []);
 
   // Handle closing model viewer and cleaning up resources
-  const handleCloseModelViewer = () => {
+  const onCloseModelViewer = () => {
     setModelViewerOpen(false);
     setViewingModel(null); // Clear the model URL to prevent reloading
     setViewingFileName(undefined);
@@ -71,7 +71,7 @@ export const useModelViewer = () => {
   };
 
   // Handle opening enhanced model viewer with file name support
-  const handleViewModel = (modelUrl: string, fileName?: string) => {
+  const onViewModel = (modelUrl: string, fileName?: string) => {
     // First make sure the URL is valid
     if (!modelUrl || typeof modelUrl !== 'string') {
       toast({
@@ -107,7 +107,7 @@ export const useModelViewer = () => {
     
     // First close any existing viewer to clean up resources
     if (modelViewerOpen) {
-      handleCloseModelViewer();
+      onCloseModelViewer();
       
       // Increased timeout to ensure cleanup before opening new model
       setTimeout(() => {
@@ -131,7 +131,7 @@ export const useModelViewer = () => {
     viewingFileName,
     modelViewerOpen,
     setModelViewerOpen,
-    handleViewModel,
-    handleCloseModelViewer
+    onViewModel,
+    onCloseModelViewer
   };
 };

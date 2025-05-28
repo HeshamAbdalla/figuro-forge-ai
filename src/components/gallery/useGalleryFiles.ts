@@ -5,8 +5,9 @@ import { useToast } from "@/hooks/use-toast";
 import { BucketImage } from "@/components/gallery/types";
 
 export const useGalleryFiles = () => {
-  const [images, setImages] = useState<BucketImage[]>([]);
+  const [files, setFiles] = useState<BucketImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Helper function to determine file type based on extension
@@ -174,6 +175,7 @@ export const useGalleryFiles = () => {
   const fetchImagesFromBucket = useCallback(async () => {
     console.log('🔄 [GALLERY] Starting gallery files fetch...');
     setIsLoading(true);
+    setError(null);
     try {
       // Get all files from both sources in parallel
       const [imageFiles, modelFiles] = await Promise.all([
@@ -189,13 +191,15 @@ export const useGalleryFiles = () => {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       
-      setImages(allFiles);
+      setFiles(allFiles);
       console.log(`✅ [GALLERY] Loaded ${allFiles.length} files from gallery (${imageFiles.length} images, ${modelFiles.length} models)`);
     } catch (error) {
       console.error('❌ [GALLERY] Error loading files from buckets:', error);
+      const errorMessage = "Could not load the gallery items. Please try again.";
+      setError(errorMessage);
       toast({
         title: "Error loading gallery",
-        description: "Could not load the gallery items. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -236,8 +240,9 @@ export const useGalleryFiles = () => {
   }, [fetchImagesFromBucket]);
 
   return {
-    images,
+    files,
     isLoading,
-    fetchImagesFromBucket
+    error,
+    refetch: fetchImagesFromBucket
   };
 };

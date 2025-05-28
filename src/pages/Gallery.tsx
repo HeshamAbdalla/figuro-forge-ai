@@ -91,9 +91,6 @@ const Gallery = () => {
               onViewImage={onViewImage}
               onDownload={handleDownload}
               onRefresh={refetch}
-            />
-
-            <GalleryModals
               modelViewerOpen={modelViewerOpen}
               setModelViewerOpen={setModelViewerOpen}
               viewingModel={viewingModel}

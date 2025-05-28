@@ -19,15 +19,15 @@ interface ConversionProgress {
 }
 
 interface GalleryContentProps {
-  images: BucketImage[];
+  files: BucketImage[];
   isLoading: boolean;
+  error: string | null;
   
   // Handler functions
   onDownload: (url: string, name: string) => void;
-  onView: (url: string, fileName: string, fileType: 'image' | '3d-model') => void;
-  onGenerate3D: (url: string, name: string) => void;
-  onNavigateToStudio: () => void;
-  onUploadClick: () => void;
+  onViewModel: (url: string, fileName: string) => void;
+  onViewImage: (url: string, fileName: string) => void;
+  onRefresh: () => void;
 
   // Model viewer props
   modelViewerOpen: boolean;
@@ -46,7 +46,10 @@ interface GalleryContentProps {
   // 3D generation props
   isGenerating: boolean;
   progress: ConversionProgress;
+  onGeneration3DOpenChange: (open: boolean) => void;
   onResetProgress: () => void;
+  onGenerate: (config: any) => Promise<void>;
+  sourceImageUrl: string | null;
 
   // Auth prompt props
   authPromptOpen: boolean;
@@ -54,13 +57,13 @@ interface GalleryContentProps {
 }
 
 const GalleryContent: React.FC<GalleryContentProps> = ({
-  images,
+  files,
   isLoading,
+  error,
   onDownload,
-  onView,
-  onGenerate3D,
-  onNavigateToStudio,
-  onUploadClick,
+  onViewModel,
+  onViewImage,
+  onRefresh,
   modelViewerOpen,
   setModelViewerOpen,
   viewingModel,
@@ -73,7 +76,10 @@ const GalleryContent: React.FC<GalleryContentProps> = ({
   onCloseImageViewer,
   isGenerating,
   progress,
+  onGeneration3DOpenChange,
   onResetProgress,
+  onGenerate,
+  sourceImageUrl,
   authPromptOpen,
   onAuthPromptChange
 }) => {
@@ -88,17 +94,23 @@ const GalleryContent: React.FC<GalleryContentProps> = ({
 
         <div className="min-h-screen bg-gradient-to-br from-figuro-dark via-figuro-dark to-figuro-accent/20 pt-24">
           <div className="container mx-auto px-4 py-8">
-            <GalleryHeader onUploadClick={onUploadClick} />
+            <GalleryHeader onUploadClick={() => {}} />
             
             <GalleryGrid 
-              images={images}
+              images={files}
               isLoading={isLoading}
               onDownload={onDownload}
-              onView={onView}
-              onGenerate3D={onGenerate3D}
+              onView={(url: string, fileName: string, fileType: 'image' | '3d-model') => {
+                if (fileType === '3d-model') {
+                  onViewModel(url, fileName);
+                } else {
+                  onViewImage(url, fileName);
+                }
+              }}
+              onGenerate3D={() => {}}
             />
             
-            <CallToAction onNavigateToStudio={onNavigateToStudio} />
+            <CallToAction onNavigateToStudio={() => {}} />
           </div>
 
           <GalleryModals
@@ -114,12 +126,10 @@ const GalleryContent: React.FC<GalleryContentProps> = ({
             onCloseImageViewer={onCloseImageViewer}
             isGenerating={isGenerating}
             progress={progress}
-            onGeneration3DOpenChange={(open) => {
-              if (!open) {
-                onResetProgress();
-              }
-            }}
+            onGeneration3DOpenChange={onGeneration3DOpenChange}
             onResetProgress={onResetProgress}
+            onGenerate={onGenerate}
+            sourceImageUrl={sourceImageUrl}
             authPromptOpen={authPromptOpen}
             onAuthPromptChange={onAuthPromptChange}
           />
