@@ -12,7 +12,7 @@ import HomepageGalleryGrid from "@/components/homepage/HomepageGalleryGrid";
 import HomepageGalleryModals from "@/components/homepage/HomepageGalleryModals";
 
 const HomepageGallery: React.FC = () => {
-  const { images, isLoading } = useGalleryFiles();
+  const { files, isLoading } = useGalleryFiles();
   const navigate = useNavigate();
   
   // Set up model viewer functionality
@@ -20,8 +20,8 @@ const HomepageGallery: React.FC = () => {
     viewingModel, 
     modelViewerOpen, 
     setModelViewerOpen, 
-    handleViewModel, 
-    handleCloseModelViewer 
+    onViewModel, 
+    onCloseModelViewer 
   } = useModelViewer();
 
   // Set up image viewer functionality
@@ -30,8 +30,8 @@ const HomepageGallery: React.FC = () => {
     viewingImageName,
     imageViewerOpen,
     setImageViewerOpen,
-    handleViewImage,
-    handleCloseImageViewer
+    onViewImage,
+    onCloseImageViewer
   } = useImageViewer();
 
   // Set up secure download functionality
@@ -54,9 +54,9 @@ const HomepageGallery: React.FC = () => {
   // Handle view functionality - route to appropriate viewer
   const handleView = (url: string, fileName: string, fileType: 'image' | '3d-model') => {
     if (fileType === '3d-model') {
-      handleViewModel(url);
+      onViewModel(url, fileName);
     } else {
-      handleViewImage(url, fileName);
+      onViewImage(url, fileName);
     }
   };
 
@@ -67,9 +67,9 @@ const HomepageGallery: React.FC = () => {
 
         {isLoading ? (
           <HomepageGalleryLoading />
-        ) : images.length > 0 ? (
+        ) : files.length > 0 ? (
           <HomepageGalleryGrid
-            images={images}
+            images={files}
             isDownloading={isDownloading}
             isAuthenticated={isAuthenticated}
             onView={handleView}
@@ -85,12 +85,12 @@ const HomepageGallery: React.FC = () => {
         modelViewerOpen={modelViewerOpen}
         setModelViewerOpen={setModelViewerOpen}
         viewingModel={viewingModel}
-        onCloseModelViewer={handleCloseModelViewer}
+        onCloseModelViewer={onCloseModelViewer}
         imageViewerOpen={imageViewerOpen}
         setImageViewerOpen={setImageViewerOpen}
         viewingImage={viewingImage}
         viewingImageName={viewingImageName}
-        onCloseImageViewer={handleCloseImageViewer}
+        onCloseImageViewer={onCloseImageViewer}
         authPromptOpen={authPromptOpen}
         setAuthPromptOpen={setAuthPromptOpen}
       />
