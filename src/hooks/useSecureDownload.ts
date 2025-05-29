@@ -1,11 +1,11 @@
 
 import { useState } from "react";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useSecureDownload = () => {
-  const { user } = useAuth();
+  const { user } = useEnhancedAuth();
   const { toast } = useToast();
   const [isDownloading, setIsDownloading] = useState(false);
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
