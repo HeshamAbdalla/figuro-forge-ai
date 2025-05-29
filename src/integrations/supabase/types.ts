@@ -228,6 +228,72 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          created_at: string | null
+          endpoint: string
+          id: string
+          ip_address: unknown | null
+          request_count: number | null
+          updated_at: string | null
+          user_id: string | null
+          window_start: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          ip_address?: unknown | null
+          request_count?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          window_start?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          ip_address?: unknown | null
+          request_count?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          window_start?: string | null
+        }
+        Relationships: []
+      }
+      security_audit_log: {
+        Row: {
+          created_at: string | null
+          event_details: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          success: boolean | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_details?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          success?: boolean | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_details?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          success?: boolean | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       stats: {
         Row: {
           count: number
@@ -323,6 +389,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          p_user_id: string
+          p_ip_address: unknown
+          p_endpoint: string
+          p_limit?: number
+          p_window_minutes?: number
+        }
+        Returns: boolean
+      }
       cleanup_expired_payment_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -334,6 +410,17 @@ export type Database = {
       increment_stat: {
         Args: { stat_id: string; inc_amount?: number }
         Returns: number
+      }
+      log_security_event: {
+        Args: {
+          p_user_id: string
+          p_event_type: string
+          p_event_details?: Json
+          p_ip_address?: unknown
+          p_user_agent?: string
+          p_success?: boolean
+        }
+        Returns: undefined
       }
       reset_daily_usage: {
         Args: Record<PropertyKey, never>

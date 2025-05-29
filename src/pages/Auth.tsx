@@ -2,15 +2,16 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { AuthForm } from "@/components/auth/AuthForm";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info, Shield, Lock, Mail } from "lucide-react";
+import { Info, Shield, Lock, Mail, Activity } from "lucide-react";
 import { cleanupAuthState } from "@/utils/authUtils";
+import { Badge } from "@/components/ui/badge";
 
 const Auth = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, securityScore } = useEnhancedAuth();
   const navigate = useNavigate();
   
   // Clean up auth state when mounting the auth page
@@ -44,35 +45,64 @@ const Auth = () => {
                 </p>
               </div>
 
-              {/* Feature highlights */}
+              {/* Enhanced security features */}
               <div className="space-y-4">
                 <div className="flex items-center gap-3 text-white/80">
                   <div className="w-10 h-10 rounded-full bg-figuro-accent/20 flex items-center justify-center">
                     <Shield className="w-5 h-5 text-figuro-accent" />
                   </div>
-                  <span>Secure account protection</span>
+                  <div className="flex-1">
+                    <span>Enterprise-grade security protection</span>
+                    <Badge variant="secondary" className="ml-2">
+                      Enhanced
+                    </Badge>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3 text-white/80">
                   <div className="w-10 h-10 rounded-full bg-figuro-accent/20 flex items-center justify-center">
                     <Lock className="w-5 h-5 text-figuro-accent" />
                   </div>
-                  <span>Privacy-first approach</span>
+                  <span>Advanced password security validation</span>
+                </div>
+                <div className="flex items-center gap-3 text-white/80">
+                  <div className="w-10 h-10 rounded-full bg-figuro-accent/20 flex items-center justify-center">
+                    <Activity className="w-5 h-5 text-figuro-accent" />
+                  </div>
+                  <span>Real-time security monitoring & alerts</span>
                 </div>
                 <div className="flex items-center gap-3 text-white/80">
                   <div className="w-10 h-10 rounded-full bg-figuro-accent/20 flex items-center justify-center">
                     <Mail className="w-5 h-5 text-figuro-accent" />
                   </div>
-                  <span>Easy email verification</span>
+                  <span>Secure email verification system</span>
                 </div>
               </div>
 
-              {/* Email verification notice */}
+              {/* Enhanced email verification notice */}
               <Alert className="bg-figuro-accent/10 border-figuro-accent/30 backdrop-blur-sm">
                 <Info className="h-4 w-4 text-figuro-accent" />
                 <AlertDescription className="text-white/90">
-                  After signing up, please check your email inbox (and spam folder) for the verification link to complete your registration.
+                  <strong>Enhanced Security:</strong> After signing up, please check your email inbox (and spam folder) 
+                  for the verification link. Our advanced security system monitors all authentication activities 
+                  and protects your account from unauthorized access.
                 </AlertDescription>
               </Alert>
+
+              {/* Security features list */}
+              <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-figuro-accent" />
+                  Security Features
+                </h3>
+                <ul className="space-y-2 text-sm text-white/80">
+                  <li>• Rate limiting protection against brute force attacks</li>
+                  <li>• Comprehensive audit logging of all activities</li>
+                  <li>• Strong password requirements and validation</li>
+                  <li>• IP-based security monitoring</li>
+                  <li>• Automated suspicious activity detection</li>
+                  <li>• Secure session management</li>
+                </ul>
+              </div>
             </div>
 
             {/* Right Side - Auth Form */}
