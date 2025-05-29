@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "./AuthProvider";
 import { cleanupAuthState } from "@/utils/authUtils";
 import { isEmailVerificationError } from "@/utils/authUtils";
@@ -87,41 +87,43 @@ export function AuthForm() {
 
   return (
     <div className="w-full max-w-md animate-fade-in">
-      <AuthFormTabs activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <TabsContent value="signin" className="space-y-0">
-        <SignInForm
-          email={email}
-          password={password}
-          onEmailChange={setEmail}
-          onPasswordChange={setPassword}
-          onSubmit={handleSignIn}
-          onGoogleSignIn={handleGoogleSignIn}
-          onResendVerification={handleResendVerification}
-          isLoading={isLoading}
-          googleLoading={googleLoading}
-          resendLoading={resendLoading}
-          errorMessage={errorMessage}
-          showResendOption={showResendOption}
-        />
-      </TabsContent>
-      
-      <TabsContent value="signup" className="space-y-0">
-        <SignUpForm
-          email={email}
-          password={password}
-          onEmailChange={setEmail}
-          onPasswordChange={setPassword}
-          onSubmit={handleSignUp}
-          onGoogleSignIn={handleGoogleSignIn}
-          onResendVerification={handleResendVerification}
-          isLoading={isLoading}
-          googleLoading={googleLoading}
-          resendLoading={resendLoading}
-          errorMessage={errorMessage}
-          showResendOption={showResendOption}
-        />
-      </TabsContent>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <AuthFormTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        
+        <TabsContent value="signin" className="space-y-0">
+          <SignInForm
+            email={email}
+            password={password}
+            onEmailChange={setEmail}
+            onPasswordChange={setPassword}
+            onSubmit={handleSignIn}
+            onGoogleSignIn={handleGoogleSignIn}
+            onResendVerification={handleResendVerification}
+            isLoading={isLoading}
+            googleLoading={googleLoading}
+            resendLoading={resendLoading}
+            errorMessage={errorMessage}
+            showResendOption={showResendOption}
+          />
+        </TabsContent>
+        
+        <TabsContent value="signup" className="space-y-0">
+          <SignUpForm
+            email={email}
+            password={password}
+            onEmailChange={setEmail}
+            onPasswordChange={setPassword}
+            onSubmit={handleSignUp}
+            onGoogleSignIn={handleGoogleSignIn}
+            onResendVerification={handleResendVerification}
+            isLoading={isLoading}
+            googleLoading={googleLoading}
+            resendLoading={resendLoading}
+            errorMessage={errorMessage}
+            showResendOption={showResendOption}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
