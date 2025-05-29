@@ -48,12 +48,12 @@ export const checkRateLimitSafe = async (endpoint: string, limit: number = 20, w
     
     const { supabase } = await import('@/integrations/supabase/client');
     
-    // Create a timeout promise
-    const timeoutPromise = new Promise<boolean>((_, reject) => {
+    // Create a timeout promise that rejects after 3 seconds
+    const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('Rate limit check timeout')), 3000);
     });
     
-    // Race the rate limit check against the timeout
+    // Create the rate limit check promise
     const checkPromise = supabase.rpc('check_rate_limit', {
       p_user_id: null, // Allow anonymous rate limiting
       p_ip_address: null,
@@ -62,7 +62,12 @@ export const checkRateLimitSafe = async (endpoint: string, limit: number = 20, w
       p_window_minutes: windowMinutes
     });
     
-    const { data, error } = await Promise.race([checkPromise, timeoutPromise]);
+    // Race the rate limit check against the timeout
+    const result = await Promise.race([checkPromise, timeoutPromise]);
+    
+    // If we get here, it means checkPromise won (no timeout)
+    // So result is a PostgrestSingleResponse<boolean>
+    const { data, error } = result;
     
     if (error) {
       console.warn('⚠️ [AUTH-UTILS] Rate limit check failed, allowing request:', error);
