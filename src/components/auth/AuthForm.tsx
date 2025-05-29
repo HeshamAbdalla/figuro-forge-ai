@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEnhancedAuth } from "./EnhancedAuthProvider";
-import { cleanupAuthState } from "@/utils/authUtils";
-import { AlertCircle, Mail, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
+import { cleanupAuthState, clearAuthRateLimits, isRateLimitError } from "@/utils/authUtils";
+import { AlertCircle, Mail, Eye, EyeOff, Loader2, CheckCircle, RefreshCw } from "lucide-react";
 import { isEmailVerificationError } from "@/utils/authUtils";
 
 export function AuthForm() {
@@ -23,12 +23,15 @@ export function AuthForm() {
   const [showResendOption, setShowResendOption] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("signin");
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  const [clearingLimits, setClearingLimits] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage("");
     setShowResendOption(false);
+    setIsRateLimited(false);
     
     cleanupAuthState();
     
@@ -38,6 +41,8 @@ export function AuthForm() {
       setErrorMessage(error);
       if (isEmailVerificationError(error)) {
         setShowResendOption(true);
+      } else if (isRateLimitError(error)) {
+        setIsRateLimited(true);
       }
     } else {
       navigate("/");
@@ -50,6 +55,7 @@ export function AuthForm() {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage("");
+    setIsRateLimited(false);
     
     cleanupAuthState();
     
@@ -57,6 +63,9 @@ export function AuthForm() {
     
     if (error) {
       setErrorMessage(error);
+      if (isRateLimitError(error)) {
+        setIsRateLimited(true);
+      }
     } else if (!data?.session) {
       setErrorMessage("Please check your email (including spam folder) and click the verification link to complete your registration.");
       setShowResendOption(true);
@@ -82,8 +91,25 @@ export function AuthForm() {
     }
   };
 
+  const handleClearRateLimits = async () => {
+    setClearingLimits(true);
+    try {
+      await clearAuthRateLimits();
+      setIsRateLimited(false);
+      setErrorMessage("");
+      // Force a small delay to ensure the rate limits are cleared
+      setTimeout(() => {
+        setClearingLimits(false);
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to clear rate limits:', error);
+      setClearingLimits(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
+    setIsRateLimited(false);
     await signInWithGoogle();
     setGoogleLoading(false);
   };
@@ -124,6 +150,31 @@ export function AuthForm() {
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{errorMessage}</AlertDescription>
                 </Alert>
+              )}
+
+              {isRateLimited && (
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg animate-fade-in">
+                  <p className="text-sm mb-3 text-white/90 font-medium">
+                    Rate limit reached. You can try again in a few minutes, or clear the limit below:
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleClearRateLimits}
+                    disabled={clearingLimits}
+                    className="flex items-center gap-2 bg-transparent border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10"
+                  >
+                    {clearingLimits ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    {clearingLimits ? "Clearing..." : "Clear rate limit & try again"}
+                  </Button>
+                  <p className="text-xs mt-2 text-white/60">
+                    This will reset the rate limiting counter for your session
+                  </p>
+                </div>
               )}
               
               {showResendOption && (
@@ -198,7 +249,7 @@ export function AuthForm() {
                 <Button 
                   className="w-full bg-figuro-accent hover:bg-figuro-accent-hover text-white font-medium py-2.5 transition-all duration-300 disabled:opacity-50" 
                   type="submit" 
-                  disabled={isLoading || !isFormValid}
+                  disabled={isLoading || !isFormValid || clearingLimits}
                 >
                   {isLoading ? (
                     <>
@@ -224,7 +275,7 @@ export function AuthForm() {
                 variant="outline" 
                 onClick={handleGoogleSignIn}
                 className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10 transition-all duration-300"
-                disabled={isLoading || googleLoading}
+                disabled={isLoading || googleLoading || clearingLimits}
               >
                 {googleLoading ? (
                   <>
@@ -275,6 +326,28 @@ export function AuthForm() {
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{errorMessage}</AlertDescription>
                 </Alert>
+              )}
+
+              {isRateLimited && (
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg animate-fade-in">
+                  <p className="text-sm mb-3 text-white/90 font-medium">
+                    Rate limit reached. You can try again in a few minutes, or clear the limit below:
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleClearRateLimits}
+                    disabled={clearingLimits}
+                    className="flex items-center gap-2 bg-transparent border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10"
+                  >
+                    {clearingLimits ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    {clearingLimits ? "Clearing..." : "Clear rate limit & try again"}
+                  </Button>
+                </div>
               )}
               
               {showResendOption && (
@@ -356,7 +429,7 @@ export function AuthForm() {
                 <Button 
                   className="w-full bg-figuro-accent hover:bg-figuro-accent-hover text-white font-medium py-2.5 transition-all duration-300 disabled:opacity-50" 
                   type="submit" 
-                  disabled={isLoading || !isFormValid}
+                  disabled={isLoading || !isFormValid || clearingLimits}
                 >
                   {isLoading ? (
                     <>
@@ -382,7 +455,7 @@ export function AuthForm() {
                 variant="outline" 
                 onClick={handleGoogleSignIn}
                 className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10 transition-all duration-300"
-                disabled={isLoading || googleLoading}
+                disabled={isLoading || googleLoading || clearingLimits}
               >
                 {googleLoading ? (
                   <>

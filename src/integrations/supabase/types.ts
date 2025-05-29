@@ -403,6 +403,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      clear_rate_limits_for_endpoint: {
+        Args: { p_endpoint: string }
+        Returns: undefined
+      }
       consume_feature_usage: {
         Args: { feature_type: string; user_id_param: string; amount?: number }
         Returns: boolean

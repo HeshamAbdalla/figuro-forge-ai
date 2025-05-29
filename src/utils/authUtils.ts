@@ -25,10 +25,30 @@ export const cleanupAuthState = () => {
 };
 
 /**
+ * Clear rate limits for debugging purposes
+ */
+export const clearAuthRateLimits = async () => {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    await supabase.rpc('clear_rate_limits_for_endpoint', {
+      p_endpoint: 'auth_signin'
+    });
+    console.log('✅ [AUTH-UTILS] Rate limits cleared for auth_signin');
+  } catch (error) {
+    console.error('❌ [AUTH-UTILS] Failed to clear rate limits:', error);
+  }
+};
+
+/**
  * Parse authentication errors and return user-friendly messages
  */
 export const getAuthErrorMessage = (error: any): string => {
   const errorMessage = error?.message || error?.error_description || String(error);
+  
+  // Handle rate limiting errors specifically
+  if (errorMessage.includes('rate limit') || errorMessage.includes('too many')) {
+    return 'Too many sign-in attempts. Please wait a few minutes before trying again. If you continue to have issues, try refreshing the page.';
+  }
   
   // Handle common auth error scenarios
   if (errorMessage.includes('Email not confirmed')) {
@@ -46,6 +66,10 @@ export const getAuthErrorMessage = (error: any): string => {
   if (errorMessage.includes('Password should be')) {
     return 'Password should be at least 6 characters long.';
   }
+
+  if (errorMessage.includes('Invalid email format')) {
+    return 'Please enter a valid email address.';
+  }
   
   // Return the original error if no specific handling
   return errorMessage;
@@ -58,4 +82,13 @@ export const isEmailVerificationError = (error: string): boolean => {
   return error.includes('verify your email') || 
          error.includes('Email not confirmed') || 
          error.includes('confirmation');
+};
+
+/**
+ * Check if an error is related to rate limiting
+ */
+export const isRateLimitError = (error: string): boolean => {
+  return error.includes('rate limit') || 
+         error.includes('too many') ||
+         error.includes('Too many sign in attempts');
 };

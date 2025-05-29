@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -290,7 +291,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     };
   }, []);
 
-  // Enhanced sign in with security validation
+  // Enhanced sign in with better rate limiting handling
   const signIn = async (email: string, password: string) => {
     try {
       // Validate input
@@ -298,10 +299,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         throw new Error('Invalid email format');
       }
 
-      // Check rate limit
-      const canProceed = await securityManager.checkRateLimit('auth_signin', 5, 15);
+      // Check rate limit with more lenient settings for signin
+      const canProceed = await securityManager.checkRateLimit('auth_signin', 10, 15);
       if (!canProceed) {
-        throw new Error('Too many sign in attempts. Please try again later.');
+        throw new Error('Too many sign in attempts. Please wait a few minutes before trying again, or use the "Clear rate limit" button below.');
       }
 
       cleanupAuthState();
@@ -377,7 +378,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced sign up with password validation
+  // Enhanced sign up with better rate limiting handling
   const signUp = async (email: string, password: string) => {
     try {
       // Validate input
@@ -390,10 +391,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         throw new Error(passwordValidation.errors.join('. '));
       }
 
-      // Check rate limit
-      const canProceed = await securityManager.checkRateLimit('auth_signup', 3, 60);
+      // Check rate limit with more lenient settings for signup
+      const canProceed = await securityManager.checkRateLimit('auth_signup', 5, 60);
       if (!canProceed) {
-        throw new Error('Too many sign up attempts. Please try again later.');
+        throw new Error('Too many sign up attempts. Please wait a few minutes before trying again, or use the "Clear rate limit" button below.');
       }
 
       cleanupAuthState();
