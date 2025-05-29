@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -44,12 +43,12 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     if (session?.access_token) score += 20;
     if (user?.app_metadata?.provider === 'google') score += 10;
     
-    // Check for recent login
-    if (session?.issued_at) {
-      const issuedAt = new Date(session.issued_at * 1000);
-      const hoursSinceLogin = (Date.now() - issuedAt.getTime()) / (1000 * 60 * 60);
-      if (hoursSinceLogin < 24) score += 20;
-      else if (hoursSinceLogin < 168) score += 10; // 1 week
+    // Check for recent login - use expires_at instead of issued_at
+    if (session?.expires_at) {
+      const expiresAt = new Date(session.expires_at * 1000);
+      const hoursUntilExpiry = (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60);
+      if (hoursUntilExpiry > 0) score += 20;
+      else if (hoursUntilExpiry > -168) score += 10; // 1 week grace period
     }
     
     // Check for suspicious activity

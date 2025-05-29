@@ -32,7 +32,7 @@ import ProfilePictures from "@/pages/ProfilePictures";
 import Settings from "@/pages/Settings";
 import CheckoutReturn from "@/pages/CheckoutReturn";
 
-import { AuthProvider } from "@/components/auth/AuthProvider";
+import { EnhancedAuthProvider } from "@/components/auth/EnhancedAuthProvider";
 import Auth from "@/pages/Auth";
 import CompleteProfile from "@/pages/CompleteProfile";
 
@@ -51,7 +51,7 @@ const LoadingSpinner = () => (
 function App() {
   return (
     <HelmetProvider>
-      <AuthProvider>
+      <EnhancedAuthProvider>
         <BrowserRouter>
           <Suspense fallback={<LoadingSpinner />}>
             <PageTransition>
@@ -85,7 +85,7 @@ function App() {
           <Toaster />
           <PerformanceDashboard />
         </BrowserRouter>
-      </AuthProvider>
+      </EnhancedAuthProvider>
     </HelmetProvider>
   );
 }

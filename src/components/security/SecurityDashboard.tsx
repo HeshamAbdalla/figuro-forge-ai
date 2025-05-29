@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Shield, AlertTriangle, CheckCircle, Activity, RefreshCw } from 'lucide-react';
 import { useEnhancedAuth } from '@/components/auth/EnhancedAuthProvider';
 import { supabase } from '@/integrations/supabase/client';
+
+interface SecurityEventFromDB {
+  id: string;
+  event_type: string;
+  event_details: any;
+  created_at: string;
+  success: boolean;
+  ip_address: string | null;
+  user_agent: string;
+  user_id: string;
+}
 
 interface SecurityEvent {
   id: string;
@@ -35,7 +45,18 @@ export function SecurityDashboard() {
         .limit(10);
 
       if (error) throw error;
-      setRecentEvents(data || []);
+      
+      // Transform the data to match our SecurityEvent interface
+      const transformedEvents: SecurityEvent[] = (data || []).map((event: SecurityEventFromDB) => ({
+        id: event.id,
+        event_type: event.event_type,
+        event_details: event.event_details,
+        created_at: event.created_at,
+        success: event.success,
+        ip_address: event.ip_address || undefined
+      }));
+      
+      setRecentEvents(transformedEvents);
     } catch (error) {
       console.error('Error fetching security events:', error);
     } finally {
