@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,13 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useAuth } from "./AuthProvider";
+import { useEnhancedAuth } from "./EnhancedAuthProvider";
 import { cleanupAuthState } from "@/utils/authUtils";
 import { AlertCircle, Mail, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
 import { isEmailVerificationError } from "@/utils/authUtils";
 
 export function AuthForm() {
-  const { signIn, signUp, signInWithGoogle, resendVerificationEmail } = useAuth();
+  const { signIn, signUp, signInWithGoogle, resendVerificationEmail } = useEnhancedAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
