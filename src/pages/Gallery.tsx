@@ -9,14 +9,14 @@ import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
 import { useImageViewer } from "@/components/gallery/useImageViewer";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useToast } from "@/hooks/use-toast";
 
 const Gallery = () => {
   const { files, isLoading, error, refetch } = useGalleryFiles();
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user } = useEnhancedAuth();
 
   const {
     viewingModel,
