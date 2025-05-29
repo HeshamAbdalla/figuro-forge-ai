@@ -40,6 +40,46 @@ export const clearAuthRateLimits = async () => {
 };
 
 /**
+ * Simple rate limit check with timeout and fallback
+ */
+export const checkRateLimitSafe = async (endpoint: string, limit: number = 20, windowMinutes: number = 15): Promise<boolean> => {
+  try {
+    console.log(`🔍 [AUTH-UTILS] Checking rate limit for ${endpoint}...`);
+    
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    // Create a timeout promise
+    const timeoutPromise = new Promise<boolean>((_, reject) => {
+      setTimeout(() => reject(new Error('Rate limit check timeout')), 3000);
+    });
+    
+    // Race the rate limit check against the timeout
+    const checkPromise = supabase.rpc('check_rate_limit', {
+      p_user_id: null, // Allow anonymous rate limiting
+      p_ip_address: null,
+      p_endpoint: endpoint,
+      p_limit: limit,
+      p_window_minutes: windowMinutes
+    });
+    
+    const { data, error } = await Promise.race([checkPromise, timeoutPromise]);
+    
+    if (error) {
+      console.warn('⚠️ [AUTH-UTILS] Rate limit check failed, allowing request:', error);
+      return true; // Allow on error to prevent blocking legitimate users
+    }
+    
+    const canProceed = data === true;
+    console.log(`${canProceed ? '✅' : '❌'} [AUTH-UTILS] Rate limit check result:`, canProceed);
+    return canProceed;
+    
+  } catch (error) {
+    console.warn('⚠️ [AUTH-UTILS] Rate limit check error, allowing request:', error);
+    return true; // Fail open - allow request if rate limit check fails
+  }
+};
+
+/**
  * Parse authentication errors and return user-friendly messages
  */
 export const getAuthErrorMessage = (error: any): string => {

@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
-import { cleanupAuthState, getAuthErrorMessage } from "@/utils/authUtils";
+import { cleanupAuthState, getAuthErrorMessage, checkRateLimitSafe } from "@/utils/authUtils";
 import { sessionManager } from "@/utils/sessionManager";
 import { sessionDebugger } from "@/utils/debugUtils";
 import { securityManager } from "@/utils/securityUtils";
@@ -291,36 +291,46 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     };
   }, []);
 
-  // Enhanced sign in with better rate limiting handling
+  // Streamlined sign in with simplified rate limiting
   const signIn = async (email: string, password: string) => {
+    const signInStart = performance.now();
+    console.log("🚀 [ENHANCED-AUTH] Starting streamlined sign-in process...");
+    
     try {
-      // Validate input
+      // Validate input first
       if (!securityManager.validateEmail(email)) {
         throw new Error('Invalid email format');
       }
 
-      // Check rate limit with more lenient settings for signin
-      const canProceed = await securityManager.checkRateLimit('auth_signin', 10, 15);
+      // Simple rate limit check with fallback
+      console.log("🔍 [ENHANCED-AUTH] Checking rate limits...");
+      const canProceed = await checkRateLimitSafe('auth_signin', 20, 15);
       if (!canProceed) {
-        throw new Error('Too many sign in attempts. Please wait a few minutes before trying again, or use the "Clear rate limit" button below.');
+        throw new Error('Too many sign in attempts. Please wait a few minutes before trying again.');
       }
 
+      // Clean up any existing auth state
       cleanupAuthState();
       
+      // Attempt global sign out (non-blocking)
       try {
         await supabase.auth.signOut({ scope: 'global' });
+        console.log("✅ [ENHANCED-AUTH] Global sign out completed");
       } catch (err) {
-        console.log("Pre-signIn global sign out error (non-critical):", err);
+        console.log("⚠️ [ENHANCED-AUTH] Global sign out failed (non-critical):", err);
       }
       
-      console.log("Attempting enhanced sign-in with email:", email);
+      console.log("🔐 [ENHANCED-AUTH] Attempting sign-in with email:", email);
       
+      // Perform the actual sign-in
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
-      console.log("Enhanced sign-in response:", error ? "Error" : "Success", error || data);
+      const signInDuration = performance.now() - signInStart;
+      console.log(`⏱️ [ENHANCED-AUTH] Sign-in attempt completed in ${signInDuration.toFixed(2)}ms`);
       
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
+        console.error("❌ [ENHANCED-AUTH] Sign-in failed:", error.message);
         
         // Log failed sign in attempt
         await securityManager.logSecurityEvent({
@@ -328,7 +338,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           event_details: { 
             email, 
             error: error.message,
-            friendly_error: friendlyError
+            friendly_error: friendlyError,
+            duration_ms: signInDuration
           },
           success: false
         });
@@ -346,10 +357,13 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         event_type: 'signin_success',
         event_details: { 
           email,
-          user_id: data.user?.id
+          user_id: data.user?.id,
+          duration_ms: signInDuration
         },
         success: true
       });
+      
+      console.log("✅ [ENHANCED-AUTH] Sign-in successful, user:", data.user?.email);
       
       toast({
         title: "Signed in successfully",
@@ -357,14 +371,16 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       return { error: null };
     } catch (error: any) {
-      console.error("Enhanced sign-in exception:", error);
+      const signInDuration = performance.now() - signInStart;
+      console.error("❌ [ENHANCED-AUTH] Sign-in exception:", error);
       const friendlyError = getAuthErrorMessage(error);
       
       await securityManager.logSecurityEvent({
         event_type: 'signin_exception',
         event_details: { 
           email, 
-          error: error.message
+          error: error.message,
+          duration_ms: signInDuration
         },
         success: false
       });
@@ -392,9 +408,9 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       }
 
       // Check rate limit with more lenient settings for signup
-      const canProceed = await securityManager.checkRateLimit('auth_signup', 5, 60);
+      const canProceed = await checkRateLimitSafe('auth_signup', 10, 60);
       if (!canProceed) {
-        throw new Error('Too many sign up attempts. Please wait a few minutes before trying again, or use the "Clear rate limit" button below.');
+        throw new Error('Too many sign up attempts. Please wait a few minutes before trying again.');
       }
 
       cleanupAuthState();

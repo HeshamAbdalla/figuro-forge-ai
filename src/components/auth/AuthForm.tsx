@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,8 @@ export function AuthForm() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log("🚀 [AUTH-FORM] Starting sign-in process...");
     setIsLoading(true);
     setErrorMessage("");
     setShowResendOption(false);
@@ -35,20 +38,27 @@ export function AuthForm() {
     
     cleanupAuthState();
     
-    const { error } = await signIn(email, password);
-    
-    if (error) {
-      setErrorMessage(error);
-      if (isEmailVerificationError(error)) {
-        setShowResendOption(true);
-      } else if (isRateLimitError(error)) {
-        setIsRateLimited(true);
+    try {
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        console.error("❌ [AUTH-FORM] Sign-in failed:", error);
+        setErrorMessage(error);
+        if (isEmailVerificationError(error)) {
+          setShowResendOption(true);
+        } else if (isRateLimitError(error)) {
+          setIsRateLimited(true);
+        }
+      } else {
+        console.log("✅ [AUTH-FORM] Sign-in successful, navigating to home...");
+        navigate("/");
       }
-    } else {
-      navigate("/");
+    } catch (error) {
+      console.error("❌ [AUTH-FORM] Sign-in exception:", error);
+      setErrorMessage("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {

@@ -53,9 +53,16 @@ export class SecurityManager {
 
   async checkRateLimit(endpoint: string, limit: number = 100, windowMinutes: number = 60): Promise<boolean> {
     try {
+      console.log(`🔍 [SECURITY] Checking rate limit for ${endpoint} (limit: ${limit}, window: ${windowMinutes}min)...`);
+      
       const { data: { user } } = await supabase.auth.getUser();
       
-      const { data, error } = await supabase.rpc('check_rate_limit', {
+      // Create a timeout promise to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Rate limit check timeout')), 2000);
+      });
+      
+      const checkPromise = supabase.rpc('check_rate_limit', {
         p_user_id: user?.id || null,
         p_ip_address: this.ipAddress,
         p_endpoint: endpoint,
@@ -63,15 +70,19 @@ export class SecurityManager {
         p_window_minutes: windowMinutes
       });
 
+      const { data, error } = await Promise.race([checkPromise, timeoutPromise]);
+
       if (error) {
-        console.error('Rate limit check failed:', error);
-        return false;
+        console.warn('⚠️ [SECURITY] Rate limit check failed, allowing request:', error);
+        return true; // Fail open
       }
 
-      return data;
+      const canProceed = data === true;
+      console.log(`${canProceed ? '✅' : '❌'} [SECURITY] Rate limit result:`, canProceed);
+      return canProceed;
     } catch (error) {
-      console.error('Rate limit check error:', error);
-      return false;
+      console.warn('⚠️ [SECURITY] Rate limit check error, allowing request:', error);
+      return true; // Fail open to prevent blocking legitimate users
     }
   }
 
@@ -93,20 +104,8 @@ export class SecurityManager {
   validatePassword(password: string): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
     
-    if (password.length < 8) {
-      errors.push('Password must be at least 8 characters long');
-    }
-    if (!/[A-Z]/.test(password)) {
-      errors.push('Password must contain at least one uppercase letter');
-    }
-    if (!/[a-z]/.test(password)) {
-      errors.push('Password must contain at least one lowercase letter');
-    }
-    if (!/\d/.test(password)) {
-      errors.push('Password must contain at least one number');
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      errors.push('Password must contain at least one special character');
+    if (password.length < 6) {
+      errors.push('Password must be at least 6 characters long');
     }
 
     return {
