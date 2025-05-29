@@ -1,11 +1,10 @@
-
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, X } from "lucide-react";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -71,7 +70,7 @@ const pricingPlans = [
 ];
 
 const Pricing = () => {
-  const { user, profile } = useAuth();
+  const { user, profile } = useEnhancedAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
