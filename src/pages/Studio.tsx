@@ -68,6 +68,33 @@ const Studio = () => {
     hideUpgradeModal
   } = useUpgradeModal();
 
+  // Create wrapper functions to match the expected signatures
+  const wrappedHandleGenerate = async (prompt: string, style: string, apiKey?: string, preGeneratedImageUrl?: string) => {
+    const result = await handleGenerate(prompt, style, apiKey, preGeneratedImageUrl);
+    
+    // Handle upgrade needed scenario
+    if (result.needsUpgrade && showUpgradeModal) {
+      showUpgradeModal("image_generation");
+    }
+    
+    return result;
+  };
+
+  const wrappedGenerateTextTo3DModel = async (prompt: string, artStyle: string, negativePrompt?: string) => {
+    return await generateTextTo3DModel(prompt, artStyle, negativePrompt);
+  };
+
+  const wrappedGenerateTextTo3DModelWithConfig = async (config: any) => {
+    return await generateTextTo3DModelWithConfig(config);
+  };
+
+  const wrappedModelUpload = async (figurineId: string, file: File) => {
+    const modelUrl = URL.createObjectURL(file);
+    setCustomModelUrl(modelUrl);
+    setCustomModelFile(file);
+    resetProgress();
+  };
+
   const {
     onGenerate,
     handleOpenConfigModal,
@@ -88,13 +115,29 @@ const Studio = () => {
     setTextTo3DConfigModalOpen,
     setGenerationModalOpen,
     setTextTo3DConfigPrompt,
-    handleGenerate,
+    handleGenerate: wrappedHandleGenerate,
     generate3DModel,
-    generateTextTo3DModel,
-    generateTextTo3DModelWithConfig,
-    resetProgress,
-    showUpgradeModal
+    generateTextTo3DModel: wrappedGenerateTextTo3DModel,
+    generateTextTo3DModelWithConfig: wrappedGenerateTextTo3DModelWithConfig,
+    resetProgress
   });
+
+  // Create wrapper functions that match StudioLayout expectations
+  const wrappedOnGenerate = async (prompt: string, style: string) => {
+    await onGenerate(prompt, style);
+  };
+
+  const wrappedHandleTextTo3D = async (prompt: string, artStyle: string, negativePrompt: string) => {
+    await handleTextTo3D(prompt, artStyle, negativePrompt);
+  };
+
+  const wrappedHandleTextTo3DWithConfig = async (config: any) => {
+    await handleTextTo3DWithConfig(config);
+  };
+
+  const wrappedHandleModelUpload = async (figurineId: string, file: File) => {
+    await wrappedModelUpload(figurineId, file);
+  };
 
   // Determine which model URL to display - custom, text-to-3D generated, or image-to-3D converted
   const displayModelUrl = customModelUrl || textTo3DProgress.modelUrl || progress.modelUrl;
@@ -128,14 +171,14 @@ const Studio = () => {
           textTo3DConfigPrompt={textTo3DConfigPrompt}
           generationModalOpen={generationModalOpen}
           setGenerationModalOpen={setGenerationModalOpen}
-          onGenerate={onGenerate}
+          onGenerate={wrappedOnGenerate}
           handleOpenConfigModal={handleOpenConfigModal}
           handleGenerate3DWithConfig={handleGenerate3DWithConfig}
           handleQuickConvert={handleQuickConvert}
-          handleTextTo3D={handleTextTo3D}
+          handleTextTo3D={wrappedHandleTextTo3D}
           handleOpenTextTo3DConfigModal={handleOpenTextTo3DConfigModal}
-          handleTextTo3DWithConfig={handleTextTo3DWithConfig}
-          handleModelUpload={handleModelUpload}
+          handleTextTo3DWithConfig={wrappedHandleTextTo3DWithConfig}
+          handleModelUpload={wrappedHandleModelUpload}
           handleSignOut={handleSignOut}
           handleSignIn={handleSignIn}
           handleCloseGenerationModal={handleCloseGenerationModal}
