@@ -1,10 +1,13 @@
+
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
 import { useTabNavigation } from "@/hooks/useTabNavigation";
+import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import Header from "@/components/Header";
 import StudioLayout from "@/components/studio/StudioLayout";
+import UpgradeModal from "@/components/UpgradeModal";
 import { useStudioState } from "@/components/studio/hooks/useStudioState";
 import { useStudioHandlers } from "@/components/studio/hooks/useStudioHandlers";
 
@@ -57,6 +60,14 @@ const Studio = () => {
 
   const { user: authUser } = useEnhancedAuth();
 
+  // Add upgrade modal functionality
+  const {
+    isUpgradeModalOpen,
+    upgradeModalAction,
+    showUpgradeModal,
+    hideUpgradeModal
+  } = useUpgradeModal();
+
   const {
     onGenerate,
     handleOpenConfigModal,
@@ -81,7 +92,8 @@ const Studio = () => {
     generate3DModel,
     generateTextTo3DModel,
     generateTextTo3DModelWithConfig,
-    resetProgress
+    resetProgress,
+    showUpgradeModal
   });
 
   // Determine which model URL to display - custom, text-to-3D generated, or image-to-3D converted
@@ -130,6 +142,19 @@ const Studio = () => {
           setCustomModelUrl={setCustomModelUrl}
         />
       </div>
+      
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onOpenChange={hideUpgradeModal}
+        actionType={upgradeModalAction}
+        title="Upgrade Required"
+        description={
+          upgradeModalAction === "image_generation"
+            ? "You've reached your daily image generation limit."
+            : "You've reached your monthly 3D conversion limit."
+        }
+      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
 import { SUPABASE_URL } from "@/integrations/supabase/client";
 import { saveFigurine } from "@/services/figurineService";
 
@@ -8,6 +9,7 @@ export interface WebIconGenerationResult {
   success: boolean;
   imageUrl?: string;
   error?: string;
+  needsUpgrade?: boolean;
 }
 
 export interface WebIconGenerationOptions {
@@ -20,6 +22,9 @@ export const useWebIconsGeneration = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedIcon, setGeneratedIcon] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  // Add subscription hook for usage management
+  const { canPerformAction, consumeAction, getUpgradeRecommendation } = useSubscription();
 
   const generateIcon = useCallback(async (
     prompt: string, 
@@ -32,6 +37,27 @@ export const useWebIconsGeneration = () => {
         variant: "destructive"
       });
       return { success: false, error: "Empty prompt" };
+    }
+
+    // Check if user can perform image generation
+    if (!canPerformAction('image_generation')) {
+      console.log('🚫 [WEB_ICONS] Generation blocked - usage limit reached');
+      
+      const recommendation = getUpgradeRecommendation('image_generation');
+      
+      toast({
+        title: "Generation limit reached",
+        description: recommendation 
+          ? `You've reached your daily limit. Upgrade to ${recommendation.recommendedPlan} for more generations.`
+          : "You've reached your daily generation limit. Please upgrade your plan or wait until tomorrow.",
+        variant: "destructive",
+      });
+      
+      return { 
+        success: false, 
+        needsUpgrade: true,
+        error: "Generation limit reached" 
+      };
     }
 
     setIsGenerating(true);
@@ -75,6 +101,19 @@ export const useWebIconsGeneration = () => {
       
       const imageBlob = await response.blob();
       const imageUrl = URL.createObjectURL(imageBlob);
+      
+      // Consume the usage credit after successful generation
+      const consumeSuccess = await consumeAction('image_generation');
+      if (!consumeSuccess) {
+        console.error('❌ [WEB_ICONS] Failed to consume usage credit');
+        toast({
+          title: "Usage tracking error",
+          description: "Icon generated but usage tracking failed. Please contact support if this persists.",
+          variant: "default",
+        });
+      } else {
+        console.log('✅ [WEB_ICONS] Successfully consumed usage credit');
+      }
       
       setGeneratedIcon(imageUrl);
       
@@ -132,7 +171,7 @@ export const useWebIconsGeneration = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [toast]);
+  }, [toast, canPerformAction, consumeAction, getUpgradeRecommendation]);
 
   const clearIcon = useCallback(() => {
     setGeneratedIcon(null);

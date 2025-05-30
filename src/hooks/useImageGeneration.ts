@@ -1,6 +1,6 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
 import { saveFigurine, updateFigurineWithModelUrl } from "@/services/figurineService";
 import { generateImage } from "@/services/generationService";
 import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ export type GenerateResult = {
   success: boolean;
   needsApiKey: boolean;
   error?: string;
+  needsUpgrade?: boolean;
 };
 
 export const useImageGeneration = () => {
@@ -32,6 +33,9 @@ export const useImageGeneration = () => {
   const currentTaskRef = useRef<string | null>(null);
   const modelUrlRef = useRef<string | null>(null);
   const { toast } = useToast();
+  
+  // Add subscription hook for usage management
+  const { canPerformAction, consumeAction, getUpgradeRecommendation } = useSubscription();
 
   // Update the ref when modelUrl changes
   useEffect(() => {
@@ -435,7 +439,7 @@ export const useImageGeneration = () => {
     return () => clearInterval(checkInterval);
   };
 
-  // Generate image using a single generation attempt strategy with request deduplication
+  // Generate image with usage checks and consumption
   const handleGenerate = async (prompt: string, style: string, apiKey: string = "", preGeneratedImageUrl?: string): Promise<GenerateResult> => {
     // Create a unique request ID for this generation
     const requestId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -457,6 +461,28 @@ export const useImageGeneration = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       throw new Error('Authentication required to generate figurines');
+    }
+
+    // Check if user can perform image generation
+    if (!canPerformAction('image_generation')) {
+      console.log(`🚫 [GENERATION] Request ${requestId} blocked - usage limit reached`);
+      
+      const recommendation = getUpgradeRecommendation('image_generation');
+      
+      toast({
+        title: "Generation limit reached",
+        description: recommendation 
+          ? `You've reached your daily limit. Upgrade to ${recommendation.recommendedPlan} for more generations.`
+          : "You've reached your daily generation limit. Please upgrade your plan or wait until tomorrow.",
+        variant: "destructive",
+      });
+      
+      return { 
+        success: false, 
+        needsApiKey: false, 
+        needsUpgrade: true,
+        error: "Generation limit reached" 
+      };
     }
 
     // Set the generation lock
@@ -513,6 +539,20 @@ export const useImageGeneration = () => {
         console.log(`✅ [GENERATION] Request ${requestId} successfully generated image via ${result.method} method`);
       }
       
+      // Consume the usage credit after successful generation
+      const consumeSuccess = await consumeAction('image_generation');
+      if (!consumeSuccess) {
+        console.error(`❌ [GENERATION] Request ${requestId} failed to consume usage credit`);
+        // Continue with the generation since we already created the image
+        toast({
+          title: "Usage tracking error",
+          description: "Image generated but usage tracking failed. Please contact support if this persists.",
+          variant: "default",
+        });
+      } else {
+        console.log(`✅ [GENERATION] Request ${requestId} successfully consumed usage credit`);
+      }
+      
       // Save the figurine to Supabase if we have an image
       if (imageUrl) {
         setGeneratedImage(imageUrl);
@@ -565,12 +605,26 @@ export const useImageGeneration = () => {
     }
   };
 
-  // Convert image to 3D model using Meshy.ai API with webhook and SSE
+  // Convert image to 3D model with usage checks
   const handleConvertTo3D = async () => {
     if (!generatedImage) {
       toast({
         title: "No image to convert",
         description: "Please generate an image first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if user can perform model conversion
+    if (!canPerformAction('model_conversion')) {
+      const recommendation = getUpgradeRecommendation('model_conversion');
+      
+      toast({
+        title: "Conversion limit reached",
+        description: recommendation 
+          ? `You've reached your monthly limit. Upgrade to ${recommendation.recommendedPlan} for more conversions.`
+          : "You've reached your monthly conversion limit. Please upgrade your plan or wait until next month.",
         variant: "destructive",
       });
       return;
@@ -629,6 +683,19 @@ export const useImageGeneration = () => {
       
       if (!data?.taskId) {
         throw new Error("No task ID returned from conversion service");
+      }
+      
+      // Consume the usage credit after successful conversion start
+      const consumeSuccess = await consumeAction('model_conversion');
+      if (!consumeSuccess) {
+        console.error('❌ [CONVERSION] Failed to consume model conversion credit');
+        toast({
+          title: "Usage tracking error",
+          description: "Conversion started but usage tracking failed. Please contact support if this persists.",
+          variant: "default",
+        });
+      } else {
+        console.log('✅ [CONVERSION] Successfully consumed model conversion credit');
       }
       
       console.log("Conversion task started with ID:", data.taskId);
