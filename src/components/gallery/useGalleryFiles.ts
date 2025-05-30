@@ -288,7 +288,8 @@ export const useGalleryFiles = () => {
       // Convert figurines to BucketImage format
       const figurineFiles: BucketImage[] = figurines.map(figurine => {
         const imageUrl = figurine.saved_image_url || figurine.image_url;
-        const fileType = figurine.file_type || (figurine.style === 'web-icon' ? 'web-icon' : 'image');
+        // Check if this is a web icon by looking at file_type or style
+        const fileType = figurine.file_type || (figurine.file_type === 'web-icon' ? 'web-icon' : 'image');
         
         // Safely convert metadata from Json to Record<string, any>
         let metadata: Record<string, any> = {};

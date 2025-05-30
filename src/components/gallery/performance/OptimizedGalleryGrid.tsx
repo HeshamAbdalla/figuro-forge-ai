@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BucketImage } from "../types";
@@ -14,7 +13,7 @@ interface OptimizedGalleryGridProps {
   images: BucketImage[];
   isLoading: boolean;
   onDownload: (url: string, name: string) => void;
-  onView: (url: string, name: string, type: 'image' | '3d-model') => void;
+  onView: (url: string, name: string, type: 'image' | '3d-model' | 'web-icon') => void;
   onGenerate3D?: (url: string, name: string) => void;
   showPerformanceMonitor?: boolean;
 }
@@ -22,7 +21,7 @@ interface OptimizedGalleryGridProps {
 const OptimizedGalleryItem: React.FC<{
   file: BucketImage;
   onDownload: (url: string, name: string) => void;
-  onView: (url: string, name: string, type: 'image' | '3d-model') => void;
+  onView: (url: string, name: string, type: 'image' | '3d-model' | 'web-icon') => void;
   onGenerate3D?: (url: string, name: string) => void;
   index: number;
 }> = ({ file, onDownload, onView, onGenerate3D, index }) => {
@@ -43,6 +42,7 @@ const OptimizedGalleryItem: React.FC<{
   const isTextTo3DFile = file.fullPath?.includes('figurine-models/') || false;
   const isImage = file.type === 'image';
   const is3DModel = file.type === '3d-model';
+  const isWebIcon = file.type === 'web-icon';
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -61,7 +61,7 @@ const OptimizedGalleryItem: React.FC<{
 
   const handleGenerate3D = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onGenerate3D) {
+    if (onGenerate3D && !isWebIcon) {
       onGenerate3D(file.url, file.name);
     }
   };
@@ -75,7 +75,10 @@ const OptimizedGalleryItem: React.FC<{
   }
 
   return (
-    <div className={`glass-panel rounded-lg overflow-hidden group hover:scale-105 transition-transform duration-200 ${isTextTo3DFile ? 'ring-1 ring-figuro-accent/30' : ''}`}>
+    <div className={`glass-panel rounded-lg overflow-hidden group hover:scale-105 transition-transform duration-200 ${
+      isTextTo3DFile ? 'ring-1 ring-figuro-accent/30' : 
+      isWebIcon ? 'ring-1 ring-purple-500/30' : ''
+    }`}>
       <div className="relative">
         <div className="aspect-square relative overflow-hidden bg-white/5">
           {is3DModel ? (
@@ -109,13 +112,21 @@ const OptimizedGalleryItem: React.FC<{
           isDownloading={isDownloading}
           onDownload={handleDownload}
           onView={handleView}
-          onGenerate3D={handleGenerate3D}
+          onGenerate3D={isWebIcon ? undefined : handleGenerate3D}
         />
         
         {isTextTo3DFile && (
           <div className="absolute top-2 left-2 z-10">
             <div className="bg-figuro-accent/80 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
               Text-to-3D
+            </div>
+          </div>
+        )}
+        
+        {isWebIcon && (
+          <div className="absolute top-2 left-2 z-10">
+            <div className="bg-purple-500/80 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+              Web Icon
             </div>
           </div>
         )}

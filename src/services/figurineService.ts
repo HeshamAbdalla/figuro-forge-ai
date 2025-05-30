@@ -217,7 +217,7 @@ export const fetchPublicFigurines = async (): Promise<Figurine[]> => {
       throw error;
     }
     
-    // Map figurines to include best available image URL
+    // Map figurines to include best available image URL and ensure proper types
     const processedFigurines = (data || []).map((figurine) => {
       // Use saved_image_url if available, otherwise fall back to image_url
       let imageUrl = figurine.saved_image_url || figurine.image_url;
@@ -228,10 +228,37 @@ export const fetchPublicFigurines = async (): Promise<Figurine[]> => {
         imageUrl = imageUrl.includes('?') ? `${imageUrl}&cb=${Date.now()}` : `${imageUrl}${cacheBuster}`;
       }
       
+      // Ensure file_type is properly typed
+      const fileType = figurine.file_type || 'image';
+      
+      // Safely convert metadata
+      let metadata: Record<string, any> = {};
+      if (figurine.metadata) {
+        try {
+          if (typeof figurine.metadata === 'string') {
+            metadata = JSON.parse(figurine.metadata);
+          } else if (typeof figurine.metadata === 'object') {
+            metadata = figurine.metadata as Record<string, any>;
+          }
+        } catch (e) {
+          console.warn('Failed to parse metadata for figurine:', figurine.id);
+          metadata = {};
+        }
+      }
+      
       return {
         ...figurine,
-        display_url: imageUrl
-      };
+        display_url: imageUrl,
+        file_type: fileType as 'image' | '3d-model' | 'web-icon',
+        metadata: metadata,
+        created_at: figurine.created_at || new Date().toISOString(),
+        updated_at: figurine.updated_at || new Date().toISOString(),
+        title: figurine.title || 'Untitled',
+        image_url: figurine.image_url || '',
+        saved_image_url: figurine.saved_image_url || null,
+        model_url: figurine.model_url || null,
+        is_public: figurine.is_public !== null ? figurine.is_public : false
+      } as Figurine;
     });
     
     console.log('✅ [FIGURINE] Fetched public figurines:', processedFigurines.length);

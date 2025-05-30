@@ -18,6 +18,7 @@ export interface Figurine {
   saved_image_url: string | null;
   model_url: string | null;
   created_at: string;
+  updated_at?: string;
   user_id?: string;
   is_public?: boolean;
   file_type?: 'image' | 'web-icon' | '3d-model';
