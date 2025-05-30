@@ -47,8 +47,8 @@ export function AuthForm() {
           setIsRateLimited(true);
         }
       } else {
-        console.log("✅ [AUTH-FORM] Sign-in successful, navigating...");
-        navigate("/");
+        console.log("✅ [AUTH-FORM] Sign-in successful, navigating to studio...");
+        navigate("/studio");
       }
     } catch (error) {
       console.error("❌ [AUTH-FORM] Sign-in exception:", error);

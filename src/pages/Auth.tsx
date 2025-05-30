@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { AuthForm } from "@/components/auth/AuthForm";
@@ -19,10 +18,10 @@ const Auth = () => {
     cleanupAuthState();
   }, []);
   
-  // Redirect if already authenticated
+  // Redirect if already authenticated to Studio
   useEffect(() => {
     if (user && !isLoading) {
-      navigate("/");
+      navigate("/studio");
     }
   }, [user, isLoading, navigate]);
   

@@ -61,8 +61,8 @@ const CompleteProfile = () => {
         description: "Your profile has been updated successfully.",
       });
       
-      // Redirect to home page
-      navigate("/");
+      // Redirect to Studio page instead of home
+      navigate("/studio");
     } catch (error) {
       toast({
         title: "Error updating profile",
@@ -110,7 +110,7 @@ const CompleteProfile = () => {
                 </form>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button variant="ghost" onClick={() => navigate("/")}>
+                <Button variant="ghost" onClick={() => navigate("/studio")}>
                   Skip for now
                 </Button>
               </CardFooter>
