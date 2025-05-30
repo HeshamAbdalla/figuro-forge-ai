@@ -38,7 +38,11 @@ export const saveFigurine = async (
   prompt: string, 
   style: string, 
   imageUrl: string, 
-  imageBlob: Blob | null
+  imageBlob: Blob | null,
+  options?: {
+    file_type?: 'image' | 'web-icon' | '3d-model';
+    metadata?: Record<string, any>;
+  }
 ): Promise<string | null> => {
   try {
     console.log('🔄 [FIGURINE] Starting figurine save process');
@@ -102,7 +106,9 @@ export const saveFigurine = async (
       image_url: imageUrl,
       saved_image_url: savedImageUrl || imageUrl, // Use saved URL or fallback to original
       title: prompt.substring(0, 50),
-      is_public: true // Set all figurines as public by default
+      is_public: true, // Set all figurines as public by default
+      file_type: options?.file_type || 'image', // Default to 'image' if not specified
+      metadata: options?.metadata || {} // Default to empty object if not specified
     };
     
     console.log('🔄 [FIGURINE] Preparing to insert figurine data:', {
@@ -110,7 +116,9 @@ export const saveFigurine = async (
       user_id: figurineData.user_id,
       title: figurineData.title,
       is_public: figurineData.is_public,
-      has_saved_image: !!figurineData.saved_image_url
+      file_type: figurineData.file_type,
+      has_saved_image: !!figurineData.saved_image_url,
+      has_metadata: Object.keys(figurineData.metadata).length > 0
     });
     
     // Verify authentication before insert

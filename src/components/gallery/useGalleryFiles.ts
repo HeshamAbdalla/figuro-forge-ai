@@ -10,8 +10,18 @@ export const useGalleryFiles = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Helper function to determine file type based on extension
-  const getFileType = (filename: string): 'image' | '3d-model' => {
+  // Helper function to determine file type based on extension and metadata
+  const getFileType = (filename: string, metadata?: any): 'image' | '3d-model' | 'web-icon' => {
+    // Check metadata first for web icons
+    if (metadata?.file_type === 'web-icon') {
+      return 'web-icon';
+    }
+    
+    // Check filename patterns for web icons
+    if (filename.toLowerCase().includes('web-icon') || filename.toLowerCase().includes('icon')) {
+      return 'web-icon';
+    }
+    
     const extension = filename.split('.').pop()?.toLowerCase() || '';
     // Check for common 3D model formats
     if (['glb', 'gltf', 'fbx', 'obj', 'usdz'].includes(extension)) {
@@ -55,11 +65,13 @@ export const useGalleryFiles = () => {
       !file.fullPath?.includes('/thumbnails/') && 
       !file.name.includes('_thumbnail')
     );
+    const webIcons = allFiles.filter(file => file.type === 'web-icon');
 
     console.log('📊 [GALLERY] File breakdown:', {
       models: models.length,
       thumbnails: thumbnails.length,
-      regularImages: regularImages.length
+      regularImages: regularImages.length,
+      webIcons: webIcons.length
     });
 
     // Create a map of task IDs to thumbnails for faster lookup
@@ -87,8 +99,8 @@ export const useGalleryFiles = () => {
       return model;
     });
 
-    // Return only models (with their thumbnails) and regular images (not standalone thumbnails)
-    const finalFiles = [...modelsWithThumbnails, ...regularImages];
+    // Return models (with thumbnails), regular images, and web icons (not standalone thumbnails)
+    const finalFiles = [...modelsWithThumbnails, ...regularImages, ...webIcons];
     
     console.log('✅ [GALLERY] File association complete. Final count:', finalFiles.length);
     console.log('📋 [GALLERY] Filtered out', thumbnails.length, 'standalone thumbnails');
@@ -247,23 +259,80 @@ export const useGalleryFiles = () => {
     }
   };
 
-  // Load all images and models from both buckets - made useCallback for better optimization
+  // Function to load figurines from the database (including web icons)
+  const loadFigurinesFromDatabase = async (): Promise<BucketImage[]> => {
+    try {
+      console.log('🔄 [GALLERY] Fetching figurines from database...');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        console.log('ℹ️ [GALLERY] No authenticated user, skipping database figurines');
+        return [];
+      }
+      
+      const { data: figurines, error } = await supabase
+        .from('figurines')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('❌ [GALLERY] Error fetching figurines:', error);
+        return [];
+      }
+      
+      if (!figurines || figurines.length === 0) {
+        console.log('ℹ️ [GALLERY] No figurines found for user');
+        return [];
+      }
+      
+      // Convert figurines to BucketImage format
+      const figurineFiles: BucketImage[] = figurines.map(figurine => {
+        const imageUrl = figurine.saved_image_url || figurine.image_url;
+        const fileType = figurine.file_type || (figurine.style === 'web-icon' ? 'web-icon' : 'image');
+        
+        return {
+          name: `${figurine.title || 'Untitled'}.png`,
+          fullPath: `figurines/${figurine.id}`,
+          url: imageUrl,
+          id: figurine.id,
+          created_at: figurine.created_at,
+          type: fileType as 'image' | '3d-model' | 'web-icon',
+          metadata: figurine.metadata
+        };
+      });
+      
+      console.log(`✅ [GALLERY] Found ${figurineFiles.length} figurines from database`);
+      return figurineFiles;
+    } catch (error) {
+      console.error('❌ [GALLERY] Error fetching figurines from database:', error);
+      return [];
+    }
+  };
+
+  // Load all images, models, and web icons from all sources - made useCallback for better optimization
   const fetchImagesFromBucket = useCallback(async () => {
     console.log('🔄 [GALLERY] Starting gallery files fetch...');
     setIsLoading(true);
     setError(null);
     try {
-      // Get all files from both sources in parallel
-      const [imageFiles, modelFiles] = await Promise.all([
+      // Get all files from all sources in parallel
+      const [imageFiles, modelFiles, figurineFiles] = await Promise.all([
         listFilesRecursively(), // From figurine-images bucket
-        listModelFiles()        // From figurine-models bucket
+        listModelFiles(),        // From figurine-models bucket
+        loadFigurinesFromDatabase() // From figurines table (includes web icons)
       ]);
       
-      // Combine all files
-      const allFiles = [...imageFiles, ...modelFiles];
+      // Combine all files, prioritizing database figurines (to avoid duplicates)
+      const allFiles = [...figurineFiles, ...imageFiles, ...modelFiles];
+      
+      // Remove duplicates based on URL (prioritize database entries)
+      const uniqueFiles = allFiles.filter((file, index, self) => 
+        index === self.findIndex(f => f.url === file.url)
+      );
       
       // Associate files with thumbnails and filter out standalone thumbnails
-      const associatedFiles = associateFilesWithThumbnails(allFiles);
+      const associatedFiles = associateFilesWithThumbnails(uniqueFiles);
       
       // Sort by creation date (newest first)
       associatedFiles.sort((a, b) => 
@@ -312,9 +381,22 @@ export const useGalleryFiles = () => {
       )
       .subscribe();
       
+    // Listen for figurines table changes (web icons and other figurines)
+    const figurinesChannel = supabase
+      .channel('figurines-changes')
+      .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'figurines' },
+          () => {
+            console.log('🔄 [GALLERY] Figurines table changed, refetching files...');
+            fetchImagesFromBucket();
+          }
+      )
+      .subscribe();
+      
     return () => {
       supabase.removeChannel(imagesChannel);
       supabase.removeChannel(modelsChannel);
+      supabase.removeChannel(figurinesChannel);
     };
   }, [fetchImagesFromBucket]);
 

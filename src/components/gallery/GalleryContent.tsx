@@ -65,15 +65,22 @@ const GalleryContent: React.FC<GalleryContentProps> = ({
   authPromptOpen,
   onAuthPromptChange
 }) => {
-  const handleViewItem = (url: string, name: string, type: 'image' | '3d-model') => {
+  const handleViewItem = (url: string, name: string, type: 'image' | '3d-model' | 'web-icon') => {
     if (type === '3d-model') {
       onViewModel(url, name);
     } else {
+      // Handle both regular images and web icons in the image viewer
       onViewImage(url, name);
     }
   };
 
   const handleGenerate3D = (url: string, name: string) => {
+    // Don't allow 3D generation for web icons
+    const file = files.find(f => f.url === url);
+    if (file?.type === 'web-icon') {
+      return; // Skip 3D generation for web icons
+    }
+    
     onViewImage(url, name); // This will set up the source image for 3D generation
     onGeneration3DOpenChange(true);
   };
@@ -119,7 +126,7 @@ const GalleryContent: React.FC<GalleryContentProps> = ({
         onClose={onCloseModelViewer}
       />
 
-      {/* Enhanced Image Viewer Dialog */}
+      {/* Enhanced Image Viewer Dialog - Handles both regular images and web icons */}
       <EnhancedImageViewerDialog
         open={imageViewerOpen}
         onOpenChange={setImageViewerOpen}
@@ -128,9 +135,9 @@ const GalleryContent: React.FC<GalleryContentProps> = ({
         onClose={onCloseImageViewer}
       />
 
-      {/* Generate 3D Modal */}
+      {/* Generate 3D Modal - Only for regular images, not web icons */}
       <Generate3DModal
-        open={!!sourceImageUrl && isGenerating}
+        open={!!sourceImageUrl && isGenerating && !files.find(f => f.url === sourceImageUrl)?.type?.includes('web-icon')}
         onOpenChange={onGeneration3DOpenChange}
         imageUrl={sourceImageUrl}
         isGenerating={isGenerating}

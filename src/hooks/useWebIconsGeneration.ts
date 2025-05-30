@@ -2,6 +2,7 @@
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { SUPABASE_URL } from "@/integrations/supabase/client";
+import { saveFigurine } from "@/services/figurineService";
 
 export interface WebIconGenerationResult {
   success: boolean;
@@ -77,10 +78,41 @@ export const useWebIconsGeneration = () => {
       
       setGeneratedIcon(imageUrl);
       
-      toast({
-        title: "Icon generated successfully!",
-        description: "Your web icon is ready for download",
-      });
+      // Save the web icon to the database
+      try {
+        const iconTitle = `Web Icon: ${prompt.substring(0, 30)}${prompt.length > 30 ? '...' : ''}`;
+        
+        await saveFigurine(
+          iconTitle,
+          'web-icon', // Use 'web-icon' as the style to differentiate from regular images
+          imageUrl,
+          imageBlob,
+          {
+            file_type: 'web-icon',
+            metadata: {
+              generation_options: options,
+              original_prompt: prompt,
+              icon_category: options.category,
+              icon_size: options.size,
+              icon_style: options.style
+            }
+          }
+        );
+        
+        console.log("Web icon saved to gallery successfully");
+        
+        toast({
+          title: "Icon generated & saved!",
+          description: "Your web icon is ready and has been added to your gallery",
+        });
+      } catch (saveError) {
+        console.error("Failed to save web icon to gallery:", saveError);
+        // Still show success for generation, but warn about save failure
+        toast({
+          title: "Icon generated successfully!",
+          description: "Icon created but couldn't be saved to gallery. You can still download it.",
+        });
+      }
       
       console.log("Successfully generated web icon");
       

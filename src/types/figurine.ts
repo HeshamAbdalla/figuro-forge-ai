@@ -20,4 +20,6 @@ export interface Figurine {
   created_at: string;
   user_id?: string;
   is_public?: boolean;
+  file_type?: 'image' | 'web-icon' | '3d-model';
+  metadata?: Record<string, any>;
 }

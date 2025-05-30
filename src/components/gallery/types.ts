@@ -5,8 +5,9 @@ export interface BucketImage {
   url: string;
   id: string;
   created_at: string;
-  type: 'image' | '3d-model';
+  type: 'image' | '3d-model' | 'web-icon';
   thumbnailUrl?: string; // Optional thumbnail URL for 3D models
+  metadata?: Record<string, any>; // Optional metadata for web icons and other types
 }
 
 export interface ConversionConfig {

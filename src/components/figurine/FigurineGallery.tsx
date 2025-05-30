@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Figurine } from '@/types/figurine';
 import FigurineList from './FigurineList';
@@ -17,6 +18,7 @@ const FigurineGallery = () => {
 
   const handleDownload = async (figurine: Figurine) => {
     const isTextTo3D = figurine.style === 'text-to-3d' || figurine.title.startsWith('Text-to-3D:');
+    const isWebIcon = figurine.file_type === 'web-icon' || figurine.title.startsWith('Web Icon:');
     
     if (isTextTo3D && figurine.model_url) {
       // Download 3D model for text-to-3D figurines
@@ -62,7 +64,7 @@ const FigurineGallery = () => {
         });
       }
     } else {
-      // Download image for traditional figurines
+      // Download image for traditional figurines and web icons
       const imageUrl = figurine.saved_image_url || figurine.image_url;
       if (!imageUrl) {
         toast({
@@ -91,14 +93,16 @@ const FigurineGallery = () => {
         
         const a = document.createElement('a');
         a.href = blobUrl;
-        a.download = `figurine-${figurine.title.replace(/\s+/g, '-')}-${figurine.id.substring(0, 8)}.png`;
+        const fileExtension = isWebIcon ? 'png' : 'png';
+        const prefix = isWebIcon ? 'web-icon' : 'figurine';
+        a.download = `${prefix}-${figurine.title.replace(/\s+/g, '-')}-${figurine.id.substring(0, 8)}.${fileExtension}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         
         toast({
           title: "Download started",
-          description: "Your figurine image is being downloaded",
+          description: `Your ${isWebIcon ? 'web icon' : 'figurine image'} is being downloaded`,
         });
         
         setTimeout(() => {
@@ -110,7 +114,7 @@ const FigurineGallery = () => {
         setIsDownloading(false);
         toast({
           title: "Download failed",
-          description: "There was a problem downloading the figurine image",
+          description: `There was a problem downloading the ${isWebIcon ? 'web icon' : 'figurine image'}`,
           variant: "destructive"
         });
       }
@@ -174,6 +178,16 @@ const FigurineGallery = () => {
   };
 
   const handleUploadModel = (figurine: Figurine) => {
+    // Don't allow model upload for web icons
+    if (figurine.file_type === 'web-icon') {
+      toast({
+        title: "Not supported",
+        description: "3D model uploads are not supported for web icons",
+        variant: "default"
+      });
+      return;
+    }
+    
     setSelectedFigurine(figurine);
     setUploadModalOpen(true);
   };

@@ -84,9 +84,11 @@ export type Database = {
       figurines: {
         Row: {
           created_at: string | null
+          file_type: string | null
           id: string
           image_url: string | null
           is_public: boolean | null
+          metadata: Json | null
           model_url: string | null
           prompt: string
           saved_image_url: string | null
@@ -97,9 +99,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          file_type?: string | null
           id?: string
           image_url?: string | null
           is_public?: boolean | null
+          metadata?: Json | null
           model_url?: string | null
           prompt: string
           saved_image_url?: string | null
@@ -110,9 +114,11 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          file_type?: string | null
           id?: string
           image_url?: string | null
           is_public?: boolean | null
+          metadata?: Json | null
           model_url?: string | null
           prompt?: string
           saved_image_url?: string | null
