@@ -139,7 +139,7 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
   const canvasSettings = {
     shadows: !isPreview, // Disable shadows for previews
     gl: {
-      powerPreference: isPreview ? "low-power" : "high-performance",
+      powerPreference: isPreview ? "low-power" as const : "high-performance" as const,
       antialias: !isPreview,
       alpha: true,
       depth: true,
@@ -148,7 +148,7 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
       failIfMajorPerformanceCaveat: isPreview
     },
     dpr: isPreview ? [0.5, 1] : [1, 2], // Lower DPR for previews
-    frameloop: autoRotate ? "always" : "demand", // Demand mode when not rotating
+    frameloop: (autoRotate ? "always" : "demand") as "always" | "demand" | "never", // Fix frameloop typing
     performance: {
       min: isPreview ? 0.2 : 0.5, // Lower performance threshold for previews
       max: 1,

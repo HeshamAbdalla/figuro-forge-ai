@@ -37,9 +37,9 @@ export class TextureOptimizer {
     // Set anisotropy for better quality at angles
     optimized.anisotropy = Math.min(anisotropy, 16); // Cap at 16 for compatibility
     
-    // Optimize wrapping
-    optimized.wrapS = THREE.ClampToEdgeWrap;
-    optimized.wrapT = THREE.ClampToEdgeWrap;
+    // Optimize wrapping - use correct Three.js constants
+    optimized.wrapS = THREE.ClampToEdgeWrapping;
+    optimized.wrapT = THREE.ClampToEdgeWrapping;
     
     console.log('Texture optimized with settings:', {
       generateMipmaps,

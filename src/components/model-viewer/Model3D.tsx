@@ -18,6 +18,31 @@ interface Model3DProps {
   maxTriangles?: number;
 }
 
+// Helper function to dispose any Three.js object
+const disposeThreeObject = (obj: THREE.Object3D): void => {
+  if ('isGroup' in obj) {
+    // It's a Group
+    disposeModel(obj as THREE.Group);
+  } else if ('isLOD' in obj) {
+    // It's an LOD object
+    obj.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(mat => mat.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      }
+    });
+    if (obj.parent) {
+      obj.parent.remove(obj);
+    }
+  }
+};
+
 const Model3D = ({ 
   modelSource, 
   modelBlob, 
@@ -71,7 +96,7 @@ const Model3D = ({
 
       // Dispose previous processed model if it exists
       if (processedModelRef.current && processedModelRef.current !== model) {
-        disposeModel(processedModelRef.current);
+        disposeThreeObject(processedModelRef.current);
       }
       
       processedModelRef.current = finalModel;
@@ -91,7 +116,7 @@ const Model3D = ({
   useEffect(() => {
     return () => {
       if (processedModelRef.current) {
-        disposeModel(processedModelRef.current);
+        disposeThreeObject(processedModelRef.current);
         processedModelRef.current = null;
       }
       lodManagerRef.current = null;
