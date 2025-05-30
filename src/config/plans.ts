@@ -1,4 +1,3 @@
-
 export interface PlanConfig {
   id: string;
   name: string;
@@ -28,7 +27,7 @@ export const PLANS: Record<string, PlanConfig> = {
     features: [
       '3 credits per month',
       '3 image generations per day',
-      '30 image generations per month',
+      '3 image generations per month',
       '1 3D model conversion per month',
       'Personal use license',
       'Access to basic gallery',
@@ -36,7 +35,7 @@ export const PLANS: Record<string, PlanConfig> = {
     limits: {
       monthlyCredits: 3,
       imageGenerationsPerDay: 3,
-      imageGenerationsPerMonth: 30,
+      imageGenerationsPerMonth: 3,
       modelConversionsPerMonth: 1,
       isUnlimited: false,
     },
@@ -54,7 +53,7 @@ export const PLANS: Record<string, PlanConfig> = {
     features: [
       '25 credits per month',
       '15 image generations per day',
-      '300 image generations per month',
+      '20 image generations per month',
       '5 3D model conversions per month',
       'Personal use license',
       'Access to full gallery',
@@ -63,7 +62,7 @@ export const PLANS: Record<string, PlanConfig> = {
     limits: {
       monthlyCredits: 25,
       imageGenerationsPerDay: 15,
-      imageGenerationsPerMonth: 300,
+      imageGenerationsPerMonth: 20,
       modelConversionsPerMonth: 5,
       isUnlimited: false,
     },
@@ -81,7 +80,7 @@ export const PLANS: Record<string, PlanConfig> = {
     features: [
       '120 credits per month',
       '50 image generations per day',
-      '1200 image generations per month',
+      '100 image generations per month',
       '20 3D model conversions per month',
       'Personal use license',
       'Access to exclusive models',
@@ -91,7 +90,7 @@ export const PLANS: Record<string, PlanConfig> = {
     limits: {
       monthlyCredits: 120,
       imageGenerationsPerDay: 50,
-      imageGenerationsPerMonth: 1200,
+      imageGenerationsPerMonth: 100,
       modelConversionsPerMonth: 20,
       isUnlimited: false,
     },
