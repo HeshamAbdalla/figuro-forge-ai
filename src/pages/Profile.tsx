@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { motion } from "framer-motion";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,7 +16,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "@/hooks/use-toast";
 
 const Profile = () => {
-  const { user, profile, isLoading: authLoading, refreshAuth } = useAuth();
+  const { user, profile, isLoading: authLoading, refreshAuth } = useEnhancedAuth();
   const { subscription, isLoading: subscriptionLoading, checkSubscription } = useSubscription();
   const [activeTab, setActiveTab] = useState("info");
   const [searchParams, setSearchParams] = useSearchParams();
