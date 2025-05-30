@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Environment } from "@react-three/drei";
@@ -147,7 +146,7 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
       preserveDrawingBuffer: false,
       failIfMajorPerformanceCaveat: isPreview
     },
-    dpr: isPreview ? [0.5, 1] : [1, 2], // Lower DPR for previews
+    dpr: isPreview ? [0.5, 1] as [number, number] : [1, 2] as [number, number], // Properly typed tuples
     frameloop: (autoRotate ? "always" : "demand") as "always" | "demand" | "never", // Fix frameloop typing
     performance: {
       min: isPreview ? 0.2 : 0.5, // Lower performance threshold for previews
