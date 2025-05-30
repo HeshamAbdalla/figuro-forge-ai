@@ -203,11 +203,7 @@ const OptimizedModelPreview: React.FC<OptimizedModelPreviewProps> = ({
             performance={{ 
               min: 0.2, 
               max: 1, 
-              debounce: 200,
-              regress: () => {
-                // Automatic quality regression under heavy load
-                return 0.5;
-              }
+              debounce: 200
             }}
             style={{ pointerEvents: "none" }}
             onCreated={({ gl, scene, camera }) => {

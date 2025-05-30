@@ -61,9 +61,15 @@ export class AdvancedLODSystem {
       mesh.geometry = this.optimizeGeometryForLOD(mesh.geometry, level, levelId);
     }
     
-    // Optimize material
+    // Optimize material - handle both single materials and material arrays
     if (mesh.material) {
-      mesh.material = this.optimizeMaterialForLOD(mesh.material, level);
+      if (Array.isArray(mesh.material)) {
+        // Handle material array
+        mesh.material = mesh.material.map(mat => this.optimizeMaterialForLOD(mat, level));
+      } else {
+        // Handle single material
+        mesh.material = this.optimizeMaterialForLOD(mesh.material, level);
+      }
     }
     
     // Configure shadows
