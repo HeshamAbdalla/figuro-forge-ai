@@ -9,14 +9,14 @@ interface BucketImage {
   id: string;
   created_at: string;
   fullPath?: string;
-  type: 'image' | '3d-model';
+  type: 'image' | '3d-model' | 'web-icon';
 }
 
 interface GalleryGridProps {
   images: BucketImage[];
   isLoading: boolean;
   onDownload: (url: string, name: string) => void;
-  onView: (url: string, name: string, type: 'image' | '3d-model') => void;
+  onView: (url: string, name: string, type: 'image' | '3d-model' | 'web-icon') => void;
   onGenerate3D?: (url: string, name: string) => void;
 }
 

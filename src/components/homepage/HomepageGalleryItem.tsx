@@ -10,7 +10,7 @@ interface HomepageGalleryItemProps {
   file: BucketImage;
   isDownloading: boolean;
   isAuthenticated: boolean;
-  onView: (url: string, fileName: string, fileType: 'image' | '3d-model') => void;
+  onView: (url: string, fileName: string, fileType: 'image' | '3d-model' | 'web-icon') => void;
   onDownload: (url: string, name: string) => void;
 }
 
@@ -66,7 +66,7 @@ const HomepageGalleryItem: React.FC<HomepageGalleryItemProps> = ({
               <Image size={14} className="text-white/70" />
             )}
             <span className="text-xs text-white/90">
-              {file.type === '3d-model' ? "3D Model" : "Image"}
+              {file.type === '3d-model' ? "3D Model" : file.type === 'web-icon' ? "Web Icon" : "Image"}
             </span>
           </div>
           
@@ -77,7 +77,7 @@ const HomepageGalleryItem: React.FC<HomepageGalleryItemProps> = ({
               className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-8 px-3 transform transition-transform hover:scale-105"
             >
               <Eye size={14} className="mr-1.5" /> 
-              {file.type === '3d-model' ? 'View Model' : 'View Image'}
+              {file.type === '3d-model' ? 'View Model' : file.type === 'web-icon' ? 'View Icon' : 'View Image'}
             </Button>
             <Button
               onClick={handleDownload}

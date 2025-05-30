@@ -15,7 +15,7 @@ interface GalleryAuthSectionProps {
   authPromptOpen: boolean;
   onAuthPromptChange: (open: boolean) => void;
   onDownload: (url: string, name: string) => void;
-  onView: (url: string, fileName: string, fileType: 'image' | '3d-model') => void;
+  onView: (url: string, fileName: string, fileType: 'image' | '3d-model' | 'web-icon') => void;
   onGenerate3D: (url: string, name: string) => void;
   onNavigateToStudio: () => void;
   onUploadClick: () => void;

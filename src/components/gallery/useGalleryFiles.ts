@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -242,7 +241,7 @@ export const useGalleryFiles = () => {
                   url: publicUrlData.publicUrl,
                   id: file.id || fullPath,
                   created_at: file.created_at || new Date().toISOString(),
-                  type: getFileType(file.name) as 'image' | '3d-model'
+                  type: getFileType(file.name) as 'image' | '3d-model' | 'web-icon'
                 };
               });
             
@@ -291,6 +290,21 @@ export const useGalleryFiles = () => {
         const imageUrl = figurine.saved_image_url || figurine.image_url;
         const fileType = figurine.file_type || (figurine.style === 'web-icon' ? 'web-icon' : 'image');
         
+        // Safely convert metadata from Json to Record<string, any>
+        let metadata: Record<string, any> = {};
+        if (figurine.metadata) {
+          try {
+            if (typeof figurine.metadata === 'string') {
+              metadata = JSON.parse(figurine.metadata);
+            } else if (typeof figurine.metadata === 'object') {
+              metadata = figurine.metadata as Record<string, any>;
+            }
+          } catch (e) {
+            console.warn('Failed to parse metadata for figurine:', figurine.id);
+            metadata = {};
+          }
+        }
+        
         return {
           name: `${figurine.title || 'Untitled'}.png`,
           fullPath: `figurines/${figurine.id}`,
@@ -298,7 +312,7 @@ export const useGalleryFiles = () => {
           id: figurine.id,
           created_at: figurine.created_at,
           type: fileType as 'image' | '3d-model' | 'web-icon',
-          metadata: figurine.metadata
+          metadata: metadata
         };
       });
       

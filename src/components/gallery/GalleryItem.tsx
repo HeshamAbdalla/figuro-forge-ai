@@ -10,7 +10,7 @@ import GalleryItemFooter from "./components/GalleryItemFooter";
 interface GalleryItemProps {
   file: BucketImage;
   onDownload: (url: string, name: string) => void;
-  onView: (url: string, name: string, type: 'image' | '3d-model') => void;
+  onView: (url: string, name: string, type: 'image' | '3d-model' | 'web-icon') => void;
   onGenerate3D?: (url: string, name: string) => void;
 }
 

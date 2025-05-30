@@ -10,7 +10,7 @@ import GalleryItemFooter from "./GalleryItemFooter";
 interface ThumbnailBasedGalleryItemProps {
   file: BucketImage & { thumbnailUrl?: string };
   onDownload: (url: string, name: string) => void;
-  onView: (url: string, name: string, type: 'image' | '3d-model') => void;
+  onView: (url: string, name: string, type: 'image' | '3d-model' | 'web-icon') => void;
   onGenerate3D?: (url: string, name: string) => void;
   onPreview3D?: (url: string, name: string) => void;
 }
@@ -29,6 +29,7 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
   const isTextTo3DFile = file.fullPath?.includes('figurine-models/') || false;
   const isImage = file.type === 'image';
   const is3DModel = file.type === '3d-model';
+  const isWebIcon = file.type === 'web-icon';
   const hasThumbnail = is3DModel && file.thumbnailUrl;
 
   const handleImageError = () => {
@@ -59,7 +60,7 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
 
   const handleGenerate3D = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onGenerate3D) {
+    if (onGenerate3D && !isWebIcon) {
       onGenerate3D(file.url, file.name);
     }
   };
@@ -108,7 +109,7 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
       );
     }
 
-    // For images, display normally
+    // For images and web icons, display normally
     if (!imageError) {
       return (
         <img
@@ -133,7 +134,10 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
   };
 
   return (
-    <div className={`glass-panel rounded-lg overflow-hidden group hover:scale-105 transition-transform duration-200 ${isTextTo3DFile ? 'ring-1 ring-figuro-accent/30' : ''}`}>
+    <div className={`glass-panel rounded-lg overflow-hidden group hover:scale-105 transition-transform duration-200 ${
+      isTextTo3DFile ? 'ring-1 ring-figuro-accent/30' : 
+      isWebIcon ? 'ring-1 ring-purple-500/30' : ''
+    }`}>
       <div className="relative">
         <div className="aspect-square relative overflow-hidden bg-white/5">
           {renderPreview()}
@@ -149,7 +153,7 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
               className="h-8 w-8 bg-white/10 backdrop-blur-sm border-0 hover:bg-white/20"
               onClick={handleDownload}
               disabled={isDownloading}
-              title={is3DModel ? "Download 3D Model" : "Download Image"}
+              title={is3DModel ? "Download 3D Model" : isWebIcon ? "Download Web Icon" : "Download Image"}
             >
               <Download size={14} />
             </Button>
@@ -171,14 +175,14 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
                 size="icon"
                 className="h-8 w-8 bg-white/10 backdrop-blur-sm border-0 hover:bg-white/20"
                 onClick={handleView}
-                title="View Image"
+                title={isWebIcon ? "View Web Icon" : "View Image"}
               >
                 <Eye size={14} />
               </Button>
             )}
             
-            {/* Generate 3D button for images */}
-            {onGenerate3D && isImage && (
+            {/* Generate 3D button for regular images only */}
+            {onGenerate3D && isImage && !isWebIcon && (
               <Button
                 variant="secondary"
                 size="icon"
@@ -202,6 +206,11 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
           {is3DModel && (
             <Badge className="bg-blue-500/80 text-white text-xs px-2 py-1">
               3D Model
+            </Badge>
+          )}
+          {isWebIcon && (
+            <Badge className="bg-purple-500/80 text-white text-xs px-2 py-1">
+              Web Icon
             </Badge>
           )}
         </div>
