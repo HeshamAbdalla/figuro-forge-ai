@@ -2,7 +2,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Image, Calendar, Box } from "lucide-react";
+import { AlertTriangle, Image, Box } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { PLANS } from "@/config/plans";
 
@@ -27,10 +27,6 @@ export const UsageTracker = () => {
   const currentPlan = PLANS[subscription.plan];
   
   // Calculate usage percentages using subscription data
-  const dailyImageUsagePercentage = currentPlan.limits.isUnlimited 
-    ? 0 
-    : Math.min(100, (subscription.generation_count_today / currentPlan.limits.imageGenerationsPerDay) * 100);
-  
   const monthlyImageUsagePercentage = currentPlan.limits.isUnlimited 
     ? 0 
     : Math.min(100, (subscription.generation_count_this_month / currentPlan.limits.imageGenerationsPerMonth) * 100);
@@ -39,7 +35,6 @@ export const UsageTracker = () => {
     ? 0 
     : Math.min(100, (subscription.converted_3d_this_month / currentPlan.limits.modelConversionsPerMonth) * 100);
 
-  const isDailyImageNearLimit = dailyImageUsagePercentage >= 80;
   const isMonthlyImageNearLimit = monthlyImageUsagePercentage >= 80;
   const isModelNearLimit = modelUsagePercentage >= 80;
 
@@ -49,47 +44,11 @@ export const UsageTracker = () => {
         <h3 className="text-xl font-semibold text-white mb-4">Your Usage</h3>
         
         <div className="space-y-6">
-          {/* Daily Image Generations */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <div className="flex items-center gap-2">
-                <Image className="h-4 w-4 text-blue-400" />
-                <p className="text-white">
-                  Image Generations (Today)
-                  {isDailyImageNearLimit && !isNaN(dailyImageUsagePercentage) && dailyImageUsagePercentage < 100 && (
-                    <span className="ml-2 text-amber-400 font-medium flex items-center text-sm">
-                      <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-                      Almost at limit
-                    </span>
-                  )}
-                </p>
-              </div>
-              <span className="text-white/70">
-                {subscription.generation_count_today} / {currentPlan.limits.isUnlimited ? '∞' : currentPlan.limits.imageGenerationsPerDay}
-              </span>
-            </div>
-            <Progress 
-              value={isNaN(dailyImageUsagePercentage) ? 0 : dailyImageUsagePercentage} 
-              className="h-2 bg-white/10" 
-              indicatorClassName={dailyImageUsagePercentage >= 100 
-                ? "bg-red-500" 
-                : isDailyImageNearLimit 
-                  ? "bg-amber-500" 
-                  : "bg-blue-400"
-              }
-            />
-            {dailyImageUsagePercentage >= 100 && (
-              <p className="text-red-400 text-sm mt-1">
-                You've reached your daily limit. Please upgrade to continue generating images.
-              </p>
-            )}
-          </div>
-
           {/* Monthly Image Generations */}
           <div>
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-green-400" />
+                <Image className="h-4 w-4 text-blue-400" />
                 <p className="text-white">
                   Image Generations (This Month)
                   {isMonthlyImageNearLimit && !isNaN(monthlyImageUsagePercentage) && monthlyImageUsagePercentage < 100 && (
@@ -111,7 +70,7 @@ export const UsageTracker = () => {
                 ? "bg-red-500" 
                 : isMonthlyImageNearLimit 
                   ? "bg-amber-500" 
-                  : "bg-green-400"
+                  : "bg-blue-400"
               }
             />
             {monthlyImageUsagePercentage >= 100 && (
