@@ -19,6 +19,82 @@ export const useGalleryFiles = () => {
     }
     return 'image';
   };
+
+  // Helper function to extract task ID from filename or path
+  const extractTaskId = (fullPath: string, fileName: string): string | null => {
+    // Try to extract task ID from different naming patterns
+    const patterns = [
+      /([a-f0-9-]{36})/, // UUID pattern
+      /task_([^_]+)/, // task_id pattern
+      /(\d+)_/, // numeric ID at start
+    ];
+
+    for (const pattern of patterns) {
+      const match = fileName.match(pattern) || fullPath.match(pattern);
+      if (match) {
+        return match[1];
+      }
+    }
+
+    // Fallback: use filename without extension as task ID
+    return fileName.replace(/\.[^/.]+$/, "");
+  };
+
+  // Function to associate thumbnails with their corresponding 3D models
+  const associateFilesWithThumbnails = (allFiles: BucketImage[]): BucketImage[] => {
+    console.log('🔄 [GALLERY] Starting file association process...');
+    
+    // Separate files by type and location
+    const models = allFiles.filter(file => file.type === '3d-model');
+    const thumbnails = allFiles.filter(file => 
+      file.type === 'image' && 
+      (file.fullPath?.includes('/thumbnails/') || file.name.includes('_thumbnail'))
+    );
+    const regularImages = allFiles.filter(file => 
+      file.type === 'image' && 
+      !file.fullPath?.includes('/thumbnails/') && 
+      !file.name.includes('_thumbnail')
+    );
+
+    console.log('📊 [GALLERY] File breakdown:', {
+      models: models.length,
+      thumbnails: thumbnails.length,
+      regularImages: regularImages.length
+    });
+
+    // Create a map of task IDs to thumbnails for faster lookup
+    const thumbnailMap = new Map<string, BucketImage>();
+    thumbnails.forEach(thumbnail => {
+      const taskId = extractTaskId(thumbnail.fullPath || '', thumbnail.name);
+      if (taskId) {
+        thumbnailMap.set(taskId, thumbnail);
+        console.log('🔗 [GALLERY] Mapped thumbnail:', taskId, '→', thumbnail.name);
+      }
+    });
+
+    // Associate models with their thumbnails
+    const modelsWithThumbnails = models.map(model => {
+      const taskId = extractTaskId(model.fullPath || '', model.name);
+      if (taskId && thumbnailMap.has(taskId)) {
+        const thumbnail = thumbnailMap.get(taskId);
+        console.log('✅ [GALLERY] Associated model with thumbnail:', model.name, '←→', thumbnail?.name);
+        return {
+          ...model,
+          thumbnailUrl: thumbnail?.url
+        };
+      }
+      console.log('⚠️ [GALLERY] No thumbnail found for model:', model.name);
+      return model;
+    });
+
+    // Return only models (with their thumbnails) and regular images (not standalone thumbnails)
+    const finalFiles = [...modelsWithThumbnails, ...regularImages];
+    
+    console.log('✅ [GALLERY] File association complete. Final count:', finalFiles.length);
+    console.log('📋 [GALLERY] Filtered out', thumbnails.length, 'standalone thumbnails');
+    
+    return finalFiles;
+  };
   
   // Recursive function to list files in a folder and its subfolders
   const listFilesRecursively = async (path: string = ''): Promise<BucketImage[]> => {
@@ -186,13 +262,16 @@ export const useGalleryFiles = () => {
       // Combine all files
       const allFiles = [...imageFiles, ...modelFiles];
       
+      // Associate files with thumbnails and filter out standalone thumbnails
+      const associatedFiles = associateFilesWithThumbnails(allFiles);
+      
       // Sort by creation date (newest first)
-      allFiles.sort((a, b) => 
+      associatedFiles.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       
-      setFiles(allFiles);
-      console.log(`✅ [GALLERY] Loaded ${allFiles.length} files from gallery (${imageFiles.length} images, ${modelFiles.length} models)`);
+      setFiles(associatedFiles);
+      console.log(`✅ [GALLERY] Loaded ${associatedFiles.length} files from gallery`);
     } catch (error) {
       console.error('❌ [GALLERY] Error loading files from buckets:', error);
       const errorMessage = "Could not load the gallery items. Please try again.";

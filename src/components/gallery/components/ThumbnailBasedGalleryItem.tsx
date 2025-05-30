@@ -1,15 +1,14 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { BucketImage } from "../types";
 import { useSecureDownload } from "@/hooks/useSecureDownload";
 import { Eye, Download, Sparkles, Play, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { checkThumbnailExists } from "@/utils/thumbnailUtils";
 import GalleryItemFooter from "./GalleryItemFooter";
 
 interface ThumbnailBasedGalleryItemProps {
-  file: BucketImage;
+  file: BucketImage & { thumbnailUrl?: string };
   onDownload: (url: string, name: string) => void;
   onView: (url: string, name: string, type: 'image' | '3d-model') => void;
   onGenerate3D?: (url: string, name: string) => void;
@@ -24,41 +23,13 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
   onPreview3D
 }) => {
   const [imageError, setImageError] = useState(false);
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
-  const [isLoadingThumbnail, setIsLoadingThumbnail] = useState(false);
   const { secureDownload, isDownloading } = useSecureDownload();
 
   // Check if this is a text-to-3D generated file
   const isTextTo3DFile = file.fullPath?.includes('figurine-models/') || false;
   const isImage = file.type === 'image';
   const is3DModel = file.type === '3d-model';
-
-  // Load thumbnail for 3D models
-  useEffect(() => {
-    const loadThumbnail = async () => {
-      if (!is3DModel || !file.fullPath) return;
-      
-      setIsLoadingThumbnail(true);
-      try {
-        // Extract task ID or use filename for thumbnail lookup
-        const pathParts = file.fullPath.split('/');
-        const fileName = pathParts[pathParts.length - 1];
-        const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
-        
-        // Try to find existing thumbnail
-        const existingThumbnail = await checkThumbnailExists(fileNameWithoutExt);
-        if (existingThumbnail) {
-          setThumbnailUrl(existingThumbnail);
-        }
-      } catch (error) {
-        console.warn('Failed to load thumbnail:', error);
-      } finally {
-        setIsLoadingThumbnail(false);
-      }
-    };
-
-    loadThumbnail();
-  }, [file.fullPath, is3DModel]);
+  const hasThumbnail = is3DModel && file.thumbnailUrl;
 
   const handleImageError = () => {
     setImageError(true);
@@ -97,19 +68,11 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
   const renderPreview = () => {
     if (is3DModel) {
       // For 3D models, show thumbnail if available, otherwise show placeholder
-      if (isLoadingThumbnail) {
-        return (
-          <div className="w-full h-full flex items-center justify-center bg-gray-800">
-            <div className="animate-spin w-8 h-8 border-2 border-figuro-accent border-t-transparent rounded-full" />
-          </div>
-        );
-      }
-
-      if (thumbnailUrl && !imageError) {
+      if (hasThumbnail && !imageError) {
         return (
           <div className="relative w-full h-full">
             <img
-              src={thumbnailUrl}
+              src={file.thumbnailUrl}
               alt={file.name}
               className="w-full h-full object-cover"
               onError={handleImageError}
