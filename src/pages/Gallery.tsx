@@ -80,6 +80,17 @@ const Gallery = () => {
     }
   };
 
+  // Convert progress to match expected interface
+  const convertedProgress = progress ? {
+    status: 'converting' as const,
+    progress: progress.percentage || 0,
+    percentage: progress.percentage || 0,
+    message: progress.message || '',
+    taskId: undefined,
+    modelUrl: undefined,
+    thumbnailUrl: undefined
+  } : null;
+
   return (
     <div className="min-h-screen bg-figuro-dark">
       <Header />
@@ -110,7 +121,7 @@ const Gallery = () => {
               viewingImageName={viewingImageName}
               onCloseImageViewer={onCloseImageViewer}
               isGenerating={isGenerating}
-              progress={progress}
+              progress={convertedProgress}
               onGeneration3DOpenChange={handleGeneration3DOpenChange}
               onResetProgress={resetProgress}
               onGenerate={handle3DGeneration}

@@ -2,6 +2,7 @@
 export interface ConversionProgress {
   status: 'idle' | 'converting' | 'downloading' | 'completed' | 'error';
   progress: number;
+  percentage: number;
   message: string;
   taskId?: string;
   modelUrl?: string;

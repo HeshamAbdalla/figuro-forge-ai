@@ -6,6 +6,7 @@ import GalleryHeader from "./GalleryHeader";
 import OptimizedGalleryGrid from "./performance/OptimizedGalleryGrid";
 import GalleryModals from "./GalleryModals";
 import { Generate3DConfig } from "./Generate3DConfigModal";
+import { ConversionProgress } from "./types/conversion";
 
 interface GalleryContentProps {
   files: BucketImage[];
@@ -26,7 +27,7 @@ interface GalleryContentProps {
   viewingImageName: string | undefined;
   onCloseImageViewer: () => void;
   isGenerating: boolean;
-  progress: { message: string; percentage: number } | null;
+  progress: ConversionProgress | null;
   onGeneration3DOpenChange: (open: boolean) => void;
   onResetProgress: () => void;
   onGenerate: (config: Generate3DConfig) => Promise<void>;
