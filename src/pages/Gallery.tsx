@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
@@ -14,10 +13,13 @@ import { sharedResourcePool } from "@/components/gallery/performance/SharedResou
 import { webGLContextTracker } from "@/components/model-viewer/utils/resourceManager";
 
 const Gallery = () => {
-  const { files, isLoading, error, refetch } = useGalleryFiles();
+  const { files, isLoading, error: rawError, refetch } = useGalleryFiles();
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useEnhancedAuth();
+
+  // Convert string error to Error object if needed
+  const error = rawError ? (rawError instanceof Error ? rawError : new Error(rawError)) : null;
 
   const {
     viewingModel,
