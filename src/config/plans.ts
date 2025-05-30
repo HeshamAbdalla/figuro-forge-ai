@@ -53,8 +53,8 @@ export const PLANS: Record<string, PlanConfig> = {
     description: 'Perfect for hobbyists',
     features: [
       '25 credits per month',
-      '20 image generations per day',
-      '600 image generations per month',
+      '15 image generations per day',
+      '300 image generations per month',
       '5 3D model conversions per month',
       'Personal use license',
       'Access to full gallery',
@@ -62,8 +62,8 @@ export const PLANS: Record<string, PlanConfig> = {
     ],
     limits: {
       monthlyCredits: 25,
-      imageGenerationsPerDay: 20,
-      imageGenerationsPerMonth: 600,
+      imageGenerationsPerDay: 15,
+      imageGenerationsPerMonth: 300,
       modelConversionsPerMonth: 5,
       isUnlimited: false,
     },
@@ -80,8 +80,8 @@ export const PLANS: Record<string, PlanConfig> = {
     description: 'For serious creators',
     features: [
       '120 credits per month',
-      '100 image generations per day',
-      '3000 image generations per month',
+      '50 image generations per day',
+      '1200 image generations per month',
       '20 3D model conversions per month',
       'Personal use license',
       'Access to exclusive models',
@@ -90,8 +90,8 @@ export const PLANS: Record<string, PlanConfig> = {
     ],
     limits: {
       monthlyCredits: 120,
-      imageGenerationsPerDay: 100,
-      imageGenerationsPerMonth: 3000,
+      imageGenerationsPerDay: 50,
+      imageGenerationsPerMonth: 1200,
       modelConversionsPerMonth: 20,
       isUnlimited: false,
     },

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -15,7 +16,7 @@ const pricingPlans = [
     name: "Free",
     price: "$0",
     features: [
-      { name: "3 Image Generations / Month", included: true },
+      { name: "30 Image Generations / Month", included: true },
       { name: "1 Model Conversion / Month", included: true },
       { name: "Basic Art Styles", included: true },
       { name: "Standard Resolution", included: true },
@@ -29,7 +30,7 @@ const pricingPlans = [
     name: "Starter",
     price: "$12.99",
     features: [
-      { name: "20 Image Generations / Month", included: true },
+      { name: "300 Image Generations / Month", included: true },
       { name: "5 Model Conversions / Month", included: true },
       { name: "All Art Styles", included: true },
       { name: "High Resolution", included: true },
@@ -44,7 +45,7 @@ const pricingPlans = [
     name: "Professional",
     price: "$29.99",
     features: [
-      { name: "100 Image Generations / Month", included: true },
+      { name: "1200 Image Generations / Month", included: true },
       { name: "20 Model Conversions / Month", included: true },
       { name: "All Art Styles", included: true },
       { name: "Ultra High Resolution", included: true },
