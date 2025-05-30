@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
@@ -9,12 +10,14 @@ import { useImageViewer } from "@/components/gallery/useImageViewer";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useToast } from "@/hooks/use-toast";
-import { sharedResourcePool } from "@/components/gallery/performance/SharedResourcePool";
+import { enhancedResourcePool } from "@/components/gallery/performance/EnhancedResourcePool";
 import { webGLContextTracker } from "@/components/model-viewer/utils/resourceManager";
+import ComprehensivePerformanceMonitor from "@/components/gallery/performance/ComprehensivePerformanceMonitor";
 
 const Gallery = () => {
   const { files, isLoading, error: rawError, refetch } = useGalleryFiles();
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
+  const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
   const { toast } = useToast();
   const { user } = useEnhancedAuth();
 
@@ -46,13 +49,46 @@ const Gallery = () => {
     resetProgress
   } = useGallery3DGeneration();
 
+  // Initialize performance monitoring in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Gallery: Initializing performance monitoring");
+      setShowPerformanceMonitor(true);
+      
+      // Log initial resource pool stats
+      const stats = enhancedResourcePool.getPerformanceStats();
+      console.log("Initial resource pool stats:", stats);
+    }
+  }, []);
+
   // Clean up resources when component unmounts
   useEffect(() => {
     return () => {
-      console.log("Gallery unmounting - cleaning up resources");
-      sharedResourcePool.clear();
+      console.log("Gallery unmounting - cleaning up enhanced resources");
+      enhancedResourcePool.clear();
       webGLContextTracker.reset();
     };
+  }, []);
+
+  // Monitor performance and provide warnings
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const checkPerformance = () => {
+        const contextCount = webGLContextTracker.getActiveContextCount();
+        const resourceStats = enhancedResourcePool.getPerformanceStats();
+        
+        if (contextCount > 4) {
+          console.warn(`High WebGL context usage: ${contextCount}/6`);
+        }
+        
+        if (resourceStats.hitRatio < 0.7 && resourceStats.cacheHits > 10) {
+          console.warn(`Low cache hit ratio: ${(resourceStats.hitRatio * 100).toFixed(1)}%`);
+        }
+      };
+      
+      const interval = setInterval(checkPerformance, 5000);
+      return () => clearInterval(interval);
+    }
   }, []);
 
   const handleGeneration3DOpenChange = (open: boolean) => {
@@ -82,7 +118,7 @@ const Gallery = () => {
     }
   };
 
-  // Convert progress to match expected interface - progress is already in correct format
+  // Convert progress to match expected interface
   const convertedProgress = progress;
 
   return (
@@ -128,6 +164,13 @@ const Gallery = () => {
       </main>
       
       <Footer />
+      
+      {/* Comprehensive Performance Monitor */}
+      <ComprehensivePerformanceMonitor
+        visible={showPerformanceMonitor}
+        position="top-right"
+        updateInterval={1000}
+      />
     </div>
   );
 };
