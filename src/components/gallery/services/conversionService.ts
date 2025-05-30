@@ -48,6 +48,7 @@ export const startConversion = async (
     callbacks.onProgressUpdate({
       status: 'converting',
       progress: 20,
+      percentage: 20,
       message: 'Processing image for 3D conversion...'
     });
 
@@ -60,6 +61,7 @@ export const startConversion = async (
       callbacks.onProgressUpdate({
         status: 'converting',
         progress: 25,
+        percentage: 25,
         message: 'Converting image format...'
       });
       
@@ -81,6 +83,7 @@ export const startConversion = async (
     callbacks.onProgressUpdate({
       status: 'converting',
       progress: 30,
+      percentage: 30,
       message: 'Starting 3D conversion...'
     });
 
@@ -127,6 +130,7 @@ export const startConversion = async (
     callbacks.onProgressUpdate({
       status: 'converting',
       progress: 40,
+      percentage: 40,
       message: 'Converting image to 3D model...',
       taskId: data.taskId
     });

@@ -54,6 +54,7 @@ export const pollConversionStatus = async (
         callbacks.onProgressUpdate({
           status: 'downloading',
           progress: 90,
+          percentage: 90,
           message: 'Downloading and saving 3D model...',
           taskId
         });
@@ -111,6 +112,7 @@ export const pollConversionStatus = async (
                 callbacks.onProgressUpdate({
                   status: 'completed',
                   progress: 100,
+                  percentage: 100,
                   message: '3D model added to existing figurine!',
                   taskId,
                   modelUrl: savedModelUrl,
@@ -163,6 +165,7 @@ export const pollConversionStatus = async (
           callbacks.onProgressUpdate({
             status: 'completed',
             progress: 100,
+            percentage: 100,
             message: '3D model generated successfully!',
             taskId,
             modelUrl: savedModelUrl,
@@ -184,6 +187,7 @@ export const pollConversionStatus = async (
         callbacks.onProgressUpdate({
           status: 'converting',
           progress: Math.min(progressValue, 89),
+          percentage: Math.min(progressValue, 89),
           message,
           taskId,
           thumbnailUrl: thumbnail_url ? thumbnail_url : undefined

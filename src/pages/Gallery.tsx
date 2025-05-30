@@ -80,16 +80,8 @@ const Gallery = () => {
     }
   };
 
-  // Convert progress to match expected interface
-  const convertedProgress = progress ? {
-    status: 'converting' as const,
-    progress: progress.percentage || 0,
-    percentage: progress.percentage || 0,
-    message: progress.message || '',
-    taskId: undefined,
-    modelUrl: undefined,
-    thumbnailUrl: undefined
-  } : null;
+  // Convert progress to match expected interface - progress is already in correct format
+  const convertedProgress = progress;
 
   return (
     <div className="min-h-screen bg-figuro-dark">

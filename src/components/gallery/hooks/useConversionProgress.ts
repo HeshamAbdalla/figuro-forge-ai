@@ -6,6 +6,7 @@ export const useConversionProgress = () => {
   const [progress, setProgress] = useState<ConversionProgress>({
     status: 'idle',
     progress: 0,
+    percentage: 0,
     message: ''
   });
 
@@ -17,6 +18,7 @@ export const useConversionProgress = () => {
     setProgress({
       status: 'idle',
       progress: 0,
+      percentage: 0,
       message: ''
     });
   };
