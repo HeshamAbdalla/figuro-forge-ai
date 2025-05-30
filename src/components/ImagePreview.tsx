@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Download, Share2, Image, Wand2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ImagePreviewProps {
   imageSrc: string | null;
@@ -24,6 +25,7 @@ const ImagePreview = ({
 }: ImagePreviewProps) => {
   const { toast } = useToast();
   const [imageError, setImageError] = useState<boolean>(false);
+  const isMobile = useIsMobile();
   
   if (!imageSrc && !isLoading) {
     return (
@@ -31,16 +33,16 @@ const ImagePreview = ({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="glass-panel rounded-xl overflow-hidden backdrop-blur-md border border-white/20 h-full min-h-[400px]"
+        className="glass-panel rounded-xl overflow-hidden backdrop-blur-md border border-white/20 h-full min-h-[300px] sm:min-h-[400px]"
       >
-        <div className="p-4 border-b border-white/10 flex justify-between items-center">
-          <h3 className="text-lg font-medium">Generated Image</h3>
+        <div className="p-3 sm:p-4 border-b border-white/10 flex justify-between items-center">
+          <h3 className="text-base sm:text-lg font-medium">Generated Image</h3>
           <span className="text-xs px-2 py-1 rounded-full bg-figuro-accent/20 text-figuro-accent">Step 2</span>
         </div>
-        <div className="relative aspect-square flex flex-col items-center justify-center p-8 text-center">
-          <div className="rounded-lg bg-white/5 border border-white/10 p-8 flex flex-col items-center justify-center w-full h-full">
-            <Image className="text-white/30 mb-4 w-16 h-16" />
-            <p className="text-white/50 mb-2">No image generated yet</p>
+        <div className="relative aspect-square flex flex-col items-center justify-center p-4 sm:p-8 text-center">
+          <div className="rounded-lg bg-white/5 border border-white/10 p-4 sm:p-8 flex flex-col items-center justify-center w-full h-full">
+            <Image className="text-white/30 mb-4 w-12 h-12 sm:w-16 sm:h-16" />
+            <p className="text-white/50 mb-2 text-sm sm:text-base">No image generated yet</p>
             <p className="text-xs text-white/30">Complete Step 1 to generate your figurine image</p>
           </div>
         </div>
@@ -91,16 +93,16 @@ const ImagePreview = ({
       transition={{ duration: 0.5 }}
       className="glass-panel rounded-xl overflow-hidden backdrop-blur-md border border-white/20 h-full"
     >
-      <div className="p-4 border-b border-white/10 flex justify-between items-center">
-        <h3 className="text-lg font-medium">Generated Image</h3>
-        <div className="flex gap-2 items-center">
+      <div className="p-3 sm:p-4 border-b border-white/10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+        <h3 className="text-base sm:text-lg font-medium">Generated Image</h3>
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs px-2 py-1 rounded-full bg-figuro-accent/20 text-figuro-accent">Step 2</span>
           {imageSrc && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
                   <div className="border-green-400/30 bg-green-400/10 text-green-400 text-xs rounded-full px-2.5 py-0.5 inline-flex items-center">
-                    <Share2 size={12} className="mr-1" /> Public
+                    <Share2 size={10} className="mr-1" /> Public
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -118,11 +120,11 @@ const ImagePreview = ({
             <Button 
               variant="outline" 
               size="sm"
-              className="border-white/20 hover:border-white/40 bg-white/5"
+              className="border-white/20 hover:border-white/40 bg-white/5 h-6 sm:h-8 text-xs"
               onClick={handleSaveImage}
             >
-              <Download size={16} className="mr-1" />
-              Save
+              <Download size={12} className="mr-1" />
+              <span className="hidden sm:inline">Save</span>
             </Button>
           )}
         </div>
@@ -130,12 +132,12 @@ const ImagePreview = ({
       
       <div className="relative aspect-square">
         {isLoading ? (
-          <div className="w-full h-full p-4 flex flex-col items-center justify-center">
+          <div className="w-full h-full p-2 sm:p-4 flex flex-col items-center justify-center">
             <div className="relative w-full h-full">
               <Skeleton className="w-full h-full rounded-lg bg-white/5 loading-shine" />
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <Wand2 className="text-figuro-accent h-12 w-12 mb-4 animate-pulse" />
-                <p className="text-white/70">Generating your image...</p>
+                <Wand2 className="text-figuro-accent h-8 w-8 sm:h-12 sm:w-12 mb-4 animate-pulse" />
+                <p className="text-white/70 text-sm sm:text-base">Generating your image...</p>
               </div>
             </div>
           </div>
@@ -144,7 +146,7 @@ const ImagePreview = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="w-full h-full p-4"
+            className="w-full h-full p-2 sm:p-4"
           >
             {imageSrc ? (
               <img
@@ -170,21 +172,23 @@ const ImagePreview = ({
         )}
       </div>
       
-      <div className="p-4">
+      <div className="p-3 sm:p-4">
         <Button
-          className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-12 flex items-center justify-center gap-2 group"
+          className={`w-full bg-figuro-accent hover:bg-figuro-accent-hover flex items-center justify-center gap-2 group ${
+            isMobile ? 'h-10' : 'h-12'
+          }`}
           onClick={onConvertTo3D}
           disabled={!imageSrc || isConverting || isLoading || imageError}
         >
           {isConverting ? (
             <>
-              <span className="mr-2">Converting...</span>
-              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span className="text-sm sm:text-base">Converting...</span>
+              <span className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
             </>
           ) : (
             <>
-              <span className="transform group-hover:scale-105 transition-transform">Convert to 3D</span>
-              <Wand2 size={16} className="group-hover:rotate-12 transition-transform" />
+              <span className="text-sm sm:text-base transform group-hover:scale-105 transition-transform">Convert to 3D</span>
+              <Wand2 size={isMobile ? 14 : 16} className="group-hover:rotate-12 transition-transform" />
             </>
           )}
         </Button>

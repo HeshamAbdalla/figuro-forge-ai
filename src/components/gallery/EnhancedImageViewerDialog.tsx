@@ -1,15 +1,23 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Maximize2, Minimize2, Download, Info, ZoomIn, ZoomOut, RotateCw, Loader2 } from "lucide-react";
+import { X, Maximize2, Minimize2, Download, Info, ZoomIn, ZoomOut, RotateCw, Loader2, MoreHorizontal } from "lucide-react";
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader,
   DialogClose 
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useSecureDownload } from "@/hooks/useSecureDownload";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface EnhancedImageViewerDialogProps {
   open: boolean;
@@ -39,6 +47,7 @@ const EnhancedImageViewerDialog: React.FC<EnhancedImageViewerDialogProps> = ({
   const dialogRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   // Use the secure download hook
   const { secureDownload, isDownloading, authPromptOpen, setAuthPromptOpen, isAuthenticated } = useSecureDownload();
@@ -233,114 +242,169 @@ const EnhancedImageViewerDialog: React.FC<EnhancedImageViewerDialogProps> = ({
             maxHeight: isFullscreen ? '100vh' : undefined,
           }}
         >
-          {/* Enhanced Header */}
-          <DialogHeader className="relative p-4 border-b border-white/10 bg-gray-900/90 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white truncate max-w-[60%]">
+          {/* Enhanced Responsive Header */}
+          <DialogHeader className="relative p-2 sm:p-4 border-b border-white/10 bg-gray-900/90 backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm sm:text-lg font-semibold text-white truncate flex-1 min-w-0">
                 {imageName}
               </h2>
               
-              {/* Control Buttons */}
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsInfoVisible(!isInfoVisible)}
-                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
-                  title="Image Information (I)"
-                >
-                  <Info size={16} />
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={zoomIn}
-                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
-                  title="Zoom In (+)"
-                  disabled={zoom >= 5}
-                >
-                  <ZoomIn size={16} />
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={zoomOut}
-                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
-                  title="Zoom Out (-)"
-                  disabled={zoom <= 0.1}
-                >
-                  <ZoomOut size={16} />
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={rotateImage}
-                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
-                  title="Rotate (R)"
-                >
-                  <RotateCw size={16} />
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={resetImage}
-                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
-                  title="Reset View (0)"
-                >
-                  <RotateCw size={16} />
-                </Button>
-                
+              {/* Mobile and Desktop Control Buttons */}
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                {/* Always visible essential buttons */}
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={downloadImage}
-                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                  className="h-6 w-6 sm:h-8 sm:w-8 text-white/70 hover:text-white hover:bg-white/10"
                   title={isAuthenticated ? "Download Image" : "Sign in to Download"}
                   disabled={!imageUrl || isDownloading}
                 >
                   {isDownloading ? (
-                    <Loader2 size={16} className="animate-spin" />
+                    <Loader2 size={12} className="sm:size-4 animate-spin" />
                   ) : (
-                    <Download size={16} />
+                    <Download size={12} className="sm:size-4" />
                   )}
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleFullscreen}
-                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
-                  title={isFullscreen ? "Exit Fullscreen (F)" : "Enter Fullscreen (F)"}
-                >
-                  {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </Button>
                 
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   onClick={onClose} 
-                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                  className="h-6 w-6 sm:h-8 sm:w-8 text-white/70 hover:text-white hover:bg-white/10"
                   title="Close (Esc)"
                 >
-                  <X size={16} />
+                  <X size={12} className="sm:size-4" />
                 </Button>
+
+                {/* Desktop buttons - hidden on mobile */}
+                {!isMobile && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsInfoVisible(!isInfoVisible)}
+                      className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                      title="Image Information (I)"
+                    >
+                      <Info size={16} />
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={zoomIn}
+                      className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                      title="Zoom In (+)"
+                      disabled={zoom >= 5}
+                    >
+                      <ZoomIn size={16} />
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={zoomOut}
+                      className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                      title="Zoom Out (-)"
+                      disabled={zoom <= 0.1}
+                    >
+                      <ZoomOut size={16} />
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={rotateImage}
+                      className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                      title="Rotate (R)"
+                    >
+                      <RotateCw size={16} />
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={resetImage}
+                      className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                      title="Reset View (0)"
+                    >
+                      <RotateCw size={16} />
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={toggleFullscreen}
+                      className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                      title={isFullscreen ? "Exit Fullscreen (F)" : "Enter Fullscreen (F)"}
+                    >
+                      {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                    </Button>
+                  </>
+                )}
+
+                {/* Mobile dropdown menu */}
+                {isMobile && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10"
+                      >
+                        <MoreHorizontal size={12} />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-gray-900 border-white/10">
+                      <DropdownMenuItem onClick={() => setIsInfoVisible(!isInfoVisible)}>
+                        <Info size={14} className="mr-2" />
+                        {isInfoVisible ? "Hide Info" : "Show Info"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={zoomIn} disabled={zoom >= 5}>
+                        <ZoomIn size={14} className="mr-2" />
+                        Zoom In
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={zoomOut} disabled={zoom <= 0.1}>
+                        <ZoomOut size={14} className="mr-2" />
+                        Zoom Out
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={rotateImage}>
+                        <RotateCw size={14} className="mr-2" />
+                        Rotate
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={resetImage}>
+                        <RotateCw size={14} className="mr-2" />
+                        Reset View
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={toggleFullscreen}>
+                        {isFullscreen ? <Minimize2 size={14} className="mr-2" /> : <Maximize2 size={14} className="mr-2" />}
+                        {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
             
-            {/* Image Info Panel */}
+            {/* Responsive Image Info Panel */}
             {isInfoVisible && (
-              <div className="mt-4 p-3 bg-white/5 rounded-lg border border-white/10">
-                <div className="text-sm text-white/80 space-y-1">
-                  <div><span className="text-white/60">File:</span> {imageName}</div>
-                  <div><span className="text-white/60">Type:</span> Image</div>
-                  <div><span className="text-white/60">Zoom:</span> {Math.round(zoom * 100)}%</div>
-                  <div><span className="text-white/60">Rotation:</span> {rotation}°</div>
-                  <div><span className="text-white/60">Authentication:</span> {isAuthenticated ? 'Signed in' : 'Not signed in'}</div>
-                  <div><span className="text-white/60">Controls:</span> Click and drag to pan when zoomed, scroll to zoom</div>
+              <div className="mt-2 sm:mt-4 p-2 sm:p-3 bg-white/5 rounded-lg border border-white/10">
+                <div className="text-xs sm:text-sm text-white/80 space-y-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                    <span className="text-white/60 font-medium">File:</span> 
+                    <span className="break-all">{imageName}</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-xs">
+                    <div><span className="text-white/60">Type:</span> Image</div>
+                    <div><span className="text-white/60">Zoom:</span> {Math.round(zoom * 100)}%</div>
+                    <div><span className="text-white/60">Rotation:</span> {rotation}°</div>
+                    <div><span className="text-white/60">Auth:</span> {isAuthenticated ? 'Signed in' : 'Not signed in'}</div>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-white/10 text-xs text-white/60">
+                    <span className="hidden sm:inline">Controls: Click and drag to pan when zoomed, scroll to zoom</span>
+                    <span className="sm:hidden">Tap and drag to pan when zoomed</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -349,7 +413,7 @@ const EnhancedImageViewerDialog: React.FC<EnhancedImageViewerDialogProps> = ({
           {/* Image Viewer Content */}
           <div className={cn(
             "relative bg-gradient-to-br from-gray-900 to-gray-800 overflow-hidden",
-            isFullscreen ? "h-[calc(100vh-80px)]" : "h-[70vh] min-h-[400px]"
+            isFullscreen ? "h-[calc(100vh-60px)] sm:h-[calc(100vh-80px)]" : "h-[50vh] sm:h-[70vh] min-h-[300px] sm:min-h-[400px]"
           )}>
             {imageUrl ? (
               <div 
@@ -379,19 +443,19 @@ const EnhancedImageViewerDialog: React.FC<EnhancedImageViewerDialogProps> = ({
                 {isLoading && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
-                      <div className="w-12 h-12 border-4 border-white/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-                      <p className="text-white/70">Loading image...</p>
+                      <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-white/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-white/70 text-sm">Loading image...</p>
                     </div>
                   </div>
                 )}
                 
                 {imageError && (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <X size={24} className="text-red-400" />
+                    <div className="text-center p-4">
+                      <div className="w-8 h-8 sm:w-12 sm:h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <X size={16} className="sm:size-6 text-red-400" />
                       </div>
-                      <p className="text-white/70">Failed to load image</p>
+                      <p className="text-white/70 text-sm">Failed to load image</p>
                     </div>
                   </div>
                 )}
@@ -405,21 +469,19 @@ const EnhancedImageViewerDialog: React.FC<EnhancedImageViewerDialogProps> = ({
             )}
           </div>
 
-          {/* Enhanced Footer */}
-          <div className="p-4 border-t border-white/10 bg-gray-900/90 backdrop-blur-sm">
-            <div className="flex items-center justify-between text-sm text-white/60">
-              <div className="flex items-center space-x-4">
-                <span>Interactive Image Viewer</span>
+          {/* Responsive Footer */}
+          <div className="p-2 sm:p-4 border-t border-white/10 bg-gray-900/90 backdrop-blur-sm">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs sm:text-sm text-white/60">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                <span className="font-medium">Interactive Image Viewer</span>
                 <span className="hidden sm:inline">•</span>
-                <span className="hidden sm:inline">Scroll to zoom, drag to pan</span>
-                <span className="hidden sm:inline">•</span>
-                <span className="hidden sm:inline">{isAuthenticated ? 'Secure downloads enabled' : 'Sign in for downloads'}</span>
+                <span className="text-xs">{isAuthenticated ? 'Secure downloads enabled' : 'Sign in for downloads'}</span>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <span className="text-xs">Zoom: {Math.round(zoom * 100)}%</span>
+              <div className="flex items-center gap-2 sm:gap-4 text-xs">
+                <span>Zoom: {Math.round(zoom * 100)}%</span>
                 {isDownloading && (
-                  <span className="text-xs text-blue-400">Downloading...</span>
+                  <span className="text-blue-400">Downloading...</span>
                 )}
               </div>
             </div>
@@ -429,15 +491,14 @@ const EnhancedImageViewerDialog: React.FC<EnhancedImageViewerDialogProps> = ({
 
       {/* Auth Prompt Modal - handled by useSecureDownload hook */}
       {authPromptOpen && (
-        <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center">
-          <div className="bg-gray-900 p-6 rounded-lg border border-white/10 max-w-md mx-4">
+        <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center p-4">
+          <div className="bg-gray-900 p-4 sm:p-6 rounded-lg border border-white/10 max-w-md w-full mx-4">
             <h3 className="text-white text-lg font-semibold mb-4">Authentication Required</h3>
-            <p className="text-white/70 mb-6">You must be signed in to download images from the gallery.</p>
-            <div className="flex gap-3">
+            <p className="text-white/70 mb-6 text-sm">You must be signed in to download images from the gallery.</p>
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 onClick={() => {
                   setAuthPromptOpen(false);
-                  // Navigate to auth page - this should be handled by AuthPromptModal
                   window.location.href = '/auth';
                 }}
                 className="flex-1 bg-blue-600 hover:bg-blue-700"

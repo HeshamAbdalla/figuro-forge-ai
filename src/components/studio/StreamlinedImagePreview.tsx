@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download, Wand2, Image as ImageIcon, ArrowRight, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface StreamlinedImagePreviewProps {
   imageSrc: string | null;
@@ -23,6 +24,7 @@ const StreamlinedImagePreview = ({
 }: StreamlinedImagePreviewProps) => {
   const { toast } = useToast();
   const [imageError, setImageError] = useState<boolean>(false);
+  const isMobile = useIsMobile();
   
   const handleSaveImage = () => {
     if (!imageSrc) return;
@@ -64,12 +66,12 @@ const StreamlinedImagePreview = ({
       transition={{ duration: 0.3 }}
       className="glass-panel rounded-xl overflow-hidden backdrop-blur-md border border-white/20 h-fit"
     >
-      <div className="p-3 border-b border-white/10">
-        <h3 className="text-lg font-medium text-white flex items-center gap-2">
-          <ImageIcon size={20} className="text-figuro-accent" />
+      <div className="p-2 sm:p-3 border-b border-white/10">
+        <h3 className="text-base sm:text-lg font-medium text-white flex items-center gap-2">
+          <ImageIcon size={isMobile ? 16 : 20} className="text-figuro-accent" />
           Preview
         </h3>
-        <p className="text-sm text-white/60 mt-1">
+        <p className="text-xs sm:text-sm text-white/60 mt-1">
           {isLoading ? "Generating your image..." : 
            imageSrc ? "Ready to convert to 3D" : 
            "Your generated image will appear here"}
@@ -78,17 +80,17 @@ const StreamlinedImagePreview = ({
 
       <div className="aspect-square relative">
         {isLoading ? (
-          <div className="w-full h-full p-4 flex flex-col items-center justify-center">
+          <div className="w-full h-full p-2 sm:p-4 flex flex-col items-center justify-center">
             <Skeleton className="w-full h-full rounded-lg bg-white/5 loading-shine" />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
               >
-                <Wand2 className="text-figuro-accent h-8 w-8 mb-2" />
+                <Wand2 className="text-figuro-accent h-6 w-6 sm:h-8 sm:w-8 mb-2" />
               </motion.div>
-              <p className="text-white/70 text-sm">Creating magic...</p>
-              <div className="w-32 h-1 bg-white/20 rounded-full mt-3 overflow-hidden">
+              <p className="text-white/70 text-xs sm:text-sm">Creating magic...</p>
+              <div className="w-24 sm:w-32 h-1 bg-white/20 rounded-full mt-3 overflow-hidden">
                 <motion.div
                   className="h-full bg-figuro-accent rounded-full"
                   initial={{ width: "0%" }}
@@ -99,7 +101,7 @@ const StreamlinedImagePreview = ({
             </div>
           </div>
         ) : imageSrc ? (
-          <div className="w-full h-full p-2">
+          <div className="w-full h-full p-1 sm:p-2">
             <img
               src={imageSrc}
               alt="Generated figurine"
@@ -108,7 +110,7 @@ const StreamlinedImagePreview = ({
             />
             {imageError && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg">
-                <p className="text-red-400 text-sm">Failed to load</p>
+                <p className="text-red-400 text-xs sm:text-sm">Failed to load</p>
               </div>
             )}
           </div>
@@ -119,24 +121,24 @@ const StreamlinedImagePreview = ({
                 animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               >
-                <ImageIcon size={48} className="mx-auto mb-3" />
+                <ImageIcon size={isMobile ? 32 : 48} className="mx-auto mb-3" />
               </motion.div>
-              <p className="text-sm">Your artwork will appear here</p>
+              <p className="text-xs sm:text-sm">Your artwork will appear here</p>
               <p className="text-xs mt-1 text-white/20">Start by generating an image</p>
             </div>
           </div>
         )}
       </div>
       
-      <div className="p-3 space-y-2">
+      <div className="p-2 sm:p-3 space-y-2">
         {imageSrc && !imageError && (
           <Button
             variant="outline"
             size="sm"
             onClick={handleSaveImage}
-            className="w-full border-white/20 hover:border-white/40 bg-white/5 h-8"
+            className={`w-full border-white/20 hover:border-white/40 bg-white/5 ${isMobile ? 'h-7 text-xs' : 'h-8'}`}
           >
-            <Download size={14} className="mr-1" />
+            <Download size={isMobile ? 12 : 14} className="mr-1" />
             Save Image
           </Button>
         )}
@@ -147,27 +149,28 @@ const StreamlinedImagePreview = ({
             size="sm"
             onClick={onOpenConfig}
             disabled={!imageSrc || isConverting || isLoading || imageError}
-            className="border-white/20 hover:border-white/40 bg-white/5 h-9"
+            className={`border-white/20 hover:border-white/40 bg-white/5 ${isMobile ? 'h-8 px-2' : 'h-9'}`}
           >
-            <Settings size={14} className="mr-1" />
-            Config
+            <Settings size={isMobile ? 12 : 14} className="mr-1" />
+            <span className={isMobile ? 'text-xs' : ''}>Config</span>
           </Button>
           
           <Button
             onClick={onConvertTo3D}
             disabled={!imageSrc || isConverting || isLoading || imageError}
-            className="flex-1 bg-figuro-accent hover:bg-figuro-accent-hover h-9 font-medium"
+            className={`flex-1 bg-figuro-accent hover:bg-figuro-accent-hover font-medium ${isMobile ? 'h-8 text-xs' : 'h-9'}`}
           >
             {isConverting ? (
               <>
                 <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                Converting...
+                {isMobile ? 'Converting...' : 'Converting...'}
               </>
             ) : (
               <>
-                <Wand2 size={16} className="mr-2" />
-                Convert to 3D
-                <ArrowRight size={14} className="ml-1" />
+                <Wand2 size={isMobile ? 12 : 16} className="mr-2" />
+                <span className="hidden sm:inline">Convert to 3D</span>
+                <span className="sm:hidden">Convert</span>
+                <ArrowRight size={isMobile ? 10 : 14} className="ml-1" />
               </>
             )}
           </Button>
