@@ -9,7 +9,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Settings, Zap, Palette, Cpu, Image as ImageIcon } from 'lucide-react';
 
@@ -94,34 +93,18 @@ const ImageTo3DConfigModal: React.FC<ImageTo3DConfigModalProps> = ({
               <Label className="text-white font-medium">Quality Settings</Label>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-white/80">Art Style</Label>
-                <Select value={config.art_style} onValueChange={(value) => updateConfig('art_style', value)}>
-                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-figuro-dark border-white/10">
-                    <SelectItem value="realistic">Realistic</SelectItem>
-                    <SelectItem value="cartoon">Cartoon</SelectItem>
-                    <SelectItem value="low-poly">Low Poly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-white/80">AI Model</Label>
-                <Select value={config.ai_model} onValueChange={(value) => updateConfig('ai_model', value)}>
-                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-figuro-dark border-white/10">
-                    <SelectItem value="meshy-5">Meshy-5 (Latest)</SelectItem>
-                    <SelectItem value="meshy-4">Meshy-4</SelectItem>
-                    <SelectItem value="meshy-3">Meshy-3</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label className="text-white/80">Art Style</Label>
+              <Select value={config.art_style} onValueChange={(value) => updateConfig('art_style', value)}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-figuro-dark border-white/10">
+                  <SelectItem value="realistic">Realistic</SelectItem>
+                  <SelectItem value="cartoon">Cartoon</SelectItem>
+                  <SelectItem value="low-poly">Low Poly</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -177,28 +160,18 @@ const ImageTo3DConfigModal: React.FC<ImageTo3DConfigModalProps> = ({
               <Label className="text-white font-medium">Texture Settings</Label>
             </div>
             
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-white/80">Texture Richness</Label>
-                <Select value={config.texture_richness} onValueChange={(value) => updateConfig('texture_richness', value)}>
-                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-figuro-dark border-white/10">
-                    <SelectItem value="high">High (Most detailed)</SelectItem>
-                    <SelectItem value="medium">Medium (Balanced)</SelectItem>
-                    <SelectItem value="low">Low (Faster generation)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label className="text-white/80">Content Moderation</Label>
-                <Switch 
-                  checked={config.moderation} 
-                  onCheckedChange={(checked) => updateConfig('moderation', checked)}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label className="text-white/80">Texture Richness</Label>
+              <Select value={config.texture_richness} onValueChange={(value) => updateConfig('texture_richness', value)}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-figuro-dark border-white/10">
+                  <SelectItem value="high">High (Most detailed)</SelectItem>
+                  <SelectItem value="medium">Medium (Balanced)</SelectItem>
+                  <SelectItem value="low">Low (Faster generation)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -224,7 +197,8 @@ const ImageTo3DConfigModal: React.FC<ImageTo3DConfigModalProps> = ({
 
           {/* Info */}
           <div className="text-center text-sm text-white/60 border-t border-white/10 pt-4">
-            <p>Generation typically takes 2-5 minutes depending on quality settings.</p>
+            <p>Generation uses Meshy-5 AI model with content moderation enabled.</p>
+            <p>Typically takes 2-5 minutes depending on quality settings.</p>
           </div>
         </div>
       </DialogContent>

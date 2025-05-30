@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -179,16 +178,6 @@ const TextTo3DConfigModal = ({
               </Select>
             </div>
 
-            {/* Generate Texture */}
-            <div className="flex items-center justify-between">
-              <Label className="text-white/80 text-sm">Generate Texture</Label>
-              <Switch
-                checked={config.texture}
-                onCheckedChange={(checked) => updateConfig({ texture: checked })}
-                disabled={isGenerating}
-              />
-            </div>
-
             {/* Seed Value */}
             <div className="space-y-2">
               <Label className="text-white/80 text-sm">Seed (Optional)</Label>
@@ -242,6 +231,12 @@ const TextTo3DConfigModal = ({
                 </>
               )}
             </Button>
+          </div>
+
+          {/* Info */}
+          <div className="text-center text-sm text-white/60 border-t border-white/10 pt-4">
+            <p>Generation uses Meshy-5 AI model with content moderation enabled.</p>
+            <p>Typically takes 2-5 minutes depending on quality settings.</p>
           </div>
         </motion.div>
       </DialogContent>
