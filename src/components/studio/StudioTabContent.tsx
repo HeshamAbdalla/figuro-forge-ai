@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -58,6 +59,10 @@ const StudioTabContent = ({
 }: StudioTabContentProps) => {
   const { figurines } = useFigurines();
   const { isGenerating: isGeneratingIcon, generatedIcon, generateIcon, clearIcon } = useWebIconsGeneration();
+
+  const handleIconGeneration = async (prompt: string, options: { category: string; size: string; style: string }) => {
+    await generateIcon(prompt, options);
+  };
 
   const handleIconDownload = (format: string) => {
     if (!generatedIcon) return;
@@ -232,7 +237,7 @@ const StudioTabContent = ({
             className="space-y-4"
           >
             <WebIconsForm 
-              onGenerate={generateIcon}
+              onGenerate={handleIconGeneration}
               isGenerating={isGeneratingIcon}
             />
             
