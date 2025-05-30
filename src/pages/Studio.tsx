@@ -3,7 +3,7 @@ import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
 import { useTabNavigation } from "@/hooks/useTabNavigation";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import Header from "@/components/Header";
 import StudioLayout from "@/components/studio/StudioLayout";
 import { useStudioState } from "@/components/studio/hooks/useStudioState";
@@ -56,7 +56,7 @@ const Studio = () => {
     tabs: ['image-to-3d', 'text-to-3d', 'gallery']
   });
 
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useEnhancedAuth();
 
   const {
     onGenerate,
