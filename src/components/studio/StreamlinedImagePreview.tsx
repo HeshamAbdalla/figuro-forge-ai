@@ -3,9 +3,10 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, Wand2, Image as ImageIcon, ArrowRight, Settings } from "lucide-react";
+import { Download, Wand2, Image as ImageIcon, ArrowRight, Settings, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { globalPerformanceMonitor, PerformanceStats } from "@/components/model-viewer/utils/performanceMonitor";
 
 interface StreamlinedImagePreviewProps {
   imageSrc: string | null;
@@ -13,6 +14,7 @@ interface StreamlinedImagePreviewProps {
   onConvertTo3D: () => void;
   onOpenConfig: () => void;
   isConverting: boolean;
+  enablePerformanceMonitoring?: boolean;
 }
 
 const StreamlinedImagePreview = ({ 
@@ -20,11 +22,29 @@ const StreamlinedImagePreview = ({
   isLoading, 
   onConvertTo3D, 
   onOpenConfig,
-  isConverting 
+  isConverting,
+  enablePerformanceMonitoring = process.env.NODE_ENV === 'development'
 }: StreamlinedImagePreviewProps) => {
   const { toast } = useToast();
   const [imageError, setImageError] = useState<boolean>(false);
+  const [showPerformanceStats, setShowPerformanceStats] = useState<boolean>(false);
+  const [performanceStats, setPerformanceStats] = useState<PerformanceStats | null>(null);
   const isMobile = useIsMobile();
+
+  // Initialize performance monitoring if enabled
+  React.useEffect(() => {
+    if (enablePerformanceMonitoring) {
+      const handlePerformanceUpdate = (stats: PerformanceStats) => {
+        setPerformanceStats(stats);
+      };
+
+      globalPerformanceMonitor.addCallback(handlePerformanceUpdate);
+      
+      return () => {
+        globalPerformanceMonitor.removeCallback(handlePerformanceUpdate);
+      };
+    }
+  }, [enablePerformanceMonitoring]);
   
   const handleSaveImage = () => {
     if (!imageSrc) return;
@@ -59,18 +79,55 @@ const StreamlinedImagePreview = ({
     });
   };
 
+  const handleConvertTo3D = () => {
+    // Start performance monitoring when 3D conversion begins
+    if (enablePerformanceMonitoring) {
+      globalPerformanceMonitor.start();
+    }
+    onConvertTo3D();
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
-      className="glass-panel rounded-xl overflow-hidden backdrop-blur-md border border-white/20 h-fit"
+      className="glass-panel rounded-xl overflow-hidden backdrop-blur-md border border-white/20 h-fit relative"
     >
+      {/* Performance Stats Overlay */}
+      {enablePerformanceMonitoring && showPerformanceStats && performanceStats && (
+        <div className="absolute top-12 left-2 z-10 bg-black/90 text-white text-xs p-2 rounded font-mono border border-white/20">
+          <div className="flex items-center gap-1 mb-1">
+            <Activity size={10} />
+            <span>Performance</span>
+          </div>
+          <div>FPS: {performanceStats.fps.toFixed(1)}</div>
+          <div>Render: {performanceStats.renderTime.toFixed(1)}ms</div>
+          <div>Memory: {performanceStats.memoryUsage.toFixed(1)}MB</div>
+        </div>
+      )}
+
       <div className="p-2 sm:p-3 border-b border-white/10">
-        <h3 className="text-base sm:text-lg font-medium text-white flex items-center gap-2">
-          <ImageIcon size={isMobile ? 16 : 20} className="text-figuro-accent" />
-          Preview
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-base sm:text-lg font-medium text-white flex items-center gap-2">
+            <ImageIcon size={isMobile ? 16 : 20} className="text-figuro-accent" />
+            Preview
+          </h3>
+          
+          {/* Performance Monitor Toggle (Development) */}
+          {enablePerformanceMonitoring && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPerformanceStats(!showPerformanceStats)}
+              className={`h-6 w-6 p-1 ${showPerformanceStats ? 'text-figuro-accent' : 'text-white/50'}`}
+              title="Toggle Performance Stats"
+            >
+              <Activity size={12} />
+            </Button>
+          )}
+        </div>
+        
         <p className="text-xs sm:text-sm text-white/60 mt-1">
           {isLoading ? "Generating your image..." : 
            imageSrc ? "Ready to convert to 3D" : 
@@ -156,7 +213,7 @@ const StreamlinedImagePreview = ({
           </Button>
           
           <Button
-            onClick={onConvertTo3D}
+            onClick={handleConvertTo3D}
             disabled={!imageSrc || isConverting || isLoading || imageError}
             className={`flex-1 bg-figuro-accent hover:bg-figuro-accent-hover font-medium ${isMobile ? 'h-8 text-xs' : 'h-9'}`}
           >
