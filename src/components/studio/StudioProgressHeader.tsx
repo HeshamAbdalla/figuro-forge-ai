@@ -1,6 +1,6 @@
 
 import { motion } from "framer-motion";
-import { Check, Wand2, Box, GalleryHorizontal } from "lucide-react";
+import { Check, Wand2, Box, Palette, GalleryHorizontal } from "lucide-react";
 import { TabKey } from "@/hooks/useTabNavigation";
 
 interface StudioProgressHeaderProps {
@@ -27,11 +27,18 @@ const steps = [
     step: 2
   },
   {
+    key: 'web-icons' as TabKey,
+    title: 'Web Icons',
+    description: 'Generate custom icons',
+    icon: Palette,
+    step: 3
+  },
+  {
     key: 'gallery' as TabKey,
     title: 'Your Gallery',
     description: 'View your collection',
     icon: GalleryHorizontal,
-    step: 3
+    step: 4
   }
 ];
 
@@ -53,10 +60,10 @@ const StudioProgressHeader = ({
     <div className={`mb-8 ${className}`}>
       <div className="glass-panel border-white/20 backdrop-blur-sm rounded-xl p-6">
         <h2 className="text-xl font-semibold text-gradient mb-6 text-center">
-          Create Your 3D Figurine
+          Create Your 3D Figurine & Web Icons
         </h2>
         
-        <div className="flex items-center justify-between max-w-3xl mx-auto relative">
+        <div className="flex items-center justify-between max-w-4xl mx-auto relative">
           {/* Progress Line */}
           <div className="absolute top-6 left-0 right-0 h-0.5 bg-white/20">
             <motion.div
@@ -64,7 +71,8 @@ const StudioProgressHeader = ({
               initial={{ width: "0%" }}
               animate={{ 
                 width: activeTab === 'image-to-3d' ? "0%" : 
-                       activeTab === 'text-to-3d' ? "50%" : "100%" 
+                       activeTab === 'text-to-3d' ? "33%" : 
+                       activeTab === 'web-icons' ? "66%" : "100%" 
               }}
               transition={{ duration: 0.5 }}
             />

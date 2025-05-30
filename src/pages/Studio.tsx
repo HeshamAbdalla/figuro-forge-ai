@@ -1,4 +1,3 @@
-
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
@@ -53,7 +52,7 @@ const Studio = () => {
 
   const { activeTab, setActiveTab } = useTabNavigation({
     defaultTab: 'image-to-3d',
-    tabs: ['image-to-3d', 'text-to-3d', 'gallery']
+    tabs: ['image-to-3d', 'text-to-3d', 'web-icons', 'gallery']
   });
 
   const { user: authUser } = useEnhancedAuth();

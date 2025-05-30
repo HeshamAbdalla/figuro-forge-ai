@@ -1,5 +1,4 @@
 
-# This file controls the behavior of Supabase Edge Functions.
 project_id = "cwjxbwqdfejhmiixoiym"
 
 [functions.convert-to-3d]
@@ -9,6 +8,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-image]
+verify_jwt = false
+
+[functions.generate-web-icon]
 verify_jwt = false
 
 [functions.increment]

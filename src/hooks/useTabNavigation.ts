@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-export type TabKey = 'image-to-3d' | 'text-to-3d' | 'gallery';
+export type TabKey = 'image-to-3d' | 'text-to-3d' | 'web-icons' | 'gallery';
 
 interface UseTabNavigationProps {
   defaultTab?: TabKey;

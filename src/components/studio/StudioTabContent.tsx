@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -9,8 +8,11 @@ import StreamlinedImagePreview from "@/components/studio/StreamlinedImagePreview
 import ImageTo3DProgress from "@/components/studio/ImageTo3DProgress";
 import TextTo3DForm from "@/components/studio/TextTo3DForm";
 import TextTo3DProgress from "@/components/studio/TextTo3DProgress";
+import WebIconsForm from "@/components/studio/WebIconsForm";
+import WebIconsPreview from "@/components/studio/WebIconsPreview";
 import MiniGalleryCarousel from "@/components/studio/MiniGalleryCarousel";
 import { useFigurines } from "@/components/figurine/useFigurines";
+import { useWebIconsGeneration } from "@/hooks/useWebIconsGeneration";
 import type { TabKey } from "@/hooks/useTabNavigation";
 
 interface StudioTabContentProps {
@@ -55,6 +57,16 @@ const StudioTabContent = ({
   setCustomModelUrl
 }: StudioTabContentProps) => {
   const { figurines } = useFigurines();
+  const { isGenerating: isGeneratingIcon, generatedIcon, generateIcon, clearIcon } = useWebIconsGeneration();
+
+  const handleIconDownload = (format: string) => {
+    if (!generatedIcon) return;
+    
+    const link = document.createElement('a');
+    link.href = generatedIcon;
+    link.download = `web-icon.${format}`;
+    link.click();
+  };
 
   if (!authUser) {
     return (
@@ -200,6 +212,46 @@ const StudioTabContent = ({
               isLoading={shouldModelViewerLoad && !displayModelUrl}
               errorMessage={textTo3DProgress.status === 'error' ? 'Failed to generate 3D model' : undefined}
               onCustomModelLoad={(url) => setCustomModelUrl(url)}
+            />
+          </motion.div>
+        </motion.div>
+      );
+
+    case 'web-icons':
+      return (
+        <motion.div 
+          className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, staggerChildren: 0.1 }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-4"
+          >
+            <WebIconsForm 
+              onGenerate={generateIcon}
+              isGenerating={isGeneratingIcon}
+            />
+            
+            <MiniGalleryCarousel 
+              figurines={figurines.slice(0, 6)}
+              onCreateNew={() => onGenerate("", "isometric")}
+            />
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <WebIconsPreview
+              iconUrl={generatedIcon}
+              isLoading={isGeneratingIcon}
+              onClear={clearIcon}
+              onDownload={handleIconDownload}
             />
           </motion.div>
         </motion.div>
