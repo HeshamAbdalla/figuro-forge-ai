@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -90,9 +89,6 @@ export const PlanSummary = () => {
   const currentPlan = subscription?.plan ? PLANS[subscription.plan] : PLANS.free;
 
   // Calculate usage percentages for progress bars using subscription data
-  const dailyImageProgress = currentPlan.limits.isUnlimited ? 0 : 
-    Math.min(100, ((subscription?.generation_count_today || 0) / currentPlan.limits.imageGenerationsPerDay) * 100);
-  
   const monthlyImageProgress = currentPlan.limits.isUnlimited ? 0 :
     Math.min(100, ((subscription?.generation_count_this_month || 0) / currentPlan.limits.imageGenerationsPerMonth) * 100);
   
@@ -160,33 +156,7 @@ export const PlanSummary = () => {
         <CardContent className="p-6">
           <h3 className="text-xl font-semibold text-white mb-4">Usage Overview</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Daily Image Generations */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Image className="h-4 w-4 text-blue-400" />
-                  <span className="text-white font-medium">Images Today</span>
-                </div>
-                <span className="text-white/70 text-sm">
-                  {subscription?.generation_count_today || 0} / {currentPlan.limits.isUnlimited ? '∞' : currentPlan.limits.imageGenerationsPerDay}
-                </span>
-              </div>
-              {!currentPlan.limits.isUnlimited && (
-                <Progress 
-                  value={dailyImageProgress} 
-                  className="h-2 bg-white/10"
-                  indicatorClassName={dailyImageProgress >= 90 ? "bg-red-500" : dailyImageProgress >= 70 ? "bg-amber-500" : "bg-blue-400"}
-                />
-              )}
-              {dailyImageProgress >= 90 && !currentPlan.limits.isUnlimited && (
-                <div className="flex items-center gap-1 text-amber-400 text-sm">
-                  <TrendingUp className="h-3 w-3" />
-                  <span>Approaching daily limit</span>
-                </div>
-              )}
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Monthly Image Generations */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
