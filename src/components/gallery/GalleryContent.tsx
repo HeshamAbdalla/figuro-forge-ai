@@ -1,19 +1,21 @@
 
 import React from "react";
-import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 import { BucketImage } from "./types";
+import ThumbnailBasedGalleryGrid from "./components/ThumbnailBasedGalleryGrid";
+import ModelViewerDialog from "./ModelViewerDialog";
+import EnhancedImageViewerDialog from "./EnhancedImageViewerDialog";
+import Generate3DModal from "./Generate3DModal";
+import AuthPromptModal from "@/components/auth/AuthPromptModal";
 import GalleryHeader from "./GalleryHeader";
-import OptimizedGalleryGrid from "./performance/OptimizedGalleryGrid";
-import GalleryModals from "./GalleryModals";
-import { Generate3DConfig } from "./Generate3DConfigModal";
-import { ConversionProgress } from "./types/conversion";
 
 interface GalleryContentProps {
   files: BucketImage[];
   isLoading: boolean;
   error: Error | null;
-  onViewModel: (url: string, fileName?: string) => void;
-  onViewImage: (url: string, fileName?: string) => void;
+  onViewModel: (url: string, name: string) => void;
+  onViewImage: (url: string, name: string) => void;
   onDownload: (url: string, name: string) => void;
   onRefresh: () => void;
   modelViewerOpen: boolean;
@@ -27,10 +29,10 @@ interface GalleryContentProps {
   viewingImageName: string | undefined;
   onCloseImageViewer: () => void;
   isGenerating: boolean;
-  progress: ConversionProgress | null;
+  progress: any;
   onGeneration3DOpenChange: (open: boolean) => void;
   onResetProgress: () => void;
-  onGenerate: (config: Generate3DConfig) => Promise<void>;
+  onGenerate: (config: any) => void;
   sourceImageUrl: string | null;
   authPromptOpen: boolean;
   onAuthPromptChange: (open: boolean) => void;
@@ -63,79 +65,81 @@ const GalleryContent: React.FC<GalleryContentProps> = ({
   authPromptOpen,
   onAuthPromptChange
 }) => {
-  // Handle view functionality - route to appropriate viewer
-  const handleView = (url: string, fileName: string, fileType: 'image' | '3d-model') => {
-    if (fileType === '3d-model') {
-      onViewModel(url, fileName);
+  const handleViewItem = (url: string, name: string, type: 'image' | '3d-model') => {
+    if (type === '3d-model') {
+      onViewModel(url, name);
     } else {
-      onViewImage(url, fileName);
+      onViewImage(url, name);
     }
   };
 
-  // Handle 3D generation for images
-  const handleGenerate3D = (url: string, fileName: string) => {
-    onViewImage(url, fileName); // This will trigger the 3D generation modal
+  const handleGenerate3D = (url: string, name: string) => {
+    onViewImage(url, name); // This will set up the source image for 3D generation
+    onGeneration3DOpenChange(true);
   };
 
   if (error) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="text-center py-20"
-      >
-        <h3 className="text-xl font-semibold text-white mb-4">Failed to load gallery</h3>
+      <div className="text-center py-20">
+        <h3 className="text-xl font-semibold text-red-400 mb-4">
+          Failed to load gallery
+        </h3>
         <p className="text-white/60 mb-6">{error.message}</p>
-        <button
-          onClick={onRefresh}
-          className="px-6 py-2 bg-figuro-accent hover:bg-figuro-accent-hover text-white rounded-lg transition-colors"
-        >
+        <Button onClick={onRefresh} variant="outline">
+          <RefreshCw className="w-4 h-4 mr-2" />
           Try Again
-        </button>
-      </motion.div>
+        </Button>
+      </div>
     );
   }
 
   return (
-    <>
-      <GalleryHeader onRefresh={onRefresh} />
+    <div className="space-y-8">
+      <GalleryHeader />
       
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <OptimizedGalleryGrid
-          images={files}
-          isLoading={isLoading}
-          onDownload={onDownload}
-          onView={handleView}
-          onGenerate3D={handleGenerate3D}
-          showPerformanceMonitor={process.env.NODE_ENV === 'development'}
-        />
-      </motion.div>
+      {/* Thumbnail-based gallery grid with performance optimizations */}
+      <ThumbnailBasedGalleryGrid
+        images={files}
+        isLoading={isLoading}
+        onDownload={onDownload}
+        onView={handleViewItem}
+        onGenerate3D={handleGenerate3D}
+      />
 
-      <GalleryModals
-        modelViewerOpen={modelViewerOpen}
-        setModelViewerOpen={setModelViewerOpen}
-        viewingModel={viewingModel}
-        viewingFileName={viewingFileName}
-        onCloseModelViewer={onCloseModelViewer}
-        imageViewerOpen={imageViewerOpen}
-        setImageViewerOpen={setImageViewerOpen}
-        viewingImage={viewingImage}
-        viewingImageName={viewingImageName}
-        onCloseImageViewer={onCloseImageViewer}
+      {/* Model Viewer Dialog - Only one can be open at a time */}
+      <ModelViewerDialog
+        open={modelViewerOpen}
+        onOpenChange={setModelViewerOpen}
+        modelUrl={viewingModel}
+        onClose={onCloseModelViewer}
+      />
+
+      {/* Enhanced Image Viewer Dialog */}
+      <EnhancedImageViewerDialog
+        open={imageViewerOpen}
+        onOpenChange={setImageViewerOpen}
+        imageUrl={viewingImage}
+        imageName={viewingImageName}
+        onClose={onCloseImageViewer}
+      />
+
+      {/* Generate 3D Modal */}
+      <Generate3DModal
+        open={!!sourceImageUrl && isGenerating}
+        onOpenChange={onGeneration3DOpenChange}
+        sourceImageUrl={sourceImageUrl}
         isGenerating={isGenerating}
         progress={progress}
-        onGeneration3DOpenChange={onGeneration3DOpenChange}
         onResetProgress={onResetProgress}
         onGenerate={onGenerate}
-        sourceImageUrl={sourceImageUrl}
-        authPromptOpen={authPromptOpen}
-        onAuthPromptChange={onAuthPromptChange}
       />
-    </>
+
+      {/* Auth Prompt Modal */}
+      <AuthPromptModal
+        open={authPromptOpen}
+        onOpenChange={onAuthPromptChange}
+      />
+    </div>
   );
 };
 
