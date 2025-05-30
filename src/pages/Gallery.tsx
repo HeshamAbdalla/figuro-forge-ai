@@ -19,7 +19,7 @@ const Gallery = () => {
   const { user } = useEnhancedAuth();
 
   // Convert string error to Error object if needed
-  const error = rawError ? (rawError instanceof Error ? rawError : new Error(rawError)) : null;
+  const error = rawError ? new Error(rawError) : null;
 
   const {
     viewingModel,
