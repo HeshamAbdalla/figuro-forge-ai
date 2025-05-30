@@ -78,6 +78,11 @@ const GalleryContent: React.FC<GalleryContentProps> = ({
     onGeneration3DOpenChange(true);
   };
 
+  // Convert the onGenerate function to return a Promise
+  const handleGenerate = async (config: any): Promise<void> => {
+    onGenerate(config);
+  };
+
   if (error) {
     return (
       <div className="text-center py-20">
@@ -119,7 +124,7 @@ const GalleryContent: React.FC<GalleryContentProps> = ({
         open={imageViewerOpen}
         onOpenChange={setImageViewerOpen}
         imageUrl={viewingImage}
-        imageName={viewingImageName}
+        fileName={viewingImageName}
         onClose={onCloseImageViewer}
       />
 
@@ -127,11 +132,9 @@ const GalleryContent: React.FC<GalleryContentProps> = ({
       <Generate3DModal
         open={!!sourceImageUrl && isGenerating}
         onOpenChange={onGeneration3DOpenChange}
-        sourceImageUrl={sourceImageUrl}
+        imageUrl={sourceImageUrl}
         isGenerating={isGenerating}
-        progress={progress}
-        onResetProgress={onResetProgress}
-        onGenerate={onGenerate}
+        onGenerate={handleGenerate}
       />
 
       {/* Auth Prompt Modal */}
