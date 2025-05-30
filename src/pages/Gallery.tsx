@@ -4,13 +4,14 @@ import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import GalleryContent from "@/components/gallery/GalleryContent";
-import GalleryModals from "@/components/gallery/GalleryModals";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
 import { useImageViewer } from "@/components/gallery/useImageViewer";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useToast } from "@/hooks/use-toast";
+import { sharedResourcePool } from "@/components/gallery/performance/SharedResourcePool";
+import { webGLContextTracker } from "@/components/model-viewer/utils/resourceManager";
 
 const Gallery = () => {
   const { files, isLoading, error, refetch } = useGalleryFiles();
@@ -43,6 +44,15 @@ const Gallery = () => {
     resetProgress
   } = useGallery3DGeneration();
 
+  // Clean up resources when component unmounts
+  useEffect(() => {
+    return () => {
+      console.log("Gallery unmounting - cleaning up resources");
+      sharedResourcePool.clear();
+      webGLContextTracker.reset();
+    };
+  }, []);
+
   const handleGeneration3DOpenChange = (open: boolean) => {
     if (!open) {
       resetProgress();
@@ -63,13 +73,11 @@ const Gallery = () => {
     await generate3DModel(viewingImage, fileName, config);
   };
 
-  // Show auth prompt for downloads when not authenticated
   const handleDownload = () => {
     if (!user) {
       setAuthPromptOpen(true);
       return;
     }
-    // Download logic would go here
   };
 
   return (

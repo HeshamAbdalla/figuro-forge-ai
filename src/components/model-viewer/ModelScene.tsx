@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Environment } from "@react-three/drei";
@@ -8,6 +9,7 @@ import ErrorBoundary from "./ErrorBoundary";
 import Model3D from "./Model3D";
 import { globalPerformanceMonitor, PerformanceStats } from "./utils/performanceMonitor";
 import { webGLContextTracker } from "./utils/resourceManager";
+import { sharedResourcePool } from "../gallery/performance/SharedResourcePool";
 
 interface ModelSceneProps {
   modelUrl: string | null;
@@ -82,23 +84,17 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
   // Stabilize the source to prevent rapid changes
   useEffect(() => {
     // Only update if there's been a significant change in modelUrl
-    // and it's different from what we're currently tracking
     if (modelUrl !== currentSourceRef.current) {
       console.log("ModelScene: URL source changed to", modelUrl);
       
-      // Clear any previous timeouts
       const current = currentSourceRef.current;
       currentSourceRef.current = modelUrl;
       
-      // If this is a completely new URL (not just undefined → undefined)
       if (modelUrl || (current !== null && modelUrl !== current)) {
-        // Generate new load key to force proper re-mounting
         setLoadKey(`load-${Date.now()}`);
         
-        // Small delay to ensure stable updates and prevent thrashing
         const timer = setTimeout(() => {
           setStableSource(modelUrl);
-          // Clear blob when URL changes
           if (modelUrl) setStableBlob(null);
         }, 100);
         
@@ -107,20 +103,16 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
     }
   }, [modelUrl]);
   
-  // Separate effect for blob changes to prevent dependencies conflicts
+  // Separate effect for blob changes
   useEffect(() => {
-    // Only update if the blob itself has changed and is not null
     if (modelBlob && modelBlob !== currentSourceRef.current) {
       console.log("ModelScene: Blob source changed");
       
-      // Generate new load key to force proper re-mounting
       setLoadKey(`load-${Date.now()}`);
       currentSourceRef.current = modelBlob;
       
-      // Small delay to ensure stable updates
       const timer = setTimeout(() => {
         setStableBlob(modelBlob);
-        // Clear URL when blob changes
         if (modelBlob) setStableSource(null);
       }, 100);
       
@@ -128,15 +120,14 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
     }
   }, [modelBlob]);
 
-  // Handler for errors in the 3D model
   const handleModelError = (error: any) => {
     console.error("ModelScene: Error in 3D model:", error);
     onModelError(error);
   };
 
-  // Optimized Canvas settings for performance
+  // Optimized Canvas settings with shared resources
   const canvasSettings = {
-    shadows: !isPreview, // Disable shadows for previews
+    shadows: !isPreview,
     gl: {
       powerPreference: isPreview ? "low-power" as const : "high-performance" as const,
       antialias: !isPreview,
@@ -146,10 +137,10 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
       preserveDrawingBuffer: false,
       failIfMajorPerformanceCaveat: isPreview
     },
-    dpr: isPreview ? [0.5, 1] as [number, number] : [1, 2] as [number, number], // Properly typed tuples
-    frameloop: (autoRotate ? "always" : "demand") as "always" | "demand" | "never", // Fix frameloop typing
+    dpr: isPreview ? [0.5, 1] as [number, number] : [1, 2] as [number, number],
+    frameloop: (autoRotate ? "always" : "demand") as "always" | "demand" | "never",
     performance: {
-      min: isPreview ? 0.2 : 0.5, // Lower performance threshold for previews
+      min: isPreview ? 0.2 : 0.5,
       max: 1,
       debounce: 200
     }
@@ -170,7 +161,7 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
           makeDefault 
           position={[0, 0, 5]}
           near={0.1}
-          far={isPreview ? 100 : 1000} // Shorter far plane for previews
+          far={isPreview ? 100 : 1000}
         />
         
         <Suspense fallback={<LoadingSpinner />}>
@@ -198,14 +189,14 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
           enablePan={!isPreview}
           enableZoom={true}
           enableRotate={true}
-          enableDamping={!isPreview} // Disable damping for previews (better performance)
+          enableDamping={!isPreview}
           dampingFactor={0.05}
           maxDistance={isPreview ? 50 : 100}
           minDistance={1}
         />
         <Environment 
           preset="sunset" 
-          resolution={isPreview ? 64 : 256} // Lower resolution for previews
+          resolution={isPreview ? 64 : 256}
         />
       </Canvas>
       
@@ -216,6 +207,7 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
           <div>Render: {performanceStats.renderTime.toFixed(1)}ms</div>
           <div>Memory: {performanceStats.memoryUsage.toFixed(1)}MB</div>
           <div>Contexts: {webGLContextTracker.getActiveContextCount()}</div>
+          <div>Pool: {JSON.stringify(sharedResourcePool.getStats())}</div>
         </div>
       )}
     </>
