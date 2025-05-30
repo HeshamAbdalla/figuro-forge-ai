@@ -1,6 +1,6 @@
 
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import type { GenerateResult } from "@/hooks/useImageGeneration";
 import type { TextTo3DResult } from "@/hooks/useTextTo3D";
@@ -36,7 +36,7 @@ export const useStudioHandlers = ({
   resetProgress
 }: UseStudioHandlersProps) => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut } = useEnhancedAuth();
   const { toast } = useToast();
 
   const onGenerate = async (prompt: string, style: string) => {
