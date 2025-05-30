@@ -14,7 +14,10 @@ export class SecurityManager {
   private ipAddress: string | null = null;
 
   private constructor() {
-    this.detectIPAddress();
+    // Simplified IP detection
+    this.detectIPAddress().catch(() => {
+      // Ignore IP detection failures
+    });
   }
 
   static getInstance(): SecurityManager {
@@ -26,40 +29,50 @@ export class SecurityManager {
 
   private async detectIPAddress(): Promise<void> {
     try {
-      const response = await fetch('https://api.ipify.org?format=json');
+      const response = await fetch('https://api.ipify.org?format=json', { 
+        signal: AbortSignal.timeout(2000) 
+      });
       const data = await response.json();
       this.ipAddress = data.ip;
     } catch (error) {
-      console.warn('Could not detect IP address:', error);
+      console.log('IP detection skipped:', error instanceof Error ? error.message : 'Unknown');
     }
   }
 
+  // Simplified security logging that doesn't block
   async logSecurityEvent(event: SecurityEvent): Promise<void> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      await supabase.rpc('log_security_event', {
-        p_user_id: user?.id || null,
-        p_event_type: event.event_type,
-        p_event_details: event.event_details || {},
-        p_ip_address: this.ipAddress,
-        p_user_agent: navigator.userAgent,
-        p_success: event.success ?? true
-      });
+      // Don't wait for this - fire and forget
+      setTimeout(async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          await supabase.rpc('log_security_event', {
+            p_user_id: user?.id || null,
+            p_event_type: event.event_type,
+            p_event_details: event.event_details || {},
+            p_ip_address: this.ipAddress,
+            p_user_agent: navigator.userAgent,
+            p_success: event.success ?? true
+          });
+        } catch (error) {
+          console.log('Security logging failed (non-blocking):', error);
+        }
+      }, 0);
     } catch (error) {
-      console.error('Failed to log security event:', error);
+      // Ignore all errors
     }
   }
 
+  // Simplified rate limit check
   async checkRateLimit(endpoint: string, limit: number = 100, windowMinutes: number = 60): Promise<boolean> {
     try {
-      console.log(`🔍 [SECURITY] Checking rate limit for ${endpoint} (limit: ${limit}, window: ${windowMinutes}min)...`);
+      console.log(`🔍 [SECURITY] Quick rate limit check for ${endpoint}...`);
       
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Create a timeout promise to prevent hanging
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Rate limit check timeout')), 2000);
+        setTimeout(() => reject(new Error('Timeout')), 1000);
       });
       
       const checkPromise = supabase.rpc('check_rate_limit', {
@@ -73,7 +86,7 @@ export class SecurityManager {
       const { data, error } = await Promise.race([checkPromise, timeoutPromise]);
 
       if (error) {
-        console.warn('⚠️ [SECURITY] Rate limit check failed, allowing request:', error);
+        console.log('⚠️ [SECURITY] Rate limit check failed, allowing:', error.message);
         return true; // Fail open
       }
 
@@ -81,13 +94,12 @@ export class SecurityManager {
       console.log(`${canProceed ? '✅' : '❌'} [SECURITY] Rate limit result:`, canProceed);
       return canProceed;
     } catch (error) {
-      console.warn('⚠️ [SECURITY] Rate limit check error, allowing request:', error);
-      return true; // Fail open to prevent blocking legitimate users
+      console.log('⚠️ [SECURITY] Rate limit error, allowing:', error instanceof Error ? error.message : 'Unknown');
+      return true; // Always fail open
     }
   }
 
   sanitizeInput(input: string): string {
-    // Basic XSS prevention
     return input
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -115,18 +127,17 @@ export class SecurityManager {
   }
 
   detectSuspiciousActivity(user: any, session: any): boolean {
-    // Basic suspicious activity detection
-    const now = new Date();
-    const sessionStart = new Date(session?.issued_at || now);
-    const timeDiff = now.getTime() - sessionStart.getTime();
-    
-    // Flag if session is older than 24 hours
-    if (timeDiff > 24 * 60 * 60 * 1000) {
-      return true;
+    // Simplified detection - only basic checks
+    try {
+      const now = new Date();
+      const sessionStart = new Date(session?.issued_at || now);
+      const timeDiff = now.getTime() - sessionStart.getTime();
+      
+      // Flag if session is older than 24 hours
+      return timeDiff > 24 * 60 * 60 * 1000;
+    } catch {
+      return false;
     }
-    
-    // Add more sophisticated checks here
-    return false;
   }
 }
 

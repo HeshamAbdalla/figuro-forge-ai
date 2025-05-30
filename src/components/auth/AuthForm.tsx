@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEnhancedAuth } from "./EnhancedAuthProvider";
@@ -30,13 +29,11 @@ export function AuthForm() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log("🚀 [AUTH-FORM] Starting sign-in process...");
+    console.log("🚀 [AUTH-FORM] Starting sign-in...");
     setIsLoading(true);
     setErrorMessage("");
     setShowResendOption(false);
     setIsRateLimited(false);
-    
-    cleanupAuthState();
     
     try {
       const { error } = await signIn(email, password);
@@ -50,7 +47,7 @@ export function AuthForm() {
           setIsRateLimited(true);
         }
       } else {
-        console.log("✅ [AUTH-FORM] Sign-in successful, navigating to home...");
+        console.log("✅ [AUTH-FORM] Sign-in successful, navigating...");
         navigate("/");
       }
     } catch (error) {
@@ -67,21 +64,23 @@ export function AuthForm() {
     setErrorMessage("");
     setIsRateLimited(false);
     
-    cleanupAuthState();
-    
-    const { error, data } = await signUp(email, password);
-    
-    if (error) {
-      setErrorMessage(error);
-      if (isRateLimitError(error)) {
-        setIsRateLimited(true);
+    try {
+      const { error, data } = await signUp(email, password);
+      
+      if (error) {
+        setErrorMessage(error);
+        if (isRateLimitError(error)) {
+          setIsRateLimited(true);
+        }
+      } else if (!data?.session) {
+        setErrorMessage("Please check your email for the verification link to complete registration.");
+        setShowResendOption(true);
       }
-    } else if (!data?.session) {
-      setErrorMessage("Please check your email (including spam folder) and click the verification link to complete your registration.");
-      setShowResendOption(true);
+    } catch (error) {
+      setErrorMessage("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
   
   const handleResendVerification = async () => {
@@ -91,13 +90,17 @@ export function AuthForm() {
     }
     
     setResendLoading(true);
-    const { error } = await resendVerificationEmail(email);
-    setResendLoading(false);
-    
-    if (error) {
-      setErrorMessage(error);
-    } else {
-      setShowResendOption(false);
+    try {
+      const { error } = await resendVerificationEmail(email);
+      if (error) {
+        setErrorMessage(error);
+      } else {
+        setShowResendOption(false);
+      }
+    } catch (error) {
+      setErrorMessage("Failed to resend verification email");
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -107,7 +110,6 @@ export function AuthForm() {
       await clearAuthRateLimits();
       setIsRateLimited(false);
       setErrorMessage("");
-      // Force a small delay to ensure the rate limits are cleared
       setTimeout(() => {
         setClearingLimits(false);
       }, 1000);
@@ -120,8 +122,13 @@ export function AuthForm() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     setIsRateLimited(false);
-    await signInWithGoogle();
-    setGoogleLoading(false);
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      setErrorMessage("Failed to sign in with Google");
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const isFormValid = email && password && password.length >= 6;
@@ -165,7 +172,7 @@ export function AuthForm() {
               {isRateLimited && (
                 <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg animate-fade-in">
                   <p className="text-sm mb-3 text-white/90 font-medium">
-                    Rate limit reached. You can try again in a few minutes, or clear the limit below:
+                    Rate limit reached. You can try again in a few minutes, or clear the limit:
                   </p>
                   <Button 
                     variant="outline" 
@@ -179,11 +186,8 @@ export function AuthForm() {
                     ) : (
                       <RefreshCw className="h-4 w-4" />
                     )}
-                    {clearingLimits ? "Clearing..." : "Clear rate limit & try again"}
+                    {clearingLimits ? "Clearing..." : "Clear rate limit"}
                   </Button>
-                  <p className="text-xs mt-2 text-white/60">
-                    This will reset the rate limiting counter for your session
-                  </p>
                 </div>
               )}
               
@@ -204,9 +208,6 @@ export function AuthForm() {
                     )}
                     {resendLoading ? "Sending..." : "Resend verification email"}
                   </Button>
-                  <p className="text-xs mt-2 text-white/60">
-                    Make sure to check your spam/junk folder
-                  </p>
                 </div>
               )}
               
@@ -341,7 +342,7 @@ export function AuthForm() {
               {isRateLimited && (
                 <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg animate-fade-in">
                   <p className="text-sm mb-3 text-white/90 font-medium">
-                    Rate limit reached. You can try again in a few minutes, or clear the limit below:
+                    Rate limit reached. You can try again in a few minutes, or clear the limit:
                   </p>
                   <Button 
                     variant="outline" 
@@ -355,7 +356,7 @@ export function AuthForm() {
                     ) : (
                       <RefreshCw className="h-4 w-4" />
                     )}
-                    {clearingLimits ? "Clearing..." : "Clear rate limit & try again"}
+                    {clearingLimits ? "Clearing..." : "Clear rate limit"}
                   </Button>
                 </div>
               )}
@@ -381,9 +382,6 @@ export function AuthForm() {
                     )}
                     {resendLoading ? "Sending..." : "Resend verification email"}
                   </Button>
-                  <p className="text-xs mt-2 text-white/60">
-                    Make sure to check your spam/junk folder
-                  </p>
                 </div>
               )}
               

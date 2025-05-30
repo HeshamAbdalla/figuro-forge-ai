@@ -5,7 +5,6 @@ import { User, Session } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
 import { cleanupAuthState, getAuthErrorMessage, checkRateLimitSafe } from "@/utils/authUtils";
 import { sessionManager } from "@/utils/sessionManager";
-import { sessionDebugger } from "@/utils/debugUtils";
 import { securityManager } from "@/utils/securityUtils";
 
 interface EnhancedAuthContextType {
@@ -35,128 +34,70 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [securityScore, setSecurityScore] = useState(0);
 
-  // Calculate security score based on various factors
+  // Simplified security score calculation
   const calculateSecurityScore = (user: User | null, session: Session | null): number => {
     let score = 0;
     
     if (user?.email_confirmed_at) score += 25;
-    if (user?.phone_confirmed_at) score += 15;
-    if (session?.access_token) score += 20;
-    if (user?.app_metadata?.provider === 'google') score += 10;
-    
-    // Check for recent login - use expires_at instead of issued_at
+    if (session?.access_token) score += 25;
+    if (user?.app_metadata?.provider === 'google') score += 25;
     if (session?.expires_at) {
       const expiresAt = new Date(session.expires_at * 1000);
       const hoursUntilExpiry = (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60);
-      if (hoursUntilExpiry > 0) score += 20;
-      else if (hoursUntilExpiry > -168) score += 10; // 1 week grace period
-    }
-    
-    // Check for suspicious activity
-    if (user && session && securityManager.detectSuspiciousActivity(user, session)) {
-      score -= 30;
+      if (hoursUntilExpiry > 0) score += 25;
     }
     
     return Math.max(0, Math.min(100, score));
   };
 
-  // Enhanced refresh auth with security monitoring
+  // Simplified auth refresh
   const refreshAuth = async () => {
-    const refreshStart = performance.now();
     try {
-      console.log("🔄 [ENHANCED-AUTH] Refreshing auth state with security monitoring...");
-      
-      const sessionHealth = await sessionManager.initializeSession();
-      console.log("📊 [ENHANCED-AUTH] Session health:", sessionHealth);
-      
-      if (!sessionHealth.isValid) {
-        console.warn("⚠️ [ENHANCED-AUTH] Session health issues:", sessionHealth.issues);
-        await securityManager.logSecurityEvent({
-          event_type: 'session_health_warning',
-          event_details: { issues: sessionHealth.issues },
-          success: false
-        });
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-        setSecurityScore(0);
-        return;
-      }
+      console.log("🔄 [ENHANCED-AUTH] Refreshing auth state...");
       
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
-        sessionDebugger.logSessionError(error, 'Enhanced auth refresh - get session');
-        await securityManager.logSecurityEvent({
-          event_type: 'session_error',
-          event_details: { error: error.message },
-          success: false
-        });
+        console.error("❌ [ENHANCED-AUTH] Session error:", error.message);
         return;
       }
       
-      console.log("🔍 [ENHANCED-AUTH] Current session:", session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       
-      // Calculate and update security score
       const newSecurityScore = calculateSecurityScore(session?.user ?? null, session);
       setSecurityScore(newSecurityScore);
       
       if (session?.user) {
-        try {
-          const profileData = await sessionManager.getProfile(session.user.id);
-          setProfile(profileData);
-          console.log("✅ [ENHANCED-AUTH] Profile loaded successfully");
-          
-          // Log successful auth refresh
-          await securityManager.logSecurityEvent({
-            event_type: 'auth_refresh_success',
-            event_details: { 
-              user_id: session.user.id,
-              security_score: newSecurityScore
-            },
-            success: true
-          });
-        } catch (error) {
-          sessionDebugger.logSessionError(error, 'Enhanced auth refresh - profile fetch');
-          console.error("❌ [ENHANCED-AUTH] Profile fetch failed:", error);
-          
-          await securityManager.logSecurityEvent({
-            event_type: 'profile_fetch_error',
-            event_details: { error: error instanceof Error ? error.message : 'Unknown error' },
-            success: false
-          });
-        }
+        // Defer profile loading to prevent blocking
+        setTimeout(async () => {
+          try {
+            const profileData = await sessionManager.getProfile(session.user.id);
+            setProfile(profileData);
+          } catch (error) {
+            console.error("❌ [ENHANCED-AUTH] Profile fetch failed:", error);
+          }
+        }, 100);
       } else {
         setProfile(null);
-        setSecurityScore(0);
       }
       
-      console.log("✅ [ENHANCED-AUTH] Auth refresh completed in", performance.now() - refreshStart, "ms");
-      
     } catch (error) {
-      sessionDebugger.logSessionError(error, 'Enhanced auth refresh failed');
       console.error("❌ [ENHANCED-AUTH] Error refreshing auth:", error);
-      
-      await securityManager.logSecurityEvent({
-        event_type: 'auth_refresh_error',
-        event_details: { error: error instanceof Error ? error.message : 'Unknown error' },
-        success: false
-      });
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
         
-        console.log("🔄 [ENHANCED-AUTH] Auth state changed:", event, session?.user?.email);
+        console.log("🔄 [ENHANCED-AUTH] Auth state changed:", event);
         
-        // Log auth event for security monitoring
-        await securityManager.logSecurityEvent({
+        // Log auth event (non-blocking)
+        securityManager.logSecurityEvent({
           event_type: `auth_${event.toLowerCase()}`,
           event_details: {
             user_id: session?.user?.id,
@@ -168,115 +109,83 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Update security score
-        const newSecurityScore = calculateSecurityScore(session?.user ?? null, session);
-        setSecurityScore(newSecurityScore);
+        setSecurityScore(calculateSecurityScore(session?.user ?? null, session));
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user && mounted) {
-            console.log("👤 [ENHANCED-AUTH] User signed in, fetching profile...");
+            // Defer profile loading
             setTimeout(async () => {
               if (mounted) {
                 try {
                   const profileData = await sessionManager.getProfile(session.user.id);
                   setProfile(profileData);
-                  setIsLoading(false);
-                  console.log("✅ [ENHANCED-AUTH] Profile loaded after sign in");
                 } catch (error) {
-                  sessionDebugger.logSessionError(error, 'Enhanced profile fetch after sign in');
-                  setIsLoading(false);
+                  console.error("❌ [ENHANCED-AUTH] Profile fetch failed:", error);
                 }
+                setIsLoading(false);
               }
-            }, 200);
+            }, 100);
           }
         } else if (event === 'SIGNED_OUT') {
-          console.log("👋 [ENHANCED-AUTH] User signed out, clearing data...");
           setProfile(null);
           setSecurityScore(0);
           sessionManager.clearCache();
           setIsLoading(false);
         } else if (event === 'INITIAL_SESSION') {
           if (session?.user && mounted) {
-            console.log("🚀 [ENHANCED-AUTH] Initial session found, loading profile...");
+            // Defer profile loading
             setTimeout(async () => {
               if (mounted) {
                 try {
                   const profileData = await sessionManager.getProfile(session.user.id);
                   setProfile(profileData);
-                  setIsLoading(false);
-                  console.log("✅ [ENHANCED-AUTH] Initial profile loaded");
                 } catch (error) {
-                  sessionDebugger.logSessionError(error, 'Enhanced initial profile fetch');
-                  setIsLoading(false);
+                  console.error("❌ [ENHANCED-AUTH] Initial profile fetch failed:", error);
                 }
+                setIsLoading(false);
               }
-            }, 200);
+            }, 100);
           } else {
-            console.log("❌ [ENHANCED-AUTH] No initial session found");
             setIsLoading(false);
           }
         }
       }
     );
 
-    // Initialize auth with security monitoring
+    // Initialize auth
     const initializeAuth = async () => {
       try {
-        console.log("🚀 [ENHANCED-AUTH] Initializing enhanced authentication...");
-        
-        const initHealth = await sessionManager.initializeSession();
-        console.log("📊 [ENHANCED-AUTH] Initialization health:", initHealth);
+        console.log("🚀 [ENHANCED-AUTH] Initializing...");
         
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-          sessionDebugger.logSessionError(error, 'Enhanced auth initialization');
-          console.error("❌ [ENHANCED-AUTH] Error getting initial session:", error);
+          console.error("❌ [ENHANCED-AUTH] Initial session error:", error.message);
         }
         
         if (mounted) {
-          console.log("🔍 [ENHANCED-AUTH] Initial session check:", session?.user?.email);
           setSession(session);
           setUser(session?.user ?? null);
-          
-          // Calculate initial security score
-          const initialSecurityScore = calculateSecurityScore(session?.user ?? null, session);
-          setSecurityScore(initialSecurityScore);
+          setSecurityScore(calculateSecurityScore(session?.user ?? null, session));
           
           if (session?.user) {
-            try {
-              const profileData = await sessionManager.getProfile(session.user.id);
-              setProfile(profileData);
-              console.log("✅ [ENHANCED-AUTH] Initial profile loaded successfully");
-              
-              // Log successful initialization
-              await securityManager.logSecurityEvent({
-                event_type: 'auth_initialization_success',
-                event_details: { 
-                  user_id: session.user.id,
-                  security_score: initialSecurityScore
-                },
-                success: true
-              });
-            } catch (error) {
-              sessionDebugger.logSessionError(error, 'Enhanced initial profile load');
-              console.error("❌ [ENHANCED-AUTH] Initial profile load failed:", error);
-            }
+            // Defer profile loading
+            setTimeout(async () => {
+              if (mounted) {
+                try {
+                  const profileData = await sessionManager.getProfile(session.user.id);
+                  setProfile(profileData);
+                } catch (error) {
+                  console.error("❌ [ENHANCED-AUTH] Profile load failed:", error);
+                }
+                setIsLoading(false);
+              }
+            }, 100);
+          } else {
+            setIsLoading(false);
           }
-          
-          setIsLoading(false);
-          console.log("✅ [ENHANCED-AUTH] Enhanced authentication initialization completed");
         }
       } catch (error) {
-        sessionDebugger.logSessionError(error, 'Enhanced auth initialization failed');
-        console.error("❌ [ENHANCED-AUTH] Error initializing enhanced auth:", error);
-        
-        await securityManager.logSecurityEvent({
-          event_type: 'auth_initialization_error',
-          event_details: { error: error instanceof Error ? error.message : 'Unknown error' },
-          success: false
-        });
-        
+        console.error("❌ [ENHANCED-AUTH] Initialization error:", error);
         if (mounted) {
           setIsLoading(false);
         }
@@ -291,56 +200,45 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     };
   }, []);
 
-  // Streamlined sign in with simplified rate limiting
+  // Streamlined sign in
   const signIn = async (email: string, password: string) => {
-    const signInStart = performance.now();
-    console.log("🚀 [ENHANCED-AUTH] Starting streamlined sign-in process...");
+    console.log("🚀 [ENHANCED-AUTH] Starting streamlined sign-in...");
     
     try {
-      // Validate input first
+      // Quick validation
       if (!securityManager.validateEmail(email)) {
         throw new Error('Invalid email format');
       }
 
-      // Simple rate limit check with fallback
-      console.log("🔍 [ENHANCED-AUTH] Checking rate limits...");
-      const canProceed = await checkRateLimitSafe('auth_signin', 20, 15);
+      // Optional rate limit check (non-blocking)
+      const canProceed = await checkRateLimitSafe('auth_signin');
       if (!canProceed) {
-        throw new Error('Too many sign in attempts. Please wait a few minutes before trying again.');
+        throw new Error('Too many sign in attempts. Please wait a few minutes.');
       }
 
-      // Clean up any existing auth state
+      // Clean up state
       cleanupAuthState();
       
-      // Attempt global sign out (non-blocking)
+      // Quick sign out attempt (non-blocking)
       try {
         await supabase.auth.signOut({ scope: 'global' });
-        console.log("✅ [ENHANCED-AUTH] Global sign out completed");
       } catch (err) {
-        console.log("⚠️ [ENHANCED-AUTH] Global sign out failed (non-critical):", err);
+        console.log("⚠️ [ENHANCED-AUTH] Pre-signin signout failed (non-critical)");
       }
       
-      console.log("🔐 [ENHANCED-AUTH] Attempting sign-in with email:", email);
+      console.log("🔐 [ENHANCED-AUTH] Attempting sign-in...");
       
-      // Perform the actual sign-in
+      // Perform sign-in
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      
-      const signInDuration = performance.now() - signInStart;
-      console.log(`⏱️ [ENHANCED-AUTH] Sign-in attempt completed in ${signInDuration.toFixed(2)}ms`);
       
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
         console.error("❌ [ENHANCED-AUTH] Sign-in failed:", error.message);
         
-        // Log failed sign in attempt
-        await securityManager.logSecurityEvent({
+        // Log failure (non-blocking)
+        securityManager.logSecurityEvent({
           event_type: 'signin_failed',
-          event_details: { 
-            email, 
-            error: error.message,
-            friendly_error: friendlyError,
-            duration_ms: signInDuration
-          },
+          event_details: { email, error: error.message },
           success: false
         });
         
@@ -352,18 +250,14 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         return { error: friendlyError };
       }
       
-      // Log successful sign in
-      await securityManager.logSecurityEvent({
+      // Log success (non-blocking)
+      securityManager.logSecurityEvent({
         event_type: 'signin_success',
-        event_details: { 
-          email,
-          user_id: data.user?.id,
-          duration_ms: signInDuration
-        },
+        event_details: { email, user_id: data.user?.id },
         success: true
       });
       
-      console.log("✅ [ENHANCED-AUTH] Sign-in successful, user:", data.user?.email);
+      console.log("✅ [ENHANCED-AUTH] Sign-in successful");
       
       toast({
         title: "Signed in successfully",
@@ -371,17 +265,12 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       return { error: null };
     } catch (error: any) {
-      const signInDuration = performance.now() - signInStart;
       console.error("❌ [ENHANCED-AUTH] Sign-in exception:", error);
       const friendlyError = getAuthErrorMessage(error);
       
-      await securityManager.logSecurityEvent({
+      securityManager.logSecurityEvent({
         event_type: 'signin_exception',
-        event_details: { 
-          email, 
-          error: error.message,
-          duration_ms: signInDuration
-        },
+        event_details: { email, error: error.message },
         success: false
       });
       
@@ -394,10 +283,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced sign up with better rate limiting handling
+  // Streamlined sign up
   const signUp = async (email: string, password: string) => {
     try {
-      // Validate input
+      // Validation
       if (!securityManager.validateEmail(email)) {
         throw new Error('Invalid email format');
       }
@@ -407,25 +296,25 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         throw new Error(passwordValidation.errors.join('. '));
       }
 
-      // Check rate limit with more lenient settings for signup
-      const canProceed = await checkRateLimitSafe('auth_signup', 10, 60);
+      // Optional rate limit check
+      const canProceed = await checkRateLimitSafe('auth_signup');
       if (!canProceed) {
-        throw new Error('Too many sign up attempts. Please wait a few minutes before trying again.');
+        throw new Error('Too many sign up attempts. Please wait a few minutes.');
       }
 
       cleanupAuthState();
       
+      // Quick sign out attempt
       try {
         await supabase.auth.signOut({ scope: 'global' });
       } catch (err) {
-        console.log("Pre-signUp global sign out error (non-critical):", err);
+        console.log("Pre-signUp global sign out error (non-critical)");
       }
       
-      console.log("Attempting enhanced sign-up with email:", email);
+      console.log("Attempting sign-up...");
       
       const origin = window.location.origin || 'http://localhost:5173';
       const redirectTo = `${origin}/complete-profile`;
-      console.log("Using redirect URL:", redirectTo);
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -436,19 +325,12 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         }
       });
       
-      console.log("Enhanced sign-up response:", error ? "Error" : "Success", error || data);
-      
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
         
-        // Log failed sign up attempt
-        await securityManager.logSecurityEvent({
+        securityManager.logSecurityEvent({
           event_type: 'signup_failed',
-          event_details: { 
-            email, 
-            error: error.message,
-            friendly_error: friendlyError
-          },
+          event_details: { email, error: error.message },
           success: false
         });
         
@@ -461,36 +343,28 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       } else {
         const isEmailVerificationRequired = !data.session;
         
-        // Log successful sign up
-        await securityManager.logSecurityEvent({
+        securityManager.logSecurityEvent({
           event_type: 'signup_success',
-          event_details: { 
-            email,
-            user_id: data.user?.id,
-            email_verification_required: isEmailVerificationRequired
-          },
+          event_details: { email, user_id: data.user?.id, email_verification_required: isEmailVerificationRequired },
           success: true
         });
         
         toast({
           title: isEmailVerificationRequired ? "Verification email sent" : "Signup successful",
           description: isEmailVerificationRequired 
-            ? "Please check your email (including spam folder) to confirm your account before signing in."
+            ? "Please check your email to confirm your account."
             : "Your account has been created successfully.",
         });
       }
       
       return { error: null, data };
     } catch (error: any) {
-      console.error("Enhanced sign-up exception:", error);
+      console.error("Sign-up exception:", error);
       const friendlyError = getAuthErrorMessage(error);
       
-      await securityManager.logSecurityEvent({
+      securityManager.logSecurityEvent({
         event_type: 'signup_exception',
-        event_details: { 
-          email, 
-          error: error.message
-        },
+        event_details: { email, error: error.message },
         success: false
       });
       
@@ -503,13 +377,12 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced sign out with security logging
+  // Simplified sign out
   const signOut = async () => {
     try {
       const currentUserId = user?.id;
       
-      // Log sign out attempt
-      await securityManager.logSecurityEvent({
+      securityManager.logSecurityEvent({
         event_type: 'signout_initiated',
         event_details: { user_id: currentUserId },
         success: true
@@ -525,7 +398,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     } catch (error: any) {
       const friendlyError = getAuthErrorMessage(error);
       
-      await securityManager.logSecurityEvent({
+      securityManager.logSecurityEvent({
         event_type: 'signout_error',
         event_details: { error: error.message },
         success: false
@@ -545,9 +418,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       const origin = window.location.origin || 'http://localhost:5173';
       const redirectTo = `${origin}/complete-profile`;
-      console.log("Using Google redirect URL:", redirectTo);
       
-      await securityManager.logSecurityEvent({
+      securityManager.logSecurityEvent({
         event_type: 'google_signin_initiated',
         event_details: { redirect_to: redirectTo },
         success: true
@@ -562,7 +434,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     } catch (error: any) {
       const friendlyError = getAuthErrorMessage(error);
       
-      await securityManager.logSecurityEvent({
+      securityManager.logSecurityEvent({
         event_type: 'google_signin_error',
         event_details: { error: error.message },
         success: false
@@ -578,18 +450,15 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   
   const resendVerificationEmail = async (email: string) => {
     try {
-      console.log("Resending verification email to:", email);
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email,
       });
       
-      console.log("Resend response:", error ? "Error" : "Success", error || "Email sent");
-      
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
         
-        await securityManager.logSecurityEvent({
+        securityManager.logSecurityEvent({
           event_type: 'verification_resend_failed',
           event_details: { email, error: error.message },
           success: false
@@ -603,7 +472,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         return { error: friendlyError };
       }
       
-      await securityManager.logSecurityEvent({
+      securityManager.logSecurityEvent({
         event_type: 'verification_resend_success',
         event_details: { email },
         success: true
@@ -611,15 +480,14 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       toast({
         title: "Verification email sent",
-        description: "Please check your inbox (including spam folder) for the verification link.",
+        description: "Please check your inbox for the verification link.",
       });
       
       return { error: null };
     } catch (error: any) {
-      console.error("Resend verification exception:", error);
       const friendlyError = getAuthErrorMessage(error);
       
-      await securityManager.logSecurityEvent({
+      securityManager.logSecurityEvent({
         event_type: 'verification_resend_exception',
         event_details: { email, error: error.message },
         success: false

@@ -40,47 +40,42 @@ export const clearAuthRateLimits = async () => {
 };
 
 /**
- * Simple rate limit check with timeout and fallback
+ * Simplified rate limit check that fails open
  */
-export const checkRateLimitSafe = async (endpoint: string, limit: number = 20, windowMinutes: number = 15): Promise<boolean> => {
+export const checkRateLimitSafe = async (endpoint: string): Promise<boolean> => {
   try {
-    console.log(`🔍 [AUTH-UTILS] Checking rate limit for ${endpoint}...`);
+    console.log(`🔍 [AUTH-UTILS] Quick rate limit check for ${endpoint}...`);
     
     const { supabase } = await import('@/integrations/supabase/client');
     
-    // Create a timeout promise that rejects after 3 seconds
+    // Very short timeout to prevent hanging
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Rate limit check timeout')), 3000);
+      setTimeout(() => reject(new Error('Rate limit timeout')), 1000);
     });
     
-    // Create the rate limit check promise
     const checkPromise = supabase.rpc('check_rate_limit', {
-      p_user_id: null, // Allow anonymous rate limiting
+      p_user_id: null,
       p_ip_address: null,
       p_endpoint: endpoint,
-      p_limit: limit,
-      p_window_minutes: windowMinutes
+      p_limit: 50, // More lenient limit
+      p_window_minutes: 15
     });
     
-    // Race the rate limit check against the timeout
     const result = await Promise.race([checkPromise, timeoutPromise]);
-    
-    // If we get here, it means checkPromise won (no timeout)
-    // So result is a PostgrestSingleResponse<boolean>
     const { data, error } = result;
     
     if (error) {
-      console.warn('⚠️ [AUTH-UTILS] Rate limit check failed, allowing request:', error);
-      return true; // Allow on error to prevent blocking legitimate users
+      console.log('⚠️ [AUTH-UTILS] Rate limit check failed, allowing:', error.message);
+      return true; // Fail open
     }
     
     const canProceed = data === true;
-    console.log(`${canProceed ? '✅' : '❌'} [AUTH-UTILS] Rate limit check result:`, canProceed);
+    console.log(`${canProceed ? '✅' : '⚠️'} [AUTH-UTILS] Rate limit result:`, canProceed);
     return canProceed;
     
   } catch (error) {
-    console.warn('⚠️ [AUTH-UTILS] Rate limit check error, allowing request:', error);
-    return true; // Fail open - allow request if rate limit check fails
+    console.log('⚠️ [AUTH-UTILS] Rate limit check error, allowing:', error instanceof Error ? error.message : 'Unknown');
+    return true; // Always fail open to prevent blocking
   }
 };
 
@@ -92,12 +87,12 @@ export const getAuthErrorMessage = (error: any): string => {
   
   // Handle rate limiting errors specifically
   if (errorMessage.includes('rate limit') || errorMessage.includes('too many')) {
-    return 'Too many sign-in attempts. Please wait a few minutes before trying again. If you continue to have issues, try refreshing the page.';
+    return 'Too many sign-in attempts. Please wait a few minutes before trying again.';
   }
   
   // Handle common auth error scenarios
   if (errorMessage.includes('Email not confirmed')) {
-    return 'Please verify your email before signing in. Check your inbox (and spam folder) for the verification link.';
+    return 'Please verify your email before signing in. Check your inbox for the verification link.';
   }
   
   if (errorMessage.includes('Invalid login')) {
