@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Figurine } from '@/types/figurine';
 import EnhancedModelDialog from '@/components/gallery/enhanced/EnhancedModelDialog';
@@ -7,6 +6,8 @@ import { useFigurines } from './useFigurines';
 import UploadModelModal from '@/components/UploadModelModal';
 import { updateFigurinePublicStatus, updateFigurineWithModelUrl } from '@/services/figurineService';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import React from 'react';
 
 const EnhancedFigurineGallery = () => {
   const { figurines, loading, error, refreshFigurines } = useFigurines();
