@@ -1,10 +1,11 @@
+
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { motion } from "framer-motion";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
-import FigurineGallery from "@/components/figurine/FigurineGallery";
+import EnhancedFigurineGallery from "@/components/figurine/EnhancedFigurineGallery";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -81,7 +82,7 @@ const ProfileFigurines = () => {
             <div className="mb-10 flex flex-wrap justify-between items-center">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-4">My Figurines</h1>
-                <p className="text-white/70">View and manage all your created figurines.</p>
+                <p className="text-white/70">View and manage all your created figurines with enhanced 3D preview capabilities.</p>
               </div>
               
               <Button 
@@ -92,7 +93,7 @@ const ProfileFigurines = () => {
               </Button>
             </div>
             
-            <FigurineGallery />
+            <EnhancedFigurineGallery />
           </motion.div>
         </div>
       </section>
