@@ -9,6 +9,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from "@/components/ui/toaster";
 import PageTransition from "@/components/PageTransition";
 import { PerformanceDashboard } from "@/components/debug/PerformanceDashboard";
+import { SecurityErrorBoundary } from "@/components/security/SecurityErrorBoundary";
 
 import Index from "@/pages/Index";
 import Features from "@/pages/Features";
@@ -50,43 +51,45 @@ const LoadingSpinner = () => (
 
 function App() {
   return (
-    <HelmetProvider>
-      <EnhancedAuthProvider>
-        <BrowserRouter>
-          <Suspense fallback={<LoadingSpinner />}>
-            <PageTransition>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/features" element={<Features />} />
-                <Route path="/solutions" element={<Solutions />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/gallery" element={<Gallery />} />
-                <Route path="/community" element={<Community />} />
-                <Route path="/resources" element={<Resources />} />
-                <Route path="/docs" element={<Docs />} />
-                <Route path="/docs/introduction" element={<Introduction />} />
-                <Route path="/docs/creating-your-first-figurine" element={<CreatingYourFirstFigurine />} />
-                <Route path="/docs/understanding-art-styles" element={<UnderstandingArtStyles />} />
-                <Route path="/docs/prompt-engineering-tips" element={<PromptEngineeringTips />} />
-                <Route path="/docs/combining-multiple-styles" element={<CombiningMultipleStyles />} />
-                <Route path="/docs/preparing-models-for-printing" element={<PreparingModelsForPrinting />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/complete-profile" element={<CompleteProfile />} />
-                <Route path="/studio" element={<Studio />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/profile/figurines" element={<ProfileFigurines />} />
-                <Route path="/profile/pictures" element={<ProfilePictures />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/checkout-return" element={<CheckoutReturn />} />
-                <Route path="/*" element={<NotFound />} />
-              </Routes>
-            </PageTransition>
-          </Suspense>
-          <Toaster />
-          <PerformanceDashboard />
-        </BrowserRouter>
-      </EnhancedAuthProvider>
-    </HelmetProvider>
+    <SecurityErrorBoundary>
+      <HelmetProvider>
+        <EnhancedAuthProvider>
+          <BrowserRouter>
+            <Suspense fallback={<LoadingSpinner />}>
+              <PageTransition>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/features" element={<Features />} />
+                  <Route path="/solutions" element={<Solutions />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/gallery" element={<Gallery />} />
+                  <Route path="/community" element={<Community />} />
+                  <Route path="/resources" element={<Resources />} />
+                  <Route path="/docs" element={<Docs />} />
+                  <Route path="/docs/introduction" element={<Introduction />} />
+                  <Route path="/docs/creating-your-first-figurine" element={<CreatingYourFirstFigurine />} />
+                  <Route path="/docs/understanding-art-styles" element={<UnderstandingArtStyles />} />
+                  <Route path="/docs/prompt-engineering-tips" element={<PromptEngineeringTips />} />
+                  <Route path="/docs/combining-multiple-styles" element={<CombiningMultipleStyles />} />
+                  <Route path="/docs/preparing-models-for-printing" element={<PreparingModelsForPrinting />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/complete-profile" element={<CompleteProfile />} />
+                  <Route path="/studio" element={<Studio />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/profile/figurines" element={<ProfileFigurines />} />
+                  <Route path="/profile/pictures" element={<ProfilePictures />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/checkout-return" element={<CheckoutReturn />} />
+                  <Route path="/*" element={<NotFound />} />
+                </Routes>
+              </PageTransition>
+            </Suspense>
+            <Toaster />
+            <PerformanceDashboard />
+          </BrowserRouter>
+        </EnhancedAuthProvider>
+      </HelmetProvider>
+    </SecurityErrorBoundary>
   );
 }
 

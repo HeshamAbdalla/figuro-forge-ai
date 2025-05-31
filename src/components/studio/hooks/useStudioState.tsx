@@ -1,9 +1,7 @@
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 
 export const useStudioState = () => {
-  const [user, setUser] = useState<any>(null);
   const [customModelUrl, setCustomModelUrl] = useState<string | null>(null);
   const [customModelFile, setCustomModelFile] = useState<File | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -12,28 +10,7 @@ export const useStudioState = () => {
   const [generationModalOpen, setGenerationModalOpen] = useState(false);
   const [textTo3DConfigPrompt, setTextTo3DConfigPrompt] = useState("");
 
-  // Check for authenticated user
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-      
-      // Set up auth state change listener
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-          setUser(session?.user || null);
-        }
-      );
-      
-      return () => subscription.unsubscribe();
-    };
-    
-    checkUser();
-  }, []);
-
   return {
-    user,
-    setUser,
     customModelUrl,
     setCustomModelUrl,
     customModelFile,

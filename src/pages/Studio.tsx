@@ -4,16 +4,21 @@ import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGenerat
 import { useTextTo3D } from "@/hooks/useTextTo3D";
 import { useTabNavigation } from "@/hooks/useTabNavigation";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
-import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import Header from "@/components/Header";
 import StudioLayout from "@/components/studio/StudioLayout";
 import UpgradeModal from "@/components/UpgradeModal";
+import { StudioErrorBoundary } from "@/components/studio/StudioErrorBoundary";
+import { useStudioAuth } from "@/components/studio/hooks/useStudioAuth";
 import { useStudioState } from "@/components/studio/hooks/useStudioState";
 import { useStudioHandlers } from "@/components/studio/hooks/useStudioHandlers";
 
 const Studio = () => {
+  console.log('🎬 [STUDIO] Component rendering...');
+
+  // Use simplified auth for Studio
+  const { user: authUser, isLoading: authLoading, isAuthenticated } = useStudioAuth();
+
   const {
-    user,
     customModelUrl,
     setCustomModelUrl,
     customModelFile,
@@ -57,8 +62,6 @@ const Studio = () => {
     defaultTab: 'image-to-3d',
     tabs: ['image-to-3d', 'text-to-3d', 'web-icons', 'gallery']
   });
-
-  const { user: authUser } = useEnhancedAuth();
 
   // Add upgrade modal functionality
   const {
@@ -119,60 +122,82 @@ const Studio = () => {
   // Determine if ModelViewer should show loading - only when not converting AND there's a model to load
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
-  return (
-    <div className="min-h-screen bg-figuro-dark">
-      <Header />
-      <div className="pt-20">
-        <StudioLayout
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          authUser={authUser}
-          generatedImage={generatedImage}
-          isGeneratingImage={isGeneratingImage}
-          isGenerating={isGenerating}
-          isGeneratingTextTo3D={isGeneratingTextTo3D}
-          currentTaskId={currentTaskId}
-          progress={progress}
-          textTo3DProgress={textTo3DProgress}
-          displayModelUrl={displayModelUrl}
-          shouldModelViewerLoad={shouldModelViewerLoad}
-          uploadModalOpen={uploadModalOpen}
-          setUploadModalOpen={setUploadModalOpen}
-          configModalOpen={configModalOpen}
-          setConfigModalOpen={setConfigModalOpen}
-          textTo3DConfigModalOpen={textTo3DConfigModalOpen}
-          setTextTo3DConfigModalOpen={setTextTo3DConfigModalOpen}
-          textTo3DConfigPrompt={textTo3DConfigPrompt}
-          generationModalOpen={generationModalOpen}
-          setGenerationModalOpen={setGenerationModalOpen}
-          onGenerate={wrappedOnGenerate}
-          handleOpenConfigModal={handleOpenConfigModal}
-          handleGenerate3DWithConfig={handleGenerate3DWithConfig}
-          handleQuickConvert={handleQuickConvert}
-          handleTextTo3D={wrappedHandleTextTo3D}
-          handleOpenTextTo3DConfigModal={handleOpenTextTo3DConfigModal}
-          handleTextTo3DWithConfig={wrappedHandleTextTo3DWithConfig}
-          handleModelUpload={wrappedHandleModelUpload}
-          handleSignOut={handleSignOut}
-          handleSignIn={handleSignIn}
-          handleCloseGenerationModal={handleCloseGenerationModal}
-          setCustomModelUrl={setCustomModelUrl}
-        />
+  // Show loading state while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-figuro-dark flex items-center justify-center">
+        <div className="relative">
+          <div className="w-12 h-12 border-4 border-figuro-accent/30 border-t-figuro-accent rounded-full animate-spin"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="w-6 h-6 bg-figuro-accent rounded-full animate-pulse"></div>
+          </div>
+        </div>
       </div>
-      
-      {/* Upgrade Modal */}
-      <UpgradeModal
-        isOpen={isUpgradeModalOpen}
-        onOpenChange={hideUpgradeModal}
-        actionType={upgradeModalAction}
-        title="Upgrade Required"
-        description={
-          upgradeModalAction === "image_generation"
-            ? "You've reached your daily image generation limit."
-            : "You've reached your monthly 3D conversion limit."
-        }
-      />
-    </div>
+    );
+  }
+
+  console.log('✅ [STUDIO] Rendering with auth state:', { isAuthenticated, hasUser: !!authUser });
+
+  return (
+    <StudioErrorBoundary>
+      <div className="min-h-screen bg-figuro-dark">
+        <Header />
+        <div className="pt-20">
+          <StudioLayout
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            authUser={authUser}
+            generatedImage={generatedImage}
+            isGeneratingImage={isGeneratingImage}
+            isGenerating={isGenerating}
+            isGeneratingTextTo3D={isGeneratingTextTo3D}
+            currentTaskId={currentTaskId}
+            progress={progress}
+            textTo3DProgress={textTo3DProgress}
+            displayModelUrl={displayModelUrl}
+            shouldModelViewerLoad={shouldModelViewerLoad}
+            uploadModalOpen={uploadModalOpen}
+            setUploadModalOpen={setUploadModalOpen}
+            configModalOpen={configModalOpen}
+            setConfigModalOpen={setConfigModalOpen}
+            textTo3DConfigModalOpen={textTo3DConfigModalOpen}
+            setTextTo3DConfigModalOpen={setTextTo3DConfigModalOpen}
+            textTo3DConfigPrompt={textTo3DConfigPrompt}
+            generationModalOpen={generationModalOpen}
+            setGenerationModalOpen={setGenerationModalOpen}
+            onGenerate={wrappedOnGenerate}
+            handleOpenConfigModal={handleOpenConfigModal}
+            handleGenerate3DWithConfig={handleGenerate3DWithConfig}
+            handleQuickConvert={handleQuickConvert}
+            handleTextTo3D={wrappedHandleTextTo3D}
+            handleOpenTextTo3DConfigModal={handleOpenTextTo3DConfigModal}
+            handleTextTo3DWithConfig={wrappedHandleTextTo3DWithConfig}
+            handleModelUpload={wrappedHandleModelUpload}
+            handleSignOut={handleSignOut}
+            handleSignIn={handleSignIn}
+            handleCloseGenerationModal={handleCloseGenerationModal}
+            setCustomModelUrl={setCustomModelUrl}
+          />
+        </div>
+        
+        {/* Upgrade Modal with error boundary */}
+        {isUpgradeModalOpen && (
+          <StudioErrorBoundary>
+            <UpgradeModal
+              isOpen={isUpgradeModalOpen}
+              onOpenChange={hideUpgradeModal}
+              actionType={upgradeModalAction}
+              title="Upgrade Required"
+              description={
+                upgradeModalAction === "image_generation"
+                  ? "You've reached your daily image generation limit."
+                  : "You've reached your monthly 3D conversion limit."
+              }
+            />
+          </StudioErrorBoundary>
+        )}
+      </div>
+    </StudioErrorBoundary>
   );
 };
 
