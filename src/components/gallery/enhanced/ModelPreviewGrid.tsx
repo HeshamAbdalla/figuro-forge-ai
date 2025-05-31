@@ -4,7 +4,7 @@ import { Figurine } from "@/types/figurine";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Upload, Globe, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import OptimizedModelPreview from "../performance/OptimizedModelPreview";
+import SimplifiedModelPreview from "./SimplifiedModelPreview";
 
 interface ModelPreviewGridProps {
   figurines: Figurine[];
@@ -54,7 +54,7 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
           viewMode === "list" ? "w-32 h-32 flex-shrink-0" : "aspect-square w-full"
         )}>
           {hasModel && !hasImageError ? (
-            <OptimizedModelPreview
+            <SimplifiedModelPreview
               modelUrl={figurine.model_url!}
               fileName={figurine.title}
             />
@@ -64,6 +64,7 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
               alt={figurine.title}
               className="w-full h-full object-cover"
               onError={() => handleImageError(figurine.id)}
+              loading="lazy"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gray-700/50">
