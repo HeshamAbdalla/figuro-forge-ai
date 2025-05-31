@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
@@ -30,7 +30,7 @@ const UpgradeModal = ({
   actionType,
 }: UpgradeModalProps) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user } = useEnhancedAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleUpgrade = () => {
