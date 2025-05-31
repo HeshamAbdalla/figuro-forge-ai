@@ -1,17 +1,16 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { motion } from "framer-motion";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import FigurineGallery from "@/components/figurine/FigurineGallery";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 const ProfileFigurines = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading } = useEnhancedAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
