@@ -7,38 +7,124 @@ interface ModelLoaderOptions {
   onError?: (error: Error) => void;
 }
 
+interface UrlValidationResult {
+  isValid: boolean;
+  error?: string;
+  cleanUrl: string;
+}
+
 export class ModelLoader {
   private static loader = new GLTFLoader();
   private static cache = new Map<string, THREE.Group>();
   
+  // Validate URL before attempting to load
+  private static async validateUrl(url: string): Promise<UrlValidationResult> {
+    try {
+      const urlObj = new URL(url);
+      
+      // Check for expired Meshy.ai URLs
+      if (urlObj.hostname.includes('meshy.ai') && urlObj.searchParams.has('Expires')) {
+        const expiresTimestamp = parseInt(urlObj.searchParams.get('Expires') || '0');
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+        if (expiresTimestamp < currentTimestamp) {
+          return {
+            isValid: false,
+            error: 'Model URL has expired',
+            cleanUrl: url
+          };
+        }
+      }
+      
+      // Clean URL for better caching
+      const cleanUrl = this.getCacheKey(url);
+      
+      // Basic connectivity test (without full download)
+      try {
+        const response = await fetch(cleanUrl, { 
+          method: 'HEAD',
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+        
+        if (!response.ok) {
+          return {
+            isValid: false,
+            error: `Model not accessible (${response.status})`,
+            cleanUrl
+          };
+        }
+        
+        return {
+          isValid: true,
+          cleanUrl
+        };
+      } catch (fetchError) {
+        // If HEAD request fails, the model might still be loadable via direct GLTFLoader
+        console.warn('HEAD request failed, will attempt direct load:', fetchError);
+        return {
+          isValid: true,
+          cleanUrl
+        };
+      }
+    } catch (error) {
+      return {
+        isValid: false,
+        error: 'Invalid model URL format',
+        cleanUrl: url
+      };
+    }
+  }
+  
   static async loadModel(url: string, options: ModelLoaderOptions = {}): Promise<THREE.Group> {
     const { onProgress, onError } = options;
     
+    console.log(`ModelLoader: Starting load for ${url}`);
+    
+    // Validate URL first
+    const validation = await this.validateUrl(url);
+    if (!validation.isValid) {
+      const error = new Error(validation.error || 'URL validation failed');
+      console.error('ModelLoader: URL validation failed:', error);
+      if (onError) onError(error);
+      throw error;
+    }
+    
+    const cleanUrl = validation.cleanUrl;
+    const cacheKey = this.getCacheKey(cleanUrl);
+    
     // Check cache first
-    const cacheKey = this.getCacheKey(url);
     if (this.cache.has(cacheKey)) {
-      console.log(`Model loaded from cache: ${url}`);
+      console.log(`ModelLoader: Model loaded from cache: ${cleanUrl}`);
       return this.cache.get(cacheKey)!.clone();
     }
     
     try {
-      console.log(`Loading model: ${url}`);
+      console.log(`ModelLoader: Loading model from: ${cleanUrl}`);
       
       const gltf = await new Promise<any>((resolve, reject) => {
         this.loader.load(
-          url,
-          (gltf) => resolve(gltf),
+          cleanUrl,
+          (gltf) => {
+            console.log('ModelLoader: GLTF loaded successfully');
+            resolve(gltf);
+          },
           (progress) => {
-            if (onProgress) {
+            if (onProgress && progress.total > 0) {
               const percent = (progress.loaded / progress.total) * 100;
               onProgress(percent);
             }
           },
-          (error) => reject(error)
+          (error) => {
+            console.error('ModelLoader: GLTF load error:', error);
+            reject(new Error(`Failed to load 3D model: ${error.message || 'Unknown error'}`));
+          }
         );
       });
       
       const model = gltf.scene;
+      
+      if (!model || model.children.length === 0) {
+        throw new Error('Loaded model is empty or invalid');
+      }
       
       // Optimize model for preview
       this.optimizeModel(model);
@@ -46,15 +132,18 @@ export class ModelLoader {
       // Cache the model
       this.cache.set(cacheKey, model.clone());
       
-      console.log(`Model loaded successfully: ${url}`);
+      console.log(`ModelLoader: Model loaded and cached successfully: ${cleanUrl}`);
       return model;
       
     } catch (error) {
-      console.error(`Failed to load model: ${url}`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown model loading error';
+      console.error(`ModelLoader: Failed to load model: ${cleanUrl}`, error);
+      
+      const finalError = new Error(errorMessage);
       if (onError) {
-        onError(error as Error);
+        onError(finalError);
       }
-      throw error;
+      throw finalError;
     }
   }
   
@@ -110,7 +199,7 @@ export class ModelLoader {
   
   static clearCache(): void {
     this.cache.clear();
-    console.log('Model cache cleared');
+    console.log('ModelLoader: Cache cleared');
   }
   
   static getCacheStats(): { size: number; keys: string[] } {

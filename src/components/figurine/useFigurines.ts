@@ -42,7 +42,6 @@ export const useFigurines = () => {
       
       if (conversionError) {
         console.warn('Failed to fetch conversion tasks:', conversionError);
-        // Don't throw error, just continue with figurines only
       }
       
       console.log('✅ [FIGURINES] Fetched data:', {
@@ -50,65 +49,85 @@ export const useFigurines = () => {
         conversions: conversionData?.length || 0
       });
       
-      // Process traditional figurines
-      const processedFigurines = (figurinesData || []).map(figurine => {
-        // Clean image URLs from any cache busting parameters
-        let imageUrl = figurine.image_url || "";
-        let savedImageUrl = figurine.saved_image_url || null;
-        let modelUrl = figurine.model_url || null;
+      // Helper function to validate and clean URLs
+      const validateAndCleanUrl = (url: string | null): string | null => {
+        if (!url) return null;
         
-        // Helper function to clean URLs
-        const cleanUrl = (url: string) => {
-          try {
-            if (!url) return url;
-            const parsedUrl = new URL(url);
-            ['t', 'cb', 'cache'].forEach(param => {
-              if (parsedUrl.searchParams.has(param)) {
-                parsedUrl.searchParams.delete(param);
-              }
-            });
-            return parsedUrl.toString();
-          } catch (e) {
-            return url;
+        try {
+          const parsedUrl = new URL(url);
+          
+          // Check for expired Meshy.ai URLs
+          if (parsedUrl.hostname.includes('meshy.ai') && parsedUrl.searchParams.has('Expires')) {
+            const expiresTimestamp = parseInt(parsedUrl.searchParams.get('Expires') || '0');
+            const currentTimestamp = Math.floor(Date.now() / 1000);
+            if (expiresTimestamp < currentTimestamp) {
+              console.warn('Expired URL detected:', url);
+              return null;
+            }
           }
-        };
-        
-        // Clean all URLs
-        if (imageUrl) imageUrl = cleanUrl(imageUrl);
-        if (savedImageUrl) savedImageUrl = cleanUrl(savedImageUrl);
-        if (modelUrl) modelUrl = cleanUrl(modelUrl);
+          
+          // Remove cache-busting parameters for better caching
+          ['t', 'cb', 'cache'].forEach(param => {
+            if (parsedUrl.searchParams.has(param)) {
+              parsedUrl.searchParams.delete(param);
+            }
+          });
+          
+          return parsedUrl.toString();
+        } catch (e) {
+          console.warn('Invalid URL detected:', url);
+          return null;
+        }
+      };
+      
+      // Process traditional figurines with better URL handling
+      const processedFigurines = (figurinesData || []).map(figurine => {
+        const cleanImageUrl = validateAndCleanUrl(figurine.image_url);
+        const cleanSavedImageUrl = validateAndCleanUrl(figurine.saved_image_url);
+        const cleanModelUrl = validateAndCleanUrl(figurine.model_url);
         
         return {
           id: figurine.id,
           title: figurine.title || "Untitled Figurine",
           prompt: figurine.prompt || "",
           style: figurine.style || "",
-          image_url: imageUrl,
-          saved_image_url: savedImageUrl,
-          model_url: modelUrl,
+          image_url: cleanImageUrl || "",
+          saved_image_url: cleanSavedImageUrl,
+          model_url: cleanModelUrl,
           created_at: figurine.created_at || new Date().toISOString(),
           user_id: figurine.user_id,
           is_public: figurine.is_public || false
         };
       });
       
-      // Process text-to-3D conversions and convert them to Figurine format
+      // Process text-to-3D conversions with proper URL priority
       const processedConversions = (conversionData || []).map(conversion => {
-        // Use local URLs if available, fallback to original URLs
-        const modelUrl = conversion.local_model_url || conversion.model_url || null;
-        const thumbnailUrl = conversion.local_thumbnail_url || conversion.thumbnail_url || null;
+        // Prioritize local URLs over remote URLs for better performance and reliability
+        const modelUrl = validateAndCleanUrl(conversion.local_model_url) || 
+                         validateAndCleanUrl(conversion.model_url);
+        const thumbnailUrl = validateAndCleanUrl(conversion.local_thumbnail_url) || 
+                            validateAndCleanUrl(conversion.thumbnail_url);
+        
+        console.log(`Processing conversion ${conversion.id}:`, {
+          local_model_url: conversion.local_model_url,
+          model_url: conversion.model_url,
+          final_model_url: modelUrl,
+          local_thumbnail_url: conversion.local_thumbnail_url,
+          thumbnail_url: conversion.thumbnail_url,
+          final_thumbnail_url: thumbnailUrl
+        });
         
         return {
           id: conversion.id,
           title: `Text-to-3D: ${conversion.prompt?.substring(0, 30) || 'Generated Model'}${conversion.prompt && conversion.prompt.length > 30 ? '...' : ''}`,
           prompt: conversion.prompt || "",
           style: conversion.art_style || "text-to-3d",
-          image_url: thumbnailUrl || "", // Use thumbnail as the preview image
+          image_url: thumbnailUrl || "",
           saved_image_url: thumbnailUrl,
           model_url: modelUrl,
           created_at: conversion.created_at || new Date().toISOString(),
           user_id: conversion.user_id,
-          is_public: false // Text-to-3D models are private by default
+          is_public: false
         };
       });
       
@@ -122,6 +141,7 @@ export const useFigurines = () => {
       setError(null);
       
       console.log(`✅ [FIGURINES] Combined ${allFigurines.length} total items`);
+      console.log('Model URLs found:', allFigurines.filter(f => f.model_url).map(f => ({ id: f.id, title: f.title, url: f.model_url })));
     } catch (err: any) {
       console.error('Error fetching figurines:', err);
       setError('Failed to load your figurines');

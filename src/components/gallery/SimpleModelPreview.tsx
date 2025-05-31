@@ -24,24 +24,39 @@ const ModelContent: React.FC<ModelContentProps> = ({ modelUrl, onError }) => {
     const loadModel = async () => {
       try {
         setLoading(true);
+        setModel(null);
+        
+        console.log(`ModelContent: Loading model: ${modelUrl}`);
+        
         const loadedModel = await ModelLoader.loadModel(modelUrl, {
-          onError: onError
+          onError: (error) => {
+            console.error('ModelContent: ModelLoader error:', error);
+            if (isMounted) {
+              onError(error);
+            }
+          }
         });
         
         if (isMounted) {
+          console.log('ModelContent: Model loaded successfully');
           setModel(loadedModel);
           setLoading(false);
         }
       } catch (error) {
         if (isMounted) {
-          console.error('Model loading failed:', error);
+          console.error('ModelContent: Model loading failed:', error);
           onError(error as Error);
           setLoading(false);
         }
       }
     };
     
-    loadModel();
+    if (modelUrl) {
+      loadModel();
+    } else {
+      setLoading(false);
+      onError(new Error('No model URL provided'));
+    }
     
     return () => {
       isMounted = false;
@@ -52,7 +67,7 @@ const ModelContent: React.FC<ModelContentProps> = ({ modelUrl, onError }) => {
     return (
       <mesh>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#404040" />
+        <meshStandardMaterial color="#404040" wireframe />
       </mesh>
     );
   }
@@ -76,9 +91,14 @@ const ModelContent: React.FC<ModelContentProps> = ({ modelUrl, onError }) => {
 interface SimpleModelPreviewProps {
   modelUrl: string;
   fileName: string;
+  onError?: (error: Error) => void;
 }
 
-const SimpleModelPreview: React.FC<SimpleModelPreviewProps> = ({ modelUrl, fileName }) => {
+const SimpleModelPreview: React.FC<SimpleModelPreviewProps> = ({ 
+  modelUrl, 
+  fileName, 
+  onError 
+}) => {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
   
@@ -92,6 +112,11 @@ const SimpleModelPreview: React.FC<SimpleModelPreviewProps> = ({ modelUrl, fileN
     console.error(`SimpleModelPreview error for ${fileName}:`, error);
     setHasError(true);
     setErrorMessage(error.message || "Failed to load model");
+    
+    // Call external error handler if provided
+    if (onError) {
+      onError(error);
+    }
   };
   
   // Reset error state when URL changes
@@ -111,7 +136,10 @@ const SimpleModelPreview: React.FC<SimpleModelPreviewProps> = ({ modelUrl, fileN
   return (
     <div className="w-full h-full" ref={targetRef as React.RefObject<HTMLDivElement>}>
       {isIntersecting ? (
-        <ErrorBoundary fallback={<ModelPlaceholder fileName={fileName} />} onError={handleError}>
+        <ErrorBoundary 
+          fallback={<ModelPlaceholder fileName={fileName} />} 
+          onError={handleError}
+        >
           <Canvas
             shadows={false}
             gl={{
