@@ -12,10 +12,14 @@ interface PlanLimits {
 
 interface SubscriptionData {
   plan_type: string;
+  plan: string; // Add plan alias for plan_type
   generation_count_today: number;
   converted_3d_this_month: number;
   generation_count_this_month: number;
   status: string;
+  valid_until?: string;
+  is_active?: boolean;
+  commercial_license?: boolean;
 }
 
 interface UpgradeRecommendation {
@@ -80,7 +84,14 @@ export const useSubscription = () => {
         subscriptionData = newSub;
       }
 
-      setSubscription(subscriptionData);
+      // Add plan alias and other missing properties
+      const enhancedSubscriptionData: SubscriptionData = {
+        ...subscriptionData,
+        plan: subscriptionData.plan_type, // Add plan alias
+        is_active: subscriptionData.status === 'active',
+      };
+
+      setSubscription(enhancedSubscriptionData);
 
       // Fetch plan limits
       const { data: limitsData, error: limitsError } = await supabase
@@ -186,6 +197,46 @@ export const useSubscription = () => {
     return null;
   };
 
+  const checkSubscription = async () => {
+    await fetchSubscriptionData();
+  };
+
+  const openCustomerPortal = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to manage your subscription.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+      
+      if (error) {
+        console.error('Error opening customer portal:', error);
+        toast({
+          title: "Portal Error",
+          description: "Unable to open subscription management. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Error in openCustomerPortal:', error);
+      toast({
+        title: "Portal Error",
+        description: "Unable to open subscription management. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return {
     subscription,
     planLimits,
@@ -194,6 +245,9 @@ export const useSubscription = () => {
     consumeAction,
     getUpgradeRecommendation,
     getRemainingUsage,
-    refreshSubscription: fetchSubscriptionData
+    refreshSubscription: fetchSubscriptionData,
+    checkSubscription,
+    openCustomerPortal,
+    user
   };
 };
