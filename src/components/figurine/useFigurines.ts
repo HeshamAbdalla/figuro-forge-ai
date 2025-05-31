@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Figurine } from '@/types/figurine';
 import { useToast } from '@/hooks/use-toast';
+import { validateAndCleanUrl } from '@/utils/urlValidationUtils';
 
 export const useFigurines = () => {
   const [figurines, setFigurines] = useState<Figurine[]>([]);
@@ -49,71 +50,58 @@ export const useFigurines = () => {
         conversions: conversionData?.length || 0
       });
       
-      // Helper function to validate and clean URLs
-      const validateAndCleanUrl = (url: string | null): string | null => {
-        if (!url) return null;
-        
-        try {
-          const parsedUrl = new URL(url);
-          
-          // Check for expired Meshy.ai URLs
-          if (parsedUrl.hostname.includes('meshy.ai') && parsedUrl.searchParams.has('Expires')) {
-            const expiresTimestamp = parseInt(parsedUrl.searchParams.get('Expires') || '0');
-            const currentTimestamp = Math.floor(Date.now() / 1000);
-            if (expiresTimestamp < currentTimestamp) {
-              console.warn('Expired URL detected:', url);
-              return null;
-            }
-          }
-          
-          // Remove cache-busting parameters for better caching
-          ['t', 'cb', 'cache'].forEach(param => {
-            if (parsedUrl.searchParams.has(param)) {
-              parsedUrl.searchParams.delete(param);
-            }
-          });
-          
-          return parsedUrl.toString();
-        } catch (e) {
-          console.warn('Invalid URL detected:', url);
-          return null;
-        }
-      };
-      
-      // Process traditional figurines with better URL handling
+      // Process traditional figurines with enhanced URL validation
       const processedFigurines = (figurinesData || []).map(figurine => {
-        const cleanImageUrl = validateAndCleanUrl(figurine.image_url);
-        const cleanSavedImageUrl = validateAndCleanUrl(figurine.saved_image_url);
-        const cleanModelUrl = validateAndCleanUrl(figurine.model_url);
+        const imageValidation = validateAndCleanUrl(figurine.image_url);
+        const savedImageValidation = validateAndCleanUrl(figurine.saved_image_url);
+        const modelValidation = validateAndCleanUrl(figurine.model_url);
+        
+        // Log any URL validation issues
+        if (!imageValidation.isValid && figurine.image_url) {
+          console.warn(`Invalid image URL for figurine ${figurine.id}:`, imageValidation.error);
+        }
+        if (!modelValidation.isValid && figurine.model_url) {
+          console.warn(`Invalid model URL for figurine ${figurine.id}:`, modelValidation.error);
+        }
         
         return {
           id: figurine.id,
           title: figurine.title || "Untitled Figurine",
           prompt: figurine.prompt || "",
           style: figurine.style || "",
-          image_url: cleanImageUrl || "",
-          saved_image_url: cleanSavedImageUrl,
-          model_url: cleanModelUrl,
+          image_url: imageValidation.isValid ? imageValidation.cleanUrl : (figurine.image_url || ""),
+          saved_image_url: savedImageValidation.isValid ? savedImageValidation.cleanUrl : figurine.saved_image_url,
+          model_url: modelValidation.isValid ? modelValidation.cleanUrl : figurine.model_url,
           created_at: figurine.created_at || new Date().toISOString(),
           user_id: figurine.user_id,
           is_public: figurine.is_public || false
         };
       });
       
-      // Process text-to-3D conversions with proper URL priority
+      // Process text-to-3D conversions with enhanced URL prioritization and validation
       const processedConversions = (conversionData || []).map(conversion => {
-        // Prioritize local URLs over remote URLs for better performance and reliability
-        const modelUrl = validateAndCleanUrl(conversion.local_model_url) || 
-                         validateAndCleanUrl(conversion.model_url);
-        const thumbnailUrl = validateAndCleanUrl(conversion.local_thumbnail_url) || 
-                            validateAndCleanUrl(conversion.thumbnail_url);
+        // Enhanced URL prioritization: local URLs first, then validate
+        const localModelValidation = validateAndCleanUrl(conversion.local_model_url);
+        const remoteModelValidation = validateAndCleanUrl(conversion.model_url);
+        const localThumbnailValidation = validateAndCleanUrl(conversion.local_thumbnail_url);
+        const remoteThumbnailValidation = validateAndCleanUrl(conversion.thumbnail_url);
+        
+        // Prioritize valid local URLs over remote URLs
+        const modelUrl = localModelValidation.isValid ? localModelValidation.cleanUrl : 
+                         (remoteModelValidation.isValid ? remoteModelValidation.cleanUrl : conversion.model_url);
+        const thumbnailUrl = localThumbnailValidation.isValid ? localThumbnailValidation.cleanUrl : 
+                            (remoteThumbnailValidation.isValid ? remoteThumbnailValidation.cleanUrl : conversion.thumbnail_url);
         
         console.log(`Processing conversion ${conversion.id}:`, {
           local_model_url: conversion.local_model_url,
+          local_model_valid: localModelValidation.isValid,
           model_url: conversion.model_url,
+          remote_model_valid: remoteModelValidation.isValid,
           final_model_url: modelUrl,
           local_thumbnail_url: conversion.local_thumbnail_url,
+          local_thumbnail_valid: localThumbnailValidation.isValid,
           thumbnail_url: conversion.thumbnail_url,
+          remote_thumbnail_valid: remoteThumbnailValidation.isValid,
           final_thumbnail_url: thumbnailUrl
         });
         
@@ -141,7 +129,21 @@ export const useFigurines = () => {
       setError(null);
       
       console.log(`✅ [FIGURINES] Combined ${allFigurines.length} total items`);
-      console.log('Model URLs found:', allFigurines.filter(f => f.model_url).map(f => ({ id: f.id, title: f.title, url: f.model_url })));
+      
+      // Log model availability statistics
+      const modelsWithUrls = allFigurines.filter(f => f.model_url);
+      const validModels = modelsWithUrls.filter(f => {
+        const validation = validateAndCleanUrl(f.model_url);
+        return validation.isValid;
+      });
+      
+      console.log('📊 [FIGURINES] Model URL statistics:', {
+        total: allFigurines.length,
+        withModelUrls: modelsWithUrls.length,
+        validModelUrls: validModels.length,
+        invalidModelUrls: modelsWithUrls.length - validModels.length
+      });
+      
     } catch (err: any) {
       console.error('Error fetching figurines:', err);
       setError('Failed to load your figurines');

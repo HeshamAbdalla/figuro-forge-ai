@@ -3,6 +3,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
 import SimpleModelPreview from "../SimpleModelPreview";
 import ModelPlaceholder from "../ModelPlaceholder";
+import ModelErrorHandler from "./ModelErrorHandler";
+import { validateAndCleanUrl } from "@/utils/urlValidationUtils";
+import { logModelDebugInfo } from "@/utils/modelDebugUtils";
 
 interface SimplifiedModelPreviewProps {
   modelUrl: string;
@@ -16,6 +19,7 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [shouldShowPreview, setShouldShowPreview] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   
   const { targetRef, isIntersecting } = useIntersectionObserver({
     rootMargin: '200px',
@@ -23,22 +27,46 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
     once: false
   });
 
-  // Generate stable model ID
-  const modelId = useMemo(() => {
+  // Validate URL and generate stable model ID
+  const { validatedUrl, modelId } = useMemo(() => {
+    const validation = validateAndCleanUrl(modelUrl);
+    
+    // Generate stable model ID
+    let id: string;
     try {
-      const url = new URL(modelUrl);
+      const url = new URL(validation.cleanUrl || modelUrl);
       const pathParts = url.pathname.split('/');
       const filename = pathParts[pathParts.length - 1]?.split('.')[0] || 'unknown';
       const hostHash = url.hostname.replace(/\./g, '-');
-      return `simplified-${filename}-${hostHash}`;
+      id = `simplified-${filename}-${hostHash}`;
     } catch (e) {
-      const urlHash = Math.abs(modelUrl.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0));
-      return `simplified-${fileName.replace(/\W/g, '')}-${urlHash}`;
+      const urlHash = Math.abs((validation.cleanUrl || modelUrl).split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0));
+      id = `simplified-${fileName.replace(/\W/g, '')}-${urlHash}`;
     }
+    
+    return {
+      validatedUrl: validation,
+      modelId: id
+    };
   }, [modelUrl, fileName]);
 
   const handleError = (error: any) => {
     console.error(`SimplifiedModelPreview error for ${fileName}:`, error);
+    
+    // Log debug info for troubleshooting
+    if (modelUrl) {
+      logModelDebugInfo({
+        id: modelId,
+        title: fileName,
+        model_url: modelUrl,
+        style: '',
+        image_url: '',
+        saved_image_url: null,
+        prompt: '',
+        created_at: new Date().toISOString(),
+        is_public: false
+      });
+    }
     
     // Provide more specific error messages
     let message = "Model failed to load";
@@ -62,33 +90,63 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
     setHasError(true);
   };
 
+  const handleRetry = () => {
+    console.log(`SimplifiedModelPreview: Retrying load for ${fileName}`);
+    setHasError(false);
+    setErrorMessage("");
+    setShouldShowPreview(false);
+    setRetryCount(prev => prev + 1);
+    
+    // Force re-render by toggling preview state
+    setTimeout(() => {
+      setShouldShowPreview(true);
+    }, 100);
+  };
+
   // Reset error state when URL changes
   useEffect(() => {
     console.log(`SimplifiedModelPreview: URL changed for ${fileName}, resetting state`);
     setHasError(false);
     setErrorMessage("");
     setShouldShowPreview(false);
+    setRetryCount(0);
   }, [modelUrl, fileName]);
+
+  // Validate URL on mount and when it changes
+  useEffect(() => {
+    if (!validatedUrl.isValid) {
+      console.warn(`SimplifiedModelPreview: Invalid URL for ${fileName}:`, validatedUrl.error);
+      setErrorMessage(validatedUrl.error || "Invalid URL");
+      setHasError(true);
+      return;
+    }
+  }, [validatedUrl, fileName]);
 
   // Show preview when intersecting with debouncing
   useEffect(() => {
-    if (isIntersecting && !hasError && modelUrl) {
+    if (isIntersecting && !hasError && validatedUrl.isValid) {
       console.log(`SimplifiedModelPreview: Starting preview for ${fileName}`);
       const timer = setTimeout(() => {
         setShouldShowPreview(true);
-      }, 100); // Reduced delay for better responsiveness
+      }, 100);
       return () => clearTimeout(timer);
     } else if (!isIntersecting) {
       setShouldShowPreview(false);
     }
-  }, [isIntersecting, hasError, fileName, modelUrl]);
+  }, [isIntersecting, hasError, fileName, validatedUrl.isValid]);
 
-  // Don't render preview if no model URL
-  if (!modelUrl) {
-    console.log(`SimplifiedModelPreview: No model URL for ${fileName}`);
+  // Don't render preview if no model URL or invalid URL
+  if (!modelUrl || !validatedUrl.isValid) {
+    const errorMsg = !modelUrl ? "No 3D Model" : (validatedUrl.error || "Invalid URL");
+    console.log(`SimplifiedModelPreview: ${errorMsg} for ${fileName}`);
     return (
       <div className="w-full h-full">
-        <ModelPlaceholder fileName={`${fileName} (No 3D Model)`} />
+        <ModelErrorHandler
+          error={errorMsg}
+          fileName={fileName}
+          onRetry={validatedUrl.error?.includes('network') ? handleRetry : undefined}
+          modelUrl={modelUrl}
+        />
       </div>
     );
   }
@@ -97,7 +155,12 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
     console.log(`SimplifiedModelPreview: Showing error state for ${fileName}: ${errorMessage}`);
     return (
       <div className="w-full h-full">
-        <ModelPlaceholder fileName={`${fileName} (${errorMessage})`} />
+        <ModelErrorHandler
+          error={errorMessage}
+          fileName={fileName}
+          onRetry={errorMessage.includes('network') ? handleRetry : undefined}
+          modelUrl={modelUrl}
+        />
       </div>
     );
   }
@@ -106,14 +169,16 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
     isIntersecting,
     shouldShowPreview,
     hasError,
-    hasModelUrl: !!modelUrl
+    hasValidUrl: validatedUrl.isValid,
+    retryCount
   });
 
   return (
     <div className="w-full h-full" ref={targetRef as React.RefObject<HTMLDivElement>}>
       {shouldShowPreview ? (
         <SimpleModelPreview
-          modelUrl={modelUrl}
+          key={`${modelId}-${retryCount}`}
+          modelUrl={validatedUrl.cleanUrl}
           fileName={fileName}
           onError={handleError}
         />
