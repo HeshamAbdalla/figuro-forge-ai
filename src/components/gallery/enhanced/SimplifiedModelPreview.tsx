@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
-import ModelPreview from "../ModelPreview";
+import SimpleModelPreview from "../SimpleModelPreview";
 import ModelPlaceholder from "../ModelPlaceholder";
 
 interface SimplifiedModelPreviewProps {
@@ -80,7 +80,7 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
   return (
     <div className="w-full h-full" ref={targetRef as React.RefObject<HTMLDivElement>}>
       {shouldShowPreview ? (
-        <ModelPreview
+        <SimpleModelPreview
           modelUrl={modelUrl}
           fileName={fileName}
         />
