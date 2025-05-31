@@ -101,7 +101,7 @@ const Studio = () => {
     await onGenerate(prompt, style);
   };
 
-  const wrappedHandleTextTo3D = async (prompt: string, artStyle: string, negativePrompt: string) => {
+  const wrappedHandleTextTo3D = async (prompt: string, artStyle: string, negativePrompt: string = "") => {
     await handleTextTo3D(prompt, artStyle, negativePrompt);
   };
 

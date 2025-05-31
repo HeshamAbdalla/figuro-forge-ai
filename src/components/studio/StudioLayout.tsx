@@ -8,6 +8,7 @@ import TextTo3DConfigModal from "./TextTo3DConfigModal";
 import ImageTo3DConfigModal from "./ImageTo3DConfigModal";
 import UploadModelModal from "@/components/UploadModelModal";
 import type { TabKey } from "@/hooks/useTabNavigation";
+import type { TextTo3DConfig } from "@/components/studio/types/textTo3DConfig";
 
 interface StudioLayoutProps {
   activeTab: TabKey;
@@ -35,9 +36,9 @@ interface StudioLayoutProps {
   handleOpenConfigModal: () => void;
   handleGenerate3DWithConfig: (config: any) => Promise<void>;
   handleQuickConvert: () => void;
-  handleTextTo3D: (prompt: string, artStyle: string, negativePrompt: string) => Promise<void>;
+  handleTextTo3D: (prompt: string, artStyle: string, negativePrompt?: string) => Promise<void>;
   handleOpenTextTo3DConfigModal: (prompt: string) => void;
-  handleTextTo3DWithConfig: (config: any) => Promise<void>;
+  handleTextTo3DWithConfig: (config: TextTo3DConfig) => Promise<void>;
   handleModelUpload: (figurineId: string, file: File) => Promise<void>;
   handleSignOut: () => void;
   handleSignIn: () => void;
