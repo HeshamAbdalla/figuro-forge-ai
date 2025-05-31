@@ -2,6 +2,9 @@
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import type { GenerateResult } from "@/hooks/useImageGeneration";
+import type { TextTo3DResult } from "@/hooks/useTextTo3D";
+import type { TextTo3DConfig } from "@/components/studio/types/textTo3DConfig";
 
 interface UseStudioHandlersProps {
   generatedImage: string | null;
@@ -11,10 +14,10 @@ interface UseStudioHandlersProps {
   setTextTo3DConfigModalOpen: (open: boolean) => void;
   setGenerationModalOpen: (open: boolean) => void;
   setTextTo3DConfigPrompt: (prompt: string) => void;
-  handleGenerate: (prompt: string, style: string, apiKey?: string) => Promise<{ success: boolean; needsApiKey: boolean; needsUpgrade?: boolean; error?: string }>;
+  handleGenerate: (prompt: string, style: string, apiKey?: string, preGeneratedImageUrl?: string) => Promise<GenerateResult>;
   generate3DModel: (imageUrl: string, filename: string, options?: any) => Promise<void>;
-  generateTextTo3DModel: (prompt: string) => Promise<void>;
-  generateTextTo3DModelWithConfig: (prompt: string, config: any) => Promise<void>;
+  generateTextTo3DModel: (prompt: string, artStyle: string, negativePrompt?: string) => Promise<TextTo3DResult>;
+  generateTextTo3DModelWithConfig: (config: TextTo3DConfig) => Promise<TextTo3DResult>;
   resetProgress: () => void;
   showUpgradeModal?: (actionType: "image_generation" | "model_conversion") => void;
 }
@@ -115,9 +118,12 @@ export const useStudioHandlers = ({
     }
   };
 
-  const handleTextTo3D = async (prompt: string) => {
+  const handleTextTo3D = async (prompt: string, artStyle: string, negativePrompt?: string) => {
     try {
-      await generateTextTo3DModel(prompt);
+      const result = await generateTextTo3DModel(prompt, artStyle, negativePrompt);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate 3D model from text');
+      }
     } catch (error) {
       console.error("Text to 3D error:", error);
       
@@ -138,10 +144,13 @@ export const useStudioHandlers = ({
     setTextTo3DConfigModalOpen(true);
   };
 
-  const handleTextTo3DWithConfig = async (prompt: string, config: any) => {
+  const handleTextTo3DWithConfig = async (config: TextTo3DConfig) => {
     try {
-      await generateTextTo3DModelWithConfig(prompt, config);
+      const result = await generateTextTo3DModelWithConfig(config);
       setTextTo3DConfigModalOpen(false);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate 3D model with config');
+      }
     } catch (error) {
       console.error("Text to 3D with config error:", error);
       
