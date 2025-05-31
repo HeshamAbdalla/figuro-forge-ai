@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Figurine } from '@/types/figurine';
 import { useToast } from '@/hooks/use-toast';
-import { validateAndCleanUrl } from '@/utils/urlValidationUtils';
+import { validateAndCleanUrl, prioritizeUrls } from '@/utils/urlValidationUtils';
 
 export const useFigurines = () => {
   const [figurines, setFigurines] = useState<Figurine[]>([]);
@@ -81,28 +81,23 @@ export const useFigurines = () => {
       // Process text-to-3D conversions with enhanced URL prioritization and validation
       const processedConversions = (conversionData || []).map(conversion => {
         // Enhanced URL prioritization: local URLs first, then validate
-        const localModelValidation = validateAndCleanUrl(conversion.local_model_url);
-        const remoteModelValidation = validateAndCleanUrl(conversion.model_url);
-        const localThumbnailValidation = validateAndCleanUrl(conversion.local_thumbnail_url);
-        const remoteThumbnailValidation = validateAndCleanUrl(conversion.thumbnail_url);
+        const prioritizedModelUrl = prioritizeUrls([
+          conversion.local_model_url,
+          conversion.model_url
+        ]);
         
-        // Prioritize valid local URLs over remote URLs
-        const modelUrl = localModelValidation.isValid ? localModelValidation.cleanUrl : 
-                         (remoteModelValidation.isValid ? remoteModelValidation.cleanUrl : conversion.model_url);
-        const thumbnailUrl = localThumbnailValidation.isValid ? localThumbnailValidation.cleanUrl : 
-                            (remoteThumbnailValidation.isValid ? remoteThumbnailValidation.cleanUrl : conversion.thumbnail_url);
+        const prioritizedThumbnailUrl = prioritizeUrls([
+          conversion.local_thumbnail_url,
+          conversion.thumbnail_url
+        ]);
         
         console.log(`Processing conversion ${conversion.id}:`, {
           local_model_url: conversion.local_model_url,
-          local_model_valid: localModelValidation.isValid,
           model_url: conversion.model_url,
-          remote_model_valid: remoteModelValidation.isValid,
-          final_model_url: modelUrl,
+          prioritized_model_url: prioritizedModelUrl,
           local_thumbnail_url: conversion.local_thumbnail_url,
-          local_thumbnail_valid: localThumbnailValidation.isValid,
           thumbnail_url: conversion.thumbnail_url,
-          remote_thumbnail_valid: remoteThumbnailValidation.isValid,
-          final_thumbnail_url: thumbnailUrl
+          prioritized_thumbnail_url: prioritizedThumbnailUrl
         });
         
         return {
@@ -110,9 +105,9 @@ export const useFigurines = () => {
           title: `Text-to-3D: ${conversion.prompt?.substring(0, 30) || 'Generated Model'}${conversion.prompt && conversion.prompt.length > 30 ? '...' : ''}`,
           prompt: conversion.prompt || "",
           style: conversion.art_style || "text-to-3d",
-          image_url: thumbnailUrl || "",
-          saved_image_url: thumbnailUrl,
-          model_url: modelUrl,
+          image_url: prioritizedThumbnailUrl || "",
+          saved_image_url: prioritizedThumbnailUrl,
+          model_url: prioritizedModelUrl,
           created_at: conversion.created_at || new Date().toISOString(),
           user_id: conversion.user_id,
           is_public: false
@@ -141,7 +136,11 @@ export const useFigurines = () => {
         total: allFigurines.length,
         withModelUrls: modelsWithUrls.length,
         validModelUrls: validModels.length,
-        invalidModelUrls: modelsWithUrls.length - validModels.length
+        invalidModelUrls: modelsWithUrls.length - validModels.length,
+        localModels: validModels.filter(f => {
+          const validation = validateAndCleanUrl(f.model_url);
+          return validation.isLocal;
+        }).length
       });
       
     } catch (err: any) {

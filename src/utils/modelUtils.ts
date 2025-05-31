@@ -74,9 +74,9 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
     
     console.log('🔄 [MODEL] Uploading to storage path:', filePath);
     
-    // Upload to Supabase storage using the same bucket as images
+    // Upload to Supabase storage using the new figurine-models bucket
     const { data, error } = await supabase.storage
-      .from('figurine-images')
+      .from('figurine-models')
       .upload(filePath, modelBlob, {
         contentType: 'model/gltf-binary',
         upsert: true
@@ -110,7 +110,7 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
     
     // Get the public URL of the saved model
     const { data: publicUrlData } = supabase.storage
-      .from('figurine-images')
+      .from('figurine-models')
       .getPublicUrl(filePath);
       
     const publicUrl = publicUrlData.publicUrl;
@@ -118,7 +118,7 @@ export const downloadAndSaveModel = async (modelUrl: string, filename: string): 
     
     // Verify the file was actually uploaded by checking if it exists
     const { data: fileData, error: fileError } = await supabase.storage
-      .from('figurine-images')
+      .from('figurine-models')
       .list(`${userId}/models`, {
         limit: 100,
         search: `${cleanFilename}_`

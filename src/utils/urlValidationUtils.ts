@@ -5,6 +5,8 @@ export interface UrlValidationResult {
   cleanUrl: string;
   isExpired?: boolean;
   expiresAt?: Date;
+  isLocal?: boolean;
+  priority?: number;
 }
 
 export const validateAndCleanUrl = (url: string | null): UrlValidationResult => {
@@ -12,12 +14,20 @@ export const validateAndCleanUrl = (url: string | null): UrlValidationResult => 
     return {
       isValid: false,
       error: 'No URL provided',
-      cleanUrl: ''
+      cleanUrl: '',
+      priority: 0
     };
   }
   
   try {
     const parsedUrl = new URL(url);
+    
+    // Determine if this is a local Supabase storage URL
+    const isLocal = parsedUrl.hostname.includes('supabase.co') || 
+                    parsedUrl.hostname.includes('cwjxbwqdfejhmiixoiym.supabase.co');
+    
+    // Set priority: local URLs get highest priority
+    const priority = isLocal ? 100 : 50;
     
     // Check for expired Meshy.ai URLs
     if (parsedUrl.hostname.includes('meshy.ai') && parsedUrl.searchParams.has('Expires')) {
@@ -31,7 +41,9 @@ export const validateAndCleanUrl = (url: string | null): UrlValidationResult => 
           error: 'URL has expired',
           cleanUrl: url,
           isExpired: true,
-          expiresAt: new Date(expiresTimestamp * 1000)
+          expiresAt: new Date(expiresTimestamp * 1000),
+          isLocal,
+          priority: 0 // Expired URLs get lowest priority
         };
       }
     }
@@ -42,15 +54,38 @@ export const validateAndCleanUrl = (url: string | null): UrlValidationResult => 
     return {
       isValid: true,
       cleanUrl,
-      isExpired: false
+      isExpired: false,
+      isLocal,
+      priority
     };
   } catch (e) {
     return {
       isValid: false,
       error: 'Invalid URL format',
-      cleanUrl: url
+      cleanUrl: url,
+      priority: 0
     };
   }
+};
+
+// New function to prioritize URLs based on validation results
+export const prioritizeUrls = (urls: (string | null)[]): string | null => {
+  const validatedUrls = urls
+    .filter((url): url is string => !!url)
+    .map(url => ({ url, validation: validateAndCleanUrl(url) }))
+    .filter(item => item.validation.isValid)
+    .sort((a, b) => (b.validation.priority || 0) - (a.validation.priority || 0));
+    
+  console.log('🔍 [URL-PRIORITIZATION] URL prioritization results:', 
+    validatedUrls.map(item => ({
+      url: item.url.substring(0, 50) + '...',
+      isLocal: item.validation.isLocal,
+      priority: item.validation.priority,
+      isExpired: item.validation.isExpired
+    }))
+  );
+  
+  return validatedUrls.length > 0 ? validatedUrls[0].validation.cleanUrl : null;
 };
 
 export const cleanUrlParameters = (url: URL): string => {

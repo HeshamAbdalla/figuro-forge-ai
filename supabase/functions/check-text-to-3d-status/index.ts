@@ -25,11 +25,11 @@ async function downloadAndSaveModel(
     const modelBlob = await response.blob();
     console.log('✅ [DOWNLOAD] Model downloaded, size:', modelBlob.size);
     
-    // Generate file path in user's folder
+    // Generate file path in user's folder using new bucket structure
     const fileName = `${taskId}.glb`;
     const filePath = `${userId}/models/${fileName}`;
     
-    // Upload to Supabase storage
+    // Upload to Supabase storage using figurine-models bucket
     const { data, error } = await supabase.storage
       .from('figurine-models')
       .upload(filePath, modelBlob, {
@@ -75,13 +75,13 @@ async function downloadAndSaveThumbnail(
     const thumbnailBlob = await response.blob();
     console.log('✅ [DOWNLOAD] Thumbnail downloaded, size:', thumbnailBlob.size);
     
-    // Generate file path in user's folder
+    // Generate file path in user's folder using new bucket structure
     const fileName = `${taskId}_thumb.png`;
     const filePath = `${userId}/thumbnails/${fileName}`;
     
-    // Upload to Supabase storage
+    // Upload to Supabase storage using figurine-images bucket
     const { data, error } = await supabase.storage
-      .from('figurine-models')
+      .from('figurine-images')
       .upload(filePath, thumbnailBlob, {
         contentType: 'image/png',
         upsert: true
@@ -94,7 +94,7 @@ async function downloadAndSaveThumbnail(
     
     // Get public URL
     const { data: publicUrlData } = supabase.storage
-      .from('figurine-models')
+      .from('figurine-images')
       .getPublicUrl(filePath);
       
     const publicUrl = publicUrlData.publicUrl;
