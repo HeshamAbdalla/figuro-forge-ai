@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,7 +121,7 @@ export const useSubscription = () => {
     }
   };
 
-  const canPerformAction = (actionType: 'image_generation' | 'model_conversion'): boolean => {
+  const canPerformAction = (actionType: 'image_generation' | 'model_conversion' | 'model_remesh'): boolean => {
     if (!subscription || !planLimits) return false;
     
     if (planLimits.is_unlimited) return true;
@@ -131,17 +130,23 @@ export const useSubscription = () => {
       return subscription.generation_count_today < planLimits.image_generations_limit;
     } else if (actionType === 'model_conversion') {
       return subscription.converted_3d_this_month < planLimits.model_conversions_limit;
+    } else if (actionType === 'model_remesh') {
+      // Remeshing uses the same limit as model conversions for now
+      return subscription.converted_3d_this_month < planLimits.model_conversions_limit;
     }
 
     return false;
   };
 
-  const consumeAction = async (actionType: 'image_generation' | 'model_conversion'): Promise<boolean> => {
+  const consumeAction = async (actionType: 'image_generation' | 'model_conversion' | 'model_remesh'): Promise<boolean> => {
     if (!user) return false;
 
     try {
+      // Map remesh action to model_conversion for the database function
+      const dbActionType = actionType === 'model_remesh' ? 'model_conversion' : actionType;
+      
       const { data, error } = await supabase.rpc('consume_feature_usage', {
-        feature_type: actionType,
+        feature_type: dbActionType,
         user_id_param: user.id,
         amount: 1
       });
@@ -160,7 +165,7 @@ export const useSubscription = () => {
     }
   };
 
-  const getUpgradeRecommendation = (actionType: 'image_generation' | 'model_conversion'): UpgradeRecommendation | null => {
+  const getUpgradeRecommendation = (actionType: 'image_generation' | 'model_conversion' | 'model_remesh'): UpgradeRecommendation | null => {
     if (!subscription) return null;
 
     if (subscription.plan_type === 'free') {
@@ -169,6 +174,7 @@ export const useSubscription = () => {
         features: [
           'Unlimited image generations',
           'More 3D conversions',
+          'Model remeshing capabilities',
           'Priority support'
         ]
       };
@@ -177,7 +183,7 @@ export const useSubscription = () => {
     return null;
   };
 
-  const getRemainingUsage = (actionType: 'image_generation' | 'model_conversion'): { used: number; limit: number; remaining: number } | null => {
+  const getRemainingUsage = (actionType: 'image_generation' | 'model_conversion' | 'model_remesh'): { used: number; limit: number; remaining: number } | null => {
     if (!subscription || !planLimits) return null;
 
     if (planLimits.is_unlimited) {
@@ -188,7 +194,7 @@ export const useSubscription = () => {
       const used = subscription.generation_count_today;
       const limit = planLimits.image_generations_limit;
       return { used, limit, remaining: Math.max(0, limit - used) };
-    } else if (actionType === 'model_conversion') {
+    } else if (actionType === 'model_conversion' || actionType === 'model_remesh') {
       const used = subscription.converted_3d_this_month;
       const limit = planLimits.model_conversions_limit;
       return { used, limit, remaining: Math.max(0, limit - used) };

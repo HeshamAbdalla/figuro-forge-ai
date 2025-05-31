@@ -22,7 +22,10 @@ export type Database = {
           local_thumbnail_url: string | null
           model_url: string | null
           negative_prompt: string | null
+          original_model_url: string | null
           prompt: string | null
+          remesh_progress: number | null
+          remesh_settings: Json | null
           seed_value: number | null
           status: string
           target_polycount: number | null
@@ -45,7 +48,10 @@ export type Database = {
           local_thumbnail_url?: string | null
           model_url?: string | null
           negative_prompt?: string | null
+          original_model_url?: string | null
           prompt?: string | null
+          remesh_progress?: number | null
+          remesh_settings?: Json | null
           seed_value?: number | null
           status?: string
           target_polycount?: number | null
@@ -68,7 +74,10 @@ export type Database = {
           local_thumbnail_url?: string | null
           model_url?: string | null
           negative_prompt?: string | null
+          original_model_url?: string | null
           prompt?: string | null
+          remesh_progress?: number | null
+          remesh_settings?: Json | null
           seed_value?: number | null
           status?: string
           target_polycount?: number | null
@@ -264,6 +273,48 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           window_start?: string | null
+        }
+        Relationships: []
+      }
+      remesh_tasks: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          original_model_url: string
+          progress: number | null
+          remeshed_model_url: string | null
+          settings: Json | null
+          status: string
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          original_model_url: string
+          progress?: number | null
+          remeshed_model_url?: string | null
+          settings?: Json | null
+          status?: string
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          original_model_url?: string
+          progress?: number | null
+          remeshed_model_url?: string | null
+          settings?: Json | null
+          status?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 
-export type UpgradeModalAction = "image_generation" | "model_conversion";
+export type UpgradeModalAction = "image_generation" | "model_conversion" | "model_remesh";
 
 interface UseUpgradeModalReturn {
   isUpgradeModalOpen: boolean;

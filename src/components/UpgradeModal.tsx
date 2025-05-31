@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,7 +18,7 @@ interface UpgradeModalProps {
   onOpenChange: (open: boolean) => void;
   title?: string;
   description?: string;
-  actionType: "image_generation" | "model_conversion";
+  actionType: "image_generation" | "model_conversion" | "model_remesh";
 }
 
 const UpgradeModal = ({
@@ -32,6 +31,37 @@ const UpgradeModal = ({
   const navigate = useNavigate();
   const { user } = useEnhancedAuth();
   const [isLoading, setIsLoading] = useState(false);
+
+  const getDefaultDescription = () => {
+    switch (actionType) {
+      case "image_generation":
+        return "You've reached your monthly limit for image generations.";
+      case "model_conversion":
+        return "You've reached your monthly limit for 3D model conversions.";
+      case "model_remesh":
+        return "You've reached your monthly limit for model remeshing operations.";
+      default:
+        return "You've reached your usage limit.";
+    }
+  };
+
+  const getFeatureList = () => {
+    const baseFeatures = [
+      "More monthly image generations",
+      "Additional 3D model conversions",
+      "Higher resolution outputs",
+      "Advanced art styles",
+    ];
+
+    if (actionType === "model_conversion") {
+      baseFeatures.push("Priority rendering for faster conversion");
+    } else if (actionType === "model_remesh") {
+      baseFeatures.push("Model remeshing and optimization");
+      baseFeatures.push("Advanced topology controls");
+    }
+
+    return baseFeatures;
+  };
 
   const handleUpgrade = () => {
     // If user is not authenticated, send to login page first
@@ -51,9 +81,7 @@ const UpgradeModal = ({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {description || (actionType === "image_generation"
-              ? "You've reached your monthly limit for image generations."
-              : "You've reached your monthly limit for 3D model conversions.")}
+            {description || getDefaultDescription()}
           </DialogDescription>
         </DialogHeader>
 
@@ -62,13 +90,9 @@ const UpgradeModal = ({
             Upgrade your plan to continue creating amazing figurines. Our paid plans offer:
           </p>
           <ul className="list-disc pl-5 space-y-2">
-            <li>More monthly image generations</li>
-            <li>Additional 3D model conversions</li>
-            <li>Higher resolution outputs</li>
-            <li>Advanced art styles</li>
-            {actionType === "model_conversion" && (
-              <li>Priority rendering for faster conversion</li>
-            )}
+            {getFeatureList().map((feature, index) => (
+              <li key={index}>{feature}</li>
+            ))}
           </ul>
         </div>
 
