@@ -115,7 +115,7 @@ export class ModelLoader {
           },
           (error) => {
             console.error('ModelLoader: GLTF load error:', error);
-            reject(new Error(`Failed to load 3D model: ${error.message || 'Unknown error'}`));
+            reject(new Error(`Failed to load 3D model: ${error instanceof Error ? error.message : 'Unknown error'}`));
           }
         );
       });
