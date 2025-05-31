@@ -14,7 +14,7 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
   fileName
 }) => {
   const [hasError, setHasError] = useState(false);
-  const [forceModelPreview, setForceModelPreview] = useState(false);
+  const [shouldShowPreview, setShouldShowPreview] = useState(false);
   
   const { targetRef, isIntersecting } = useIntersectionObserver({
     rootMargin: '200px',
@@ -43,20 +43,26 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
 
   // Reset error state when URL changes
   useEffect(() => {
+    console.log(`SimplifiedModelPreview URL changed: ${modelUrl}`);
     setHasError(false);
+    setShouldShowPreview(false);
   }, [modelUrl]);
 
-  // Force fallback to ModelPreview after a short delay to ensure rendering
+  // Show preview when intersecting with a small delay to prevent rapid loading/unloading
   useEffect(() => {
     if (isIntersecting && !hasError) {
+      console.log(`SimplifiedModelPreview intersecting: ${fileName}`);
       const timer = setTimeout(() => {
-        setForceModelPreview(true);
-      }, 100);
+        setShouldShowPreview(true);
+      }, 200);
       return () => clearTimeout(timer);
+    } else if (!isIntersecting) {
+      setShouldShowPreview(false);
     }
-  }, [isIntersecting, hasError]);
+  }, [isIntersecting, hasError, fileName]);
 
   if (hasError) {
+    console.log(`SimplifiedModelPreview showing error state for: ${fileName}`);
     return (
       <div className="w-full h-full">
         <ModelPlaceholder fileName={`${fileName} (Error)`} />
@@ -64,9 +70,16 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
     );
   }
 
+  console.log(`SimplifiedModelPreview render state for ${fileName}:`, {
+    isIntersecting,
+    shouldShowPreview,
+    hasError,
+    modelUrl
+  });
+
   return (
     <div className="w-full h-full" ref={targetRef as React.RefObject<HTMLDivElement>}>
-      {(isIntersecting && forceModelPreview) ? (
+      {shouldShowPreview ? (
         <ModelPreview
           modelUrl={modelUrl}
           fileName={fileName}

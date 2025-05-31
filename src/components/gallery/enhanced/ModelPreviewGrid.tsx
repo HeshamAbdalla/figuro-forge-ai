@@ -29,10 +29,13 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
 
   // Filter and sort figurines
   const processedFigurines = useMemo(() => {
-    return figurines.filter(figurine => figurine && figurine.id);
+    const filtered = figurines.filter(figurine => figurine && figurine.id);
+    console.log(`Processed ${filtered.length} figurines for ModelPreviewGrid`);
+    return filtered;
   }, [figurines]);
 
   const handleImageError = (figurineId: string) => {
+    console.log(`Image error for figurine ${figurineId}`);
     setImageErrors(prev => new Set(prev).add(figurineId));
   };
 
@@ -42,6 +45,15 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
     const hasModel = !!figurine.model_url;
     const imageUrl = figurine.saved_image_url || figurine.image_url;
     const hasImageError = imageErrors.has(figurine.id);
+
+    console.log(`Rendering figurine card: ${figurine.title}`, {
+      hasModel,
+      modelUrl: figurine.model_url,
+      isTextTo3D,
+      isWebIcon,
+      imageUrl,
+      hasImageError
+    });
 
     return (
       <div className={cn(
@@ -54,10 +66,12 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
           viewMode === "list" ? "w-32 h-32 flex-shrink-0" : "aspect-square w-full"
         )}>
           {hasModel && !hasImageError ? (
-            <SimplifiedModelPreview
-              modelUrl={figurine.model_url!}
-              fileName={figurine.title}
-            />
+            <div className="w-full h-full">
+              <SimplifiedModelPreview
+                modelUrl={figurine.model_url!}
+                fileName={figurine.title}
+              />
+            </div>
           ) : imageUrl && !hasImageError ? (
             <img
               src={imageUrl}
