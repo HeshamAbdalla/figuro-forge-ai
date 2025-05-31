@@ -14,6 +14,7 @@ const EnhancedFigurineGallery = () => {
   const [modelViewerOpen, setModelViewerOpen] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
   const { toast } = useToast();
 
   const handleDownload = async (figurine: Figurine) => {
@@ -226,6 +227,11 @@ const EnhancedFigurineGallery = () => {
     setSelectedFigurine(null);
   };
 
+  // Toggle performance monitor
+  const togglePerformanceMonitor = () => {
+    setShowPerformanceMonitor(!showPerformanceMonitor);
+  };
+
   if (error) {
     return (
       <div className="text-center py-12">
@@ -238,6 +244,18 @@ const EnhancedFigurineGallery = () => {
 
   return (
     <>
+      {/* Performance Monitor Toggle */}
+      <div className="fixed top-4 right-4 z-40">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={togglePerformanceMonitor}
+          className="bg-black/50 border-white/20 text-white hover:bg-black/70"
+        >
+          {showPerformanceMonitor ? 'Hide' : 'Show'} Performance
+        </Button>
+      </div>
+
       <EnhancedGalleryView
         figurines={figurines}
         loading={loading}
@@ -261,6 +279,21 @@ const EnhancedFigurineGallery = () => {
         onUpload={handleModelUpload}
         figurineId={selectedFigurine?.id || ""}
       />
+
+      {/* Enhanced Performance Monitor */}
+      {showPerformanceMonitor && (
+        <>
+          {/* Import and use the performance monitor */}
+          {React.createElement(
+            React.lazy(() => import('../gallery/performance/EnhancedPerformanceMonitor')),
+            {
+              visible: true,
+              position: 'bottom-right' as const,
+              compact: false
+            }
+          )}
+        </>
+      )}
     </>
   );
 };

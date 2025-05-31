@@ -5,7 +5,7 @@ import { Center, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { ErrorBoundary } from "@/components/model-viewer/ErrorBoundary";
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
-import { useOptimizedModelLoader } from "@/components/model-viewer/hooks/useOptimizedModelLoader";
+import { intelligentModelCache } from "./IntelligentModelCache";
 import { enhancedResourcePool } from "./EnhancedResourcePool";
 import { AdvancedLODSystem } from "./AdvancedLODSystem";
 import ModelPlaceholder from "../ModelPlaceholder";
@@ -17,7 +17,7 @@ interface OptimizedModelContentProps {
   onError: (error: any) => void;
 }
 
-// Enhanced model content with advanced LOD and performance optimizations
+// Enhanced model content with intelligent caching and advanced LOD
 const OptimizedModelContent: React.FC<OptimizedModelContentProps> = ({
   modelUrl,
   modelId,
@@ -28,15 +28,47 @@ const OptimizedModelContent: React.FC<OptimizedModelContentProps> = ({
   const lodRef = useRef<THREE.LOD | null>(null);
   const cameraRef = useRef<THREE.Camera | null>(null);
   const rotationSpeed = useRef(0.5);
-  const [currentDistance, setCurrentDistance] = useState(0);
-  
-  const { loading, model, error } = useOptimizedModelLoader({
-    modelSource: isVisible ? modelUrl : null,
-    visible: isVisible,
-    modelId: modelId,
-    priority: 1,
-    onError: onError
-  });
+  const [model, setModel] = useState<THREE.Group | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
+
+  // Load model using intelligent cache
+  useEffect(() => {
+    if (!isVisible || !modelUrl) return;
+
+    let isMounted = true;
+    setLoading(true);
+    setError(null);
+
+    const loadModel = async () => {
+      try {
+        console.log(`Loading model with intelligent cache: ${modelId}`);
+        
+        // Use intelligent cache with high priority for visible models
+        const loadedModel = await intelligentModelCache.getModel(modelUrl, 1.0);
+        
+        if (!isMounted) return;
+        
+        setModel(loadedModel);
+        setLoading(false);
+        
+        console.log(`Model loaded successfully: ${modelId}`);
+      } catch (err) {
+        console.error(`Failed to load model ${modelId}:`, err);
+        if (isMounted) {
+          setError(err);
+          setLoading(false);
+          onError(err);
+        }
+      }
+    };
+
+    loadModel();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [modelUrl, modelId, isVisible, onError]);
 
   // Create LOD system when model loads
   useEffect(() => {
@@ -58,18 +90,13 @@ const OptimizedModelContent: React.FC<OptimizedModelContentProps> = ({
     // Store camera reference for distance calculations
     cameraRef.current = state.camera;
     
-    // Calculate distance from camera for LOD
+    // Update LOD based on distance
     if (lodRef.current && cameraRef.current) {
-      const distance = groupRef.current.position.distanceTo(cameraRef.current.position);
-      setCurrentDistance(distance);
-      
-      // Update LOD based on distance
       lodRef.current.update(cameraRef.current);
     }
     
     // Smooth rotation with performance consideration
     if (groupRef.current) {
-      // Use requestAnimationFrame-friendly rotation
       const targetSpeed = 0.3 + Math.sin(state.clock.elapsedTime * 0.5) * 0.2;
       rotationSpeed.current = THREE.MathUtils.lerp(rotationSpeed.current, targetSpeed, delta * 2);
       
@@ -121,14 +148,6 @@ const OptimizedModelContent: React.FC<OptimizedModelContentProps> = ({
       <Center scale={1.2}>
         {displayModel && <primitive object={displayModel} />}
       </Center>
-      
-      {/* Debug info for development */}
-      {process.env.NODE_ENV === 'development' && (
-        <mesh position={[0, 2, 0]} visible={false}>
-          <planeGeometry args={[1, 0.2]} />
-          <meshBasicMaterial color="white" transparent opacity={0.8} />
-        </mesh>
-      )}
     </group>
   );
 };
@@ -174,6 +193,16 @@ const OptimizedModelPreview: React.FC<OptimizedModelPreviewProps> = ({
   useEffect(() => {
     setHasError(false);
   }, [modelUrl]);
+
+  // Preload model when it comes into view
+  useEffect(() => {
+    if (isIntersecting && !hasError) {
+      // Start preloading with medium priority
+      intelligentModelCache.getModel(modelUrl, 0.7).catch(() => {
+        // Ignore preload errors - they'll be handled by the actual render
+      });
+    }
+  }, [isIntersecting, modelUrl, hasError]);
 
   if (hasError) {
     return (
