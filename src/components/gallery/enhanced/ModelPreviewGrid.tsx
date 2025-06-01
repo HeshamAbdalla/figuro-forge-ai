@@ -1,18 +1,29 @@
 
 import React, { useState, useMemo } from "react";
-import { Figurine } from "@/types/figurine";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Upload, Globe, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SimplifiedModelPreview from "./SimplifiedModelPreview";
 
+interface GalleryFile {
+  id: string;
+  title: string;
+  style?: string;
+  image_url?: string;
+  saved_image_url?: string;
+  model_url?: string | null;
+  created_at: string;
+  is_public?: boolean;
+  file_type?: string;
+}
+
 interface ModelPreviewGridProps {
-  figurines: Figurine[];
+  figurines: GalleryFile[];
   loading: boolean;
-  onDownload: (figurine: Figurine) => void;
-  onViewModel: (figurine: Figurine) => void;
-  onTogglePublish: (figurine: Figurine) => void;
-  onUploadModel: (figurine: Figurine) => void;
+  onDownload: (figurine: GalleryFile) => void;
+  onViewModel: (figurine: GalleryFile) => void;
+  onTogglePublish: (figurine: GalleryFile) => void;
+  onUploadModel: (figurine: GalleryFile) => void;
   viewMode: "grid" | "list";
 }
 
@@ -39,9 +50,10 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
     setImageErrors(prev => new Set(prev).add(figurineId));
   };
 
-  const FigurineCard = ({ figurine }: { figurine: Figurine }) => {
+  const FigurineCard = ({ figurine }: { figurine: GalleryFile }) => {
     const isTextTo3D = figurine.style === 'text-to-3d' || figurine.title.startsWith('Text-to-3D:');
     const isWebIcon = figurine.file_type === 'web-icon' || figurine.title.startsWith('Web Icon:');
+    const is3DModel = figurine.file_type === '3d-model' || !!figurine.model_url;
     const hasModel = !!figurine.model_url;
     const imageUrl = figurine.saved_image_url || figurine.image_url;
     const hasImageError = imageErrors.has(figurine.id);
@@ -51,6 +63,7 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
       modelUrl: figurine.model_url,
       isTextTo3D,
       isWebIcon,
+      is3DModel,
       imageUrl,
       hasImageError
     });
@@ -91,13 +104,18 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
 
           {/* Overlay for status indicators */}
           <div className="absolute top-2 right-2 flex gap-1">
-            {isTextTo3D && (
+            {is3DModel && (
               <div className="bg-blue-500/80 text-white text-xs px-1.5 py-0.5 rounded">
                 3D
               </div>
             )}
-            {isWebIcon && (
+            {isTextTo3D && (
               <div className="bg-purple-500/80 text-white text-xs px-1.5 py-0.5 rounded">
+                T2D
+              </div>
+            )}
+            {isWebIcon && (
+              <div className="bg-orange-500/80 text-white text-xs px-1.5 py-0.5 rounded">
                 ICON
               </div>
             )}
@@ -155,7 +173,7 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
               </Button>
             )}
 
-            {!isWebIcon && (
+            {!isWebIcon && !hasModel && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -207,9 +225,9 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
         <div className="w-16 h-16 bg-white/10 rounded-lg mx-auto mb-4 flex items-center justify-center">
           <Eye size={24} className="text-white/50" />
         </div>
-        <h3 className="text-lg font-medium text-white mb-2">No figurines yet</h3>
+        <h3 className="text-lg font-medium text-white mb-2">No files yet</h3>
         <p className="text-white/60 max-w-sm mx-auto">
-          Start creating your first figurine to see it here. Your creations will appear in this gallery.
+          Upload some models or create figurines to see them here. Your creations will appear in this gallery.
         </p>
       </div>
     );

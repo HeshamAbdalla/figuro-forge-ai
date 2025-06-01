@@ -5,22 +5,33 @@ import { Grid3X3, List, Search, Filter, SortDesc } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Figurine } from "@/types/figurine";
 import ModelPreviewGrid from "./ModelPreviewGrid";
 import { cn } from "@/lib/utils";
 
+interface GalleryFile {
+  id: string;
+  title: string;
+  style?: string;
+  image_url?: string;
+  saved_image_url?: string;
+  model_url?: string | null;
+  created_at: string;
+  is_public?: boolean;
+  file_type?: string;
+}
+
 interface EnhancedGalleryViewProps {
-  figurines: Figurine[];
+  figurines: GalleryFile[];
   loading: boolean;
-  onDownload: (figurine: Figurine) => void;
-  onViewModel: (figurine: Figurine) => void;
-  onTogglePublish: (figurine: Figurine) => void;
-  onUploadModel: (figurine: Figurine) => void;
+  onDownload: (figurine: GalleryFile) => void;
+  onViewModel: (figurine: GalleryFile) => void;
+  onTogglePublish: (figurine: GalleryFile) => void;
+  onUploadModel: (figurine: GalleryFile) => void;
 }
 
 type ViewMode = "grid" | "list";
 type SortOption = "newest" | "oldest" | "name" | "type";
-type FilterOption = "all" | "with-model" | "images-only" | "text-to-3d" | "web-icons" | "public" | "private";
+type FilterOption = "all" | "with-model" | "images-only" | "3d-models" | "web-icons" | "public" | "private";
 
 const EnhancedGalleryView: React.FC<EnhancedGalleryViewProps> = ({
   figurines,
@@ -53,9 +64,9 @@ const EnhancedGalleryView: React.FC<EnhancedGalleryViewProps> = ({
         case "with-model":
           return !!figurine.model_url;
         case "images-only":
-          return !figurine.model_url;
-        case "text-to-3d":
-          return figurine.style === 'text-to-3d' || figurine.title.startsWith('Text-to-3D:');
+          return !figurine.model_url && figurine.file_type !== '3d-model';
+        case "3d-models":
+          return figurine.file_type === '3d-model' || !!figurine.model_url;
         case "web-icons":
           return figurine.file_type === 'web-icon' || figurine.title.startsWith('Web Icon:');
         case "public":
@@ -89,12 +100,12 @@ const EnhancedGalleryView: React.FC<EnhancedGalleryViewProps> = ({
   // Statistics
   const stats = React.useMemo(() => {
     const total = figurines.length;
-    const withModel = figurines.filter(f => !!f.model_url).length;
-    const textTo3D = figurines.filter(f => f.style === 'text-to-3d' || f.title.startsWith('Text-to-3D:')).length;
+    const withModel = figurines.filter(f => !!f.model_url || f.file_type === '3d-model').length;
+    const models3D = figurines.filter(f => f.file_type === '3d-model').length;
     const webIcons = figurines.filter(f => f.file_type === 'web-icon' || f.title.startsWith('Web Icon:')).length;
     const publicCount = figurines.filter(f => f.is_public).length;
 
-    return { total, withModel, textTo3D, webIcons, publicCount };
+    return { total, withModel, models3D, webIcons, publicCount };
   }, [figurines]);
 
   return (
@@ -102,7 +113,7 @@ const EnhancedGalleryView: React.FC<EnhancedGalleryViewProps> = ({
       {/* Header with Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex items-center gap-4">
-          <h2 className="text-xl font-semibold text-white">My Gallery</h2>
+          <h2 className="text-xl font-semibold text-white">Gallery</h2>
           <Badge variant="secondary" className="bg-white/10 text-white/70">
             {processedFigurines.length} of {stats.total}
           </Badge>
@@ -156,7 +167,7 @@ const EnhancedGalleryView: React.FC<EnhancedGalleryViewProps> = ({
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40" />
           <Input
-            placeholder="Search figurines..."
+            placeholder="Search files..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40"
@@ -191,7 +202,7 @@ const EnhancedGalleryView: React.FC<EnhancedGalleryViewProps> = ({
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="with-model">With 3D Model</SelectItem>
                   <SelectItem value="images-only">Images Only</SelectItem>
-                  <SelectItem value="text-to-3d">Text-to-3D</SelectItem>
+                  <SelectItem value="3d-models">3D Models</SelectItem>
                   <SelectItem value="web-icons">Web Icons</SelectItem>
                   <SelectItem value="public">Public</SelectItem>
                   <SelectItem value="private">Private</SelectItem>
@@ -204,10 +215,10 @@ const EnhancedGalleryView: React.FC<EnhancedGalleryViewProps> = ({
         {/* Quick Stats */}
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline" className="border-blue-400/30 text-blue-400">
-            {stats.withModel} with 3D models
+            {stats.models3D} 3D models
           </Badge>
           <Badge variant="outline" className="border-purple-400/30 text-purple-400">
-            {stats.textTo3D} text-to-3D
+            {stats.withModel} with models
           </Badge>
           <Badge variant="outline" className="border-orange-400/30 text-orange-400">
             {stats.webIcons} web icons
