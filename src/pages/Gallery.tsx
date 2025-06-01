@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +19,7 @@ import ModelViewerDialog from "@/components/gallery/ModelViewerDialog";
 import EnhancedImageViewerDialog from "@/components/gallery/EnhancedImageViewerDialog";
 import Generate3DModal from "@/components/gallery/Generate3DModal";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
+import { webGLContextManager } from "@/components/gallery/enhanced/WebGLContextManager";
 
 const Gallery = () => {
   const { files, isLoading, error: rawError, refetch } = useGalleryFiles();
@@ -57,36 +57,44 @@ const Gallery = () => {
     resetProgress
   } = useGallery3DGeneration();
 
-  // Initialize performance monitoring in development
+  // Enhanced performance monitoring
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log("Gallery: Initializing performance monitoring");
+      console.log("Gallery: Initializing enhanced performance monitoring");
       setShowPerformanceMonitor(true);
       
       // Log initial resource pool stats
       const stats = enhancedResourcePool.getPerformanceStats();
+      const webglStats = webGLContextManager.getStats();
       console.log("Initial resource pool stats:", stats);
+      console.log("Initial WebGL stats:", webglStats);
     }
   }, []);
 
-  // Clean up resources when component unmounts
+  // Enhanced cleanup when component unmounts
   useEffect(() => {
     return () => {
-      console.log("Gallery unmounting - cleaning up enhanced resources");
+      console.log("Gallery unmounting - performing enhanced cleanup");
       enhancedResourcePool.clear();
+      webGLContextManager.clear();
       webGLContextTracker.reset();
     };
   }, []);
 
-  // Monitor performance and provide warnings
+  // Enhanced performance monitoring with WebGL context tracking
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       const checkPerformance = () => {
         const contextCount = webGLContextTracker.getActiveContextCount();
         const resourceStats = enhancedResourcePool.getPerformanceStats();
+        const webglStats = webGLContextManager.getStats();
         
         if (contextCount > 4) {
           console.warn(`High WebGL context usage: ${contextCount}/6`);
+        }
+        
+        if (webglStats.active >= webglStats.max) {
+          console.warn(`WebGL context limit reached: ${webglStats.active}/${webglStats.max}, queued: ${webglStats.queued}`);
         }
         
         if (resourceStats.hitRatio < 0.7 && resourceStats.cacheHits > 10) {
@@ -94,7 +102,7 @@ const Gallery = () => {
         }
       };
       
-      const interval = setInterval(checkPerformance, 5000);
+      const interval = setInterval(checkPerformance, 3000); // Check every 3 seconds
       return () => clearInterval(interval);
     }
   }, []);
@@ -275,7 +283,7 @@ const Gallery = () => {
         onOpenChange={setAuthPromptOpen}
       />
       
-      {/* Comprehensive Performance Monitor */}
+      {/* Enhanced Performance Monitor with WebGL tracking */}
       <ComprehensivePerformanceMonitor
         visible={showPerformanceMonitor}
         position="top-right"
