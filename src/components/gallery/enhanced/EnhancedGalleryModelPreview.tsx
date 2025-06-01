@@ -9,7 +9,6 @@ import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
 import { useOptimizedModelLoader } from "@/components/model-viewer/hooks/useOptimizedModelLoader";
 import { disposeModel, simplifyModelForPreview } from "@/components/model-viewer/utils/modelUtils";
 import { webGLContextTracker } from "@/components/model-viewer/utils/resourceManager";
-import { validateAndCleanUrl, generateStableModelId } from "@/utils/urlValidationUtils";
 import EnhancedGalleryLoadingView from "./EnhancedGalleryLoadingView";
 import EnhancedGalleryErrorView from "./EnhancedGalleryErrorView";
 import EnhancedGalleryPlaceholder from "./EnhancedGalleryPlaceholder";
@@ -19,7 +18,7 @@ interface EnhancedGalleryModelPreviewProps {
   fileName: string;
 }
 
-// Enhanced model content with improved stability
+// Enhanced model content with glass morphism and smooth animations
 const EnhancedModelContent = ({ 
   modelUrl, 
   isVisible,
@@ -34,47 +33,67 @@ const EnhancedModelContent = ({
   const [urlValidated, setUrlValidated] = useState<boolean | null>(null);
   const processedModelRef = useRef<THREE.Group | null>(null);
   
-  // Validate and clean URL with caching
-  const validation = useMemo(() => validateAndCleanUrl(modelUrl), [modelUrl]);
-  const cleanUrl = validation.cleanUrl;
+  const cleanUrl = useMemo(() => {
+    try {
+      const url = new URL(modelUrl);
+      ['t', 'cb', 'cache'].forEach(param => {
+        if (url.searchParams.has(param)) {
+          url.searchParams.delete(param);
+        }
+      });
+      return url.toString();
+    } catch (e) {
+      return modelUrl;
+    }
+  }, [modelUrl]);
 
-  // URL validation effect
+  // URL validation with enhanced error handling
   useEffect(() => {
-    console.log(`🔍 [ENHANCED-GALLERY] Validating URL for ${modelId}`);
-    
-    if (!validation.isValid) {
-      console.warn(`⚠️ [ENHANCED-GALLERY] URL validation failed for ${modelId}:`, validation.error);
-      setUrlValidated(false);
-      onModelError(new Error(validation.error || 'URL validation failed'));
-      return;
-    }
-    
-    if (validation.isExpired) {
-      console.warn(`⚠️ [ENHANCED-GALLERY] URL expired for ${modelId}`);
-      setUrlValidated(false);
-      onModelError(new Error('Model URL has expired'));
-      return;
-    }
-    
-    console.log(`✅ [ENHANCED-GALLERY] URL validated for ${modelId}`);
-    setUrlValidated(true);
-  }, [validation, isVisible, onModelError, modelId]);
+    const checkUrl = async () => {
+      console.log(`EnhancedGalleryModelPreview: Checking URL validity for ${cleanUrl}`);
+      
+      try {
+        const urlObj = new URL(cleanUrl);
+        if (urlObj.hostname.includes('meshy.ai') && urlObj.searchParams.has('Expires')) {
+          const expiresTimestamp = parseInt(urlObj.searchParams.get('Expires') || '0');
+          const currentTimestamp = Math.floor(Date.now() / 1000);
+          if (expiresTimestamp < currentTimestamp) {
+            console.warn(`Model URL appears to be expired: ${cleanUrl}`);
+            setUrlValidated(false);
+            onModelError(new Error('Model URL has expired'));
+            return;
+          }
+        }
+        
+        console.log(`EnhancedGalleryModelPreview: URL validated for ${cleanUrl}`);
+        setUrlValidated(true);
+      } catch (error) {
+        console.error(`Invalid URL: ${cleanUrl}`, error);
+        setUrlValidated(false);
+        onModelError(new Error('Invalid model URL'));
+      }
+    };
 
-  const { loading, model, error, modelLoaded } = useOptimizedModelLoader({ 
+    if (isVisible) {
+      checkUrl();
+    }
+  }, [cleanUrl, isVisible, onModelError]);
+
+  const { loading, model, error } = useOptimizedModelLoader({ 
     modelSource: urlValidated === true ? cleanUrl : null,
     visible: isVisible && urlValidated === true,
     modelId: modelId,
     priority: 1,
     onError: (err) => {
-      console.error(`❌ [ENHANCED-GALLERY] Model loading error for ${modelId}:`, err);
+      console.error(`Error loading model ${cleanUrl}:`, err);
       onModelError(err);
     }
   });
 
-  // Apply preview simplification when model loads
+  // Apply preview simplification with enhanced processing
   useEffect(() => {
-    if (model && modelLoaded) {
-      console.log(`🎨 [ENHANCED-GALLERY] Processing model for ${modelId}`);
+    if (model) {
+      console.log(`EnhancedGalleryModelPreview: Applying preview simplification for: ${cleanUrl}`);
       
       if (processedModelRef.current && processedModelRef.current !== model) {
         disposeModel(processedModelRef.current);
@@ -82,9 +101,8 @@ const EnhancedModelContent = ({
       
       processedModelRef.current = simplifyModelForPreview(model);
     }
-  }, [model, modelLoaded, modelId]);
+  }, [model, cleanUrl]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (processedModelRef.current) {
@@ -143,19 +161,33 @@ const EnhancedGalleryModelPreview: React.FC<EnhancedGalleryModelPreviewProps> = 
     once: false
   });
   
-  // Generate stable model ID that persists across renders
   const stableModelId = useMemo(() => {
-    return generateStableModelId(modelUrl, fileName);
+    try {
+      const url = new URL(modelUrl);
+      const pathParts = url.pathname.split('/');
+      const filename = pathParts[pathParts.length - 1]?.split('.')[0] || 'unknown';
+      return `enhanced-gallery-${filename}-${url.hostname.replace(/\./g, '-')}`;
+    } catch (e) {
+      return `enhanced-gallery-${fileName.replace(/\W/g, '')}-${Math.abs(modelUrl.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0))}`;
+    }
   }, [modelUrl, fileName]);
   
-  // Clean URL with validation
   const cleanModelUrl = useMemo(() => {
-    const validation = validateAndCleanUrl(modelUrl);
-    return validation.cleanUrl;
+    try {
+      const url = new URL(modelUrl);
+      ['t', 'cb', 'cache'].forEach(param => {
+        if (url.searchParams.has(param)) {
+          url.searchParams.delete(param);
+        }
+      });
+      return url.toString();
+    } catch (e) {
+      return modelUrl;
+    }
   }, [modelUrl]);
   
   const handleError = (error: any) => {
-    console.error(`❌ [ENHANCED-GALLERY] Error for ${fileName}:`, error);
+    console.error(`EnhancedGalleryModelPreview error for ${fileName}:`, error);
     
     let message = "Model failed to load";
     if (error.message) {
@@ -178,24 +210,22 @@ const EnhancedGalleryModelPreview: React.FC<EnhancedGalleryModelPreviewProps> = 
   };
 
   const handleContextLoss = () => {
-    console.warn(`⚠️ [ENHANCED-GALLERY] WebGL context lost for ${fileName}`);
+    console.warn(`WebGL context lost for enhanced gallery model preview: ${fileName}`);
     setContextLost(true);
     setHasError(true);
     setErrorMessage("WebGL context lost - too many 3D models");
   };
 
-  // Reset error state when URL changes
   useEffect(() => {
-    console.log(`🔄 [ENHANCED-GALLERY] URL changed for ${fileName}, resetting state`);
+    console.log(`EnhancedGalleryModelPreview: URL changed for ${fileName}, resetting error state`);
     setHasError(false);
     setErrorMessage("");
     setContextLost(false);
   }, [cleanModelUrl, fileName]);
 
-  // Monitor WebGL context usage
   useEffect(() => {
     if (isIntersecting && webGLContextTracker.isNearingLimit()) {
-      console.warn(`⚠️ [ENHANCED-GALLERY] WebGL limit approaching. Active: ${webGLContextTracker.getActiveContextCount()}`);
+      console.warn(`WebGL context limit approaching. Active contexts: ${webGLContextTracker.getActiveContextCount()}`);
     }
   }, [isIntersecting]);
 
@@ -261,7 +291,7 @@ const EnhancedGalleryModelPreview: React.FC<EnhancedGalleryModelPreviewProps> = 
             frameloop="demand"
             onContextMenu={(e) => e.preventDefault()}
             onCreated={({ gl }) => {
-              console.log(`🎨 [ENHANCED-GALLERY] Canvas created for ${fileName}`);
+              console.log(`Enhanced Canvas created for ${fileName}`);
               
               webGLContextTracker.registerContext();
               
@@ -271,7 +301,7 @@ const EnhancedGalleryModelPreview: React.FC<EnhancedGalleryModelPreviewProps> = 
               });
               
               gl.domElement.addEventListener('webglcontextrestored', () => {
-                console.log(`🔄 [ENHANCED-GALLERY] WebGL context restored for ${fileName}`);
+                console.log(`WebGL context restored for: ${fileName}`);
                 setContextLost(false);
                 setHasError(false);
               });

@@ -91,17 +91,13 @@ const ModelContent: React.FC<ModelContentProps> = ({ modelUrl, onError }) => {
 interface SimpleModelPreviewProps {
   modelUrl: string;
   fileName: string;
-  modelId?: string;
   onError?: (error: Error) => void;
-  onSuccess?: () => void;
 }
 
 const SimpleModelPreview: React.FC<SimpleModelPreviewProps> = ({ 
   modelUrl, 
   fileName, 
-  modelId,
-  onError,
-  onSuccess
+  onError 
 }) => {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -120,13 +116,6 @@ const SimpleModelPreview: React.FC<SimpleModelPreviewProps> = ({
     // Call external error handler if provided
     if (onError) {
       onError(error);
-    }
-  };
-
-  const handleSuccess = () => {
-    console.log(`SimpleModelPreview: Model loaded successfully for ${fileName}`);
-    if (onSuccess) {
-      onSuccess();
     }
   };
   

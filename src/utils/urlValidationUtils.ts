@@ -7,12 +7,7 @@ export interface UrlValidationResult {
   expiresAt?: Date;
   isLocal?: boolean;
   priority?: number;
-  cacheKey?: string;
 }
-
-// Cache for URL validation results to prevent repeated validations
-const validationCache = new Map<string, UrlValidationResult>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export const validateAndCleanUrl = (url: string | null): UrlValidationResult => {
   if (!url) {
@@ -22,17 +17,6 @@ export const validateAndCleanUrl = (url: string | null): UrlValidationResult => 
       cleanUrl: '',
       priority: 0
     };
-  }
-  
-  // Check cache first
-  const cacheKey = getCacheKey(url);
-  if (validationCache.has(cacheKey)) {
-    const cached = validationCache.get(cacheKey)!;
-    const cacheAge = Date.now() - (cached.expiresAt?.getTime() || 0);
-    if (cacheAge < CACHE_DURATION) {
-      return { ...cached, cacheKey };
-    }
-    validationCache.delete(cacheKey);
   }
   
   try {
@@ -52,45 +36,35 @@ export const validateAndCleanUrl = (url: string | null): UrlValidationResult => 
       const isExpired = expiresTimestamp < currentTimestamp;
       
       if (isExpired) {
-        const result = {
+        return {
           isValid: false,
           error: 'URL has expired',
           cleanUrl: url,
           isExpired: true,
           expiresAt: new Date(expiresTimestamp * 1000),
           isLocal,
-          priority: 0, // Expired URLs get lowest priority
-          cacheKey
+          priority: 0 // Expired URLs get lowest priority
         };
-        validationCache.set(cacheKey, result);
-        return result;
       }
     }
     
     // Remove cache-busting parameters for better caching
     const cleanUrl = cleanUrlParameters(parsedUrl);
     
-    const result = {
+    return {
       isValid: true,
       cleanUrl,
       isExpired: false,
       isLocal,
-      priority,
-      cacheKey
+      priority
     };
-    
-    validationCache.set(cacheKey, result);
-    return result;
   } catch (e) {
-    const result = {
+    return {
       isValid: false,
       error: 'Invalid URL format',
       cleanUrl: url,
-      priority: 0,
-      cacheKey
+      priority: 0
     };
-    validationCache.set(cacheKey, result);
-    return result;
   }
 };
 
@@ -115,9 +89,8 @@ export const prioritizeUrls = (urls: (string | null)[]): string | null => {
 };
 
 export const cleanUrlParameters = (url: URL): string => {
-  // Remove cache-busting parameters but preserve important ones
-  const paramsToRemove = ['t', 'cb', 'cache', 'timestamp', '_t', 'v', 'nocache'];
-  paramsToRemove.forEach(param => {
+  // Remove cache-busting parameters
+  ['t', 'cb', 'cache', 'timestamp', '_t'].forEach(param => {
     if (url.searchParams.has(param)) {
       url.searchParams.delete(param);
     }
@@ -144,7 +117,7 @@ export const isUrlAccessible = async (url: string, timeout: number = 5000): Prom
   }
 };
 
-export const getCacheKey = (url: string): string => {
+export const getUrlCacheKey = (url: string): string => {
   try {
     const urlObj = new URL(url);
     // Remove cache-busting parameters for consistent caching
@@ -153,33 +126,3 @@ export const getCacheKey = (url: string): string => {
     return url;
   }
 };
-
-// Utility to generate stable model IDs
-export const generateStableModelId = (url: string, fileName?: string): string => {
-  try {
-    const validation = validateAndCleanUrl(url);
-    const cleanUrl = validation.cleanUrl;
-    const urlObj = new URL(cleanUrl);
-    const pathParts = urlObj.pathname.split('/');
-    const urlFileName = pathParts[pathParts.length - 1]?.split('.')[0] || 'unknown';
-    const hostHash = urlObj.hostname.replace(/\./g, '-');
-    const finalFileName = fileName?.replace(/\W/g, '') || urlFileName;
-    return `model-${finalFileName}-${hostHash}`;
-  } catch (e) {
-    // Fallback for invalid URLs
-    const safeFileName = fileName?.replace(/\W/g, '') || 'unknown';
-    const urlHash = Math.abs(url.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0));
-    return `model-${safeFileName}-${urlHash}`;
-  }
-};
-
-// Clear validation cache periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of validationCache.entries()) {
-    const cacheAge = now - (value.expiresAt?.getTime() || 0);
-    if (cacheAge >= CACHE_DURATION) {
-      validationCache.delete(key);
-    }
-  }
-}, CACHE_DURATION);
