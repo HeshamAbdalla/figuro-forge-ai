@@ -20,13 +20,14 @@ export const useGallery3DGeneration = () => {
     imageUrl: string, 
     fileName: string, 
     config?: Generate3DConfig,
-    shouldUpdateExisting: boolean = false // New parameter to control behavior
+    shouldUpdateExisting: boolean = true // FIXED: Default to true for backward compatibility, but allow override
   ) => {
     try {
       setIsGenerating(true);
       updateProgress({
         status: 'converting',
         progress: 10,
+        percentage: 10,
         message: 'Checking usage limits...'
       });
 
@@ -63,11 +64,15 @@ export const useGallery3DGeneration = () => {
         onSuccess: (modelUrl: string, thumbnailUrl?: string) => {
           console.log('✅ [GALLERY] 3D conversion completed successfully');
           setIsGenerating(false);
+          
+          // IMPROVED: Better success messages based on whether we're updating or creating
+          const successMessage = shouldUpdateExisting 
+            ? "Your 3D model has been added to the existing figurine"
+            : "Your 3D model has been created and saved to the gallery";
+            
           toast({
             title: "3D Model Generated",
-            description: shouldUpdateExisting 
-              ? "Your 3D model has been added to the existing figurine"
-              : "Your 3D model has been created and saved to the gallery",
+            description: successMessage,
             variant: "default"
           });
         },
@@ -77,6 +82,7 @@ export const useGallery3DGeneration = () => {
           updateProgress({
             status: 'error',
             progress: 0,
+            percentage: 0,
             message: error
           });
           
@@ -92,6 +98,9 @@ export const useGallery3DGeneration = () => {
             userMessage = "Service is temporarily busy. Please try again in a few minutes.";
           } else if (error.includes('authentication')) {
             userMessage = "Authentication error. Please try signing in again.";
+          } else if (error.includes('failed to save to gallery')) {
+            userMessage = "3D model was generated but couldn't be saved to gallery. You can still download it.";
+            toastTitle = "Partial Success";
           }
           
           toast({
@@ -109,7 +118,7 @@ export const useGallery3DGeneration = () => {
         conversionCallbacks
       );
 
-      // Poll for completion with the shouldUpdateExisting flag
+      // FIXED: Pass the shouldUpdateExisting parameter to polling service
       await pollConversionStatus(taskId, fileName, imageUrl, conversionCallbacks, shouldUpdateExisting);
 
       // Refresh subscription data after successful conversion
@@ -127,6 +136,7 @@ export const useGallery3DGeneration = () => {
       updateProgress({
         status: 'error',
         progress: 0,
+        percentage: 0,
         message: errorMessage
       });
       

@@ -76,8 +76,11 @@ export const pollConversionStatus = async (
         }
         
         if (savedModelUrl) {
+          let figurineCreated = false;
+          
+          // IMPROVED: Better logic for handling figurine creation vs updating
           if (shouldUpdateExisting) {
-            // Check if a figurine already exists for this image URL
+            // Try to update existing figurine first
             console.log('🔄 [POLLING] Checking for existing figurine with image URL:', originalImageUrl);
             
             const { data: existingFigurines, error: searchError } = await supabase
@@ -103,70 +106,87 @@ export const pollConversionStatus = async (
                 })
                 .eq('id', existingFigurine.id);
               
-              if (updateError) {
-                console.error('❌ [POLLING] Failed to update existing figurine with model URL:', updateError);
-                // Fall back to creating a new figurine if update fails
-              } else {
+              if (!updateError) {
                 console.log('✅ [POLLING] Successfully updated existing figurine with 3D model');
-                
-                callbacks.onProgressUpdate({
-                  status: 'completed',
-                  progress: 100,
-                  percentage: 100,
-                  message: '3D model added to existing figurine!',
-                  taskId,
-                  modelUrl: savedModelUrl,
-                  thumbnailUrl: savedThumbnailUrl || undefined
-                });
-
-                callbacks.onSuccess(savedModelUrl, savedThumbnailUrl || undefined);
-                return;
-              }
-            }
-          }
-
-          // Create a new figurine record if no existing one found or if shouldUpdateExisting is false
-          try {
-            console.log('🔄 [POLLING] Creating new figurine record for 3D conversion...');
-            
-            // Generate a prompt based on the file name and metadata
-            const prompt = `Generated from ${fileName.replace(/\.[^/.]+$/, '')}`;
-            
-            // Create the figurine record
-            const figurineId = await saveFigurine(
-              prompt,
-              'realistic', // Default style for 3D conversions
-              originalImageUrl,
-              null // No blob since we're using URLs
-            );
-            
-            if (figurineId) {
-              // Update the figurine with the 3D model URL
-              const { error: updateError } = await supabase
-                .from('figurines')
-                .update({ 
-                  model_url: savedModelUrl,
-                  title: `3D Model - ${fileName.replace(/\.[^/.]+$/, '')}`
-                })
-                .eq('id', figurineId);
-              
-              if (updateError) {
-                console.error('❌ [POLLING] Failed to update figurine with model URL:', updateError);
+                figurineCreated = true;
               } else {
-                console.log('✅ [POLLING] Figurine record created and updated with model URL:', figurineId);
+                console.error('❌ [POLLING] Failed to update existing figurine:', updateError);
+                // Will fall through to create new figurine
               }
             }
-          } catch (figurineError) {
-            console.error('❌ [POLLING] Failed to create figurine record:', figurineError);
-            // Don't fail the entire process if figurine creation fails
-            // The user still gets their 3D model
           }
+
+          // Create new figurine if not updating existing or if update failed
+          if (!figurineCreated) {
+            try {
+              console.log('🔄 [POLLING] Creating new figurine record for 3D conversion...');
+              
+              // Generate a meaningful prompt based on the file name
+              const prompt = fileName.includes('camera-capture') 
+                ? `Camera captured model - ${new Date().toLocaleDateString()}`
+                : `Generated from ${fileName.replace(/\.[^/.]+$/, '')}`;
+              
+              // Create the figurine record
+              const figurineId = await saveFigurine(
+                prompt,
+                'realistic', // Default style for 3D conversions
+                originalImageUrl,
+                null // No blob since we're using URLs
+              );
+              
+              if (figurineId) {
+                // Update the figurine with the 3D model URL and a proper title
+                const title = fileName.includes('camera-capture') 
+                  ? `Camera 3D Model - ${new Date().toLocaleDateString()}`
+                  : `3D Model - ${fileName.replace(/\.[^/.]+$/, '')}`;
+                  
+                const { error: updateError } = await supabase
+                  .from('figurines')
+                  .update({ 
+                    model_url: savedModelUrl,
+                    title: title
+                  })
+                  .eq('id', figurineId);
+                
+                if (updateError) {
+                  console.error('❌ [POLLING] Failed to update figurine with model URL:', updateError);
+                  throw new Error('Failed to save figurine with 3D model');
+                } else {
+                  console.log('✅ [POLLING] New figurine record created and updated with model URL:', figurineId);
+                  figurineCreated = true;
+                }
+              } else {
+                throw new Error('Failed to create figurine record');
+              }
+            } catch (figurineError) {
+              console.error('❌ [POLLING] Failed to create figurine record:', figurineError);
+              
+              // IMPROVED: Better error handling - still provide the model but notify about save failure
+              callbacks.onProgressUpdate({
+                status: 'completed',
+                progress: 100,
+                percentage: 100,
+                message: '3D model generated but failed to save to gallery. You can still download it.',
+                taskId,
+                modelUrl: savedModelUrl,
+                thumbnailUrl: savedThumbnailUrl || undefined
+              });
+
+              callbacks.onSuccess(savedModelUrl, savedThumbnailUrl || undefined);
+              return;
+            }
+          }
+
+          // Success message based on action taken
+          const successMessage = shouldUpdateExisting && figurineCreated
+            ? '3D model added to existing figurine!'
+            : '3D model generated and saved to gallery!';
 
           callbacks.onProgressUpdate({
             status: 'completed',
             progress: 100,
             percentage: 100,
-            message: '3D model generated successfully!',
+            message: successMessage,
             taskId,
             modelUrl: savedModelUrl,
             thumbnailUrl: savedThumbnailUrl || undefined

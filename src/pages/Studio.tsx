@@ -123,7 +123,7 @@ const Studio = () => {
     handleModelUpload(file);
   };
 
-  // Handle camera image capture
+  // Handle camera image capture - FIXED: Now properly creates figurine records
   const handleCameraImageCapture = async (imageBlob: Blob) => {
     try {
       console.log('📸 [CAMERA] Image captured, converting to URL...');
@@ -139,7 +139,8 @@ const Studio = () => {
       
       console.log('📸 [CAMERA] Starting 3D conversion for captured image...');
       
-      // Trigger the conversion using the existing 3D generation system with correct parameters
+      // FIXED: Pass shouldUpdateExisting as false to create NEW figurine records
+      // This ensures camera captures are saved as new figurines in the gallery
       await generate3DModel(
         imageUrl,
         fileName,
@@ -150,13 +151,21 @@ const Studio = () => {
           target_polycount: 20000,
           texture_richness: 'high',
           moderation: true
-        }
+        },
+        false // shouldUpdateExisting: false to create new figurine records
       );
       
-      console.log('📸 [CAMERA] 3D conversion initiated successfully');
+      console.log('📸 [CAMERA] 3D conversion initiated successfully - will create new figurine');
       
     } catch (error) {
       console.error('❌ [CAMERA] Failed to process captured image:', error);
+      
+      // Better error handling for camera captures
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('❌ [CAMERA] Error details:', errorMessage);
+      
+      // Update camera progress to show error state
+      resetCameraProgress();
     }
   };
 
