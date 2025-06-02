@@ -1,4 +1,3 @@
-
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
@@ -60,7 +59,7 @@ const Studio = () => {
 
   const { activeTab, setActiveTab } = useTabNavigation({
     defaultTab: 'image-to-3d',
-    tabs: ['image-to-3d', 'text-to-3d', 'web-icons', 'gallery']
+    tabs: ['image-to-3d', 'camera', 'text-to-3d', 'web-icons', 'gallery']
   });
 
   // Add upgrade modal functionality
@@ -114,6 +113,43 @@ const Studio = () => {
 
   const wrappedHandleModelUpload = async (figurineId: string, file: File) => {
     handleModelUpload(file);
+  };
+
+  // Handle camera image capture
+  const handleCameraImageCapture = async (imageBlob: Blob) => {
+    try {
+      console.log('📸 [CAMERA] Image captured, converting to URL...');
+      
+      // Convert blob to URL for display
+      const imageUrl = URL.createObjectURL(imageBlob);
+      
+      // Update the generated image state to show the captured image
+      // This reuses the existing image-to-3D workflow
+      if (handleGenerate) {
+        // For camera captures, we'll store the blob and URL
+        // and trigger the 3D conversion process
+        
+        // Create a temporary way to store the captured image
+        // In a real implementation, you might want to save this to storage first
+        console.log('📸 [CAMERA] Starting 3D conversion for captured image...');
+        
+        // Trigger the conversion using the existing 3D generation system
+        await generate3DModel(imageUrl, {
+          art_style: 'realistic',
+          ai_model: 'meshy-5',
+          topology: 'quad',
+          target_polycount: 20000,
+          texture_richness: 'high',
+          moderation: true
+        });
+      }
+      
+      // Switch to a tab where the user can see the conversion progress
+      setActiveTab('image-to-3d');
+      
+    } catch (error) {
+      console.error('❌ [CAMERA] Failed to process captured image:', error);
+    }
   };
 
   // Determine which model URL to display - custom, text-to-3D generated, or image-to-3D converted
@@ -177,6 +213,7 @@ const Studio = () => {
             handleSignIn={handleSignIn}
             handleCloseGenerationModal={handleCloseGenerationModal}
             setCustomModelUrl={setCustomModelUrl}
+            onCameraImageCapture={handleCameraImageCapture}
           />
         </div>
         

@@ -1,6 +1,6 @@
 
 import { motion } from "framer-motion";
-import { Check, Wand2, Box, Palette, GalleryHorizontal } from "lucide-react";
+import { Check, Wand2, Box, Palette, Camera, GalleryHorizontal } from "lucide-react";
 import { TabKey } from "@/hooks/useTabNavigation";
 
 interface StudioProgressHeaderProps {
@@ -20,25 +20,32 @@ const steps = [
     step: 1
   },
   {
+    key: 'camera' as TabKey,
+    title: 'Camera',
+    description: 'Take a photo',
+    icon: Camera,
+    step: 2
+  },
+  {
     key: 'text-to-3d' as TabKey,
     title: 'Text to 3D',
     description: 'Direct 3D model creation',
     icon: Box,
-    step: 2
+    step: 3
   },
   {
     key: 'web-icons' as TabKey,
     title: 'Web Icons',
     description: 'Generate custom icons',
     icon: Palette,
-    step: 3
+    step: 4
   },
   {
     key: 'gallery' as TabKey,
     title: 'Your Gallery',
     description: 'View your collection',
     icon: GalleryHorizontal,
-    step: 4
+    step: 5
   }
 ];
 
@@ -53,6 +60,7 @@ const StudioProgressHeader = ({
     if (stepKey === activeTab) return 'current';
     if (stepKey === 'image-to-3d' && hasGeneratedImage) return 'completed';
     if (stepKey === 'text-to-3d' && hasModelUrl) return 'completed';
+    if (stepKey === 'camera' && hasGeneratedImage) return 'completed';
     return 'pending';
   };
 
@@ -63,7 +71,7 @@ const StudioProgressHeader = ({
           Create Your 3D Figurine & Web Icons
         </h2>
         
-        <div className="flex items-center justify-between max-w-4xl mx-auto relative">
+        <div className="flex items-center justify-between max-w-5xl mx-auto relative">
           {/* Progress Line */}
           <div className="absolute top-6 left-0 right-0 h-0.5 bg-white/20">
             <motion.div
@@ -71,8 +79,9 @@ const StudioProgressHeader = ({
               initial={{ width: "0%" }}
               animate={{ 
                 width: activeTab === 'image-to-3d' ? "0%" : 
-                       activeTab === 'text-to-3d' ? "33%" : 
-                       activeTab === 'web-icons' ? "66%" : "100%" 
+                       activeTab === 'camera' ? "20%" :
+                       activeTab === 'text-to-3d' ? "40%" : 
+                       activeTab === 'web-icons' ? "60%" : "80%" 
               }}
               transition={{ duration: 0.5 }}
             />
@@ -116,7 +125,7 @@ const StudioProgressHeader = ({
                   }`}>
                     {step.title}
                   </div>
-                  <div className="text-xs text-white/50 mt-1 max-w-24">
+                  <div className="text-xs text-white/50 mt-1 max-w-20">
                     {step.description}
                   </div>
                 </div>

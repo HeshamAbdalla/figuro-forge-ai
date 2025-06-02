@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import CompactStudioHeader from "./CompactStudioHeader";
 import StudioProgressHeader from "./StudioProgressHeader";
@@ -44,6 +43,7 @@ interface StudioLayoutProps {
   handleSignIn: () => void;
   handleCloseGenerationModal: () => void;
   setCustomModelUrl: (url: string | null) => void;
+  onCameraImageCapture?: (imageBlob: Blob) => void;
 }
 
 const StudioLayout = ({
@@ -79,7 +79,8 @@ const StudioLayout = ({
   handleSignOut,
   handleSignIn,
   handleCloseGenerationModal,
-  setCustomModelUrl
+  setCustomModelUrl,
+  onCameraImageCapture
 }: StudioLayoutProps) => {
   return (
     <div className="min-h-screen bg-figuro-dark relative overflow-x-hidden">
@@ -121,6 +122,7 @@ const StudioLayout = ({
             handleOpenTextTo3DConfigModal={handleOpenTextTo3DConfigModal}
             handleSignIn={handleSignIn}
             setCustomModelUrl={setCustomModelUrl}
+            onCameraImageCapture={onCameraImageCapture}
           />
           
           {/* Modals */}

@@ -11,6 +11,7 @@ import TextTo3DProgress from "@/components/studio/TextTo3DProgress";
 import WebIconsForm from "@/components/studio/WebIconsForm";
 import WebIconsPreview from "@/components/studio/WebIconsPreview";
 import MiniGalleryCarousel from "@/components/studio/MiniGalleryCarousel";
+import MobileCameraSection from "@/components/studio/camera/MobileCameraSection";
 import { useFigurines } from "@/components/figurine/useFigurines";
 import { useWebIconsGeneration } from "@/hooks/useWebIconsGeneration";
 import type { TabKey } from "@/hooks/useTabNavigation";
@@ -34,6 +35,7 @@ interface StudioTabContentProps {
   handleOpenTextTo3DConfigModal: (prompt: string) => void;
   handleSignIn: () => void;
   setCustomModelUrl: (url: string | null) => void;
+  onCameraImageCapture?: (imageBlob: Blob) => void;
 }
 
 const StudioTabContent = ({
@@ -54,7 +56,8 @@ const StudioTabContent = ({
   handleTextTo3D,
   handleOpenTextTo3DConfigModal,
   handleSignIn,
-  setCustomModelUrl
+  setCustomModelUrl,
+  onCameraImageCapture
 }: StudioTabContentProps) => {
   const { figurines } = useFigurines();
   const { isGenerating: isGeneratingIcon, generatedIcon, generateIcon, clearIcon } = useWebIconsGeneration();
@@ -70,6 +73,12 @@ const StudioTabContent = ({
     link.href = generatedIcon;
     link.download = `web-icon.${format}`;
     link.click();
+  };
+
+  const handleCameraCapture = async (imageBlob: Blob) => {
+    if (onCameraImageCapture) {
+      onCameraImageCapture(imageBlob);
+    }
   };
 
   if (!authUser) {
@@ -148,6 +157,47 @@ const StudioTabContent = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
+            className="lg:col-span-2"
+          >
+            <ModelViewer 
+              modelUrl={displayModelUrl} 
+              isLoading={shouldModelViewerLoad && !displayModelUrl}
+              errorMessage={progress.status === 'error' ? progress.message : undefined}
+              onCustomModelLoad={(url) => setCustomModelUrl(url)}
+            />
+          </motion.div>
+        </motion.div>
+      );
+
+    case 'camera':
+      return (
+        <motion.div 
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, staggerChildren: 0.1 }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-4"
+          >
+            <MobileCameraSection
+              onImageCapture={handleCameraCapture}
+              isProcessing={isGenerating}
+            />
+            
+            <MiniGalleryCarousel 
+              figurines={figurines.slice(0, 6)}
+              onCreateNew={() => onGenerate("", "isometric")}
+            />
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
             className="lg:col-span-2"
           >
             <ModelViewer 
