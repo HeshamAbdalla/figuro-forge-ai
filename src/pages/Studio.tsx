@@ -1,3 +1,4 @@
+
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
@@ -133,15 +134,22 @@ const Studio = () => {
         // In a real implementation, you might want to save this to storage first
         console.log('📸 [CAMERA] Starting 3D conversion for captured image...');
         
-        // Trigger the conversion using the existing 3D generation system
-        await generate3DModel(imageUrl, {
-          art_style: 'realistic',
-          ai_model: 'meshy-5',
-          topology: 'quad',
-          target_polycount: 20000,
-          texture_richness: 'high',
-          moderation: true
-        });
+        // Generate a filename for the captured image
+        const fileName = `camera-capture-${Date.now()}.jpg`;
+        
+        // Trigger the conversion using the existing 3D generation system with correct parameters
+        await generate3DModel(
+          imageUrl,
+          fileName,
+          {
+            art_style: 'realistic',
+            ai_model: 'meshy-5',
+            topology: 'quad',
+            target_polycount: 20000,
+            texture_richness: 'high',
+            moderation: true
+          }
+        );
       }
       
       // Switch to a tab where the user can see the conversion progress
