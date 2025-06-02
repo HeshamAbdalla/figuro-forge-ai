@@ -1,3 +1,4 @@
+
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
@@ -71,7 +72,10 @@ const Studio = () => {
     hideUpgradeModal
   } = useUpgradeModal();
 
-  // Add camera progress tracking - using displayModelUrl now that it's declared
+  // Determine which model URL to display - custom, text-to-3D generated, or image-to-3D converted
+  const displayModelUrl = customModelUrl || textTo3DProgress.modelUrl || progress.modelUrl;
+
+  // Add camera progress tracking - now displayModelUrl is declared
   const { cameraProgress, resetProgress: resetCameraProgress } = useCameraProgress(progress, displayModelUrl);
 
   const {
@@ -155,9 +159,6 @@ const Studio = () => {
       console.error('❌ [CAMERA] Failed to process captured image:', error);
     }
   };
-
-  // Determine which model URL to display - custom, text-to-3D generated, or image-to-3D converted
-  const displayModelUrl = customModelUrl || textTo3DProgress.modelUrl || progress.modelUrl;
 
   // Determine if ModelViewer should show loading - only when not converting AND there's a model to load
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
