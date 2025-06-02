@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -16,12 +15,13 @@ import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGenerat
 import { enhancedResourcePool } from "@/components/gallery/performance/EnhancedResourcePool";
 import { webGLContextTracker } from "@/components/model-viewer/utils/resourceManager";
 import ComprehensivePerformanceMonitor from "@/components/gallery/performance/ComprehensivePerformanceMonitor";
-import EnhancedGalleryView from "@/components/gallery/enhanced/EnhancedGalleryView";
+import FigurineList from "@/components/figurine/FigurineList";
 import ModelViewerDialog from "@/components/gallery/ModelViewerDialog";
 import EnhancedImageViewerDialog from "@/components/gallery/EnhancedImageViewerDialog";
 import Generate3DModal from "@/components/gallery/Generate3DModal";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
 import { webGLContextManager } from "@/components/gallery/enhanced/WebGLContextManager";
+import { Figurine } from "@/types/figurine";
 
 const Gallery = () => {
   const { files, isLoading, error: rawError, refetch } = useGalleryFiles();
@@ -137,7 +137,7 @@ const Gallery = () => {
     await generate3DModel(viewingImage, fileName, config);
   };
 
-  const handleDownload = (file: any) => {
+  const handleDownload = (figurine: Figurine) => {
     if (!user) {
       setAuthPromptOpen(true);
       return;
@@ -145,7 +145,7 @@ const Gallery = () => {
     // Implement download logic here
   };
 
-  const handleUploadModel = (file: any) => {
+  const handleUploadModel = (figurine: Figurine) => {
     if (!user) {
       setAuthPromptOpen(true);
       return;
@@ -153,7 +153,7 @@ const Gallery = () => {
     // Implement upload model logic here
   };
 
-  const handleTogglePublish = (file: any) => {
+  const handleTogglePublish = (figurine: Figurine) => {
     if (!user) {
       setAuthPromptOpen(true);
       return;
@@ -161,18 +161,31 @@ const Gallery = () => {
     // Implement toggle publish logic here
   };
 
-  // Convert files to figurine format for EnhancedGalleryView
-  const figurines = files.map(file => ({
+  const handleViewModel = (figurine: Figurine) => {
+    if (!figurine.model_url) {
+      toast({
+        title: "No 3D model",
+        description: "This figurine doesn't have a 3D model to view",
+        variant: "default"
+      });
+      return;
+    }
+    onViewModel(figurine.model_url, figurine.title);
+  };
+
+  // Convert files to figurine format for FigurineList
+  const figurines: Figurine[] = files.map(file => ({
     id: file.id,
     title: file.name,
-    style: file.type === '3d-model' ? 'image-to-3d' : file.type,
+    prompt: '',
+    style: file.type === '3d-model' ? 'image-to-3d' : file.type || 'image',
     image_url: file.url,
     saved_image_url: file.url,
     model_url: file.type === '3d-model' ? file.url : null,
-    prompt: '',
     created_at: file.created_at,
+    user_id: user?.id,
     is_public: false,
-    file_type: file.type
+    file_type: file.type as 'image' | 'web-icon' | '3d-model'
   }));
 
   // If still loading authentication, show loading state
@@ -240,15 +253,16 @@ const Gallery = () => {
               </Button>
             </div>
             
-            {/* Apply ScrollArea with consistent height constraints */}
+            {/* Apply ScrollArea with consistent height constraints matching Studio */}
             <div className="glass-panel rounded-lg">
               <ScrollArea className="h-[600px] w-full">
                 <div className="p-6">
-                  <EnhancedGalleryView
+                  <FigurineList
                     figurines={figurines}
                     loading={isLoading}
+                    error={error?.message || null}
                     onDownload={handleDownload}
-                    onViewModel={(figurine) => onViewModel(figurine.model_url!, figurine.title)}
+                    onViewModel={handleViewModel}
                     onTogglePublish={handleTogglePublish}
                     onUploadModel={handleUploadModel}
                   />
