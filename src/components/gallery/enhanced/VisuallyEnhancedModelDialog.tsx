@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Maximize2, Minimize2, RotateCcw, Download, Info, Camera, Settings, Loader2 } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -203,6 +202,10 @@ const VisuallyEnhancedModelDialog: React.FC<VisuallyEnhancedModelDialogProps> = 
                 mass: 0.8
               }}
             >
+              <DialogTitle className="sr-only">
+                {modelName} - Visually Enhanced 3D Model Viewer
+              </DialogTitle>
+              
               {/* Enhanced Header with Gradient */}
               <motion.div 
                 className="relative p-6 border-b border-white/10 bg-gradient-to-r from-gray-800/90 via-gray-700/90 to-gray-800/90 backdrop-blur-sm"

@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -64,10 +63,10 @@ const ModelViewerDialog: React.FC<ModelViewerDialogProps> = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[800px] p-0 bg-gray-900/90 border border-white/10">
         <DialogHeader className="p-4 border-b border-white/10">
-          <DialogTitle className="flex justify-between items-center">
+          <DialogTitle className="flex justify-between items-center text-white">
             <span>3D Model Viewer: {modelName}</span>
             <DialogClose asChild>
-              <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+              <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-white hover:text-white hover:bg-white/10">
                 <X size={16} />
               </Button>
             </DialogClose>

@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Maximize2, Minimize2, RotateCcw, Download, Info, Camera, Settings } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import ModelScene, { ModelSceneRef } from "@/components/model-viewer/ModelScene";
@@ -172,6 +171,10 @@ const EnhancedModelDialog: React.FC<EnhancedModelDialogProps> = ({
             : "sm:max-w-[90vw] sm:max-h-[90vh] w-full h-full max-w-4xl bg-gray-900/95 backdrop-blur-sm rounded-xl"
         )}
       >
+        <DialogTitle className="sr-only">
+          {modelName} - Enhanced 3D Model Viewer
+        </DialogTitle>
+        
         {/* Enhanced Header */}
         <div className="relative p-4 border-b border-white/10 bg-gray-900/90 backdrop-blur-sm">
           <div className="flex items-center justify-between">

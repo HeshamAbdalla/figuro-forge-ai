@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import ModelViewer from '@/components/model-viewer';
 import { Figurine } from '@/types/figurine';
 
@@ -15,9 +15,14 @@ const FigurineModelDialog = ({
   isOpen, 
   onClose 
 }: FigurineModelDialogProps) => {
+  const modelName = figurine?.title || '3D Model';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] p-0 bg-transparent border-none shadow-none">
+        <DialogTitle className="sr-only">
+          {modelName} - 3D Model Viewer
+        </DialogTitle>
         {figurine?.model_url && (
           <ModelViewer 
             modelUrl={figurine.model_url} 
