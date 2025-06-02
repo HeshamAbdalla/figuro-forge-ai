@@ -14,6 +14,10 @@ import { PlanOptions } from "@/components/subscription/PlanOptions";
 import { BillingHistory } from "@/components/subscription/BillingHistory";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "@/hooks/use-toast";
+import { EnhancedUsageTracker } from "@/components/subscription/EnhancedUsageTracker";
+import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
+import EnhancedUpgradeModal from "@/components/upgrade/EnhancedUpgradeModal";
+import UpgradeCelebration from "@/components/upgrade/UpgradeCelebration";
 
 const Profile = () => {
   const { user, profile, isLoading: authLoading, refreshAuth } = useEnhancedAuth();
@@ -23,6 +27,18 @@ const Profile = () => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [hasProcessedSuccess, setHasProcessedSuccess] = useState(false);
   const navigate = useNavigate();
+
+  // Enhanced upgrade modal functionality
+  const {
+    isUpgradeModalOpen,
+    upgradeModalAction,
+    showUpgradeModal,
+    hideUpgradeModal,
+    showCelebration,
+    triggerCelebration,
+    hideCelebration,
+    celebrationPlan
+  } = useEnhancedUpgradeModal();
   
   // Handle success redirect from Stripe
   useEffect(() => {
@@ -55,10 +71,9 @@ const Profile = () => {
           // Refresh subscription data
           await checkSubscription();
           
-          toast({
-            title: "Subscription Activated!",
-            description: `Your ${plan} plan is now active. Welcome!`,
-          });
+          // Trigger celebration
+          triggerCelebration(plan.charAt(0).toUpperCase() + plan.slice(1));
+          
         } catch (error) {
           console.error("❌ [PROFILE] Error refreshing subscription:", error);
           toast({
@@ -73,7 +88,7 @@ const Profile = () => {
     };
 
     handleStripeSuccess();
-  }, [searchParams, hasProcessedSuccess, isProcessingPayment, checkSubscription, setSearchParams]);
+  }, [searchParams, hasProcessedSuccess, isProcessingPayment, checkSubscription, setSearchParams, triggerCelebration]);
   
   // Handle return from customer portal
   useEffect(() => {
@@ -259,7 +274,7 @@ const Profile = () => {
               </TabsContent>
               
               <TabsContent value="usage" className="mt-8">
-                <UsageTracker />
+                <EnhancedUsageTracker onUpgrade={showUpgradeModal} />
               </TabsContent>
               
               <TabsContent value="billing" className="mt-8">
@@ -270,6 +285,22 @@ const Profile = () => {
           </motion.div>
         </div>
       </section>
+      
+      {/* Enhanced Upgrade Modal */}
+      {isUpgradeModalOpen && upgradeModalAction && (
+        <EnhancedUpgradeModal
+          isOpen={isUpgradeModalOpen}
+          onOpenChange={hideUpgradeModal}
+          actionType={upgradeModalAction}
+        />
+      )}
+
+      {/* Upgrade Celebration */}
+      <UpgradeCelebration
+        isVisible={showCelebration}
+        onComplete={hideCelebration}
+        planName={celebrationPlan}
+      />
       
       <Footer />
     </div>

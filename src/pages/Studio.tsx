@@ -1,10 +1,12 @@
-
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
 import { useTabNavigation } from "@/hooks/useTabNavigation";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { useCameraProgress } from "@/hooks/useCameraProgress";
+import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
+import EnhancedUpgradeModal from "@/components/upgrade/EnhancedUpgradeModal";
+import UpgradeCelebration from "@/components/upgrade/UpgradeCelebration";
 import Header from "@/components/Header";
 import StudioLayout from "@/components/studio/StudioLayout";
 import UpgradeModal from "@/components/UpgradeModal";
@@ -64,13 +66,17 @@ const Studio = () => {
     tabs: ['image-to-3d', 'camera', 'text-to-3d', 'web-icons', 'gallery']
   });
 
-  // Add upgrade modal functionality
+  // Use enhanced upgrade modal functionality
   const {
     isUpgradeModalOpen,
     upgradeModalAction,
     showUpgradeModal,
-    hideUpgradeModal
-  } = useUpgradeModal();
+    hideUpgradeModal,
+    showCelebration,
+    triggerCelebration,
+    hideCelebration,
+    celebrationPlan
+  } = useEnhancedUpgradeModal();
 
   // Determine which model URL to display - custom, text-to-3D generated, or image-to-3D converted
   const displayModelUrl = customModelUrl || textTo3DProgress.modelUrl || progress.modelUrl;
@@ -231,10 +237,10 @@ const Studio = () => {
           />
         </div>
         
-        {/* Upgrade Modal with error boundary */}
-        {isUpgradeModalOpen && (
+        {/* Enhanced Upgrade Modal */}
+        {isUpgradeModalOpen && upgradeModalAction && (
           <StudioErrorBoundary>
-            <UpgradeModal
+            <EnhancedUpgradeModal
               isOpen={isUpgradeModalOpen}
               onOpenChange={hideUpgradeModal}
               actionType={upgradeModalAction}
@@ -247,6 +253,13 @@ const Studio = () => {
             />
           </StudioErrorBoundary>
         )}
+
+        {/* Upgrade Celebration */}
+        <UpgradeCelebration
+          isVisible={showCelebration}
+          onComplete={hideCelebration}
+          planName={celebrationPlan}
+        />
       </div>
     </StudioErrorBoundary>
   );
