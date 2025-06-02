@@ -1,8 +1,10 @@
+
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FigurineGallery } from "@/components/figurine";
 import ModelViewer from "@/components/ModelViewer";
+import EnhancedModelViewer from "@/components/model-viewer/EnhancedModelViewer";
 import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
 import EnhancedImagePreview from "@/components/studio/EnhancedImagePreview";
 import ImageTo3DProgress from "@/components/studio/ImageTo3DProgress";
@@ -170,11 +172,15 @@ const StudioTabContent = ({
             transition={{ duration: 0.5, delay: 0.2 }}
             className="lg:col-span-2"
           >
-            <ModelViewer 
+            <EnhancedModelViewer 
               modelUrl={displayModelUrl} 
               isLoading={shouldModelViewerLoad && !displayModelUrl}
+              progress={progress.progress || 0}
               errorMessage={progress.status === 'error' ? progress.message : undefined}
-              onCustomModelLoad={(url) => setCustomModelUrl(url)}
+              onCustomModelLoad={(url, file) => setCustomModelUrl(url)}
+              variant="standard"
+              showControls={true}
+              autoRotate={true}
             />
           </motion.div>
         </motion.div>
@@ -257,11 +263,15 @@ const StudioTabContent = ({
             transition={{ duration: 0.5, delay: 0.1 }}
             className="lg:col-span-2"
           >
-            <ModelViewer 
+            <EnhancedModelViewer 
               modelUrl={displayModelUrl} 
               isLoading={shouldModelViewerLoad && !displayModelUrl}
+              progress={textTo3DProgress.progress || 0}
               errorMessage={textTo3DProgress.status === 'error' ? 'Failed to generate 3D model' : undefined}
-              onCustomModelLoad={(url) => setCustomModelUrl(url)}
+              onCustomModelLoad={(url, file) => setCustomModelUrl(url)}
+              variant="standard"
+              showControls={true}
+              autoRotate={true}
             />
           </motion.div>
         </motion.div>
