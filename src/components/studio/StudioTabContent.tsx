@@ -1,11 +1,10 @@
-
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FigurineGallery } from "@/components/figurine";
 import ModelViewer from "@/components/ModelViewer";
 import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
-import StreamlinedImagePreview from "@/components/studio/StreamlinedImagePreview";
+import EnhancedImagePreview from "@/components/studio/EnhancedImagePreview";
 import ImageTo3DProgress from "@/components/studio/ImageTo3DProgress";
 import TextTo3DForm from "@/components/studio/TextTo3DForm";
 import TextTo3DProgress from "@/components/studio/TextTo3DProgress";
@@ -134,12 +133,14 @@ const StudioTabContent = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <StreamlinedImagePreview 
+            <EnhancedImagePreview 
               imageSrc={generatedImage} 
               isLoading={isGeneratingImage}
               onConvertTo3D={handleQuickConvert}
-              onOpenConfig={handleOpenConfigModal}
               isConverting={isGenerating}
+              showMetadata={true}
+              enableGestures={true}
+              autoOptimize={true}
             />
           </motion.div>
           
