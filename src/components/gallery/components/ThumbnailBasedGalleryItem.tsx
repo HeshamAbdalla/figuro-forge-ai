@@ -6,6 +6,7 @@ import { Eye, Download, Sparkles, Play, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import GalleryItemFooter from "./GalleryItemFooter";
+import EnhancedThumbnailPreview from "./EnhancedThumbnailPreview";
 
 interface ThumbnailBasedGalleryItemProps {
   file: BucketImage & { thumbnailUrl?: string };
@@ -30,7 +31,6 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
   const isImage = file.type === 'image';
   const is3DModel = file.type === '3d-model';
   const isWebIcon = file.type === 'web-icon';
-  const hasThumbnail = is3DModel && file.thumbnailUrl;
 
   const handleImageError = () => {
     setImageError(true);
@@ -68,44 +68,13 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
   // Determine what to display in the preview area
   const renderPreview = () => {
     if (is3DModel) {
-      // For 3D models, show thumbnail if available, otherwise show placeholder
-      if (hasThumbnail && !imageError) {
-        return (
-          <div className="relative w-full h-full">
-            <img
-              src={file.thumbnailUrl}
-              alt={file.name}
-              className="w-full h-full object-cover"
-              onError={handleImageError}
-              loading="lazy"
-            />
-            {/* 3D Model Overlay */}
-            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <div className="bg-black/60 rounded-full p-3 backdrop-blur-sm">
-                <Play size={24} className="text-white" />
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      // Fallback for 3D models without thumbnails
       return (
-        <div className="w-full h-full flex items-center justify-center bg-gray-800">
-          <div className="text-center">
-            <Box size={32} className="text-figuro-accent mx-auto mb-2" />
-            <p className="text-white/60 text-xs">3D Model</p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2 text-figuro-accent hover:text-figuro-accent/80"
-              onClick={handlePreview3D}
-            >
-              <Play size={16} className="mr-1" />
-              Preview
-            </Button>
-          </div>
-        </div>
+        <EnhancedThumbnailPreview
+          fileName={file.name}
+          fullPath={file.fullPath || file.name}
+          onPreview3D={() => onPreview3D?.(file.url, file.name)}
+          className="w-full h-full"
+        />
       );
     }
 

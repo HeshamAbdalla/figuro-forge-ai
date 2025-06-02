@@ -1,7 +1,9 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { BucketImage } from "@/components/gallery/types";
+import { ThumbnailService } from "./services/ThumbnailService";
 
 export const useGalleryFiles = () => {
   const [files, setFiles] = useState<BucketImage[]>([]);
@@ -29,29 +31,9 @@ export const useGalleryFiles = () => {
     return 'image';
   };
 
-  // Helper function to extract task ID from filename or path
-  const extractTaskId = (fullPath: string, fileName: string): string | null => {
-    // Try to extract task ID from different naming patterns
-    const patterns = [
-      /([a-f0-9-]{36})/, // UUID pattern
-      /task_([^_]+)/, // task_id pattern
-      /(\d+)_/, // numeric ID at start
-    ];
-
-    for (const pattern of patterns) {
-      const match = fileName.match(pattern) || fullPath.match(pattern);
-      if (match) {
-        return match[1];
-      }
-    }
-
-    // Fallback: use filename without extension as task ID
-    return fileName.replace(/\.[^/.]+$/, "");
-  };
-
-  // Function to associate thumbnails with their corresponding 3D models
-  const associateFilesWithThumbnails = (allFiles: BucketImage[]): BucketImage[] => {
-    console.log('🔄 [GALLERY] Starting file association process...');
+  // Function to associate files with thumbnails using the enhanced service
+  const associateFilesWithThumbnails = async (allFiles: BucketImage[]): Promise<BucketImage[]> => {
+    console.log('🔄 [GALLERY] Starting enhanced file association process...');
     
     // Separate files by type and location
     const models = allFiles.filter(file => file.type === '3d-model');
@@ -73,35 +55,38 @@ export const useGalleryFiles = () => {
       webIcons: webIcons.length
     });
 
-    // Create a map of task IDs to thumbnails for faster lookup
-    const thumbnailMap = new Map<string, BucketImage>();
-    thumbnails.forEach(thumbnail => {
-      const taskId = extractTaskId(thumbnail.fullPath || '', thumbnail.name);
-      if (taskId) {
-        thumbnailMap.set(taskId, thumbnail);
-        console.log('🔗 [GALLERY] Mapped thumbnail:', taskId, '→', thumbnail.name);
-      }
-    });
+    // Use the enhanced thumbnail service for 3D models
+    const modelsWithThumbnails = await Promise.all(
+      models.map(async (model) => {
+        if (!model.fullPath) {
+          console.warn('⚠️ [GALLERY] Model has no fullPath:', model.name);
+          return model;
+        }
 
-    // Associate models with their thumbnails
-    const modelsWithThumbnails = models.map(model => {
-      const taskId = extractTaskId(model.fullPath || '', model.name);
-      if (taskId && thumbnailMap.has(taskId)) {
-        const thumbnail = thumbnailMap.get(taskId);
-        console.log('✅ [GALLERY] Associated model with thumbnail:', model.name, '←→', thumbnail?.name);
-        return {
-          ...model,
-          thumbnailUrl: thumbnail?.url
-        };
-      }
-      console.log('⚠️ [GALLERY] No thumbnail found for model:', model.name);
-      return model;
-    });
+        try {
+          const thumbnailResult = await ThumbnailService.findThumbnail(model.fullPath, model.name);
+          
+          if (thumbnailResult.exists && thumbnailResult.url) {
+            console.log('✅ [GALLERY] Enhanced thumbnail found for:', model.name);
+            return {
+              ...model,
+              thumbnailUrl: thumbnailResult.url
+            };
+          } else {
+            console.log('ℹ️ [GALLERY] No thumbnail for model:', model.name, 'Reason:', thumbnailResult.source);
+            return model;
+          }
+        } catch (error) {
+          console.warn('⚠️ [GALLERY] Error finding thumbnail for:', model.name, error);
+          return model;
+        }
+      })
+    );
 
     // Return models (with thumbnails), regular images, and web icons (not standalone thumbnails)
     const finalFiles = [...modelsWithThumbnails, ...regularImages, ...webIcons];
     
-    console.log('✅ [GALLERY] File association complete. Final count:', finalFiles.length);
+    console.log('✅ [GALLERY] Enhanced file association complete. Final count:', finalFiles.length);
     console.log('📋 [GALLERY] Filtered out', thumbnails.length, 'standalone thumbnails');
     
     return finalFiles;
@@ -327,9 +312,13 @@ export const useGalleryFiles = () => {
 
   // Load all images, models, and web icons from all sources - made useCallback for better optimization
   const fetchImagesFromBucket = useCallback(async () => {
-    console.log('🔄 [GALLERY] Starting gallery files fetch...');
+    console.log('🔄 [GALLERY] Starting enhanced gallery files fetch...');
     setIsLoading(true);
     setError(null);
+    
+    // Clear thumbnail cache on refresh
+    ThumbnailService.clearCache();
+    
     try {
       // Get all files from all sources in parallel
       const [imageFiles, modelFiles, figurineFiles] = await Promise.all([
@@ -346,8 +335,8 @@ export const useGalleryFiles = () => {
         index === self.findIndex(f => f.url === file.url)
       );
       
-      // Associate files with thumbnails and filter out standalone thumbnails
-      const associatedFiles = associateFilesWithThumbnails(uniqueFiles);
+      // Associate files with thumbnails using enhanced service and filter out standalone thumbnails
+      const associatedFiles = await associateFilesWithThumbnails(uniqueFiles);
       
       // Sort by creation date (newest first)
       associatedFiles.sort((a, b) => 
@@ -355,7 +344,12 @@ export const useGalleryFiles = () => {
       );
       
       setFiles(associatedFiles);
-      console.log(`✅ [GALLERY] Loaded ${associatedFiles.length} files from gallery`);
+      console.log(`✅ [GALLERY] Enhanced gallery loaded ${associatedFiles.length} files`);
+      
+      // Log thumbnail service statistics
+      const stats = ThumbnailService.getCacheStats();
+      console.log('📊 [GALLERY] Thumbnail cache stats:', stats);
+      
     } catch (error) {
       console.error('❌ [GALLERY] Error loading files from buckets:', error);
       const errorMessage = "Could not load the gallery items. Please try again.";
@@ -380,6 +374,7 @@ export const useGalleryFiles = () => {
           { event: '*', schema: 'storage', table: 'objects', filter: "bucket_id=eq.figurine-images" }, 
           () => {
             console.log('🔄 [GALLERY] Figurine-images storage changed, refetching files...');
+            ThumbnailService.clearCache(); // Clear cache on storage changes
             fetchImagesFromBucket();
           }
       )
@@ -391,6 +386,7 @@ export const useGalleryFiles = () => {
           { event: '*', schema: 'storage', table: 'objects', filter: "bucket_id=eq.figurine-models" }, 
           () => {
             console.log('🔄 [GALLERY] Figurine-models storage changed, refetching files...');
+            ThumbnailService.clearCache(); // Clear cache on storage changes
             fetchImagesFromBucket();
           }
       )
