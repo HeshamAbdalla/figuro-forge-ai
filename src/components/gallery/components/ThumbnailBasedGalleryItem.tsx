@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { BucketImage } from "../types";
 import { useSecureDownload } from "@/hooks/useSecureDownload";
-import { Eye, Download, Sparkles, Play, Box } from "lucide-react";
+import { Eye, Download, Sparkles, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import GalleryItemFooter from "./GalleryItemFooter";
@@ -73,7 +73,7 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
           fileName={file.name}
           fullPath={file.fullPath || file.name}
           onPreview3D={() => onPreview3D?.(file.url, file.name)}
-          className="w-full h-full"
+          className="w-full h-full rounded-lg overflow-hidden"
         />
       );
     }
@@ -84,7 +84,7 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
         <img
           src={file.url}
           alt={file.name}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
           onError={handleImageError}
           loading="lazy"
         />
@@ -93,10 +93,12 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
 
     // Error state
     return (
-      <div className="w-full h-full flex items-center justify-center">
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800/50 to-gray-900/50">
         <div className="text-center text-white/60">
-          <div className="w-12 h-12 mx-auto mb-2 bg-white/10 rounded" />
-          <p className="text-sm">Preview unavailable</p>
+          <div className="w-12 h-12 mx-auto mb-2 bg-white/10 rounded-lg flex items-center justify-center">
+            <div className="w-6 h-6 bg-white/20 rounded"></div>
+          </div>
+          <p className="text-sm font-medium">Preview unavailable</p>
         </div>
       </div>
     );
@@ -165,16 +167,11 @@ const ThumbnailBasedGalleryItem: React.FC<ThumbnailBasedGalleryItemProps> = ({
           </div>
         </div>
         
-        {/* Badges */}
+        {/* Only show badges for special file types (not 3D models as they're handled in EnhancedThumbnailPreview) */}
         <div className="absolute top-2 left-2 z-10 flex gap-2">
-          {isTextTo3DFile && (
+          {isTextTo3DFile && !is3DModel && (
             <Badge className="bg-figuro-accent/80 text-white text-xs px-2 py-1">
               Text-to-3D
-            </Badge>
-          )}
-          {is3DModel && (
-            <Badge className="bg-blue-500/80 text-white text-xs px-2 py-1">
-              3D Model
             </Badge>
           )}
           {isWebIcon && (
