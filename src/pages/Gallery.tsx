@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Box, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
@@ -221,8 +223,9 @@ const Gallery = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
+            className="space-y-6"
           >
-            <div className="mb-10 flex flex-wrap justify-between items-center">
+            <div className="flex flex-wrap justify-between items-center">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-4">Community Gallery</h1>
                 <p className="text-white/70">View and manage your 3D models and images with enhanced preview capabilities.</p>
@@ -237,14 +240,21 @@ const Gallery = () => {
               </Button>
             </div>
             
-            <EnhancedGalleryView
-              figurines={figurines}
-              loading={isLoading}
-              onDownload={handleDownload}
-              onViewModel={(figurine) => onViewModel(figurine.model_url!, figurine.title)}
-              onTogglePublish={handleTogglePublish}
-              onUploadModel={handleUploadModel}
-            />
+            {/* Apply ScrollArea with consistent height constraints */}
+            <div className="glass-panel rounded-lg">
+              <ScrollArea className="h-[600px] w-full">
+                <div className="p-6">
+                  <EnhancedGalleryView
+                    figurines={figurines}
+                    loading={isLoading}
+                    onDownload={handleDownload}
+                    onViewModel={(figurine) => onViewModel(figurine.model_url!, figurine.title)}
+                    onTogglePublish={handleTogglePublish}
+                    onUploadModel={handleUploadModel}
+                  />
+                </div>
+              </ScrollArea>
+            </div>
           </motion.div>
         </div>
       </section>
