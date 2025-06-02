@@ -77,9 +77,9 @@ const Settings = () => {
                         <Button 
                           variant="outline" 
                           className="mt-2" 
-                          onClick={() => navigate("/pricing")}
+                          onClick={() => navigate("/subscription")}
                         >
-                          Upgrade Plan
+                          Manage Subscription
                         </Button>
                       </div>
                     </div>

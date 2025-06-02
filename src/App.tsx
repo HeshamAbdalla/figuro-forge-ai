@@ -31,6 +31,7 @@ import Profile from "@/pages/Profile";
 import ProfileFigurines from "@/pages/ProfileFigurines";
 import ProfilePictures from "@/pages/ProfilePictures";
 import Settings from "@/pages/Settings";
+import Subscription from "@/pages/Subscription";
 import CheckoutReturn from "@/pages/CheckoutReturn";
 
 import { EnhancedAuthProvider } from "@/components/auth/EnhancedAuthProvider";
@@ -79,6 +80,7 @@ function App() {
                   <Route path="/profile/figurines" element={<ProfileFigurines />} />
                   <Route path="/profile/pictures" element={<ProfilePictures />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/subscription" element={<Subscription />} />
                   <Route path="/checkout-return" element={<CheckoutReturn />} />
                   <Route path="/*" element={<NotFound />} />
                 </Routes>
