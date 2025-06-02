@@ -28,6 +28,11 @@ const WireframeOverlay = ({ geometry }: { geometry: THREE.BufferGeometry }) => {
   );
 };
 
+// Type guard to check if material has emissive property
+const hasEmissiveProperty = (material: THREE.Material): material is THREE.MeshStandardMaterial | THREE.MeshPhongMaterial | THREE.MeshLambertMaterial => {
+  return 'emissive' in material;
+};
+
 // Enhanced model component with advanced features
 const EnhancedModel = ({ 
   url, 
@@ -71,9 +76,12 @@ const EnhancedModel = ({
       const breathingScale = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.02;
       groupRef.current.scale.set(breathingScale, breathingScale, breathingScale);
       
-      // Enhanced hover effects
-      if (hoveredMesh) {
-        hoveredMesh.material.emissive.setHex(0x221122);
+      // Enhanced hover effects with proper type checking
+      if (hoveredMesh && hoveredMesh.material) {
+        const material = Array.isArray(hoveredMesh.material) ? hoveredMesh.material[0] : hoveredMesh.material;
+        if (hasEmissiveProperty(material)) {
+          material.emissive.setHex(0x221122);
+        }
       }
     }
   });
@@ -86,8 +94,11 @@ const EnhancedModel = ({
   };
 
   const handlePointerOut = () => {
-    if (hoveredMesh) {
-      hoveredMesh.material.emissive.setHex(0x000000);
+    if (hoveredMesh && hoveredMesh.material) {
+      const material = Array.isArray(hoveredMesh.material) ? hoveredMesh.material[0] : hoveredMesh.material;
+      if (hasEmissiveProperty(material)) {
+        material.emissive.setHex(0x000000);
+      }
       setHoveredMesh(null);
     }
     document.body.style.cursor = 'auto';
