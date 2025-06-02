@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Box, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
@@ -15,13 +14,12 @@ import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGenerat
 import { enhancedResourcePool } from "@/components/gallery/performance/EnhancedResourcePool";
 import { webGLContextTracker } from "@/components/model-viewer/utils/resourceManager";
 import ComprehensivePerformanceMonitor from "@/components/gallery/performance/ComprehensivePerformanceMonitor";
-import FigurineList from "@/components/figurine/FigurineList";
+import EnhancedGalleryView from "@/components/gallery/enhanced/EnhancedGalleryView";
 import ModelViewerDialog from "@/components/gallery/ModelViewerDialog";
 import EnhancedImageViewerDialog from "@/components/gallery/EnhancedImageViewerDialog";
 import Generate3DModal from "@/components/gallery/Generate3DModal";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
 import { webGLContextManager } from "@/components/gallery/enhanced/WebGLContextManager";
-import { Figurine } from "@/types/figurine";
 
 const Gallery = () => {
   const { files, isLoading, error: rawError, refetch } = useGalleryFiles();
@@ -137,7 +135,7 @@ const Gallery = () => {
     await generate3DModel(viewingImage, fileName, config);
   };
 
-  const handleDownload = (figurine: Figurine) => {
+  const handleDownload = (file: any) => {
     if (!user) {
       setAuthPromptOpen(true);
       return;
@@ -145,7 +143,7 @@ const Gallery = () => {
     // Implement download logic here
   };
 
-  const handleUploadModel = (figurine: Figurine) => {
+  const handleUploadModel = (file: any) => {
     if (!user) {
       setAuthPromptOpen(true);
       return;
@@ -153,7 +151,7 @@ const Gallery = () => {
     // Implement upload model logic here
   };
 
-  const handleTogglePublish = (figurine: Figurine) => {
+  const handleTogglePublish = (file: any) => {
     if (!user) {
       setAuthPromptOpen(true);
       return;
@@ -161,31 +159,18 @@ const Gallery = () => {
     // Implement toggle publish logic here
   };
 
-  const handleViewModel = (figurine: Figurine) => {
-    if (!figurine.model_url) {
-      toast({
-        title: "No 3D model",
-        description: "This figurine doesn't have a 3D model to view",
-        variant: "default"
-      });
-      return;
-    }
-    onViewModel(figurine.model_url, figurine.title);
-  };
-
-  // Convert files to figurine format for FigurineList
-  const figurines: Figurine[] = files.map(file => ({
+  // Convert files to figurine format for EnhancedGalleryView
+  const figurines = files.map(file => ({
     id: file.id,
     title: file.name,
-    prompt: '',
-    style: file.type === '3d-model' ? 'image-to-3d' : file.type || 'image',
+    style: file.type === '3d-model' ? 'image-to-3d' : file.type,
     image_url: file.url,
     saved_image_url: file.url,
     model_url: file.type === '3d-model' ? file.url : null,
+    prompt: '',
     created_at: file.created_at,
-    user_id: user?.id,
     is_public: false,
-    file_type: file.type as 'image' | 'web-icon' | '3d-model'
+    file_type: file.type
   }));
 
   // If still loading authentication, show loading state
@@ -236,9 +221,8 @@ const Gallery = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="space-y-6"
           >
-            <div className="flex flex-wrap justify-between items-center">
+            <div className="mb-10 flex flex-wrap justify-between items-center">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-4">Community Gallery</h1>
                 <p className="text-white/70">View and manage your 3D models and images with enhanced preview capabilities.</p>
@@ -253,22 +237,14 @@ const Gallery = () => {
               </Button>
             </div>
             
-            {/* Apply ScrollArea with consistent height constraints matching Studio */}
-            <div className="glass-panel rounded-lg">
-              <ScrollArea className="h-[600px] w-full">
-                <div className="p-6">
-                  <FigurineList
-                    figurines={figurines}
-                    loading={isLoading}
-                    error={error?.message || null}
-                    onDownload={handleDownload}
-                    onViewModel={handleViewModel}
-                    onTogglePublish={handleTogglePublish}
-                    onUploadModel={handleUploadModel}
-                  />
-                </div>
-              </ScrollArea>
-            </div>
+            <EnhancedGalleryView
+              figurines={figurines}
+              loading={isLoading}
+              onDownload={handleDownload}
+              onViewModel={(figurine) => onViewModel(figurine.model_url!, figurine.title)}
+              onTogglePublish={handleTogglePublish}
+              onUploadModel={handleUploadModel}
+            />
           </motion.div>
         </div>
       </section>
