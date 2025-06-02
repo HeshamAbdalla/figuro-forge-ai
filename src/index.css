@@ -135,6 +135,34 @@
   .stagger-delay-5 {
     animation-delay: 0.5s;
   }
+
+  /* Enhanced glow effects for futuristic design */
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3), 0 0 40px rgba(139, 92, 246, 0.1);
+  }
+  
+  .shadow-glow-sm {
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.2), 0 0 20px rgba(139, 92, 246, 0.05);
+  }
+  
+  .shadow-glow-lg {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.4), 0 0 60px rgba(139, 92, 246, 0.2), 0 0 100px rgba(139, 92, 246, 0.1);
+  }
+
+  /* Animated gradient backgrounds */
+  .gradient-animated {
+    background: linear-gradient(-45deg, #1e1b4b, #312e81, #4c1d95, #5b21b6);
+    background-size: 400% 400%;
+    animation: gradient-shift 15s ease infinite;
+  }
+
+  /* Line clamp utilities */
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
 }
 
 #root {
@@ -157,6 +185,18 @@
   }
   100% {
     background-position: -200% center;
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 

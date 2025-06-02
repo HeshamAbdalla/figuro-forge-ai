@@ -1,24 +1,92 @@
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Box, Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
-import PublicFigurineGallery from "@/components/figurine/PublicFigurineGallery";
 import { usePublicFigurines } from "@/hooks/usePublicFigurines";
+import { Figurine } from "@/types/figurine";
+import EnhancedGalleryHero from "@/components/gallery/enhanced/EnhancedGalleryHero";
+import EnhancedGalleryFilters from "@/components/gallery/enhanced/EnhancedGalleryFilters";
+import FuturisticGalleryGrid from "@/components/gallery/enhanced/FuturisticGalleryGrid";
+
+interface FilterState {
+  search: string;
+  category: string;
+  sortBy: string;
+  viewMode: "grid" | "list";
+}
 
 const Gallery = () => {
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({
+    search: "",
+    category: "all",
+    sortBy: "newest",
+    viewMode: "grid"
+  });
+  
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useEnhancedAuth();
-  const { refreshFigurines } = usePublicFigurines();
+  const { figurines, loading, refreshFigurines } = usePublicFigurines();
   const navigate = useNavigate();
+
+  // Filter and sort figurines based on current filters
+  const filteredFigurines = useMemo(() => {
+    let filtered = [...figurines];
+
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(figurine =>
+        figurine.title.toLowerCase().includes(searchLower) ||
+        figurine.prompt?.toLowerCase().includes(searchLower) ||
+        figurine.style?.toLowerCase().includes(searchLower) ||
+        figurine.metadata?.creator_name?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Category filter
+    switch (filters.category) {
+      case "text-to-3d":
+        filtered = filtered.filter(f => f.metadata?.conversion_type === 'text-to-3d');
+        break;
+      case "traditional":
+        filtered = filtered.filter(f => f.metadata?.conversion_type !== 'text-to-3d');
+        break;
+      case "with-model":
+        filtered = filtered.filter(f => !!f.model_url);
+        break;
+      case "images-only":
+        filtered = filtered.filter(f => !f.model_url);
+        break;
+    }
+
+    // Sort
+    switch (filters.sortBy) {
+      case "newest":
+        filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+      case "oldest":
+        filtered.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        break;
+      case "title":
+        filtered.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case "popular":
+        // For now, sort by creation date as a proxy for popularity
+        filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+    }
+
+    return filtered;
+  }, [figurines, filters]);
 
   const handleCreateNew = () => {
     if (!user) {
@@ -41,6 +109,18 @@ const Gallery = () => {
     });
   };
 
+  const handleViewModel = (figurine: Figurine) => {
+    if (!figurine.model_url) {
+      toast({
+        title: "No 3D Model Available",
+        description: "This model doesn't have a 3D preview yet.",
+        variant: "destructive"
+      });
+      return;
+    }
+    // The FuturisticGalleryGrid component will handle the modal internally
+  };
+
   // If still loading authentication, show loading state
   if (authLoading) {
     return (
@@ -61,48 +141,55 @@ const Gallery = () => {
     <div className="min-h-screen bg-figuro-dark">
       <Header />
       
-      <section className="pt-32 pb-24">
-        <div className="container mx-auto px-4 max-w-6xl">
+      {/* Enhanced Hero Section */}
+      <EnhancedGalleryHero 
+        totalModels={figurines.length}
+        onCreateNew={handleCreateNew}
+      />
+      
+      {/* Main Gallery Content */}
+      <section className="py-16">
+        <div className="container mx-auto px-4 max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="space-y-6"
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="space-y-8"
           >
-            <div className="flex flex-wrap justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-bold text-white mb-4">Community Gallery</h1>
-                <p className="text-white/70">Explore amazing 3D models created by our community. Get inspired and share your own creations!</p>
+            {/* Enhanced Filters */}
+            <EnhancedGalleryFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              totalResults={filteredFigurines.length}
+              isLoading={loading}
+            />
+
+            {/* Refresh Button */}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-semibold text-white">
+                  {filters.search ? "Search Results" : "Latest Models"}
+                </h2>
               </div>
               
-              <div className="flex items-center gap-4 mt-4 md:mt-0">
-                <Button 
-                  onClick={handleCreateNew}
-                  className="bg-figuro-accent hover:bg-figuro-accent-hover"
-                >
-                  <Box className="w-4 h-4 mr-2" />
-                  Create New Model
-                </Button>
-                
-                <Button 
-                  onClick={handleRefresh}
-                  variant="outline"
-                  className="border-white/20 text-white hover:bg-white/10"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh
-                </Button>
-              </div>
+              <Button 
+                onClick={handleRefresh}
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10 hover:border-figuro-accent/50"
+                disabled={loading}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
             </div>
             
-            {/* Public Gallery */}
-            <div className="glass-panel rounded-lg">
-              <ScrollArea className="h-[600px] w-full">
-                <div className="p-6 pr-4">
-                  <PublicFigurineGallery />
-                </div>
-              </ScrollArea>
-            </div>
+            {/* Futuristic Gallery Grid */}
+            <FuturisticGalleryGrid
+              figurines={filteredFigurines}
+              loading={loading}
+              viewMode={filters.viewMode}
+              onViewModel={handleViewModel}
+            />
           </motion.div>
         </div>
       </section>
