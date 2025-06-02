@@ -1,9 +1,9 @@
-
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
 import { useTabNavigation } from "@/hooks/useTabNavigation";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
+import { useCameraProgress } from "@/hooks/useCameraProgress";
 import Header from "@/components/Header";
 import StudioLayout from "@/components/studio/StudioLayout";
 import UpgradeModal from "@/components/UpgradeModal";
@@ -71,6 +71,9 @@ const Studio = () => {
     hideUpgradeModal
   } = useUpgradeModal();
 
+  // Add camera progress tracking
+  const { cameraProgress, resetProgress: resetCameraProgress } = useCameraProgress(progress, displayModelUrl);
+
   const {
     onGenerate,
     handleOpenConfigModal,
@@ -121,39 +124,32 @@ const Studio = () => {
     try {
       console.log('📸 [CAMERA] Image captured, converting to URL...');
       
+      // Reset any previous camera progress
+      resetCameraProgress();
+      
       // Convert blob to URL for display
       const imageUrl = URL.createObjectURL(imageBlob);
       
-      // Update the generated image state to show the captured image
-      // This reuses the existing image-to-3D workflow
-      if (handleGenerate) {
-        // For camera captures, we'll store the blob and URL
-        // and trigger the 3D conversion process
-        
-        // Create a temporary way to store the captured image
-        // In a real implementation, you might want to save this to storage first
-        console.log('📸 [CAMERA] Starting 3D conversion for captured image...');
-        
-        // Generate a filename for the captured image
-        const fileName = `camera-capture-${Date.now()}.jpg`;
-        
-        // Trigger the conversion using the existing 3D generation system with correct parameters
-        await generate3DModel(
-          imageUrl,
-          fileName,
-          {
-            art_style: 'realistic',
-            ai_model: 'meshy-5',
-            topology: 'quad',
-            target_polycount: 20000,
-            texture_richness: 'high',
-            moderation: true
-          }
-        );
-      }
+      // Generate a filename for the captured image
+      const fileName = `camera-capture-${Date.now()}.jpg`;
       
-      // Switch to a tab where the user can see the conversion progress
-      setActiveTab('image-to-3d');
+      console.log('📸 [CAMERA] Starting 3D conversion for captured image...');
+      
+      // Trigger the conversion using the existing 3D generation system with correct parameters
+      await generate3DModel(
+        imageUrl,
+        fileName,
+        {
+          art_style: 'realistic',
+          ai_model: 'meshy-5',
+          topology: 'quad',
+          target_polycount: 20000,
+          texture_richness: 'high',
+          moderation: true
+        }
+      );
+      
+      console.log('📸 [CAMERA] 3D conversion initiated successfully');
       
     } catch (error) {
       console.error('❌ [CAMERA] Failed to process captured image:', error);

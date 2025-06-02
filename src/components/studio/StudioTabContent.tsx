@@ -12,6 +12,7 @@ import WebIconsForm from "@/components/studio/WebIconsForm";
 import WebIconsPreview from "@/components/studio/WebIconsPreview";
 import MiniGalleryCarousel from "@/components/studio/MiniGalleryCarousel";
 import MobileCameraSection from "@/components/studio/camera/MobileCameraSection";
+import EnhancedCameraWorkflow from "@/components/studio/camera/EnhancedCameraWorkflow";
 import { useFigurines } from "@/components/figurine/useFigurines";
 import { useWebIconsGeneration } from "@/hooks/useWebIconsGeneration";
 import type { TabKey } from "@/hooks/useTabNavigation";
@@ -28,6 +29,15 @@ interface StudioTabContentProps {
   displayModelUrl: string | null;
   shouldModelViewerLoad: boolean;
   progress: any;
+  cameraProgress?: {
+    status: string;
+    progress: number;
+    percentage: number;
+    message: string;
+    taskId?: string;
+    thumbnailUrl?: string;
+    modelUrl?: string;
+  };
   onGenerate: (prompt: string, style: string) => Promise<void>;
   handleOpenConfigModal: () => void;
   handleQuickConvert: () => void;
@@ -50,6 +60,7 @@ const StudioTabContent = ({
   displayModelUrl,
   shouldModelViewerLoad,
   progress,
+  cameraProgress,
   onGenerate,
   handleOpenConfigModal,
   handleQuickConvert,
@@ -172,41 +183,24 @@ const StudioTabContent = ({
     case 'camera':
       return (
         <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto"
+          className="max-w-7xl mx-auto"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, staggerChildren: 0.1 }}
+          transition={{ duration: 0.5 }}
         >
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="space-y-4"
-          >
-            <MobileCameraSection
-              onImageCapture={handleCameraCapture}
-              isProcessing={isGenerating}
-            />
-            
-            <MiniGalleryCarousel 
-              figurines={figurines.slice(0, 6)}
-              onCreateNew={() => onGenerate("", "isometric")}
-            />
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="lg:col-span-2"
-          >
-            <ModelViewer 
-              modelUrl={displayModelUrl} 
-              isLoading={shouldModelViewerLoad && !displayModelUrl}
-              errorMessage={progress.status === 'error' ? progress.message : undefined}
-              onCustomModelLoad={(url) => setCustomModelUrl(url)}
-            />
-          </motion.div>
+          <EnhancedCameraWorkflow
+            onImageCapture={handleCameraCapture}
+            isProcessing={isGenerating}
+            progress={cameraProgress || {
+              status: progress.status || 'idle',
+              progress: progress.progress || 0,
+              percentage: progress.percentage || 0,
+              message: progress.message || 'Ready to capture',
+              taskId: progress.taskId,
+              thumbnailUrl: progress.thumbnailUrl,
+              modelUrl: progress.modelUrl || displayModelUrl
+            }}
+          />
         </motion.div>
       );
 
