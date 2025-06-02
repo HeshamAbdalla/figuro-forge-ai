@@ -65,6 +65,9 @@ export const usePublicFigurines = () => {
         const profile = figurine.profiles as any;
         const userName = profile?.display_name || profile?.full_name || 'Anonymous';
         
+        // Safely handle metadata object
+        const existingMetadata = figurine.metadata && typeof figurine.metadata === 'object' ? figurine.metadata : {};
+        
         return {
           id: figurine.id,
           title: figurine.title || "Untitled Figurine",
@@ -77,7 +80,7 @@ export const usePublicFigurines = () => {
           user_id: figurine.user_id,
           is_public: figurine.is_public || false,
           metadata: {
-            ...(figurine.metadata || {}),
+            ...existingMetadata,
             creator_name: userName
           }
         };

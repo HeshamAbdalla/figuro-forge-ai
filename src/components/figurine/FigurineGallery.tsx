@@ -234,9 +234,9 @@ const FigurineGallery = () => {
       />
 
       <FigurineModelDialog 
-        open={modelViewerOpen} 
-        onOpenChange={setModelViewerOpen}
-        selectedFigurine={selectedFigurine}
+        figurine={selectedFigurine}
+        isOpen={modelViewerOpen}
+        onClose={() => setModelViewerOpen(false)}
       />
 
       <UploadModelModal
