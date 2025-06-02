@@ -5,22 +5,22 @@ import ModelViewer from '@/components/model-viewer';
 import { Figurine } from '@/types/figurine';
 
 interface FigurineModelDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  selectedFigurine: Figurine | null;
+  figurine: Figurine | null;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 const FigurineModelDialog = ({ 
-  open, 
-  onOpenChange, 
-  selectedFigurine 
+  figurine, 
+  isOpen, 
+  onClose 
 }: FigurineModelDialogProps) => {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] p-0 bg-transparent border-none shadow-none">
-        {selectedFigurine?.model_url && (
+        {figurine?.model_url && (
           <ModelViewer 
-            modelUrl={selectedFigurine.model_url} 
+            modelUrl={figurine.model_url} 
             isLoading={false}
           />
         )}

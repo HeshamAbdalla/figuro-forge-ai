@@ -22,7 +22,7 @@ export const usePublicFigurines = () => {
         .from('figurines')
         .select(`
           *,
-          profiles:user_id (
+          profiles!inner(
             display_name,
             full_name
           )
@@ -37,7 +37,7 @@ export const usePublicFigurines = () => {
         .from('conversion_tasks')
         .select(`
           *,
-          profiles:user_id (
+          profiles!inner(
             display_name,
             full_name
           )
@@ -77,7 +77,7 @@ export const usePublicFigurines = () => {
           user_id: figurine.user_id,
           is_public: figurine.is_public || false,
           metadata: {
-            ...figurine.metadata,
+            ...(figurine.metadata || {}),
             creator_name: userName
           }
         };
