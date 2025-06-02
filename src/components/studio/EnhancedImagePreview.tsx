@@ -644,44 +644,47 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
         >
-          <Button
-            className={cn(
-              "w-full bg-figuro-accent hover:bg-figuro-accent-hover flex items-center justify-center gap-2 group transition-all duration-300",
-              isMobile ? 'h-10' : 'h-12',
-              isConverting && "animate-pulse"
-            )}
-            onClick={onConvertTo3D}
-            disabled={!optimizedImageUrl || isConverting || isLoading || imageError}
+          <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            {isConverting ? (
-              <>
-                <span className="text-sm sm:text-base">Converting...</span>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full"
-                />
-              </>
-            ) : (
-              <>
-                <motion.span 
-                  className="text-sm sm:text-base"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 400 }}
-                >
-                  Convert to 3D
-                </motion.span>
-                <motion.div
-                  whileHover={{ rotate: 12, scale: 1.1 }}
-                  transition={{ type: "spring", stiffness: 400 }}
-                >
-                  <Wand2 size={isMobile ? 14 : 16} />
-                </motion.div>
-              </>
-            )}
-          </Button>
+            <Button
+              className={cn(
+                "w-full bg-figuro-accent hover:bg-figuro-accent-hover flex items-center justify-center gap-2 group transition-all duration-300",
+                isMobile ? 'h-10' : 'h-12',
+                isConverting && "animate-pulse"
+              )}
+              onClick={onConvertTo3D}
+              disabled={!optimizedImageUrl || isConverting || isLoading || imageError}
+            >
+              {isConverting ? (
+                <>
+                  <span className="text-sm sm:text-base">Converting...</span>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full"
+                  />
+                </>
+              ) : (
+                <>
+                  <motion.span 
+                    className="text-sm sm:text-base"
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ type: "spring", stiffness: 400 }}
+                  >
+                    Convert to 3D
+                  </motion.span>
+                  <motion.div
+                    whileHover={{ rotate: 12, scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 400 }}
+                  >
+                    <Wand2 size={isMobile ? 14 : 16} />
+                  </motion.div>
+                </>
+              )}
+            </Button>
+          </motion.div>
         </motion.div>
         
         {/* Mobile Gesture Hints */}
