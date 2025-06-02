@@ -71,7 +71,7 @@ const Studio = () => {
     hideUpgradeModal
   } = useUpgradeModal();
 
-  // Add camera progress tracking - now displayModelUrl is declared
+  // Add camera progress tracking - using displayModelUrl now that it's declared
   const { cameraProgress, resetProgress: resetCameraProgress } = useCameraProgress(progress, displayModelUrl);
 
   const {
