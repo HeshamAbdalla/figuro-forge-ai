@@ -17,31 +17,19 @@ export const usePublicFigurines = () => {
       
       console.log('🔄 [PUBLIC-FIGURINES] Fetching public figurines and text-to-3D models...');
       
-      // Fetch public traditional figurines
+      // Fetch public traditional figurines (simplified query without joins)
       const { data: figurinesData, error: figurinesError } = await supabase
         .from('figurines')
-        .select(`
-          *,
-          profiles!inner(
-            display_name,
-            full_name
-          )
-        `)
+        .select('*')
         .eq('is_public', true)
         .order('created_at', { ascending: false });
           
       if (figurinesError) throw figurinesError;
       
-      // Fetch public text-to-3D conversion tasks (completed ones)
+      // Fetch public text-to-3D conversion tasks (completed ones, simplified query)
       const { data: conversionData, error: conversionError } = await supabase
         .from('conversion_tasks')
-        .select(`
-          *,
-          profiles!inner(
-            display_name,
-            full_name
-          )
-        `)
+        .select('*')
         .eq('status', 'SUCCEEDED')
         .not('local_model_url', 'is', null)
         .order('created_at', { ascending: false });
@@ -61,10 +49,6 @@ export const usePublicFigurines = () => {
         const savedImageValidation = validateAndCleanUrl(figurine.saved_image_url);
         const modelValidation = validateAndCleanUrl(figurine.model_url);
         
-        // Get user display name
-        const profile = figurine.profiles as any;
-        const userName = profile?.display_name || profile?.full_name || 'Anonymous';
-        
         // Safely handle metadata object
         const existingMetadata = figurine.metadata && typeof figurine.metadata === 'object' ? figurine.metadata : {};
         
@@ -81,7 +65,7 @@ export const usePublicFigurines = () => {
           is_public: figurine.is_public || false,
           metadata: {
             ...existingMetadata,
-            creator_name: userName
+            creator_name: 'Community Member' // Default name since we can't join with profiles
           }
         };
       });
@@ -99,10 +83,6 @@ export const usePublicFigurines = () => {
           conversion.thumbnail_url
         ]);
         
-        // Get user display name
-        const profile = conversion.profiles as any;
-        const userName = profile?.display_name || profile?.full_name || 'Anonymous';
-        
         return {
           id: conversion.id,
           title: `Text-to-3D: ${conversion.prompt?.substring(0, 30) || 'Generated Model'}${conversion.prompt && conversion.prompt.length > 30 ? '...' : ''}`,
@@ -115,7 +95,7 @@ export const usePublicFigurines = () => {
           user_id: conversion.user_id,
           is_public: true, // Text-to-3D models are considered public for community gallery
           metadata: {
-            creator_name: userName,
+            creator_name: 'Community Member', // Default name since we can't join with profiles
             conversion_type: 'text-to-3d'
           }
         };
