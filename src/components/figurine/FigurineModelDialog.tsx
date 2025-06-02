@@ -10,12 +10,35 @@ interface FigurineModelDialogProps {
   onClose: () => void;
 }
 
+// Helper function to get the best display title
+const getDisplayTitle = (figurine: Figurine): string => {
+  // First priority: use the prompt if it exists and isn't empty
+  if (figurine.prompt && figurine.prompt.trim()) {
+    return figurine.prompt.trim();
+  }
+  
+  // Second priority: clean up the title
+  let cleanTitle = figurine.title;
+  
+  // Remove common prefixes for text-to-3D models
+  if (cleanTitle.startsWith('Text-to-3D: ')) {
+    cleanTitle = cleanTitle.replace('Text-to-3D: ', '');
+  }
+  
+  // Remove generic "3D Model - " prefixes
+  if (cleanTitle.startsWith('3D Model - ')) {
+    cleanTitle = cleanTitle.replace('3D Model - ', '');
+  }
+  
+  return cleanTitle || 'Untitled Model';
+};
+
 const FigurineModelDialog = ({ 
   figurine, 
   isOpen, 
   onClose 
 }: FigurineModelDialogProps) => {
-  const modelName = figurine?.title || '3D Model';
+  const modelName = figurine ? getDisplayTitle(figurine) : '3D Model';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

@@ -15,6 +15,29 @@ interface FuturisticGalleryGridProps {
   onViewModel: (figurine: Figurine) => void;
 }
 
+// Helper function to get the best display title
+const getDisplayTitle = (figurine: Figurine): string => {
+  // First priority: use the prompt if it exists and isn't empty
+  if (figurine.prompt && figurine.prompt.trim()) {
+    return figurine.prompt.trim();
+  }
+  
+  // Second priority: clean up the title
+  let cleanTitle = figurine.title;
+  
+  // Remove common prefixes for text-to-3D models
+  if (cleanTitle.startsWith('Text-to-3D: ')) {
+    cleanTitle = cleanTitle.replace('Text-to-3D: ', '');
+  }
+  
+  // Remove generic "3D Model - " prefixes
+  if (cleanTitle.startsWith('3D Model - ')) {
+    cleanTitle = cleanTitle.replace('3D Model - ', '');
+  }
+  
+  return cleanTitle || 'Untitled Model';
+};
+
 const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
   figurines,
   loading,
@@ -89,110 +112,115 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
     <>
       <div className={cn("grid gap-6", gridCols)}>
         <AnimatePresence>
-          {figurines.map((figurine, index) => (
-            <motion.div
-              key={figurine.id}
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.9 }}
-              transition={{ 
-                delay: index * 0.05,
-                type: "spring",
-                stiffness: 100
-              }}
-              className={cn(
-                "group relative glass-panel rounded-2xl overflow-hidden border border-white/10",
-                "hover:border-figuro-accent/30 hover:shadow-glow transition-all duration-500",
-                "transform hover:scale-105 hover:-translate-y-2",
-                viewMode === "list" && "flex flex-row h-32"
-              )}
-              onMouseEnter={() => setHoveredId(figurine.id)}
-              onMouseLeave={() => setHoveredId(null)}
-            >
-              {/* Image section */}
-              <div className={cn(
-                "relative overflow-hidden",
-                viewMode === "list" ? "w-32 h-32 flex-shrink-0" : "aspect-square"
-              )}>
-                <img
-                  src={figurine.saved_image_url || figurine.image_url || "/placeholder.svg"}
-                  alt={figurine.title}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  onError={handleImageError}
-                />
-                
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
-                {/* Floating action button */}
-                <motion.div
-                  className="absolute inset-0 flex items-center justify-center"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ 
-                    opacity: hoveredId === figurine.id ? 1 : 0,
-                    scale: hoveredId === figurine.id ? 1 : 0.8
-                  }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Button
-                    onClick={() => handleViewModel(figurine)}
-                    className="bg-figuro-accent/90 hover:bg-figuro-accent text-white rounded-full w-14 h-14 shadow-glow"
+          {figurines.map((figurine, index) => {
+            const displayTitle = getDisplayTitle(figurine);
+            
+            return (
+              <motion.div
+                key={figurine.id}
+                initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                transition={{ 
+                  delay: index * 0.05,
+                  type: "spring",
+                  stiffness: 100
+                }}
+                className={cn(
+                  "group relative glass-panel rounded-2xl overflow-hidden border border-white/10",
+                  "hover:border-figuro-accent/30 hover:shadow-glow transition-all duration-500",
+                  "transform hover:scale-105 hover:-translate-y-2",
+                  viewMode === "list" && "flex flex-row h-32"
+                )}
+                onMouseEnter={() => setHoveredId(figurine.id)}
+                onMouseLeave={() => setHoveredId(null)}
+              >
+                {/* Image section */}
+                <div className={cn(
+                  "relative overflow-hidden",
+                  viewMode === "list" ? "w-32 h-32 flex-shrink-0" : "aspect-square"
+                )}>
+                  <img
+                    src={figurine.saved_image_url || figurine.image_url || "/placeholder.svg"}
+                    alt={displayTitle}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    onError={handleImageError}
+                  />
+                  
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  
+                  {/* Floating action button */}
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ 
+                      opacity: hoveredId === figurine.id ? 1 : 0,
+                      scale: hoveredId === figurine.id ? 1 : 0.8
+                    }}
+                    transition={{ duration: 0.2 }}
                   >
-                    {figurine.model_url ? <Play className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
-                  </Button>
-                </motion.div>
+                    <Button
+                      onClick={() => handleViewModel(figurine)}
+                      className="bg-figuro-accent/90 hover:bg-figuro-accent text-white rounded-full w-14 h-14 shadow-glow"
+                    >
+                      {figurine.model_url ? <Play className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
+                    </Button>
+                  </motion.div>
 
-                {/* Type badges */}
-                <div className="absolute top-3 left-3 flex gap-2">
-                  {figurine.metadata?.conversion_type === 'text-to-3d' && (
-                    <Badge className="bg-figuro-accent/80 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
-                      <Zap className="w-3 h-3 mr-1" />
-                      AI Generated
-                    </Badge>
-                  )}
-                  {figurine.model_url && (
-                    <Badge className="bg-blue-500/80 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
-                      3D
-                    </Badge>
-                  )}
+                  {/* Type badges */}
+                  <div className="absolute top-3 left-3 flex gap-2">
+                    {figurine.metadata?.conversion_type === 'text-to-3d' && (
+                      <Badge className="bg-figuro-accent/80 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                        <Zap className="w-3 h-3 mr-1" />
+                        AI Generated
+                      </Badge>
+                    )}
+                    {figurine.model_url && (
+                      <Badge className="bg-blue-500/80 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                        3D
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Content section */}
-              <div className={cn(
-                "p-4 flex-1",
-                viewMode === "list" && "flex flex-col justify-center"
-              )}>
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-white text-sm leading-tight line-clamp-2 group-hover:text-figuro-accent transition-colors duration-200">
-                    {figurine.title}
-                  </h3>
-                  
-                  {figurine.prompt && viewMode === "grid" && (
-                    <p className="text-white/60 text-xs line-clamp-2 leading-relaxed">
-                      {figurine.prompt}
-                    </p>
-                  )}
-                  
-                  <div className="flex items-center justify-between text-xs text-white/40 pt-2">
-                    <div className="flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      <span className="truncate max-w-20">
-                        {figurine.metadata?.creator_name || 'Anonymous'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      <span>{formatDate(figurine.created_at)}</span>
+                {/* Content section */}
+                <div className={cn(
+                  "p-4 flex-1",
+                  viewMode === "list" && "flex flex-col justify-center"
+                )}>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-white text-sm leading-tight line-clamp-2 group-hover:text-figuro-accent transition-colors duration-200">
+                      {displayTitle}
+                    </h3>
+                    
+                    {/* Show original title as subtitle if we're displaying the prompt */}
+                    {figurine.prompt && figurine.prompt.trim() && figurine.prompt !== figurine.title && viewMode === "grid" && (
+                      <p className="text-white/40 text-xs line-clamp-1 leading-relaxed">
+                        {figurine.title.replace('Text-to-3D: ', '')}
+                      </p>
+                    )}
+                    
+                    <div className="flex items-center justify-between text-xs text-white/40 pt-2">
+                      <div className="flex items-center gap-1">
+                        <User className="w-3 h-3" />
+                        <span className="truncate max-w-20">
+                          {figurine.metadata?.creator_name || 'Anonymous'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        <span>{formatDate(figurine.created_at)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Futuristic border effect */}
-              <div className="absolute inset-0 rounded-2xl border border-transparent bg-gradient-to-r from-figuro-accent/0 via-figuro-accent/20 to-figuro-accent/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            </motion.div>
-          ))}
+                {/* Futuristic border effect */}
+                <div className="absolute inset-0 rounded-2xl border border-transparent bg-gradient-to-r from-figuro-accent/0 via-figuro-accent/20 to-figuro-accent/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       </div>
 
