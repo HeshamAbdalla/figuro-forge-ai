@@ -29,18 +29,48 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
     
-    const token = authHeader.replace("Bearer ", "");
+    // Enhanced token extraction and validation
+    const token = authHeader.replace("Bearer ", "").trim();
+    if (!token || token === "Bearer" || token === "") {
+      throw new Error("Invalid or empty JWT token");
+    }
+
+    logStep("Attempting user authentication", { tokenLength: token.length });
+
+    // Enhanced user authentication with better error handling
     const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    
+    if (userError) {
+      logStep("Authentication error details", { 
+        error: userError.message, 
+        code: userError.status,
+        tokenPrefix: token.substring(0, 20) + "..."
+      });
+      
+      // Check for specific JWT errors
+      if (userError.message?.includes('invalid claim') || userError.message?.includes('missing sub claim')) {
+        throw new Error("Invalid JWT token: Token is malformed or expired. Please refresh the page and try again.");
+      } else if (userError.message?.includes('expired')) {
+        throw new Error("JWT token expired. Please refresh the page and try again.");
+      } else {
+        throw new Error(`Authentication failed: ${userError.message}`);
+      }
+    }
+
     const user = userData.user;
-    if (!user?.id) throw new Error("User not authenticated");
+    if (!user?.id) {
+      logStep("User data validation failed", { userData });
+      throw new Error("Invalid user session. Please sign out and sign in again.");
+    }
+
+    logStep("User successfully authenticated", { userId: user.id });
 
     const { feature_type, amount = 1 } = await req.json();
     if (!feature_type) throw new Error("feature_type is required");
 
     logStep("Processing usage consumption", { userId: user.id, feature_type, amount });
 
-    // Get user subscription
+    // Get user subscription with enhanced error handling
     const { data: subscription, error: subError } = await supabaseAdmin
       .from("subscriptions")
       .select("*")
@@ -48,13 +78,13 @@ serve(async (req) => {
       .single();
 
     if (subError && subError.code !== 'PGRST116') {
-      logStep("Error fetching subscription", { error: subError.message });
+      logStep("Error fetching subscription", { error: subError.message, code: subError.code });
       throw new Error(`Error fetching subscription: ${subError.message}`);
     }
 
-    // Create default subscription if none exists
+    // Create default subscription if none exists with enhanced logging
     if (!subscription) {
-      logStep("Creating default subscription");
+      logStep("Creating default subscription for new user");
       const { data: newSub, error: createError } = await supabaseAdmin
         .from("subscriptions")
         .insert({
@@ -78,6 +108,8 @@ serve(async (req) => {
       }
       
       const totalCredits = newSub.credits_remaining + (newSub.bonus_credits || 0);
+      logStep("Default subscription created successfully", { totalCredits });
+      
       return new Response(JSON.stringify({
         success: true,
         credits_remaining: newSub.credits_remaining,
@@ -89,7 +121,7 @@ serve(async (req) => {
       });
     }
 
-    // Get plan limits
+    // Get plan limits with fallback
     const { data: planLimits, error: limitsError } = await supabaseAdmin
       .from("plan_limits")
       .select("*")
@@ -134,7 +166,7 @@ serve(async (req) => {
       
       return new Response(JSON.stringify({
         success: false,
-        error: "Insufficient credits",
+        error: "Insufficient credits. Please upgrade your plan to continue.",
         credits_remaining: subscription.credits_remaining,
         bonus_credits: subscription.bonus_credits || 0,
         total_credits: totalAvailableCredits

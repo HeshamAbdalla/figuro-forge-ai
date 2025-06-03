@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,15 +77,28 @@ export const useStudioHandlers = ({
     } catch (error) {
       console.error("Quick convert error:", error);
       
-      // Check if error is related to usage limits
-      if (error instanceof Error && (
-        error.message.includes('limit reached') || 
-        error.message.includes('conversion limit')
-      )) {
-        if (showUpgradeModal) {
-          showUpgradeModal("model_conversion");
+      // Enhanced error handling for authentication issues
+      if (error instanceof Error) {
+        if (error.message.includes('authentication') || error.message.includes('JWT')) {
+          toast({
+            title: "Authentication Error",
+            description: "Your session has expired. Please refresh the page and try again.",
+            variant: "destructive",
+          });
+          return;
+        } else if (error.message.includes('limit reached') || error.message.includes('conversion limit')) {
+          if (showUpgradeModal) {
+            showUpgradeModal("model_conversion");
+          }
+          return;
         }
       }
+      
+      toast({
+        title: "Conversion Failed",
+        description: "Failed to convert image to 3D. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -106,15 +118,28 @@ export const useStudioHandlers = ({
     } catch (error) {
       console.error("Generate 3D with config error:", error);
       
-      // Check if error is related to usage limits
-      if (error instanceof Error && (
-        error.message.includes('limit reached') || 
-        error.message.includes('conversion limit')
-      )) {
-        if (showUpgradeModal) {
-          showUpgradeModal("model_conversion");
+      // Enhanced error handling for authentication issues
+      if (error instanceof Error) {
+        if (error.message.includes('authentication') || error.message.includes('JWT')) {
+          toast({
+            title: "Authentication Error",
+            description: "Your session has expired. Please refresh the page and try again.",
+            variant: "destructive",
+          });
+          return;
+        } else if (error.message.includes('limit reached') || error.message.includes('conversion limit')) {
+          if (showUpgradeModal) {
+            showUpgradeModal("model_conversion");
+          }
+          return;
         }
       }
+      
+      toast({
+        title: "Conversion Failed",
+        description: "Failed to convert image to 3D. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -127,15 +152,35 @@ export const useStudioHandlers = ({
     } catch (error) {
       console.error("Text to 3D error:", error);
       
-      // Check if error is related to usage limits
-      if (error instanceof Error && (
-        error.message.includes('limit reached') || 
-        error.message.includes('conversion limit')
-      )) {
-        if (showUpgradeModal) {
-          showUpgradeModal("model_conversion");
+      // Enhanced error handling for authentication issues
+      if (error instanceof Error) {
+        if (error.message.includes('authentication') || error.message.includes('JWT')) {
+          toast({
+            title: "Authentication Error",
+            description: "Your session has expired. Please refresh the page and try again.",
+            variant: "destructive",
+          });
+          return;
+        } else if (error.message.includes('Invalid user session')) {
+          toast({
+            title: "Session Error",
+            description: "Invalid user session. Please sign out and sign in again.",
+            variant: "destructive",
+          });
+          return;
+        } else if (error.message.includes('limit reached') || error.message.includes('conversion limit')) {
+          if (showUpgradeModal) {
+            showUpgradeModal("model_conversion");
+          }
+          return;
         }
       }
+      
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate 3D model from text. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -154,15 +199,35 @@ export const useStudioHandlers = ({
     } catch (error) {
       console.error("Text to 3D with config error:", error);
       
-      // Check if error is related to usage limits
-      if (error instanceof Error && (
-        error.message.includes('limit reached') || 
-        error.message.includes('conversion limit')
-      )) {
-        if (showUpgradeModal) {
-          showUpgradeModal("model_conversion");
+      // Enhanced error handling for authentication issues
+      if (error instanceof Error) {
+        if (error.message.includes('authentication') || error.message.includes('JWT')) {
+          toast({
+            title: "Authentication Error",
+            description: "Your session has expired. Please refresh the page and try again.",
+            variant: "destructive",
+          });
+          return;
+        } else if (error.message.includes('Invalid user session')) {
+          toast({
+            title: "Session Error",
+            description: "Invalid user session. Please sign out and sign in again.",
+            variant: "destructive",
+          });
+          return;
+        } else if (error.message.includes('limit reached') || error.message.includes('conversion limit')) {
+          if (showUpgradeModal) {
+            showUpgradeModal("model_conversion");
+          }
+          return;
         }
       }
+      
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate 3D model with config. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

@@ -351,6 +351,30 @@ export type Database = {
         }
         Relationships: []
       }
+      security_monitoring: {
+        Row: {
+          check_type: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          status: string
+        }
+        Insert: {
+          check_type: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          status: string
+        }
+        Update: {
+          check_type?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       stats: {
         Row: {
           count: number
@@ -449,6 +473,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      audit_security_definer_functions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          function_name: string
+          schema_name: string
+          security_definer: boolean
+          search_path_setting: string
+          risk_level: string
+        }[]
+      }
       check_rate_limit: {
         Args: {
           p_user_id: string
@@ -497,6 +531,19 @@ export type Database = {
       reset_monthly_usage: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      security_health_check: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      validate_rls_policies: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          table_name: string
+          rls_enabled: boolean
+          policy_count: number
+          security_status: string
+        }[]
       }
     }
     Enums: {

@@ -31,9 +31,45 @@ export const useTextTo3D = () => {
   });
   const { toast } = useToast();
 
+  // Enhanced authentication helper
+  const ensureValidSession = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('❌ [TEXT-TO-3D] Session error:', error);
+        throw new Error('Authentication session error. Please refresh the page and try again.');
+      }
+      
+      if (!session?.access_token) {
+        throw new Error('No valid authentication session. Please sign in again.');
+      }
+      
+      // Check if token is expired (add 5 minute buffer)
+      if (session.expires_at && (Date.now() / 1000) > (session.expires_at - 300)) {
+        console.log('🔄 [TEXT-TO-3D] Token near expiry, refreshing...');
+        
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData.session?.access_token) {
+          throw new Error('Failed to refresh authentication. Please sign in again.');
+        }
+        
+        return refreshData.session.access_token;
+      }
+      
+      return session.access_token;
+    } catch (error) {
+      console.error('❌ [TEXT-TO-3D] Auth validation failed:', error);
+      throw error;
+    }
+  };
+
   const checkStatus = useCallback(async (taskId: string): Promise<void> => {
     try {
       console.log('🔍 [TEXT-TO-3D] Checking status for task:', taskId);
+      
+      // Ensure we have a valid session before making the request
+      await ensureValidSession();
       
       // Add timeout to the status check
       const controller = new AbortController();
@@ -50,6 +86,12 @@ export const useTextTo3D = () => {
 
       if (error) {
         console.error('❌ [TEXT-TO-3D] Status check error:', error);
+        
+        // Handle specific authentication errors
+        if (error.message?.includes('authentication') || error.message?.includes('JWT')) {
+          throw new Error('Authentication expired. Please refresh the page and try again.');
+        }
+        
         throw new Error(error.message);
       }
 
@@ -131,6 +173,8 @@ export const useTextTo3D = () => {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           errorMessage = "Request timeout. Please try again.";
+        } else if (error.message.includes('authentication') || error.message.includes('JWT')) {
+          errorMessage = "Authentication expired. Please refresh the page and try again.";
         } else {
           errorMessage = error.message;
         }
@@ -170,6 +214,9 @@ export const useTextTo3D = () => {
     try {
       console.log("🔄 [TEXT-TO-3D] Starting text to 3D generation with config:", config);
       
+      // Ensure we have a valid session before making the request
+      const accessToken = await ensureValidSession();
+      
       // Add timeout to the generation request
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
@@ -177,7 +224,8 @@ export const useTextTo3D = () => {
       const { data, error } = await supabase.functions.invoke('text-to-3d', {
         body: config,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
         }
       });
 
@@ -185,6 +233,14 @@ export const useTextTo3D = () => {
 
       if (error) {
         console.error("❌ [TEXT-TO-3D] Generation error:", error);
+        
+        // Handle specific authentication errors
+        if (error.message?.includes('authentication') || error.message?.includes('JWT')) {
+          throw new Error('Authentication expired. Please refresh the page and try again.');
+        } else if (error.message?.includes('Invalid user session')) {
+          throw new Error('Invalid user session. Please sign out and sign in again.');
+        }
+        
         throw new Error(error.message || 'Failed to generate 3D model');
       }
 
@@ -233,6 +289,10 @@ export const useTextTo3D = () => {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           errorMessage = "Request timeout. Please try again.";
+        } else if (error.message.includes('authentication') || error.message.includes('JWT')) {
+          errorMessage = "Authentication expired. Please refresh the page and try again.";
+        } else if (error.message.includes('Invalid user session')) {
+          errorMessage = "Invalid user session. Please sign out and sign in again.";
         } else {
           errorMessage = error.message;
         }
