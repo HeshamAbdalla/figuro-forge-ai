@@ -228,26 +228,18 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       console.log("🔐 [ENHANCED-AUTH] Attempting sign-in...");
       
-      // Configure session persistence based on "Remember Me"
-      const authOptions = {
-        email,
-        password,
-        options: {
-          data: {
-            remember_me: rememberMe
-          }
-        }
-      };
-      
-      // Set session persistence in localStorage
+      // Set session persistence in localStorage based on "Remember Me"
       if (rememberMe) {
         localStorage.setItem('figuro_remember_me', 'true');
       } else {
         localStorage.removeItem('figuro_remember_me');
       }
       
-      // Perform sign-in
-      const { data, error } = await supabase.auth.signInWithPassword(authOptions);
+      // Perform sign-in (removed invalid options parameter)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
       
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
