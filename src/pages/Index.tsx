@@ -1,12 +1,16 @@
 
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
-import Features from "@/components/Features";
-import VantaBackground from "@/components/VantaBackground";
-import HomepageGallery from "@/components/HomepageGallery";
+import FreeTierSpotlight from "@/components/FreeTierSpotlight";
+import InteractiveDemo from "@/components/InteractiveDemo";
 import HowItWorks from "@/components/HowItWorks";
+import HomepageGallery from "@/components/HomepageGallery";
+import CreatorSpotlight from "@/components/CreatorSpotlight";
+import UseCaseExamples from "@/components/UseCaseExamples";
+import Features from "@/components/Features";
 import SocialProof from "@/components/SocialProof";
 import PricingCTA from "@/components/PricingCTA";
+import VantaBackground from "@/components/VantaBackground";
 import SEO from "@/components/SEO";
 import { pageSEO } from "@/config/seo";
 import Footer from "@/components/Footer";
@@ -24,10 +28,14 @@ const Index = () => {
         <div className="min-h-screen bg-transparent">
           <Header />
           <Hero />
+          <FreeTierSpotlight />
+          <InteractiveDemo />
           <HowItWorks />
           <HomepageGallery />
-          <SocialProof />
+          <CreatorSpotlight />
+          <UseCaseExamples />
           <Features />
+          <SocialProof />
           <PricingCTA />
           <Footer />
         </div>
