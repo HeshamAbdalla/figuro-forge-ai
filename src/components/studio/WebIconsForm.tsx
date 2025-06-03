@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,10 @@ import UpgradeModal from "@/components/UpgradeModal";
 interface WebIconsFormProps {
   onGenerate?: (prompt: string, options: { category: string; size: string; style: string }) => Promise<void>;
   isGenerating?: boolean;
+}
+
+export interface WebIconsFormRef {
+  focusInput: () => void;
 }
 
 const categories = [
@@ -43,11 +46,14 @@ const styles = [
   { value: "filled", label: "Filled" },
 ];
 
-const WebIconsForm = ({ onGenerate, isGenerating: externalIsGenerating }: WebIconsFormProps) => {
+const WebIconsForm = forwardRef<WebIconsFormRef, WebIconsFormProps>(({ onGenerate, isGenerating: externalIsGenerating }, ref) => {
   const [prompt, setPrompt] = useState("");
   const [category, setCategory] = useState("general");
   const [size, setSize] = useState("256x256");
   const [style, setStyle] = useState("isometric");
+
+  // Create internal ref for the input
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Use internal generation hook with usage limits
   const { generateIcon, isGenerating: internalIsGenerating } = useWebIconsGeneration();
@@ -62,6 +68,23 @@ const WebIconsForm = ({ onGenerate, isGenerating: externalIsGenerating }: WebIco
 
   // Use external isGenerating if provided, otherwise use internal
   const isGenerating = externalIsGenerating ?? internalIsGenerating;
+
+  // Expose focus method to parent component
+  useImperativeHandle(ref, () => ({
+    focusInput: () => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        // Add a helpful placeholder if empty
+        if (!prompt.trim()) {
+          setPrompt("Describe your icon...");
+          // Select the placeholder text so user can immediately start typing
+          setTimeout(() => {
+            inputRef.current?.select();
+          }, 0);
+        }
+      }
+    }
+  }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +117,7 @@ const WebIconsForm = ({ onGenerate, isGenerating: externalIsGenerating }: WebIco
             <div className="space-y-2">
               <Label htmlFor="prompt">Icon Description</Label>
               <Input
+                ref={inputRef}
                 id="prompt"
                 placeholder="Describe your icon (e.g., shopping cart, user profile, settings gear)"
                 value={prompt}
@@ -201,6 +225,8 @@ const WebIconsForm = ({ onGenerate, isGenerating: externalIsGenerating }: WebIco
       />
     </>
   );
-};
+});
+
+WebIconsForm.displayName = "WebIconsForm";
 
 export default WebIconsForm;

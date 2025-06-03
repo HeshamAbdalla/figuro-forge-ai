@@ -1,4 +1,5 @@
 
+import { useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -75,6 +76,11 @@ const StudioTabContent = ({
   const { figurines } = useFigurines();
   const { isGenerating: isGeneratingIcon, generatedIcon, generateIcon, clearIcon } = useWebIconsGeneration();
 
+  // Create refs for form inputs to enable focusing
+  const promptFormRef = useRef<{ focusInput: () => void } | null>(null);
+  const textTo3DFormRef = useRef<{ focusInput: () => void } | null>(null);
+  const webIconsFormRef = useRef<{ focusInput: () => void } | null>(null);
+
   const handleIconGeneration = async (prompt: string, options: { category: string; size: string; style: string }) => {
     await generateIcon(prompt, options);
   };
@@ -91,6 +97,33 @@ const StudioTabContent = ({
   const handleCameraCapture = async (imageBlob: Blob) => {
     if (onCameraImageCapture) {
       onCameraImageCapture(imageBlob);
+    }
+  };
+
+  // Helper function to focus image-to-3d prompt form
+  const focusImagePromptForm = () => {
+    if (promptFormRef.current) {
+      promptFormRef.current.focusInput();
+      // Smooth scroll to the form
+      promptFormRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  // Helper function to focus text-to-3d prompt form
+  const focusTextTo3DForm = () => {
+    if (textTo3DFormRef.current) {
+      textTo3DFormRef.current.focusInput();
+      // Smooth scroll to the form
+      textTo3DFormRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  // Helper function to focus web icons form
+  const focusWebIconsForm = () => {
+    if (webIconsFormRef.current) {
+      webIconsFormRef.current.focusInput();
+      // Smooth scroll to the form
+      webIconsFormRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
     }
   };
 
@@ -127,6 +160,7 @@ const StudioTabContent = ({
             className="space-y-4"
           >
             <EnhancedPromptForm 
+              ref={promptFormRef}
               onGenerate={onGenerate} 
               isGenerating={isGeneratingImage}
             />
@@ -146,7 +180,7 @@ const StudioTabContent = ({
             
             <MiniGalleryCarousel 
               figurines={figurines.slice(0, 6)}
-              onCreateNew={() => onGenerate("", "isometric")}
+              onCreateNew={focusImagePromptForm}
             />
           </motion.div>
           
@@ -225,6 +259,7 @@ const StudioTabContent = ({
             className="space-y-4"
           >
             <TextTo3DForm 
+              ref={textTo3DFormRef}
               onGenerate={handleTextTo3D}
               onOpenConfigModal={handleOpenTextTo3DConfigModal}
               isGenerating={isGeneratingTextTo3D}
@@ -253,7 +288,7 @@ const StudioTabContent = ({
             
             <MiniGalleryCarousel 
               figurines={figurines.slice(0, 6)}
-              onCreateNew={() => handleTextTo3D("", "realistic", "")}
+              onCreateNew={focusTextTo3DForm}
             />
           </motion.div>
           
@@ -292,13 +327,14 @@ const StudioTabContent = ({
             className="space-y-4"
           >
             <WebIconsForm 
+              ref={webIconsFormRef}
               onGenerate={handleIconGeneration}
               isGenerating={isGeneratingIcon}
             />
             
             <MiniGalleryCarousel 
               figurines={figurines.slice(0, 6)}
-              onCreateNew={() => onGenerate("", "isometric")}
+              onCreateNew={focusWebIconsForm}
             />
           </motion.div>
           

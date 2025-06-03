@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -12,8 +11,32 @@ interface TextTo3DFormProps {
   isGenerating: boolean;
 }
 
-const TextTo3DForm = ({ onGenerate, onOpenConfigModal, isGenerating }: TextTo3DFormProps) => {
+export interface TextTo3DFormRef {
+  focusInput: () => void;
+}
+
+const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerate, onOpenConfigModal, isGenerating }, ref) => {
   const [prompt, setPrompt] = useState("");
+  
+  // Create internal ref for the textarea
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Expose focus method to parent component
+  useImperativeHandle(ref, () => ({
+    focusInput: () => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        // Add a helpful placeholder if empty
+        if (!prompt.trim()) {
+          setPrompt("Describe your 3D model...");
+          // Select the placeholder text so user can immediately start typing
+          setTimeout(() => {
+            textareaRef.current?.select();
+          }, 0);
+        }
+      }
+    }
+  }));
 
   const handleQuickGenerate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +68,7 @@ const TextTo3DForm = ({ onGenerate, onOpenConfigModal, isGenerating }: TextTo3DF
           <div className="space-y-2">
             <label className="text-sm text-white/70">Describe your 3D model</label>
             <Textarea
+              ref={textareaRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="A cute cartoon dragon sitting on a rock..."
@@ -87,6 +111,8 @@ const TextTo3DForm = ({ onGenerate, onOpenConfigModal, isGenerating }: TextTo3DF
       </motion.div>
     </Card>
   );
-};
+});
+
+TextTo3DForm.displayName = "TextTo3DForm";
 
 export default TextTo3DForm;

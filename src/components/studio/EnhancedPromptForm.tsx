@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,11 +42,35 @@ interface EnhancedPromptFormProps {
   isGenerating: boolean;
 }
 
-const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProps) => {
+export interface EnhancedPromptFormRef {
+  focusInput: () => void;
+}
+
+const EnhancedPromptForm = forwardRef<EnhancedPromptFormRef, EnhancedPromptFormProps>(({ onGenerate, isGenerating }, ref) => {
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState("isometric");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmissionTime, setLastSubmissionTime] = useState(0);
+  
+  // Create internal ref for the textarea
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Expose focus method to parent component
+  useImperativeHandle(ref, () => ({
+    focusInput: () => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        // Add a helpful placeholder if empty
+        if (!prompt.trim()) {
+          setPrompt("Describe your figurine...");
+          // Select the placeholder text so user can immediately start typing
+          setTimeout(() => {
+            textareaRef.current?.select();
+          }, 0);
+        }
+      }
+    }
+  }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,6 +156,7 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Textarea
+            ref={textareaRef}
             placeholder="Describe your figurine in detail..."
             className="bg-white/10 border-white/20 text-white resize-none h-20 placeholder:text-white/40"
             value={prompt}
@@ -227,6 +251,8 @@ const EnhancedPromptForm = ({ onGenerate, isGenerating }: EnhancedPromptFormProp
       </form>
     </motion.div>
   );
-};
+});
+
+EnhancedPromptForm.displayName = "EnhancedPromptForm";
 
 export default EnhancedPromptForm;
