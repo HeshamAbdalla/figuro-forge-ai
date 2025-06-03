@@ -273,7 +273,7 @@ export const useTextTo3D = () => {
       const accessToken = await ensureValidSession();
       
       // Create a clean, validated request body with proper structure
-      const requestBody = {
+      const requestBody: Partial<TextTo3DConfig> = {
         prompt: config.prompt.trim(),
         artStyle: config.artStyle || 'realistic',
         negativePrompt: config.negativePrompt || '',
