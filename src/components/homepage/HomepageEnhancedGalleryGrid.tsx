@@ -64,8 +64,8 @@ const HomepageEnhancedGalleryGrid: React.FC<HomepageEnhancedGalleryGridProps> = 
         initialDelay={0.3}
         className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8"
       >
-        {balancedImages.map((file, index) => (
-          <AnimatedItem key={file.id} delay={index * 0.05}>
+        {balancedImages.map((file) => (
+          <AnimatedItem key={file.id}>
             <HomepageEnhancedGalleryItem
               file={file}
               isDownloading={isDownloading}
