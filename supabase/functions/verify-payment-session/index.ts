@@ -14,6 +14,28 @@ const logStep = (step: string, details?: any) => {
   console.log(`[VERIFY-PAYMENT-SESSION] ${step}${detailsStr}`);
 };
 
+// Helper function to get plan order for comparison
+const getPlanOrder = (planType: string): number => {
+  const orders: Record<string, number> = {
+    'free': 0,
+    'starter': 1,
+    'pro': 2,
+    'unlimited': 3
+  };
+  return orders[planType] || 0;
+};
+
+// Helper function to get default credits for a plan
+const getPlanCredits = (planType: string): number => {
+  const credits: Record<string, number> = {
+    'free': 10,
+    'starter': 50,
+    'pro': 200,
+    'unlimited': 999999
+  };
+  return credits[planType] || 10;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -111,6 +133,24 @@ serve(async (req) => {
 
     logStep("Processing successful payment", { planType, commercialLicense, additionalConversions });
 
+    // Get current subscription to check for upgrades
+    const { data: currentSubscription } = await supabaseAdmin
+      .from("subscriptions")
+      .select("plan_type")
+      .eq("user_id", user.id)
+      .single();
+
+    const currentPlanType = currentSubscription?.plan_type || 'free';
+    const isUpgrade = getPlanOrder(planType) > getPlanOrder(currentPlanType);
+    
+    logStep("Plan comparison", { 
+      currentPlan: currentPlanType, 
+      newPlan: planType, 
+      isUpgrade,
+      currentOrder: getPlanOrder(currentPlanType),
+      newOrder: getPlanOrder(planType)
+    });
+
     // Record the payment session
     await supabaseAdmin
       .from("payment_sessions")
@@ -130,36 +170,47 @@ serve(async (req) => {
       validUntil = new Date(subscription.current_period_end * 1000).toISOString();
     }
 
+    // Prepare subscription update data
+    const subscriptionUpdate: any = {
+      user_id: user.id,
+      stripe_customer_id: session.customer,
+      stripe_subscription_id: session.subscription,
+      plan_type: planType,
+      commercial_license: commercialLicense,
+      additional_conversions: additionalConversions,
+      valid_until: validUntil,
+      updated_at: new Date().toISOString()
+    };
+
+    // If this is an upgrade, reset usage counters and allocate new credits
+    if (isUpgrade) {
+      logStep("Performing upgrade - resetting usage counters", { fromPlan: currentPlanType, toPlan: planType });
+      
+      subscriptionUpdate.generation_count_today = 0;
+      subscriptionUpdate.generation_count_this_month = 0;
+      subscriptionUpdate.converted_3d_this_month = 0;
+      subscriptionUpdate.credits_remaining = getPlanCredits(planType);
+      subscriptionUpdate.bonus_credits = 0; // Reset bonus credits on upgrade
+      subscriptionUpdate.monthly_reset_date = new Date();
+      subscriptionUpdate.daily_reset_date = new Date();
+      
+      logStep("Usage reset complete", { 
+        newCredits: subscriptionUpdate.credits_remaining,
+        resetCounters: {
+          generation_count_today: 0,
+          generation_count_this_month: 0,
+          converted_3d_this_month: 0
+        }
+      });
+    }
+
     const { error: subscriptionError } = await supabaseAdmin
       .from("subscriptions")
-      .upsert({
-        user_id: user.id,
-        stripe_customer_id: session.customer,
-        stripe_subscription_id: session.subscription,
-        plan_type: planType,
-        commercial_license: commercialLicense,
-        additional_conversions: additionalConversions,
-        valid_until: validUntil,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+      .upsert(subscriptionUpdate, { onConflict: 'user_id' });
 
     if (subscriptionError) {
       logStep("Error updating subscription", { error: subscriptionError.message });
       throw new Error(`Failed to update subscription: ${subscriptionError.message}`);
-    }
-
-    // Reset usage counters for new subscription
-    const { error: usageError } = await supabaseAdmin
-      .from("user_usage")
-      .upsert({
-        user_id: user.id,
-        image_generations_used: 0,
-        model_conversions_used: 0,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
-
-    if (usageError) {
-      logStep("Error resetting usage", { error: usageError.message });
     }
 
     // Update profile plan
@@ -172,13 +223,22 @@ serve(async (req) => {
       logStep("Error updating profile", { error: profileError.message });
     }
 
-    logStep("Payment verification completed successfully", { planType, userId: user.id });
+    logStep("Payment verification completed successfully", { 
+      planType, 
+      userId: user.id, 
+      wasUpgrade: isUpgrade,
+      creditsAllocated: isUpgrade ? getPlanCredits(planType) : undefined
+    });
 
     return new Response(JSON.stringify({
       success: true,
-      message: "Payment verified and subscription updated",
+      message: isUpgrade 
+        ? `Payment verified, subscription upgraded to ${planType}, and usage reset`
+        : "Payment verified and subscription updated",
       plan: planType,
-      validUntil: validUntil
+      validUntil: validUntil,
+      wasUpgrade: isUpgrade,
+      creditsAllocated: isUpgrade ? getPlanCredits(planType) : undefined
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
