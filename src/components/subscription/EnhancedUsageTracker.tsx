@@ -15,10 +15,41 @@ interface EnhancedUsageTrackerProps {
 }
 
 export const EnhancedUsageTracker: React.FC<EnhancedUsageTrackerProps> = ({ onUpgrade }) => {
+  // ALL HOOKS MUST BE CALLED FIRST - before any conditional returns
   const { subscription, isLoading } = useSubscription();
   const { teaserState, triggerTeaser, dismissTeaser, getUsageProgress, getUrgencyLevel } = useSmartTeaser();
   const [animateValues, setAnimateValues] = useState({ images: 0, models: 0 });
+
+  // Calculate values that depend on subscription data
+  const currentPlan = subscription ? PLANS[subscription.plan] : null;
   
+  const monthlyImageUsagePercentage = currentPlan?.limits.isUnlimited 
+    ? 0 
+    : subscription 
+      ? Math.min(100, (subscription.generation_count_this_month / (currentPlan?.limits.imageGenerationsPerMonth || 1)) * 100)
+      : 0;
+  
+  const modelUsagePercentage = currentPlan?.limits.isUnlimited 
+    ? 0 
+    : subscription
+      ? Math.min(100, (subscription.converted_3d_this_month / (currentPlan?.limits.modelConversionsPerMonth || 1)) * 100)
+      : 0;
+
+  const imageUrgency = subscription ? getUrgencyLevel('image_generation') : 'low';
+  const modelUrgency = subscription ? getUrgencyLevel('model_conversion') : 'low';
+
+  // Animate progress values on mount and updates
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimateValues({
+        images: monthlyImageUsagePercentage,
+        models: modelUsagePercentage
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [monthlyImageUsagePercentage, modelUsagePercentage]);
+
+  // NOW we can have conditional returns since all hooks have been called
   if (isLoading || !subscription) {
     return (
       <Card className="bg-figuro-darker/50 border-white/10 mb-6">
@@ -33,30 +64,6 @@ export const EnhancedUsageTracker: React.FC<EnhancedUsageTrackerProps> = ({ onUp
       </Card>
     );
   }
-
-  const currentPlan = PLANS[subscription.plan];
-  
-  const monthlyImageUsagePercentage = currentPlan.limits.isUnlimited 
-    ? 0 
-    : Math.min(100, (subscription.generation_count_this_month / currentPlan.limits.imageGenerationsPerMonth) * 100);
-  
-  const modelUsagePercentage = currentPlan.limits.isUnlimited 
-    ? 0 
-    : Math.min(100, (subscription.converted_3d_this_month / currentPlan.limits.modelConversionsPerMonth) * 100);
-
-  const imageUrgency = getUrgencyLevel('image_generation');
-  const modelUrgency = getUrgencyLevel('model_conversion');
-
-  // Animate progress values on mount and updates
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnimateValues({
-        images: monthlyImageUsagePercentage,
-        models: modelUsagePercentage
-      });
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [monthlyImageUsagePercentage, modelUsagePercentage]);
 
   const getProgressColor = (urgency: string) => {
     switch (urgency) {
@@ -145,7 +152,7 @@ export const EnhancedUsageTracker: React.FC<EnhancedUsageTrackerProps> = ({ onUp
                     )}
                   </div>
                   <span className="text-white/70 font-mono">
-                    {subscription.generation_count_this_month} / {currentPlan.limits.isUnlimited ? '∞' : currentPlan.limits.imageGenerationsPerMonth}
+                    {subscription.generation_count_this_month} / {currentPlan?.limits.isUnlimited ? '∞' : currentPlan?.limits.imageGenerationsPerMonth}
                   </span>
                 </div>
                 
@@ -209,7 +216,7 @@ export const EnhancedUsageTracker: React.FC<EnhancedUsageTrackerProps> = ({ onUp
                     )}
                   </div>
                   <span className="text-white/70 font-mono">
-                    {subscription.converted_3d_this_month} / {currentPlan.limits.isUnlimited ? '∞' : currentPlan.limits.modelConversionsPerMonth}
+                    {subscription.converted_3d_this_month} / {currentPlan?.limits.isUnlimited ? '∞' : currentPlan?.limits.modelConversionsPerMonth}
                   </span>
                 </div>
                 
