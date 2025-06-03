@@ -1,3 +1,4 @@
+
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { AuthForm } from "@/components/auth/AuthForm";
@@ -5,12 +6,12 @@ import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info, Shield, Lock, Mail, Activity } from "lucide-react";
+import { Heart, Sparkles, Zap, Users, Rocket } from "lucide-react";
 import { cleanupAuthState } from "@/utils/authUtils";
 import { Badge } from "@/components/ui/badge";
 
 const Auth = () => {
-  const { user, isLoading, securityScore } = useEnhancedAuth();
+  const { user, isLoading } = useEnhancedAuth();
   const navigate = useNavigate();
   
   // Clean up auth state when mounting the auth page
@@ -39,67 +40,66 @@ const Auth = () => {
                   Welcome to Figuro.AI
                 </h1>
                 <p className="text-xl text-white/70 leading-relaxed">
-                  Transform your ideas into stunning 3D figurines with the power of AI. 
-                  Join thousands of creators bringing their imagination to life.
+                  Transform your wildest ideas into stunning 3D figurines with the magic of AI. 
+                  Join our amazing community of creators and start bringing your imagination to life today!
                 </p>
               </div>
 
-              {/* Enhanced security features */}
+              {/* Exciting features */}
               <div className="space-y-4">
                 <div className="flex items-center gap-3 text-white/80">
                   <div className="w-10 h-10 rounded-full bg-figuro-accent/20 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-figuro-accent" />
+                    <Sparkles className="w-5 h-5 text-figuro-accent" />
                   </div>
                   <div className="flex-1">
-                    <span>Enterprise-grade security protection</span>
+                    <span>Instant AI-powered 3D creation magic</span>
                     <Badge variant="secondary" className="ml-2">
-                      Enhanced
+                      ✨ Amazing
                     </Badge>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-white/80">
                   <div className="w-10 h-10 rounded-full bg-figuro-accent/20 flex items-center justify-center">
-                    <Lock className="w-5 h-5 text-figuro-accent" />
+                    <Zap className="w-5 h-5 text-figuro-accent" />
                   </div>
-                  <span>Advanced password security validation</span>
+                  <span>Lightning-fast results that will blow your mind</span>
                 </div>
                 <div className="flex items-center gap-3 text-white/80">
                   <div className="w-10 h-10 rounded-full bg-figuro-accent/20 flex items-center justify-center">
-                    <Activity className="w-5 h-5 text-figuro-accent" />
+                    <Users className="w-5 h-5 text-figuro-accent" />
                   </div>
-                  <span>Real-time security monitoring & alerts</span>
+                  <span>Vibrant community of passionate creators</span>
                 </div>
                 <div className="flex items-center gap-3 text-white/80">
                   <div className="w-10 h-10 rounded-full bg-figuro-accent/20 flex items-center justify-center">
-                    <Mail className="w-5 h-5 text-figuro-accent" />
+                    <Rocket className="w-5 h-5 text-figuro-accent" />
                   </div>
-                  <span>Secure email verification system</span>
+                  <span>Turn ideas into reality in minutes, not hours</span>
                 </div>
               </div>
 
-              {/* Enhanced email verification notice */}
+              {/* Inspiring call-to-action */}
               <Alert className="bg-figuro-accent/10 border-figuro-accent/30 backdrop-blur-sm">
-                <Info className="h-4 w-4 text-figuro-accent" />
+                <Heart className="h-4 w-4 text-figuro-accent" />
                 <AlertDescription className="text-white/90">
-                  <strong>Enhanced Security:</strong> After signing up, please check your email inbox (and spam folder) 
-                  for the verification link. Our advanced security system monitors all authentication activities 
-                  and protects your account from unauthorized access.
+                  <strong>Ready to create something incredible?</strong> Join thousands of creators who are already 
+                  bringing their dreams to life with Figuro.AI. Your next masterpiece is just a few clicks away!
                 </AlertDescription>
               </Alert>
 
-              {/* Security features list */}
+              {/* Success stories showcase */}
               <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-figuro-accent" />
-                  Security Features
+                  <Sparkles className="w-5 h-5 text-figuro-accent" />
+                  What You Can Create
                 </h3>
                 <ul className="space-y-2 text-sm text-white/80">
-                  <li>• Rate limiting protection against brute force attacks</li>
-                  <li>• Comprehensive audit logging of all activities</li>
-                  <li>• Strong password requirements and validation</li>
-                  <li>• IP-based security monitoring</li>
-                  <li>• Automated suspicious activity detection</li>
-                  <li>• Secure session management</li>
+                  <li>• Fantasy characters and mythical creatures</li>
+                  <li>• Custom action figures and collectibles</li>
+                  <li>• Architectural models and prototypes</li>
+                  <li>• Personalized gifts and decorations</li>
+                  <li>• Game assets and miniatures</li>
+                  <li>• Educational models and teaching aids</li>
                 </ul>
               </div>
             </div>

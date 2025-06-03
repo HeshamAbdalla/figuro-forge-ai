@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -12,11 +11,12 @@ interface EnhancedAuthContextType {
   session: Session | null;
   profile: any | null;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any, data: any }>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<{ error: any }>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
   refreshAuth: () => Promise<void>;
   securityScore: number;
 }
@@ -200,9 +200,9 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     };
   }, []);
 
-  // Streamlined sign in
-  const signIn = async (email: string, password: string) => {
-    console.log("🚀 [ENHANCED-AUTH] Starting streamlined sign-in...");
+  // Enhanced sign in with "Remember Me" support
+  const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
+    console.log("🚀 [ENHANCED-AUTH] Starting sign-in...");
     
     try {
       // Quick validation
@@ -228,8 +228,26 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       console.log("🔐 [ENHANCED-AUTH] Attempting sign-in...");
       
+      // Configure session persistence based on "Remember Me"
+      const authOptions = {
+        email,
+        password,
+        options: {
+          data: {
+            remember_me: rememberMe
+          }
+        }
+      };
+      
+      // Set session persistence in localStorage
+      if (rememberMe) {
+        localStorage.setItem('figuro_remember_me', 'true');
+      } else {
+        localStorage.removeItem('figuro_remember_me');
+      }
+      
       // Perform sign-in
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword(authOptions);
       
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
@@ -238,7 +256,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         // Log failure (non-blocking)
         securityManager.logSecurityEvent({
           event_type: 'signin_failed',
-          event_details: { email, error: error.message },
+          event_details: { email, error: error.message, remember_me: rememberMe },
           success: false
         });
         
@@ -253,14 +271,15 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       // Log success (non-blocking)
       securityManager.logSecurityEvent({
         event_type: 'signin_success',
-        event_details: { email, user_id: data.user?.id },
+        event_details: { email, user_id: data.user?.id, remember_me: rememberMe },
         success: true
       });
       
       console.log("✅ [ENHANCED-AUTH] Sign-in successful");
       
       toast({
-        title: "Signed in successfully",
+        title: "Welcome back! 🎉",
+        description: "You've been signed in successfully.",
       });
       
       return { error: null };
@@ -374,6 +393,57 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         variant: "destructive",
       });
       return { error: friendlyError, data: null };
+    }
+  };
+
+  // Password reset functionality
+  const resetPassword = async (email: string) => {
+    try {
+      if (!securityManager.validateEmail(email)) {
+        throw new Error('Invalid email format');
+      }
+
+      console.log("🔄 [ENHANCED-AUTH] Sending password reset email...");
+      
+      const origin = window.location.origin || 'http://localhost:5173';
+      const redirectTo = `${origin}/auth`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectTo
+      });
+      
+      if (error) {
+        const friendlyError = getAuthErrorMessage(error);
+        
+        securityManager.logSecurityEvent({
+          event_type: 'password_reset_failed',
+          event_details: { email, error: error.message },
+          success: false
+        });
+        
+        return { error: friendlyError };
+      }
+      
+      securityManager.logSecurityEvent({
+        event_type: 'password_reset_success',
+        event_details: { email },
+        success: true
+      });
+      
+      console.log("✅ [ENHANCED-AUTH] Password reset email sent");
+      
+      return { error: null };
+    } catch (error: any) {
+      console.error("❌ [ENHANCED-AUTH] Password reset exception:", error);
+      const friendlyError = getAuthErrorMessage(error);
+      
+      securityManager.logSecurityEvent({
+        event_type: 'password_reset_exception',
+        event_details: { email, error: error.message },
+        success: false
+      });
+      
+      return { error: friendlyError };
     }
   };
 
@@ -512,6 +582,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     signOut,
     signInWithGoogle,
     resendVerificationEmail,
+    resetPassword,
     refreshAuth,
     securityScore,
   };
