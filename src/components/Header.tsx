@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
@@ -62,7 +63,7 @@ const Header = () => {
               whileHover={{ rotate: 5 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
             >
-              <span className="text-figuro-accent font-bold text-2xl">Figuro</span>
+              <span className="text-figuro-accent font-bold text-2xl">Figuros</span>
               <span className="text-white font-bold text-2xl">.AI</span>
             </motion.div>
           </Link>
