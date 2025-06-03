@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,10 +12,13 @@ interface PlanLimits {
 
 interface SubscriptionData {
   plan_type: string;
-  plan: string; // Add plan alias for plan_type
+  plan: string;
   generation_count_today: number;
   converted_3d_this_month: number;
   generation_count_this_month: number;
+  credits_remaining: number;
+  bonus_credits: number;
+  total_credits: number;
   status: string;
   valid_until?: string;
   is_active?: boolean;
@@ -71,6 +75,8 @@ export const useSubscription = () => {
             generation_count_today: 0,
             converted_3d_this_month: 0,
             generation_count_this_month: 0,
+            credits_remaining: 3,
+            bonus_credits: 0,
             status: 'active'
           })
           .select()
@@ -83,10 +89,14 @@ export const useSubscription = () => {
         subscriptionData = newSub;
       }
 
+      // Calculate total credits including bonus credits
+      const totalCredits = (subscriptionData.credits_remaining || 0) + (subscriptionData.bonus_credits || 0);
+
       // Add plan alias and other missing properties
       const enhancedSubscriptionData: SubscriptionData = {
         ...subscriptionData,
-        plan: subscriptionData.plan_type, // Add plan alias
+        plan: subscriptionData.plan_type,
+        total_credits: totalCredits,
         is_active: subscriptionData.status === 'active',
       };
 
@@ -126,29 +136,21 @@ export const useSubscription = () => {
     
     if (planLimits.is_unlimited) return true;
 
-    if (actionType === 'image_generation') {
-      return subscription.generation_count_today < planLimits.image_generations_limit;
-    } else if (actionType === 'model_conversion') {
-      return subscription.converted_3d_this_month < planLimits.model_conversions_limit;
-    } else if (actionType === 'model_remesh') {
-      // Remeshing uses the same limit as model conversions for now
-      return subscription.converted_3d_this_month < planLimits.model_conversions_limit;
-    }
-
-    return false;
+    // Check if user has any credits available (regular + bonus)
+    const totalCredits = (subscription.credits_remaining || 0) + (subscription.bonus_credits || 0);
+    return totalCredits > 0;
   };
 
   const consumeAction = async (actionType: 'image_generation' | 'model_conversion' | 'model_remesh'): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      // Map remesh action to model_conversion for the database function
-      const dbActionType = actionType === 'model_remesh' ? 'model_conversion' : actionType;
-      
-      const { data, error } = await supabase.rpc('consume_feature_usage', {
-        feature_type: dbActionType,
-        user_id_param: user.id,
-        amount: 1
+      // Use the enhanced consume usage function
+      const { data, error } = await supabase.functions.invoke('enhanced-consume-usage', {
+        body: {
+          feature_type: actionType === 'model_remesh' ? 'model_conversion' : actionType,
+          amount: 1
+        }
       });
 
       if (error) {
@@ -156,9 +158,14 @@ export const useSubscription = () => {
         return false;
       }
 
+      if (!data.success) {
+        console.error('Action consumption failed:', data.error);
+        return false;
+      }
+
       // Refresh subscription data
       await fetchSubscriptionData();
-      return data;
+      return true;
     } catch (error) {
       console.error('Error in consumeAction:', error);
       return false;
@@ -172,8 +179,8 @@ export const useSubscription = () => {
       return {
         recommendedPlan: 'Pro',
         features: [
-          'Unlimited image generations',
-          'More 3D conversions',
+          'More monthly credits',
+          'Higher quality outputs',
           'Model remeshing capabilities',
           'Priority support'
         ]
@@ -183,24 +190,22 @@ export const useSubscription = () => {
     return null;
   };
 
-  const getRemainingUsage = (actionType: 'image_generation' | 'model_conversion' | 'model_remesh'): { used: number; limit: number; remaining: number } | null => {
+  const getRemainingUsage = (actionType: 'image_generation' | 'model_conversion' | 'model_remesh'): { used: number; limit: number; remaining: number; bonus: number } | null => {
     if (!subscription || !planLimits) return null;
 
     if (planLimits.is_unlimited) {
-      return { used: 0, limit: -1, remaining: -1 }; // -1 indicates unlimited
+      return { used: 0, limit: -1, remaining: -1, bonus: subscription.bonus_credits || 0 }; // -1 indicates unlimited
     }
 
-    if (actionType === 'image_generation') {
-      const used = subscription.generation_count_today;
-      const limit = planLimits.image_generations_limit;
-      return { used, limit, remaining: Math.max(0, limit - used) };
-    } else if (actionType === 'model_conversion' || actionType === 'model_remesh') {
-      const used = subscription.converted_3d_this_month;
-      const limit = planLimits.model_conversions_limit;
-      return { used, limit, remaining: Math.max(0, limit - used) };
-    }
-
-    return null;
+    const totalCredits = (subscription.credits_remaining || 0) + (subscription.bonus_credits || 0);
+    
+    // For credit-based system, we track total available credits
+    return {
+      used: 0, // Not applicable in credit system
+      limit: subscription.credits_remaining || 0,
+      remaining: totalCredits,
+      bonus: subscription.bonus_credits || 0
+    };
   };
 
   const checkSubscription = async () => {

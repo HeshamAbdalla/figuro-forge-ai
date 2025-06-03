@@ -67,39 +67,132 @@ serve(async (req) => {
       return { planType, planConfig: PLANS[planType] || PLANS.free };
     };
 
-    // Helper function to handle plan switching logic
-    const handlePlanSwitch = async (userId: string, newPlan: string, oldPlan: string, stripeData: any) => {
+    // Enhanced plan switching logic with proportional credit preservation
+    const handleEnhancedPlanSwitch = async (userId: string, newPlan: string, oldPlan: string, stripeData: any) => {
       const newPlanConfig = PLANS[newPlan];
       const oldPlanConfig = PLANS[oldPlan];
       
-      logStep("Processing plan switch", { userId, oldPlan, newPlan });
+      logStep("Processing enhanced plan switch", { userId, oldPlan, newPlan });
       
       // Get current subscription data
       const { data: currentSub } = await supabaseAdmin
         .from("subscriptions")
-        .select("credits_remaining, generation_count_today, converted_3d_this_month")
+        .select("credits_remaining, generation_count_today, converted_3d_this_month, generation_count_this_month, monthly_reset_date, bonus_credits")
         .eq("user_id", userId)
         .single();
       
-      let newCredits = newPlanConfig.monthlyCredits;
-      let resetUsage = false;
+      if (!currentSub) {
+        logStep("No current subscription found, creating new one");
+        const { error } = await supabaseAdmin
+          .from("subscriptions")
+          .insert({
+            user_id: userId,
+            plan_type: newPlan,
+            stripe_price_id: stripeData.priceId,
+            stripe_subscription_id: stripeData.subscriptionId,
+            credits_remaining: newPlanConfig.monthlyCredits,
+            valid_until: stripeData.validUntil,
+            expires_at: stripeData.validUntil,
+            status: 'active',
+            bonus_credits: 0,
+            generation_count_today: 0,
+            converted_3d_this_month: 0,
+            generation_count_this_month: 0,
+            daily_reset_date: new Date().toISOString().split('T')[0],
+            monthly_reset_date: new Date().toISOString().split('T')[0].substring(0, 7) + '-01',
+            updated_at: new Date().toISOString()
+          });
+        
+        if (error) {
+          logStep("Error creating new subscription", { error: error.message });
+          throw error;
+        }
+        return;
+      }
+
+      // Calculate days remaining in current billing cycle
+      const now = new Date();
+      const monthlyResetDate = new Date(currentSub.monthly_reset_date);
+      const nextResetDate = new Date(monthlyResetDate);
+      nextResetDate.setMonth(nextResetDate.getMonth() + 1);
       
-      // Plan switching logic
+      const totalDaysInCycle = Math.ceil((nextResetDate.getTime() - monthlyResetDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysRemaining = Math.ceil((nextResetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const proportionRemaining = Math.max(0, Math.min(1, daysRemaining / totalDaysInCycle));
+      
+      logStep("Billing cycle calculation", { 
+        totalDaysInCycle, 
+        daysRemaining, 
+        proportionRemaining,
+        monthlyResetDate: monthlyResetDate.toISOString(),
+        nextResetDate: nextResetDate.toISOString()
+      });
+
+      let newCredits = newPlanConfig.monthlyCredits;
+      let bonusCredits = currentSub.bonus_credits || 0;
+      let resetUsage = false;
+
+      // Enhanced plan switching logic
       if (newPlanConfig.order > oldPlanConfig.order) {
-        // Upgrade: preserve existing credits and add new plan credits
-        newCredits = Math.max(
-          currentSub?.credits_remaining || 0,
-          newPlanConfig.monthlyCredits
-        );
+        // UPGRADE: Calculate proportional credits for remaining period
+        const remainingOldPlanCredits = Math.floor(oldPlanConfig.monthlyCredits * proportionRemaining);
+        const remainingNewPlanCredits = Math.floor(newPlanConfig.monthlyCredits * proportionRemaining);
+        
+        // Give the higher of current remaining credits or proportional new plan credits
+        const currentRemaining = currentSub.credits_remaining || 0;
+        const creditDifference = remainingNewPlanCredits - remainingOldPlanCredits;
+        
+        if (creditDifference > 0) {
+          // Add the difference as bonus credits to preserve the upgrade benefit
+          bonusCredits += creditDifference;
+          newCredits = Math.max(currentRemaining, remainingNewPlanCredits);
+        } else {
+          // Keep existing credits if they're higher
+          newCredits = Math.max(currentRemaining, remainingNewPlanCredits);
+        }
+        
         resetUsage = true; // Reset usage limits on upgrade
-        logStep("Plan upgrade detected", { preservedCredits: newCredits });
+        logStep("Plan upgrade processed", { 
+          currentRemaining,
+          remainingOldPlanCredits,
+          remainingNewPlanCredits,
+          creditDifference,
+          newCredits,
+          bonusCredits
+        });
+        
       } else if (newPlanConfig.order < oldPlanConfig.order) {
-        // Downgrade: cap credits to new plan limits
-        newCredits = Math.min(
-          currentSub?.credits_remaining || 0,
-          newPlanConfig.monthlyCredits
-        );
-        logStep("Plan downgrade detected", { cappedCredits: newCredits });
+        // DOWNGRADE: Preserve proportional credits but cap to new plan limits
+        const remainingOldPlanCredits = Math.floor(oldPlanConfig.monthlyCredits * proportionRemaining);
+        const remainingNewPlanCredits = Math.floor(newPlanConfig.monthlyCredits * proportionRemaining);
+        const currentRemaining = currentSub.credits_remaining || 0;
+        
+        // Calculate what user should have with new plan for remaining period
+        const proportionalNewPlanCredits = Math.min(currentRemaining, remainingNewPlanCredits);
+        
+        // If they have more credits than new plan allows, preserve excess as bonus for this cycle only
+        if (currentRemaining > remainingNewPlanCredits) {
+          const excessCredits = currentRemaining - remainingNewPlanCredits;
+          bonusCredits += excessCredits;
+          newCredits = remainingNewPlanCredits;
+        } else {
+          newCredits = currentRemaining;
+        }
+        
+        logStep("Plan downgrade processed", { 
+          currentRemaining,
+          remainingOldPlanCredits,
+          remainingNewPlanCredits,
+          proportionalNewPlanCredits,
+          excessCredits: currentRemaining - remainingNewPlanCredits,
+          newCredits,
+          bonusCredits
+        });
+        
+      } else {
+        // SAME PLAN: Just update metadata
+        newCredits = currentSub.credits_remaining || newPlanConfig.monthlyCredits;
+        logStep("Same plan renewal", { preservedCredits: newCredits });
       }
       
       // Update subscription with new plan data
@@ -108,6 +201,7 @@ serve(async (req) => {
         stripe_price_id: stripeData.priceId,
         stripe_subscription_id: stripeData.subscriptionId,
         credits_remaining: newCredits,
+        bonus_credits: bonusCredits,
         valid_until: stripeData.validUntil,
         expires_at: stripeData.validUntil,
         status: 'active',
@@ -115,6 +209,7 @@ serve(async (req) => {
         ...(resetUsage && {
           generation_count_today: 0,
           converted_3d_this_month: 0,
+          generation_count_this_month: 0,
           daily_reset_date: new Date().toISOString().split('T')[0],
           monthly_reset_date: new Date().toISOString().split('T')[0].substring(0, 7) + '-01'
         })
@@ -126,11 +221,16 @@ serve(async (req) => {
         .eq("user_id", userId);
       
       if (error) {
-        logStep("Error updating subscription for plan switch", { error: error.message });
+        logStep("Error updating subscription for enhanced plan switch", { error: error.message });
         throw error;
       }
       
-      logStep("Plan switch completed successfully", { newPlan, newCredits });
+      logStep("Enhanced plan switch completed successfully", { 
+        newPlan, 
+        newCredits, 
+        bonusCredits,
+        totalAvailableCredits: newCredits + bonusCredits
+      });
     };
     
     switch (event.type) {
@@ -175,8 +275,10 @@ serve(async (req) => {
             renewed_at: new Date().toISOString(),
             status: 'active',
             credits_remaining: planConfig.monthlyCredits,
+            bonus_credits: 0,
             generation_count_today: 0,
             converted_3d_this_month: 0,
+            generation_count_this_month: 0,
             daily_reset_date: new Date().toISOString().split('T')[0],
             monthly_reset_date: new Date().toISOString().split('T')[0].substring(0, 7) + '-01',
             updated_at: new Date().toISOString()
@@ -217,9 +319,9 @@ serve(async (req) => {
         const isActive = subscription.status === 'active' || subscription.status === 'trialing';
         const validUntil = isActive ? new Date(subscription.current_period_end * 1000).toISOString() : null;
         
-        // Handle plan switching if plan changed
+        // Handle enhanced plan switching if plan changed
         if (newPlan !== oldPlan && isActive) {
-          await handlePlanSwitch(currentSub.user_id, newPlan, oldPlan, {
+          await handleEnhancedPlanSwitch(currentSub.user_id, newPlan, oldPlan, {
             priceId,
             subscriptionId: subscription.id,
             validUntil
@@ -287,7 +389,7 @@ serve(async (req) => {
             const stripeSubscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
             const expiresAt = new Date(stripeSubscription.current_period_end * 1000).toISOString();
             
-            // Refresh credits and reset usage for new billing cycle
+            // Refresh credits and reset usage for new billing cycle (clear bonus credits on renewal)
             const { error: updateError } = await supabaseAdmin
               .from("subscriptions")
               .update({
@@ -295,8 +397,10 @@ serve(async (req) => {
                 expires_at: expiresAt,
                 valid_until: expiresAt,
                 credits_remaining: planConfig.monthlyCredits,
+                bonus_credits: 0, // Clear bonus credits on renewal
                 generation_count_today: 0,
                 converted_3d_this_month: 0,
+                generation_count_this_month: 0,
                 daily_reset_date: new Date().toISOString().split('T')[0],
                 monthly_reset_date: new Date().toISOString().split('T')[0].substring(0, 7) + '-01',
                 status: 'active',
@@ -312,6 +416,7 @@ serve(async (req) => {
             logStep("Subscription renewed successfully", {
               userId: subscription.user_id,
               creditsRefreshed: planConfig.monthlyCredits,
+              bonusCreditsCleared: true,
               expiresAt
             });
           }
@@ -326,7 +431,6 @@ serve(async (req) => {
           customerId: invoice.customer 
         });
         
-        // Find user by customer ID and mark subscription as past due
         const { data: subscription, error: subError } = await supabaseAdmin
           .from("subscriptions")
           .select("user_id")
@@ -341,7 +445,6 @@ serve(async (req) => {
           return new Response("Subscription not found", { status: 404 });
         }
         
-        // Update subscription status to past_due
         const { error: updateError } = await supabaseAdmin
           .from("subscriptions")
           .update({
@@ -363,10 +466,8 @@ serve(async (req) => {
         const subscription = event.data.object;
         logStep("Subscription deleted", { subscriptionId: subscription.id });
         
-        // Get customer ID
         const customerId = subscription.customer;
         
-        // Find user by customer ID
         const { data: userData, error: userError } = await supabaseAdmin
           .from("subscriptions")
           .select("user_id")
@@ -378,7 +479,6 @@ serve(async (req) => {
           return new Response("User not found", { status: 404 });
         }
         
-        // Downgrade to free plan
         const { error: updateError } = await supabaseAdmin
           .from("subscriptions")
           .update({
@@ -388,7 +488,8 @@ serve(async (req) => {
             expires_at: null,
             commercial_license: false,
             additional_conversions: 0,
-            credits_remaining: 3, // Free plan credits
+            credits_remaining: 3,
+            bonus_credits: 0,
             status: 'canceled',
             updated_at: new Date().toISOString()
           })
