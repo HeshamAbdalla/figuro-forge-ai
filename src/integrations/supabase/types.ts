@@ -475,6 +475,10 @@ export type Database = {
         Args: { stat_id: string; inc_amount?: number }
         Returns: number
       }
+      is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
       log_security_event: {
         Args: {
           p_user_id: string

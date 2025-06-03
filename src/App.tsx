@@ -25,6 +25,10 @@ import UnderstandingArtStyles from "@/pages/docs/UnderstandingArtStyles";
 import PromptEngineeringTips from "@/pages/docs/PromptEngineeringTips";
 import CombiningMultipleStyles from "@/pages/docs/CombiningMultipleStyles";
 import PreparingModelsForPrinting from "@/pages/docs/PreparingModelsForPrinting";
+import About from "@/pages/About";
+import Careers from "@/pages/Careers";
+import Contact from "@/pages/Contact";
+import Terms from "@/pages/Terms";
 import NotFound from "@/pages/NotFound";
 import Studio from "@/pages/Studio";
 import Profile from "@/pages/Profile";
@@ -73,6 +77,10 @@ function App() {
                   <Route path="/docs/prompt-engineering-tips" element={<PromptEngineeringTips />} />
                   <Route path="/docs/combining-multiple-styles" element={<CombiningMultipleStyles />} />
                   <Route path="/docs/preparing-models-for-printing" element={<PreparingModelsForPrinting />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/careers" element={<Careers />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/terms" element={<Terms />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/complete-profile" element={<CompleteProfile />} />
                   <Route path="/studio" element={<Studio />} />

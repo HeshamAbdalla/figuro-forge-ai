@@ -12,7 +12,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <span className="text-figuro-accent font-bold text-xl">Figuro</span>
+              <span className="text-figuro-accent font-bold text-xl">Figuros</span>
               <span className="text-white font-bold text-xl">.AI</span>
             </div>
             <p className="text-white/70 text-sm leading-relaxed">
@@ -46,25 +46,25 @@ const Footer = () => {
               <li><a href="/docs" className="text-white/70 text-sm hover:text-white transition-colors">Documentation</a></li>
               <li><a href="#" className="text-white/70 text-sm hover:text-white transition-colors">Tutorials</a></li>
               <li><a href="/community" className="text-white/70 text-sm hover:text-white transition-colors">Community</a></li>
-              <li><a href="#" className="text-white/70 text-sm hover:text-white transition-colors">Support</a></li>
+              <li><a href="/contact" className="text-white/70 text-sm hover:text-white transition-colors">Support</a></li>
             </ul>
           </div>
           
           <div className="space-y-4">
             <h4 className="font-medium text-white">Company</h4>
             <ul className="space-y-2">
-              <li><a href="#" className="text-white/70 text-sm hover:text-white transition-colors">About</a></li>
-              <li><a href="#" className="text-white/70 text-sm hover:text-white transition-colors">Careers</a></li>
-              <li><a href="#" className="text-white/70 text-sm hover:text-white transition-colors">Contact</a></li>
+              <li><a href="/about" className="text-white/70 text-sm hover:text-white transition-colors">About</a></li>
+              <li><a href="/careers" className="text-white/70 text-sm hover:text-white transition-colors">Careers</a></li>
+              <li><a href="/contact" className="text-white/70 text-sm hover:text-white transition-colors">Contact</a></li>
               <li><a href="#" className="text-white/70 text-sm hover:text-white transition-colors">Privacy</a></li>
-              <li><a href="#" className="text-white/70 text-sm hover:text-white transition-colors">Terms</a></li>
+              <li><a href="/terms" className="text-white/70 text-sm hover:text-white transition-colors">Terms</a></li>
             </ul>
           </div>
         </div>
         
         <div className="border-t border-white/10 mt-10 pt-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-white/50 text-sm">© 2025 Figuro.AI. All rights reserved.</p>
+            <p className="text-white/50 text-sm">© 2025 Figuros.AI. All rights reserved.</p>
             
             <div className="flex items-center gap-4">
               <a 
