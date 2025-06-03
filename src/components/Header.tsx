@@ -54,7 +54,7 @@ const Header = () => {
     >
       <div className="container mx-auto flex items-center justify-between py-4 px-4">
         <div className="flex items-center gap-2">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to={user ? "/studio" : "/"} className="flex items-center gap-2">
             <div className="hidden sm:block">
               <FiguroMascot size={40} />
             </div>
