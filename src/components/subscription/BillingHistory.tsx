@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate } from "@/lib/utils";
 
@@ -17,7 +17,7 @@ interface InvoiceItem {
 }
 
 export const BillingHistory = () => {
-  const { user } = useAuth();
+  const { user } = useEnhancedAuth();
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
