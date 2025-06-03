@@ -1,8 +1,9 @@
+
 import { useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Sparkles, Settings, Loader2 } from "lucide-react";
+import { Sparkles, Settings, Loader2, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface TextTo3DFormProps {
@@ -17,6 +18,7 @@ export interface TextTo3DFormRef {
 
 const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerate, onOpenConfigModal, isGenerating }, ref) => {
   const [prompt, setPrompt] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   // Create internal ref for the textarea
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -38,19 +40,81 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
     }
   }));
 
+  // Validate input in real-time
+  const validateInput = (input: string): string | null => {
+    if (!input || input.trim().length === 0) {
+      return null; // Don't show error for empty input until form submission
+    }
+    
+    if (input.length > 1000) {
+      return 'Prompt is too long. Maximum 1000 characters allowed.';
+    }
+    
+    return null;
+  };
+
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setPrompt(newValue);
+    
+    // Clear validation error when user starts typing
+    if (validationError) {
+      setValidationError(null);
+    }
+    
+    // Real-time validation for length
+    const error = validateInput(newValue);
+    setValidationError(error);
+  };
+
   const handleQuickGenerate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (prompt.trim() && !isGenerating) {
+    
+    const trimmedPrompt = prompt.trim();
+    
+    // Validate before submission
+    if (!trimmedPrompt) {
+      setValidationError('Please enter a description for your 3D model');
+      textareaRef.current?.focus();
+      return;
+    }
+    
+    const error = validateInput(trimmedPrompt);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
+    
+    if (!isGenerating) {
       // Quick generate with default settings
-      onGenerate(prompt.trim(), "realistic", "");
+      onGenerate(trimmedPrompt, "realistic", "");
     }
   };
 
   const handleAdvancedGenerate = () => {
-    if (prompt.trim() && !isGenerating) {
-      onOpenConfigModal(prompt.trim());
+    const trimmedPrompt = prompt.trim();
+    
+    // Validate before opening modal
+    if (!trimmedPrompt) {
+      setValidationError('Please enter a description for your 3D model');
+      textareaRef.current?.focus();
+      return;
+    }
+    
+    const error = validateInput(trimmedPrompt);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
+    
+    if (!isGenerating) {
+      onOpenConfigModal(trimmedPrompt);
     }
   };
+
+  const characterCount = prompt.length;
+  const isNearLimit = characterCount > 800;
+  const isAtLimit = characterCount >= 1000;
 
   return (
     <Card className="glass-panel border-white/20 backdrop-blur-sm p-6">
@@ -67,20 +131,41 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
         <form onSubmit={handleQuickGenerate} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm text-white/70">Describe your 3D model</label>
-            <Textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="A cute cartoon dragon sitting on a rock..."
-              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[100px] resize-none"
-              disabled={isGenerating}
-            />
+            <div className="relative">
+              <Textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={handlePromptChange}
+                placeholder="A cute cartoon dragon sitting on a rock..."
+                className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[100px] resize-none pr-16 ${
+                  validationError ? 'border-red-400 focus:border-red-400' : ''
+                } ${isAtLimit ? 'border-red-500' : isNearLimit ? 'border-yellow-400' : ''}`}
+                disabled={isGenerating}
+                maxLength={1000}
+              />
+              <div className={`absolute bottom-2 right-2 text-xs ${
+                isAtLimit ? 'text-red-400' : isNearLimit ? 'text-yellow-400' : 'text-white/50'
+              }`}>
+                {characterCount}/1000
+              </div>
+            </div>
+            
+            {validationError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 text-red-400 text-sm"
+              >
+                <AlertCircle size={14} />
+                {validationError}
+              </motion.div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Button
               type="submit"
-              disabled={!prompt.trim() || isGenerating}
+              disabled={!prompt.trim() || isGenerating || !!validationError}
               className="bg-figuro-accent hover:bg-figuro-accent-hover disabled:opacity-50"
             >
               {isGenerating ? (
@@ -99,7 +184,7 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
             <Button
               type="button"
               onClick={handleAdvancedGenerate}
-              disabled={!prompt.trim() || isGenerating}
+              disabled={!prompt.trim() || isGenerating || !!validationError}
               variant="outline"
               className="border-white/20 text-white hover:bg-white/10 disabled:opacity-50"
             >
@@ -107,6 +192,16 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
               Advanced Options
             </Button>
           </div>
+          
+          {prompt.trim() && !validationError && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-xs text-white/50 text-center"
+            >
+              Generation typically takes 2-5 minutes
+            </motion.p>
+          )}
         </form>
       </motion.div>
     </Card>

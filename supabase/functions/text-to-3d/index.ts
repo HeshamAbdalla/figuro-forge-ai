@@ -55,6 +55,38 @@ serve(async (req) => {
 
     console.log('✅ [TEXT-TO-3D] User authenticated:', user.id);
 
+    // Enhanced request body parsing with comprehensive error handling
+    let requestBody;
+    try {
+      const rawBody = await req.text();
+      console.log('📝 [TEXT-TO-3D] Raw request body length:', rawBody.length);
+      
+      if (!rawBody || rawBody.trim() === '') {
+        throw new Error('Request body is empty');
+      }
+      
+      requestBody = JSON.parse(rawBody);
+      console.log('📊 [TEXT-TO-3D] Parsed request body keys:', Object.keys(requestBody));
+      
+    } catch (parseError) {
+      console.error('❌ [TEXT-TO-3D] JSON parsing error:', parseError);
+      
+      if (parseError instanceof SyntaxError) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Invalid JSON format in request body. Please check your request data.' 
+          }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
+      throw parseError;
+    }
+
     // Enhanced usage consumption with better error handling
     console.log('🔍 [TEXT-TO-3D] Checking user limits using enhanced consumption...');
     
@@ -103,98 +135,242 @@ serve(async (req) => {
       
       // Fallback error handling - allow the request to proceed for now but log the issue
       console.log('⚠️ [TEXT-TO-3D] Proceeding without usage check due to authentication issues');
-      
-      // In production, you might want to be more strict here
-      // For now, we'll allow the request to continue to avoid blocking users
     }
 
-    // Parse request body - handle both old format and new config format
-    const requestBody = await req.json();
-    
+    // Comprehensive request validation
     let prompt, artStyle, negativePrompt, mode, targetPolycount, topologyType, texture, seedValue;
     
-    if (requestBody.prompt && typeof requestBody.prompt === 'string') {
-      // New config format
-      ({
-        prompt,
-        artStyle = 'realistic',
-        negativePrompt = '',
-        mode = 'preview',
-        targetPolycount,
-        topologyType,
-        texture,
-        seedValue
-      } = requestBody);
-    } else {
-      // Legacy format for backward compatibility
-      ({
-        prompt,
-        art_style: artStyle = 'realistic',
-        negative_prompt: negativePrompt = ''
-      } = requestBody);
-      mode = 'preview';
+    // Validate required fields
+    if (!requestBody.prompt || typeof requestBody.prompt !== 'string') {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Prompt is required and must be a string' 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    if (!prompt) {
-      throw new Error('Prompt is required');
+    // Extract and validate parameters
+    ({
+      prompt,
+      artStyle = 'realistic',
+      negativePrompt = '',
+      mode = 'preview',
+      targetPolycount,
+      topologyType,
+      texture,
+      seedValue
+    } = requestBody);
+
+    // Validate prompt length
+    if (prompt.trim().length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Prompt cannot be empty' 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    if (prompt.length > 1000) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Prompt is too long. Maximum 1000 characters allowed.' 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Validate art style
+    const validArtStyles = ['realistic', 'cartoon', 'low-poly', 'sculpture', 'pbr'];
+    if (artStyle && !validArtStyles.includes(artStyle)) {
+      artStyle = 'realistic'; // fallback to default
+      console.log('⚠️ [TEXT-TO-3D] Invalid art style, using default: realistic');
+    }
+
+    // Validate mode
+    const validModes = ['preview', 'refine'];
+    if (mode && !validModes.includes(mode)) {
+      mode = 'preview'; // fallback to default
+      console.log('⚠️ [TEXT-TO-3D] Invalid mode, using default: preview');
     }
 
     // Get Meshy API key
     const meshyApiKey = Deno.env.get('MESHY_API_KEY');
     if (!meshyApiKey) {
-      throw new Error('Meshy API key not configured');
+      console.error('❌ [TEXT-TO-3D] Meshy API key not configured');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Service temporarily unavailable. Please try again later.' 
+        }),
+        { 
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    console.log('🔧 [TEXT-TO-3D] Processing text to 3D request with prompt:', prompt);
+    console.log('🔧 [TEXT-TO-3D] Processing text to 3D request with prompt:', prompt.substring(0, 50) + '...');
     console.log('🔧 [TEXT-TO-3D] Configuration:', { artStyle, mode, targetPolycount, topologyType, texture });
 
     // Prepare Meshy API request body
     const meshyRequestBody: any = {
       mode: mode,
-      prompt: prompt,
+      prompt: prompt.trim(),
       art_style: artStyle,
-      negative_prompt: negativePrompt
+      negative_prompt: negativePrompt || ''
     };
 
-    // Add advanced options if provided
-    if (targetPolycount) {
+    // Add advanced options if provided and valid
+    if (targetPolycount && typeof targetPolycount === 'number' && targetPolycount > 0) {
       meshyRequestBody.target_polycount = targetPolycount;
     }
     
-    if (topologyType) {
+    if (topologyType && typeof topologyType === 'string') {
       meshyRequestBody.topology = topologyType;
     }
     
-    if (texture !== undefined) {
+    if (texture !== undefined && typeof texture === 'boolean') {
       meshyRequestBody.texture = texture;
     }
     
-    if (seedValue !== undefined) {
+    if (seedValue !== undefined && typeof seedValue === 'number') {
       meshyRequestBody.seed = seedValue;
     }
 
-    // Call Meshy Text to 3D API
+    // Call Meshy Text to 3D API with timeout and retry logic
     console.log('📤 [TEXT-TO-3D] Sending request to Meshy Text to 3D API...');
     
-    const meshyResponse = await fetch('https://api.meshy.ai/v2/text-to-3d', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${meshyApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(meshyRequestBody),
-    });
+    let meshyResponse;
+    try {
+      // Add timeout to the request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      meshyResponse = await fetch('https://api.meshy.ai/v2/text-to-3d', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${meshyApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(meshyRequestBody),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      
+    } catch (fetchError) {
+      console.error('❌ [TEXT-TO-3D] Network error calling Meshy API:', fetchError);
+      
+      if (fetchError.name === 'AbortError') {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Request timeout. The service is taking too long to respond. Please try again.' 
+          }),
+          { 
+            status: 408,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Network error. Please check your connection and try again.' 
+        }),
+        { 
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
     console.log('📊 [TEXT-TO-3D] Meshy API response status:', meshyResponse.status);
 
     if (!meshyResponse.ok) {
       const errorText = await meshyResponse.text();
       console.error('❌ [TEXT-TO-3D] Meshy API error:', errorText);
-      throw new Error(`Meshy API error: ${meshyResponse.status} - ${errorText}`);
+      
+      // Handle specific Meshy API errors
+      if (meshyResponse.status === 400) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Invalid request parameters. Please check your prompt and settings.' 
+          }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      } else if (meshyResponse.status === 401) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Service authentication error. Please try again later.' 
+          }),
+          { 
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      } else if (meshyResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Service is currently busy. Please try again in a few minutes.' 
+          }),
+          { 
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'External service error. Please try again later.' 
+        }),
+        { 
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     const meshyData = await meshyResponse.json();
     console.log('📊 [TEXT-TO-3D] Meshy API success response:', meshyData);
+
+    // Validate Meshy response
+    if (!meshyData.result) {
+      console.error('❌ [TEXT-TO-3D] Invalid Meshy response - no task ID');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid response from 3D generation service. Please try again.' 
+        }),
+        { 
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
     // Store task info in conversion_tasks table with proper error handling
     const taskId = meshyData.result;
@@ -240,12 +416,12 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ [TEXT-TO-3D] Error:', error);
+    console.error('❌ [TEXT-TO-3D] Unexpected error:', error);
     
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.'
       }),
       { 
         status: 500,

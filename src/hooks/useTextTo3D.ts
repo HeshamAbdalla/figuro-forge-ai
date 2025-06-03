@@ -64,6 +64,37 @@ export const useTextTo3D = () => {
     }
   };
 
+  // Enhanced input validation
+  const validateTextTo3DInput = (config: TextTo3DConfig): string | null => {
+    if (!config.prompt || typeof config.prompt !== 'string') {
+      return 'Prompt is required';
+    }
+    
+    if (config.prompt.trim().length === 0) {
+      return 'Prompt cannot be empty';
+    }
+    
+    if (config.prompt.length > 1000) {
+      return 'Prompt is too long. Maximum 1000 characters allowed.';
+    }
+    
+    const validArtStyles = ['realistic', 'cartoon', 'low-poly', 'sculpture', 'pbr'];
+    if (config.artStyle && !validArtStyles.includes(config.artStyle)) {
+      return 'Invalid art style selected';
+    }
+    
+    const validModes = ['preview', 'refine'];
+    if (config.mode && !validModes.includes(config.mode)) {
+      return 'Invalid generation mode selected';
+    }
+    
+    if (config.targetPolycount && (typeof config.targetPolycount !== 'number' || config.targetPolycount <= 0)) {
+      return 'Target polycount must be a positive number';
+    }
+    
+    return null;
+  };
+
   const checkStatus = useCallback(async (taskId: string): Promise<void> => {
     try {
       console.log('🔍 [TEXT-TO-3D] Checking status for task:', taskId);
@@ -202,6 +233,22 @@ export const useTextTo3D = () => {
   };
 
   const generateModelWithConfig = async (config: TextTo3DConfig): Promise<TextTo3DResult> => {
+    console.log("🔄 [TEXT-TO-3D] Starting text to 3D generation with config:", config);
+    
+    // Validate input before proceeding
+    const validationError = validateTextTo3DInput(config);
+    if (validationError) {
+      toast({
+        title: "Invalid Input",
+        description: validationError,
+        variant: "destructive",
+      });
+      return {
+        success: false,
+        error: validationError
+      };
+    }
+
     setIsGenerating(true);
     setCurrentTaskId(null);
     setProgress({
@@ -212,17 +259,29 @@ export const useTextTo3D = () => {
     });
 
     try {
-      console.log("🔄 [TEXT-TO-3D] Starting text to 3D generation with config:", config);
-      
       // Ensure we have a valid session before making the request
       const accessToken = await ensureValidSession();
+      
+      // Create a clean request body
+      const requestBody = {
+        prompt: config.prompt.trim(),
+        artStyle: config.artStyle || 'realistic',
+        negativePrompt: config.negativePrompt || '',
+        mode: config.mode || 'preview',
+        ...(config.targetPolycount && { targetPolycount: config.targetPolycount }),
+        ...(config.topologyType && { topologyType: config.topologyType }),
+        ...(config.texture !== undefined && { texture: config.texture }),
+        ...(config.seedValue !== undefined && { seedValue: config.seedValue })
+      };
+
+      console.log("📤 [TEXT-TO-3D] Sending request body:", requestBody);
       
       // Add timeout to the generation request
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
       const { data, error } = await supabase.functions.invoke('text-to-3d', {
-        body: config,
+        body: requestBody,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
@@ -239,18 +298,24 @@ export const useTextTo3D = () => {
           throw new Error('Authentication expired. Please refresh the page and try again.');
         } else if (error.message?.includes('Invalid user session')) {
           throw new Error('Invalid user session. Please sign out and sign in again.');
+        } else if (error.message?.includes('JSON')) {
+          throw new Error('Request format error. Please try again.');
         }
         
         throw new Error(error.message || 'Failed to generate 3D model');
       }
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to generate 3D model');
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to generate 3D model');
       }
 
       console.log("✅ [TEXT-TO-3D] Generation started successfully:", data);
       
       const taskId = data.taskId;
+      if (!taskId) {
+        throw new Error('No task ID received from generation service');
+      }
+      
       setCurrentTaskId(taskId);
       setProgress({
         status: 'processing',

@@ -1,7 +1,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, CheckCircle, AlertCircle, Download, CloudDownload, Eye, FolderOpen } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Download, CloudDownload, Eye, FolderOpen, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -15,6 +15,7 @@ interface TextTo3DProgressProps {
   downloadStatus?: string;
   onDownload?: () => void;
   onViewModel?: () => void;
+  onRetry?: () => void;
 }
 
 const getStatusIcon = (status: string, downloadStatus?: string) => {
@@ -64,11 +65,12 @@ const getStatusText = (status: string, downloadStatus?: string) => {
   }
   
   switch (status) {
+    case 'starting':
+      return 'Initializing 3D model generation...';
     case 'processing':
     case 'pending':
     case 'IN_PROGRESS':
     case 'PENDING':
-    case 'starting':
       return 'Creating your 3D model...';
     case 'completed':
     case 'succeeded':
@@ -83,6 +85,26 @@ const getStatusText = (status: string, downloadStatus?: string) => {
   }
 };
 
+const getProgressDescription = (progress: number, status: string) => {
+  if (status === 'starting') {
+    return 'Setting up generation parameters...';
+  }
+  
+  if (progress < 20) {
+    return 'Analyzing your prompt...';
+  } else if (progress < 40) {
+    return 'Generating base geometry...';
+  } else if (progress < 60) {
+    return 'Adding details and features...';
+  } else if (progress < 80) {
+    return 'Applying textures and materials...';
+  } else if (progress < 95) {
+    return 'Finalizing model structure...';
+  } else {
+    return 'Almost ready...';
+  }
+};
+
 const TextTo3DProgress = ({ 
   taskId, 
   status, 
@@ -91,7 +113,8 @@ const TextTo3DProgress = ({
   thumbnailUrl,
   downloadStatus,
   onDownload, 
-  onViewModel 
+  onViewModel,
+  onRetry
 }: TextTo3DProgressProps) => {
   const navigate = useNavigate();
   
@@ -101,9 +124,18 @@ const TextTo3DProgress = ({
   const isFailed = status === 'failed' || status === 'error' || status === 'FAILED';
   const isDownloading = downloadStatus === 'downloading';
   const isSavedToCollection = downloadStatus === 'completed';
+  const isProcessing = status === 'processing' || status === 'pending' || status === 'IN_PROGRESS' || status === 'PENDING' || status === 'starting';
 
   const handleViewCollection = () => {
     navigate('/profile/figurines');
+  };
+
+  const estimatedTimeRemaining = () => {
+    if (progress === 0) return '3-5 minutes';
+    if (progress < 30) return '2-4 minutes';
+    if (progress < 60) return '1-3 minutes';
+    if (progress < 80) return '1-2 minutes';
+    return 'Less than 1 minute';
   };
 
   return (
@@ -116,12 +148,17 @@ const TextTo3DProgress = ({
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             {getStatusIcon(status, downloadStatus)}
-            <div>
+            <div className="flex-1">
               <h3 className="text-lg font-semibold text-white">
                 {getStatusText(status, downloadStatus)}
               </h3>
               {taskId && (
                 <p className="text-sm text-white/70">Task ID: {taskId.substring(0, 8)}...</p>
+              )}
+              {isProcessing && (
+                <p className="text-xs text-white/50">
+                  Estimated time: {estimatedTimeRemaining()}
+                </p>
               )}
               {downloadStatus && downloadStatus !== 'pending' && (
                 <p className="text-xs text-white/50">
@@ -133,16 +170,19 @@ const TextTo3DProgress = ({
             </div>
           </div>
 
-          {!isFailed && (
+          {isProcessing && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-white/70">
-                <span>Progress</span>
+                <span>{getProgressDescription(progress, status)}</span>
                 <span>{Math.round(progress)}%</span>
               </div>
               <Progress 
                 value={isDownloading ? 95 : progress} 
                 className="bg-white/10" 
               />
+              <p className="text-xs text-center text-white/50">
+                Please keep this tab open while generation is in progress
+              </p>
             </div>
           )}
 
@@ -180,16 +220,38 @@ const TextTo3DProgress = ({
           )}
 
           {isFailed && (
-            <p className="text-sm text-red-400">
-              Something went wrong while creating your 3D model. Please try again.
-            </p>
+            <div className="space-y-3">
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <p className="text-sm text-red-400 mb-2">
+                  Something went wrong while creating your 3D model. This could be due to:
+                </p>
+                <ul className="text-xs text-red-300 space-y-1 ml-4">
+                  <li>• Network connectivity issues</li>
+                  <li>• Service temporarily unavailable</li>
+                  <li>• Invalid prompt or settings</li>
+                </ul>
+              </div>
+              
+              {onRetry && (
+                <Button
+                  onClick={onRetry}
+                  variant="outline"
+                  className="w-full border-white/20 hover:border-white/40 bg-white/5"
+                >
+                  <RefreshCw size={16} className="mr-2" />
+                  Try Again
+                </Button>
+              )}
+            </div>
           )}
 
           {downloadStatus === 'failed' && modelUrl && (
             <div className="space-y-3">
-              <p className="text-sm text-yellow-400">
-                Model created successfully but couldn't be saved to your collection. You can still view and download it, but the link may expire.
-              </p>
+              <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <p className="text-sm text-yellow-400">
+                  Model created successfully but couldn't be saved to your collection. You can still view and download it, but the link may expire.
+                </p>
+              </div>
               <div className="flex gap-2">
                 <Button
                   onClick={onViewModel}
