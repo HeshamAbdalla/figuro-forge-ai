@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useEnhancedAuth } from '@/components/auth/EnhancedAuthProvider';
 import { useSubscription } from '@/hooks/useSubscription';
 import { toast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 const CheckoutReturn = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { refreshAuth } = useAuth();
+  const { refreshAuth } = useEnhancedAuth();
   const { checkSubscription } = useSubscription();
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'cancelled'>('loading');
   const [paymentData, setPaymentData] = useState<any>(null);
