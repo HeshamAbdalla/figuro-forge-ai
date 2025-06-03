@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
@@ -9,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import { PlanSummary } from "@/components/subscription/PlanSummary";
-import { UsageTracker } from "@/components/subscription/UsageTracker";
 import { PlanOptions } from "@/components/subscription/PlanOptions";
 import { BillingHistory } from "@/components/subscription/BillingHistory";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -24,8 +24,7 @@ const Profile = () => {
   const { subscription, isLoading: subscriptionLoading, checkSubscription } = useSubscription();
   const [activeTab, setActiveTab] = useState("info");
   const [searchParams, setSearchParams] = useSearchParams();
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [hasProcessedSuccess, setHasProcessedSuccess] = useState(false);
+  const [hasProcessedPaymentSuccess, setHasProcessedPaymentSuccess] = useState(false);
   const navigate = useNavigate();
 
   // Enhanced upgrade modal functionality
@@ -40,55 +39,39 @@ const Profile = () => {
     celebrationPlan
   } = useEnhancedUpgradeModal();
   
-  // Handle success redirect from Stripe
+  // Handle payment success redirect from CheckoutReturn
   useEffect(() => {
-    const handleStripeSuccess = async () => {
-      const success = searchParams.get("success");
-      const plan = searchParams.get("plan");
-      const sessionId = searchParams.get("session_id");
+    const handlePaymentSuccess = async () => {
+      const paymentSuccess = searchParams.get("payment_success");
+      const paymentVerified = sessionStorage.getItem('payment_verified');
+      const verifiedPlan = sessionStorage.getItem('verified_plan');
       
-      if (success === "true" && plan && !hasProcessedSuccess && !isProcessingPayment) {
-        console.log("🎉 [PROFILE] Handling Stripe success for plan:", plan);
-        setIsProcessingPayment(true);
-        setHasProcessedSuccess(true);
+      if (paymentSuccess === "true" && paymentVerified === "true" && verifiedPlan && !hasProcessedPaymentSuccess) {
+        console.log("🎉 [PROFILE] Processing payment success from CheckoutReturn");
+        setHasProcessedPaymentSuccess(true);
         
-        // Clear URL parameters immediately
+        // Clear URL parameters and session flags
         const newSearchParams = new URLSearchParams(searchParams);
-        newSearchParams.delete("success");
-        newSearchParams.delete("plan");
-        newSearchParams.delete("session_id");
+        newSearchParams.delete("payment_success");
         setSearchParams(newSearchParams, { replace: true });
         
-        toast({
-          title: "Payment Successful!",
-          description: "Processing your subscription upgrade...",
-        });
+        sessionStorage.removeItem('payment_verified');
+        sessionStorage.removeItem('verified_plan');
         
+        // Trigger celebration
+        triggerCelebration(verifiedPlan.charAt(0).toUpperCase() + verifiedPlan.slice(1));
+        
+        // Refresh subscription data to ensure UI is up to date
         try {
-          // Wait for webhook processing
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          
-          // Refresh subscription data
           await checkSubscription();
-          
-          // Trigger celebration
-          triggerCelebration(plan.charAt(0).toUpperCase() + plan.slice(1));
-          
         } catch (error) {
-          console.error("❌ [PROFILE] Error refreshing subscription:", error);
-          toast({
-            title: "Payment Processed",
-            description: "Your subscription will be activated shortly.",
-            variant: "default"
-          });
-        } finally {
-          setIsProcessingPayment(false);
+          console.error("❌ [PROFILE] Error refreshing subscription after payment success:", error);
         }
       }
     };
 
-    handleStripeSuccess();
-  }, [searchParams, hasProcessedSuccess, isProcessingPayment, checkSubscription, setSearchParams, triggerCelebration]);
+    handlePaymentSuccess();
+  }, [searchParams, setSearchParams, triggerCelebration, checkSubscription, hasProcessedPaymentSuccess]);
   
   // Handle return from customer portal
   useEffect(() => {
@@ -175,7 +158,7 @@ const Profile = () => {
   };
   
   // Show loading state
-  const isLoading = authLoading || subscriptionLoading || isProcessingPayment;
+  const isLoading = authLoading || subscriptionLoading;
   
   if (isLoading) {
     return (
@@ -183,14 +166,7 @@ const Profile = () => {
         <Header />
         <div className="container mx-auto pt-32 pb-24 flex flex-col justify-center items-center">
           <Loader2 className="h-8 w-8 animate-spin text-figuro-accent mb-4" />
-          {isProcessingPayment ? (
-            <div className="text-center">
-              <p className="text-white/70 mb-2">Processing your subscription upgrade...</p>
-              <p className="text-white/50 text-sm">This may take a few moments</p>
-            </div>
-          ) : (
-            <p className="text-white/70">Loading your profile...</p>
-          )}
+          <p className="text-white/70">Loading your profile...</p>
         </div>
         <Footer />
       </div>
@@ -250,16 +226,6 @@ const Profile = () => {
                 </div>
               </div>
             </div>
-            
-            {/* Debug subscription info */}
-            {subscription && (
-              <div className="mb-6 p-4 bg-figuro-darker/30 rounded-lg">
-                <h3 className="text-white text-sm font-semibold mb-2">Subscription Debug Info:</h3>
-                <pre className="text-white/60 text-xs overflow-auto">
-                  {JSON.stringify(subscription, null, 2)}
-                </pre>
-              </div>
-            )}
             
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid grid-cols-3 max-w-[500px] mx-auto">

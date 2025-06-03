@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedAuth } from '@/components/auth/EnhancedAuthProvider';
@@ -17,6 +17,9 @@ const CheckoutReturn = () => {
   const { checkSubscription } = useSubscription();
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'cancelled'>('loading');
   const [paymentData, setPaymentData] = useState<any>(null);
+  const processingRef = useRef(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
@@ -27,41 +30,68 @@ const CheckoutReturn = () => {
       return;
     }
 
-    const verifyPayment = async () => {
-      try {
-        console.log('Verifying payment for session:', sessionId);
+    // Prevent duplicate processing
+    if (processingRef.current) {
+      console.log('Payment verification already in progress');
+      return;
+    }
 
-        // Use the secure verification endpoint
+    const verifyPayment = async () => {
+      processingRef.current = true;
+      
+      try {
+        console.log('🔄 [CHECKOUT_RETURN] Starting payment verification for session:', sessionId);
+
+        // Use the secure verification endpoint with retry logic
         const { data: verificationResult, error } = await supabase.functions.invoke('verify-payment-session', {
           body: { session_id: sessionId }
         });
 
         if (error) {
-          console.error('Verification error:', error);
+          console.error('❌ [CHECKOUT_RETURN] Verification error:', error);
+          
+          // Retry on certain errors
+          if (retryCount < maxRetries && (error.message?.includes('network') || error.status >= 500)) {
+            console.log(`🔄 [CHECKOUT_RETURN] Retrying verification (${retryCount + 1}/${maxRetries})`);
+            setRetryCount(prev => prev + 1);
+            processingRef.current = false;
+            setTimeout(() => verifyPayment(), 2000 * (retryCount + 1)); // Exponential backoff
+            return;
+          }
+          
           throw new Error(error.message || 'Failed to verify payment');
         }
 
-        console.log('Verification result:', verificationResult);
+        console.log('✅ [CHECKOUT_RETURN] Verification result:', verificationResult);
         setPaymentData(verificationResult);
 
         if (verificationResult.success) {
           setStatus('success');
           
           // Regenerate session for security (refresh auth tokens)
+          console.log('🔄 [CHECKOUT_RETURN] Refreshing auth session');
           await refreshAuth();
           
           // Check subscription to update local state
+          console.log('🔄 [CHECKOUT_RETURN] Refreshing subscription state');
           await checkSubscription();
           
           toast({
             title: "Payment Successful!",
-            description: `Your ${verificationResult.plan} plan has been activated.`,
+            description: verificationResult.wasUpgrade 
+              ? `Your ${verificationResult.plan} plan has been activated with ${verificationResult.creditsAllocated} credits!`
+              : `Your ${verificationResult.plan} plan has been activated.`,
           });
 
-          // Redirect to profile after a delay
+          // Set a flag in sessionStorage to prevent duplicate processing on profile page
+          sessionStorage.setItem('payment_verified', 'true');
+          sessionStorage.setItem('verified_plan', verificationResult.plan);
+
+          // Redirect to profile after a delay to allow state updates
           setTimeout(() => {
-            navigate('/profile');
-          }, 3000);
+            console.log('🔄 [CHECKOUT_RETURN] Redirecting to profile page');
+            navigate('/profile?payment_success=true');
+          }, 2000);
         } else {
           if (verificationResult.message?.includes('not completed')) {
             setStatus('cancelled');
@@ -70,18 +100,20 @@ const CheckoutReturn = () => {
           }
         }
       } catch (error) {
-        console.error('Error verifying payment:', error);
+        console.error('❌ [CHECKOUT_RETURN] Error verifying payment:', error);
         setStatus('error');
         toast({
           title: "Verification Error",
           description: "We couldn't verify your payment. Please check your subscription status in your profile.",
           variant: "destructive"
         });
+      } finally {
+        processingRef.current = false;
       }
     };
 
     verifyPayment();
-  }, [searchParams, refreshAuth, checkSubscription, navigate]);
+  }, [searchParams, refreshAuth, checkSubscription, navigate, retryCount]);
 
   const renderContent = () => {
     switch (status) {
@@ -91,6 +123,9 @@ const CheckoutReturn = () => {
             <Loader2 className="h-16 w-16 animate-spin text-figuro-accent mx-auto mb-6" />
             <h2 className="text-2xl font-bold text-white mb-4">Verifying Payment</h2>
             <p className="text-white/70">Please wait while we securely verify your payment...</p>
+            {retryCount > 0 && (
+              <p className="text-white/50 mt-2">Retry attempt {retryCount}/{maxRetries}</p>
+            )}
           </div>
         );
 
@@ -102,6 +137,13 @@ const CheckoutReturn = () => {
             <p className="text-white/70 mb-6">
               Your {paymentData?.plan || 'subscription'} plan has been activated successfully.
             </p>
+            {paymentData?.wasUpgrade && (
+              <div className="bg-figuro-accent/20 border border-figuro-accent/30 rounded-lg p-4 mb-6">
+                <p className="text-figuro-accent font-medium">
+                  🎉 Upgrade Complete! Your usage has been reset and you have {paymentData.creditsAllocated} credits available.
+                </p>
+              </div>
+            )}
             <p className="text-white/50 mb-8">Redirecting you to your profile...</p>
             <Button 
               onClick={() => navigate('/profile')}

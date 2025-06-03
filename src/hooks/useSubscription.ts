@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -35,38 +35,94 @@ export const useSubscription = () => {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [planLimits, setPlanLimits] = useState<PlanLimits | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
+  const fetchingRef = useRef(false);
+  const lastFetchRef = useRef<number>(0);
+
+  // Debounced fetch function to prevent rapid successive calls
+  const debouncedFetch = useCallback(async (force = false) => {
+    const now = Date.now();
+    const minInterval = 2000; // 2 seconds minimum between fetches
+    
+    if (!force && (now - lastFetchRef.current) < minInterval) {
+      console.log('🔄 [useSubscription] Skipping fetch due to debounce');
+      return;
+    }
+    
+    if (fetchingRef.current) {
+      console.log('🔄 [useSubscription] Fetch already in progress');
+      return;
+    }
+    
+    fetchingRef.current = true;
+    lastFetchRef.current = now;
+    
+    try {
+      await fetchSubscriptionData();
+      setRetryCount(0); // Reset retry count on success
+    } catch (error) {
+      console.error('❌ [useSubscription] Fetch failed:', error);
+      
+      // Exponential backoff retry logic
+      if (retryCount < 3) {
+        const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+        console.log(`🔄 [useSubscription] Retrying in ${delay}ms (attempt ${retryCount + 1}/3)`);
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          fetchingRef.current = false;
+          debouncedFetch(true);
+        }, delay);
+      } else {
+        console.error('❌ [useSubscription] Max retries reached');
+        setRetryCount(0);
+      }
+    } finally {
+      if (retryCount === 0) {
+        fetchingRef.current = false;
+      }
+    }
+  }, [retryCount]);
 
   useEffect(() => {
     if (user) {
-      fetchSubscriptionData();
+      debouncedFetch();
     } else {
       setSubscription(null);
       setPlanLimits(null);
       setIsLoading(false);
+      fetchingRef.current = false;
     }
-  }, [user]);
+  }, [user, debouncedFetch]);
 
   const fetchSubscriptionData = async () => {
     if (!user) return;
 
     try {
       setIsLoading(true);
+      console.log('🔄 [useSubscription] Fetching subscription data for user:', user.id);
       
-      // Fetch subscription data
+      // Fetch subscription data with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const { data: subData, error: subError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', user.id)
+        .abortSignal(controller.signal)
         .single();
 
+      clearTimeout(timeoutId);
+
       if (subError && subError.code !== 'PGRST116') {
-        console.error('Error fetching subscription:', subError);
-        return;
+        console.error('❌ [useSubscription] Error fetching subscription:', subError);
+        throw new Error(`Subscription fetch failed: ${subError.message}`);
       }
 
       // Create default subscription if none exists
       let subscriptionData = subData;
       if (!subData) {
+        console.log('🔧 [useSubscription] Creating default subscription');
         const { data: newSub, error: createError } = await supabase
           .from('subscriptions')
           .insert({
@@ -75,7 +131,7 @@ export const useSubscription = () => {
             generation_count_today: 0,
             converted_3d_this_month: 0,
             generation_count_this_month: 0,
-            credits_remaining: 3,
+            credits_remaining: 10, // Free plan default
             bonus_credits: 0,
             status: 'active'
           })
@@ -83,8 +139,8 @@ export const useSubscription = () => {
           .single();
 
         if (createError) {
-          console.error('Error creating subscription:', createError);
-          return;
+          console.error('❌ [useSubscription] Error creating subscription:', createError);
+          throw new Error(`Subscription creation failed: ${createError.message}`);
         }
         subscriptionData = newSub;
       }
@@ -103,32 +159,61 @@ export const useSubscription = () => {
         is_active: subscriptionData.status === 'active',
       };
 
+      console.log('✅ [useSubscription] Subscription data loaded:', {
+        plan: enhancedSubscriptionData.plan_type,
+        credits: totalCredits,
+        status: enhancedSubscriptionData.status
+      });
+
       setSubscription(enhancedSubscriptionData);
 
-      // Fetch plan limits
+      // Fetch plan limits with timeout
+      const limitsController = new AbortController();
+      const limitsTimeoutId = setTimeout(() => limitsController.abort(), 5000);
+      
       const { data: limitsData, error: limitsError } = await supabase
         .from('plan_limits')
         .select('*')
         .eq('plan_type', subscriptionData.plan_type)
+        .abortSignal(limitsController.signal)
         .single();
 
+      clearTimeout(limitsTimeoutId);
+
       if (limitsError && limitsError.code !== 'PGRST116') {
-        console.error('Error fetching plan limits:', limitsError);
-        // Set default free plan limits
+        console.error('❌ [useSubscription] Error fetching plan limits:', limitsError);
+        // Set default free plan limits instead of throwing
         setPlanLimits({
-          image_generations_limit: 3,
-          model_conversions_limit: 1,
+          image_generations_limit: 10,
+          model_conversions_limit: 3,
           is_unlimited: false
         });
       } else {
         setPlanLimits(limitsData || {
-          image_generations_limit: 3,
-          model_conversions_limit: 1,
+          image_generations_limit: 10,
+          model_conversions_limit: 3,
           is_unlimited: false
         });
       }
-    } catch (error) {
-      console.error('Error in fetchSubscriptionData:', error);
+      
+      console.log('✅ [useSubscription] Plan limits loaded for plan:', subscriptionData.plan_type);
+
+    } catch (error: any) {
+      console.error('❌ [useSubscription] Error in fetchSubscriptionData:', error);
+      
+      // Don't show error toast for aborted requests (user navigated away)
+      if (error.name !== 'AbortError') {
+        // Only show toast on first failure to avoid spam
+        if (retryCount === 0) {
+          toast({
+            title: "Subscription Error",
+            description: "Failed to load subscription data. Retrying...",
+            variant: "destructive"
+          });
+        }
+      }
+      
+      throw error; // Re-throw to trigger retry logic
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +236,7 @@ export const useSubscription = () => {
       // Get fresh session for API calls
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        console.error('No valid session for consuming action');
+        console.error('❌ [useSubscription] No valid session for consuming action');
         return false;
       }
 
@@ -167,20 +252,20 @@ export const useSubscription = () => {
       });
 
       if (error) {
-        console.error('Error consuming action:', error);
+        console.error('❌ [useSubscription] Error consuming action:', error);
         return false;
       }
 
       if (!data?.success) {
-        console.error('Action consumption failed:', data?.error);
+        console.error('❌ [useSubscription] Action consumption failed:', data?.error);
         return false;
       }
 
       // Refresh subscription data
-      await fetchSubscriptionData();
+      await debouncedFetch(true);
       return true;
     } catch (error) {
-      console.error('Error in consumeAction:', error);
+      console.error('❌ [useSubscription] Error in consumeAction:', error);
       return false;
     }
   };
@@ -221,9 +306,9 @@ export const useSubscription = () => {
     };
   };
 
-  const checkSubscription = async () => {
-    await fetchSubscriptionData();
-  };
+  const checkSubscription = useCallback(async () => {
+    await debouncedFetch(true);
+  }, [debouncedFetch]);
 
   const openCustomerPortal = async () => {
     if (!user) {
@@ -254,7 +339,7 @@ export const useSubscription = () => {
       });
       
       if (error) {
-        console.error('Error opening customer portal:', error);
+        console.error('❌ [useSubscription] Error opening customer portal:', error);
         toast({
           title: "Portal Error",
           description: "Unable to open subscription management. Please try again.",
@@ -267,7 +352,7 @@ export const useSubscription = () => {
         window.location.href = data.url;
       }
     } catch (error) {
-      console.error('Error in openCustomerPortal:', error);
+      console.error('❌ [useSubscription] Error in openCustomerPortal:', error);
       toast({
         title: "Portal Error",
         description: "Unable to open subscription management. Please try again.",
@@ -284,7 +369,7 @@ export const useSubscription = () => {
     consumeAction,
     getUpgradeRecommendation,
     getRemainingUsage,
-    refreshSubscription: fetchSubscriptionData,
+    refreshSubscription: () => debouncedFetch(true),
     checkSubscription,
     openCustomerPortal,
     user
