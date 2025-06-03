@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { cleanupAuthState, getAuthErrorMessage, checkRateLimitSafe } from "@/utils/authUtils";
 import { sessionManager } from "@/utils/sessionManager";
 import { securityManager } from "@/utils/securityUtils";
+import { getStudioUrl } from "@/utils/environmentUtils";
 
 interface EnhancedAuthContextType {
   user: User | null;
@@ -34,20 +35,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   const [profile, setProfile] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [securityScore, setSecurityScore] = useState(0);
-
-  // Get the correct redirect URL based on environment
-  const getRedirectUrl = () => {
-    // Check if we're in production based on hostname
-    const hostname = window.location.hostname;
-    const isProduction = hostname === 'figuros.ai' || hostname.includes('figuro');
-    
-    if (isProduction) {
-      return `https://${hostname}/studio`;
-    }
-    
-    // For development/preview environments
-    return `${window.location.origin}/studio`;
-  };
 
   // Simplified security score calculation
   const calculateSecurityScore = (user: User | null, session: Session | null): number => {
@@ -381,7 +368,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       console.log("Attempting sign-up...");
       
-      const redirectTo = getRedirectUrl();
+      const redirectTo = getStudioUrl();
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -453,7 +440,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
 
       console.log("🔄 [ENHANCED-AUTH] Sending password reset email...");
       
-      const redirectTo = getRedirectUrl();
+      const redirectTo = getStudioUrl();
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectTo
@@ -529,12 +516,12 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced Google sign-in with production-ready redirects
+  // Enhanced Google sign-in with environment-aware redirects
   const signInWithGoogle = async () => {
     try {
       cleanupAuthState();
       
-      const redirectTo = getRedirectUrl();
+      const redirectTo = getStudioUrl();
       
       console.log("🚀 [ENHANCED-AUTH] Starting Google sign-in with redirect:", redirectTo);
       

@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { cleanupAuthState, getAuthErrorMessage } from "@/utils/authUtils";
 import { sessionManager } from "@/utils/sessionManager";
 import { sessionDebugger } from "@/utils/debugUtils";
+import { getStudioUrl } from "@/utils/environmentUtils";
 
 interface AuthContextType {
   user: User | null;
@@ -287,9 +288,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log("Attempting sign-up with email:", email);
       
-      // Make sure we have the correct redirect URL
-      const origin = window.location.origin || 'http://localhost:5173';
-      const redirectTo = `${origin}/complete-profile`;
+      // Use environment-aware redirect URL
+      const redirectTo = getStudioUrl();
       console.log("Using redirect URL:", redirectTo);
       
       const { data, error } = await supabase.auth.signUp({
@@ -364,8 +364,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clean up existing auth state first
       cleanupAuthState();
       
-      const origin = window.location.origin || 'http://localhost:5173';
-      const redirectTo = `${origin}/complete-profile`;
+      const redirectTo = getStudioUrl();
       console.log("Using Google redirect URL:", redirectTo);
       
       await supabase.auth.signInWithOAuth({
