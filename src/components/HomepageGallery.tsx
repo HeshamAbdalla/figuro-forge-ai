@@ -5,10 +5,10 @@ import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
 import { useSecureDownload } from "@/hooks/useSecureDownload";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
 import { useImageViewer } from "@/components/gallery/useImageViewer";
-import HomepageGalleryHeader from "@/components/homepage/HomepageGalleryHeader";
+import HomepageEnhancedGalleryHeader from "@/components/homepage/HomepageEnhancedGalleryHeader";
 import HomepageGalleryLoading from "@/components/homepage/HomepageGalleryLoading";
 import HomepageGalleryEmpty from "@/components/homepage/HomepageGalleryEmpty";
-import HomepageGalleryGrid from "@/components/homepage/HomepageGalleryGrid";
+import HomepageEnhancedGalleryGrid from "@/components/homepage/HomepageEnhancedGalleryGrid";
 import HomepageGalleryModals from "@/components/homepage/HomepageGalleryModals";
 
 const HomepageGallery: React.FC = () => {
@@ -61,14 +61,19 @@ const HomepageGallery: React.FC = () => {
   };
 
   return (
-    <section className="py-20 px-4">
-      <div className="container mx-auto">
-        <HomepageGalleryHeader />
+    <section className="py-20 px-4 relative overflow-hidden">
+      {/* Enhanced background with animated gradients */}
+      <div className="absolute inset-0 bg-gradient-to-br from-figuro-accent/5 via-purple-500/5 to-blue-500/5" />
+      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-figuro-accent/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      
+      <div className="container mx-auto relative z-10">
+        <HomepageEnhancedGalleryHeader />
 
         {isLoading ? (
           <HomepageGalleryLoading />
         ) : files.length > 0 ? (
-          <HomepageGalleryGrid
+          <HomepageEnhancedGalleryGrid
             images={files}
             isDownloading={isDownloading}
             isAuthenticated={isAuthenticated}
