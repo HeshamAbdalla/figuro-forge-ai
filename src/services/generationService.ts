@@ -30,7 +30,7 @@ const validateAuthentication = async (): Promise<{ isValid: boolean; session: an
   }
 };
 
-// Generate image using the edge function
+// Generate image using the edge function with enhanced error handling
 export const generateImage = async (prompt: string, style: string, apiKey: string = ""): Promise<{blob: Blob | null, url: string | null, error?: string, method: "edge" | "direct"}> => {
   try {
     console.log("🔄 [GENERATION] Generating image via edge function...");
@@ -46,7 +46,6 @@ export const generateImage = async (prompt: string, style: string, apiKey: strin
       };
     }
 
-    // Use the exported constants for Supabase configuration
     const supabaseUrl = SUPABASE_URL;
     if (!supabaseUrl) {
       return {
@@ -56,6 +55,10 @@ export const generateImage = async (prompt: string, style: string, apiKey: strin
         method: "edge"
       };
     }
+    
+    // Add timeout to the fetch request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
     
     const response = await fetch(`${supabaseUrl}/functions/v1/generate-image`, {
       method: "POST",
@@ -68,14 +71,17 @@ export const generateImage = async (prompt: string, style: string, apiKey: strin
         prompt,
         style
       }),
+      signal: controller.signal
     });
     
-    // Handle errors
+    clearTimeout(timeoutId);
+    
+    // Enhanced error handling
     if (!response.ok) {
       const errorText = await response.text();
       console.error("❌ [GENERATION] Edge function error:", response.status, errorText);
       
-      let errorMessage = `Edge function error: ${response.status}`;
+      let errorMessage = `Generation failed: ${response.status}`;
       
       if (response.status === 401) {
         errorMessage = "Authentication expired. Please refresh the page and try again.";
@@ -128,7 +134,9 @@ export const generateImage = async (prompt: string, style: string, apiKey: strin
     
     let errorMessage = "Failed to generate image";
     if (error instanceof Error) {
-      if (error.message.includes('network') || error.message.includes('fetch')) {
+      if (error.name === 'AbortError') {
+        errorMessage = "Request timeout. Please try again.";
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
         errorMessage = "Network error. Please check your connection and try again.";
       } else {
         errorMessage = error.message;

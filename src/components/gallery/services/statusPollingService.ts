@@ -6,25 +6,21 @@ import { downloadAndSaveThumbnail } from '@/utils/thumbnailUtils';
 import { saveFigurine } from '@/services/figurineService';
 import { ConversionCallbacks } from '../types/conversion';
 
-// Get Supabase configuration using exported constants
-const getSupabaseConfig = () => {
-  const supabaseUrl = SUPABASE_URL;
-  const supabaseKey = SUPABASE_PUBLISHABLE_KEY;
-  
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase configuration not available');
-  }
-  
-  return { supabaseUrl, supabaseKey };
-};
-
-// Enhanced authentication validation
-const validateAuthenticationForPolling = async (): Promise<{ isValid: boolean; session: any }> => {
+// Enhanced authentication validation with retry logic
+const validateAuthenticationForPolling = async (retryCount = 0): Promise<{ isValid: boolean; session: any }> => {
   try {
     const { data: { session }, error } = await supabase.auth.getSession();
     
     if (error) {
       console.error('❌ [POLLING] Auth session error:', error);
+      
+      // Retry once for transient errors
+      if (retryCount === 0 && error.message.includes('network')) {
+        console.log('🔄 [POLLING] Retrying auth validation...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return validateAuthenticationForPolling(1);
+      }
+      
       return { isValid: false, session: null };
     }
     
@@ -33,9 +29,9 @@ const validateAuthenticationForPolling = async (): Promise<{ isValid: boolean; s
       return { isValid: false, session: null };
     }
     
-    // Check token expiration
-    if (session.expires_at && Date.now() / 1000 > session.expires_at) {
-      console.error('❌ [POLLING] Session expired');
+    // Check token expiration with buffer
+    if (session.expires_at && Date.now() / 1000 > (session.expires_at - 60)) {
+      console.error('❌ [POLLING] Session expired or expiring soon');
       return { isValid: false, session: null };
     }
     
@@ -53,32 +49,45 @@ export const pollConversionStatus = async (
   callbacks: ConversionCallbacks,
   shouldUpdateExisting: boolean = true
 ): Promise<void> => {
-  const maxAttempts = 60; // 5 minutes with 5-second intervals
+  const maxAttempts = 120; // 10 minutes with 5-second intervals
   let attempts = 0;
+  let consecutiveErrors = 0;
+  const maxConsecutiveErrors = 3;
 
   const checkStatus = async (): Promise<void> => {
     try {
       attempts++;
       console.log(`🔍 [POLLING] Checking status (${attempts}/${maxAttempts}) for task:`, taskId);
 
-      // Enhanced authentication validation
+      // Enhanced authentication validation with retry
       const { isValid, session } = await validateAuthenticationForPolling();
       if (!isValid || !session) {
-        throw new Error('Authentication required or session expired');
+        throw new Error('Authentication required or session expired. Please refresh the page and try again.');
       }
 
-      // Get Supabase configuration using exported constants
-      const { supabaseUrl, supabaseKey } = getSupabaseConfig();
+      const supabaseUrl = SUPABASE_URL;
+      const supabaseKey = SUPABASE_PUBLISHABLE_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase configuration not available');
+      }
 
-      // Make direct fetch call with taskId as URL parameter
+      // Add timeout to status check request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+      // Make direct fetch call with enhanced error handling
       const response = await fetch(`${supabaseUrl}/functions/v1/check-3d-status?taskId=${taskId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'apikey': supabaseKey,
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -99,6 +108,9 @@ export const pollConversionStatus = async (
       const data = await response.json();
       const { status, modelUrl, progress: apiProgress, thumbnail_url } = data;
       console.log('📊 [POLLING] Status update:', { status, modelUrl, progress: apiProgress, thumbnail_url });
+
+      // Reset consecutive error counter on successful response
+      consecutiveErrors = 0;
 
       // Update progress based on status
       let progressValue = 30 + (apiProgress || 0) * 0.6; // 30-90%
@@ -126,16 +138,14 @@ export const pollConversionStatus = async (
               console.log('✅ [POLLING] Thumbnail saved:', savedThumbnailUrl);
             } catch (thumbnailError) {
               console.warn('⚠️ [POLLING] Failed to save thumbnail, but continuing:', thumbnailError);
-              // Don't fail the entire process if thumbnail save fails
             }
           }
           
           if (savedModelUrl) {
             let figurineCreated = false;
             
-            // IMPROVED: Better logic for handling figurine creation vs updating
+            // Enhanced figurine creation/update logic
             if (shouldUpdateExisting) {
-              // Try to update existing figurine first
               console.log('🔄 [POLLING] Checking for existing figurine with image URL:', originalImageUrl);
               
               const { data: existingFigurines, error: searchError } = await supabase
@@ -149,7 +159,6 @@ export const pollConversionStatus = async (
               }
 
               if (existingFigurines && existingFigurines.length > 0) {
-                // Update existing figurine with 3D model
                 const existingFigurine = existingFigurines[0];
                 console.log('🔄 [POLLING] Updating existing figurine with 3D model:', existingFigurine.id);
                 
@@ -166,7 +175,6 @@ export const pollConversionStatus = async (
                   figurineCreated = true;
                 } else {
                   console.error('❌ [POLLING] Failed to update existing figurine:', updateError);
-                  // Will fall through to create new figurine
                 }
               }
             }
@@ -176,21 +184,18 @@ export const pollConversionStatus = async (
               try {
                 console.log('🔄 [POLLING] Creating new figurine record for 3D conversion...');
                 
-                // Generate a meaningful prompt based on the file name
                 const prompt = fileName.includes('camera-capture') 
                   ? `Camera captured model - ${new Date().toLocaleDateString()}`
                   : `Generated from ${fileName.replace(/\.[^/.]+$/, '')}`;
                 
-                // Create the figurine record
                 const figurineId = await saveFigurine(
                   prompt,
-                  'realistic', // Default style for 3D conversions
+                  'realistic',
                   originalImageUrl,
-                  null // No blob since we're using URLs
+                  null
                 );
                 
                 if (figurineId) {
-                  // Update the figurine with the 3D model URL and a proper title
                   const title = fileName.includes('camera-capture') 
                     ? `Camera 3D Model - ${new Date().toLocaleDateString()}`
                     : `3D Model - ${fileName.replace(/\.[^/.]+$/, '')}`;
@@ -216,7 +221,7 @@ export const pollConversionStatus = async (
               } catch (figurineError) {
                 console.error('❌ [POLLING] Failed to create figurine record:', figurineError);
                 
-                // IMPROVED: Better error handling - still provide the model but notify about save failure
+                // Still provide the model but notify about save failure
                 callbacks.onProgressUpdate({
                   status: 'completed',
                   progress: 100,
@@ -276,7 +281,9 @@ export const pollConversionStatus = async (
 
         // Continue polling if not at max attempts
         if (attempts < maxAttempts) {
-          setTimeout(checkStatus, 5000);
+          // Use exponential backoff for failed requests, but normal interval for successful ones
+          const interval = consecutiveErrors > 0 ? Math.min(5000 * Math.pow(2, consecutiveErrors), 30000) : 5000;
+          setTimeout(checkStatus, interval);
         } else {
           throw new Error('Conversion timeout - please try again. The process is taking longer than expected.');
         }
@@ -289,14 +296,20 @@ export const pollConversionStatus = async (
 
     } catch (error) {
       console.error('❌ [POLLING] Status check error:', error);
+      consecutiveErrors++;
       
-      // Enhanced error handling with retry logic for specific errors
       const errorMessage = error instanceof Error ? error.message : 'Status check failed';
       
-      // Retry on network errors for a few attempts
-      if (attempts < 3 && (errorMessage.includes('network') || errorMessage.includes('fetch'))) {
-        console.log(`🔄 [POLLING] Retrying due to network error (attempt ${attempts}/3)`);
-        setTimeout(checkStatus, 2000); // Shorter retry interval for network errors
+      // Retry on network errors for a few attempts with exponential backoff
+      if (consecutiveErrors < maxConsecutiveErrors && 
+          (errorMessage.includes('network') || 
+           errorMessage.includes('fetch') || 
+           errorMessage.includes('timeout') ||
+           error instanceof Error && error.name === 'AbortError')) {
+        
+        const retryInterval = Math.min(2000 * Math.pow(2, consecutiveErrors), 10000);
+        console.log(`🔄 [POLLING] Retrying due to ${error instanceof Error && error.name === 'AbortError' ? 'timeout' : 'network error'} (attempt ${consecutiveErrors}/${maxConsecutiveErrors}) in ${retryInterval}ms`);
+        setTimeout(checkStatus, retryInterval);
         return;
       }
       

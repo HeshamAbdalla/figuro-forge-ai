@@ -35,9 +35,18 @@ export const useTextTo3D = () => {
     try {
       console.log('🔍 [TEXT-TO-3D] Checking status for task:', taskId);
       
+      // Add timeout to the status check
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
       const { data, error } = await supabase.functions.invoke('check-text-to-3d-status', {
-        body: { taskId }
+        body: { taskId },
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
+
+      clearTimeout(timeoutId);
 
       if (error) {
         console.error('❌ [TEXT-TO-3D] Status check error:', error);
@@ -118,9 +127,18 @@ export const useTextTo3D = () => {
         downloadStatus: 'failed'
       }));
       
+      let errorMessage = "Failed to check generation status";
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = "Request timeout. Please try again.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Status Check Failed",
-        description: error instanceof Error ? error.message : "Failed to check generation status",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -152,9 +170,18 @@ export const useTextTo3D = () => {
     try {
       console.log("🔄 [TEXT-TO-3D] Starting text to 3D generation with config:", config);
       
+      // Add timeout to the generation request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const { data, error } = await supabase.functions.invoke('text-to-3d', {
-        body: config
+        body: config,
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
+
+      clearTimeout(timeoutId);
 
       if (error) {
         console.error("❌ [TEXT-TO-3D] Generation error:", error);
@@ -202,7 +229,14 @@ export const useTextTo3D = () => {
         downloadStatus: 'failed'
       });
       
-      const errorMessage = error instanceof Error ? error.message : "Failed to generate 3D model";
+      let errorMessage = "Failed to generate 3D model";
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = "Request timeout. Please try again.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
       
       toast({
         title: "Generation Failed",

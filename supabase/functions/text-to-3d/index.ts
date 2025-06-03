@@ -32,30 +32,33 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
     
     if (userError || !user) {
+      console.error('❌ [TEXT-TO-3D] Auth error:', userError);
       throw new Error('Invalid authentication');
     }
 
     console.log('✅ [TEXT-TO-3D] User authenticated:', user.id);
 
-    // Check user limits and consume usage
-    console.log('🔍 [TEXT-TO-3D] Checking user limits and consuming usage...');
+    // Unified usage consumption using enhanced-consume-usage
+    console.log('🔍 [TEXT-TO-3D] Checking user limits using enhanced consumption...');
     
-    const { data: canConsume, error: consumeError } = await supabase.rpc('consume_feature_usage', {
-      feature_type: 'model_conversion',
-      user_id_param: user.id,
-      amount: 1
+    const { data: consumeData, error: consumeError } = await supabase.functions.invoke('enhanced-consume-usage', {
+      body: {
+        feature_type: 'model_conversion',
+        amount: 1
+      }
     });
 
     if (consumeError) {
       console.error('❌ [TEXT-TO-3D] Error consuming usage:', consumeError);
-      throw new Error('Failed to consume usage');
+      throw new Error('Failed to check usage limits');
     }
 
-    if (!canConsume) {
+    if (!consumeData.success) {
+      console.log('❌ [TEXT-TO-3D] Usage limit reached:', consumeData.error);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Usage limit reached. Please upgrade your plan to continue creating 3D models.' 
+          error: consumeData.error || 'Usage limit reached. Please upgrade your plan to continue creating 3D models.' 
         }),
         { 
           status: 429,

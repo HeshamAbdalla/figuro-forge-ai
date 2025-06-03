@@ -16,8 +16,15 @@ async function downloadAndSaveModel(
   try {
     console.log('🔄 [DOWNLOAD] Starting model download for task:', taskId);
     
-    // Download the model file
-    const response = await fetch(modelUrl);
+    // Download the model file with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    const response = await fetch(modelUrl, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    
     if (!response.ok) {
       throw new Error(`Failed to download model: ${response.status}`);
     }
@@ -25,7 +32,7 @@ async function downloadAndSaveModel(
     const modelBlob = await response.blob();
     console.log('✅ [DOWNLOAD] Model downloaded, size:', modelBlob.size);
     
-    // Generate file path in user's folder using new bucket structure
+    // Generate file path in user's folder
     const fileName = `${taskId}.glb`;
     const filePath = `${userId}/models/${fileName}`;
     
@@ -66,8 +73,15 @@ async function downloadAndSaveThumbnail(
   try {
     console.log('🔄 [DOWNLOAD] Starting thumbnail download for task:', taskId);
     
-    // Download the thumbnail file
-    const response = await fetch(thumbnailUrl);
+    // Download the thumbnail file with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    
+    const response = await fetch(thumbnailUrl, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    
     if (!response.ok) {
       throw new Error(`Failed to download thumbnail: ${response.status}`);
     }
@@ -75,7 +89,7 @@ async function downloadAndSaveThumbnail(
     const thumbnailBlob = await response.blob();
     console.log('✅ [DOWNLOAD] Thumbnail downloaded, size:', thumbnailBlob.size);
     
-    // Generate file path in user's folder using new bucket structure
+    // Generate file path in user's folder
     const fileName = `${taskId}_thumb.png`;
     const filePath = `${userId}/thumbnails/${fileName}`;
     
@@ -132,6 +146,7 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
     
     if (userError || !user) {
+      console.error('❌ [CHECK-TEXT-TO-3D-STATUS] Auth error:', userError);
       throw new Error('Invalid authentication');
     }
 
@@ -153,13 +168,18 @@ serve(async (req) => {
       throw new Error('Meshy API key not configured');
     }
 
-    // Call Meshy API to check status
+    // Call Meshy API to check status with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
     const meshyResponse = await fetch(`https://api.meshy.ai/v2/text-to-3d/${taskId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${meshyApiKey}`,
       },
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
 
     console.log('📊 [CHECK-TEXT-TO-3D-STATUS] Meshy API response status:', meshyResponse.status);
 
@@ -259,10 +279,19 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ [CHECK-TEXT-TO-3D-STATUS] Error:', error);
     
+    let errorMessage = 'Unknown error occurred';
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timeout - please try again';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: errorMessage
       }),
       { 
         status: 500,
