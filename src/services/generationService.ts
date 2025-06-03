@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "@/integrations/supabase/client";
 
 // Enhanced authentication validation
 const validateAuthentication = async (): Promise<{ isValid: boolean; session: any }> => {
@@ -45,8 +46,8 @@ export const generateImage = async (prompt: string, style: string, apiKey: strin
       };
     }
 
-    // Get Supabase URL dynamically
-    const supabaseUrl = supabase.supabaseUrl;
+    // Use the exported constants for Supabase configuration
+    const supabaseUrl = SUPABASE_URL;
     if (!supabaseUrl) {
       return {
         blob: null,
@@ -61,7 +62,7 @@ export const generateImage = async (prompt: string, style: string, apiKey: strin
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${session.access_token}`,
-        "apikey": supabase.supabaseKey
+        "apikey": SUPABASE_PUBLISHABLE_KEY
       },
       body: JSON.stringify({ 
         prompt,

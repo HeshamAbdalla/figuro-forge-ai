@@ -1,14 +1,15 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { downloadAndSaveModel } from '@/utils/modelUtils';
 import { downloadAndSaveThumbnail } from '@/utils/thumbnailUtils';
 import { saveFigurine } from '@/services/figurineService';
 import { ConversionCallbacks } from '../types/conversion';
 
-// Get Supabase configuration dynamically
+// Get Supabase configuration using exported constants
 const getSupabaseConfig = () => {
-  const supabaseUrl = supabase.supabaseUrl;
-  const supabaseKey = supabase.supabaseKey;
+  const supabaseUrl = SUPABASE_URL;
+  const supabaseKey = SUPABASE_PUBLISHABLE_KEY;
   
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Supabase configuration not available');
@@ -66,7 +67,7 @@ export const pollConversionStatus = async (
         throw new Error('Authentication required or session expired');
       }
 
-      // Get Supabase configuration dynamically
+      // Get Supabase configuration using exported constants
       const { supabaseUrl, supabaseKey } = getSupabaseConfig();
 
       // Make direct fetch call with taskId as URL parameter
