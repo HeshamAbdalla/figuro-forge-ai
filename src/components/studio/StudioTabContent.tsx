@@ -1,4 +1,3 @@
-
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -104,8 +103,6 @@ const StudioTabContent = ({
   const focusImagePromptForm = () => {
     if (promptFormRef.current) {
       promptFormRef.current.focusInput();
-      // Smooth scroll to the form
-      promptFormRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
     }
   };
 
@@ -113,8 +110,6 @@ const StudioTabContent = ({
   const focusTextTo3DForm = () => {
     if (textTo3DFormRef.current) {
       textTo3DFormRef.current.focusInput();
-      // Smooth scroll to the form
-      textTo3DFormRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
     }
   };
 
@@ -122,8 +117,6 @@ const StudioTabContent = ({
   const focusWebIconsForm = () => {
     if (webIconsFormRef.current) {
       webIconsFormRef.current.focusInput();
-      // Smooth scroll to the form
-      webIconsFormRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
     }
   };
 
