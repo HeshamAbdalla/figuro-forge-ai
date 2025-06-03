@@ -225,18 +225,20 @@ export const PlanOptions = () => {
         })}
       </div>
 
-      {/* Embedded Checkout Dialog */}
+      {/* Responsive Embedded Checkout Dialog */}
       <Dialog open={showCheckout} onOpenChange={setShowCheckout}>
-        <DialogContent className="max-w-4xl bg-figuro-darker border-white/10">
-          <DialogHeader>
-            <DialogTitle className="text-white">
+        <DialogContent className="w-[95vw] max-w-none sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl bg-figuro-darker border-white/10 p-3 sm:p-4 md:p-6 max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-2 sm:pb-4">
+            <DialogTitle className="text-white text-lg sm:text-xl">
               Complete Your Subscription to {plans.find(p => p.id === selectedPlan)?.name}
             </DialogTitle>
           </DialogHeader>
-          <EmbeddedCheckout 
-            planId={selectedPlan} 
-            onClose={() => setShowCheckout(false)} 
-          />
+          <div className="min-h-[400px] sm:min-h-[500px]">
+            <EmbeddedCheckout 
+              planId={selectedPlan} 
+              onClose={() => setShowCheckout(false)} 
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </div>

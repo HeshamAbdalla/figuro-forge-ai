@@ -80,20 +80,20 @@ export const EmbeddedCheckout: React.FC<EmbeddedCheckoutProps> = ({ planId, onCl
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-figuro-accent mb-4" />
-        <p className="text-white/70">Setting up secure checkout...</p>
+      <div className="flex flex-col items-center justify-center p-4 sm:p-8 min-h-[300px] sm:min-h-[400px]">
+        <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-figuro-accent mb-4" />
+        <p className="text-white/70 text-sm sm:text-base text-center">Setting up secure checkout...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <p className="text-red-400 mb-4">Error: {error}</p>
+      <div className="flex flex-col items-center justify-center p-4 sm:p-8 min-h-[300px] sm:min-h-[400px]">
+        <p className="text-red-400 mb-4 text-sm sm:text-base text-center">Error: {error}</p>
         <button 
           onClick={onClose}
-          className="px-4 py-2 bg-figuro-accent text-white rounded hover:bg-figuro-accent-hover"
+          className="px-4 py-2 bg-figuro-accent text-white rounded hover:bg-figuro-accent-hover text-sm sm:text-base"
         >
           Close
         </button>
@@ -103,17 +103,21 @@ export const EmbeddedCheckout: React.FC<EmbeddedCheckoutProps> = ({ planId, onCl
 
   if (!clientSecret) {
     return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <p className="text-white/70">Initializing secure payment...</p>
+      <div className="flex flex-col items-center justify-center p-4 sm:p-8 min-h-[300px] sm:min-h-[400px]">
+        <p className="text-white/70 text-sm sm:text-base text-center">Initializing secure payment...</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <EmbeddedCheckoutProvider stripe={stripePromise} options={options}>
-        <StripeEmbeddedCheckout />
-      </EmbeddedCheckoutProvider>
+    <div className="w-full">
+      <div className="w-full mx-auto">
+        <EmbeddedCheckoutProvider stripe={stripePromise} options={options}>
+          <div className="w-full">
+            <StripeEmbeddedCheckout />
+          </div>
+        </EmbeddedCheckoutProvider>
+      </div>
     </div>
   );
 };
