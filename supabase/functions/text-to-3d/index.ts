@@ -15,19 +15,33 @@ serve(async (req) => {
 
   try {
     console.log('🔄 [TEXT-TO-3D] Function started');
+    console.log('📋 [TEXT-TO-3D] Request method:', req.method);
+    console.log('📋 [TEXT-TO-3D] Request headers:', Object.fromEntries(req.headers.entries()));
 
     // Enhanced authorization header validation
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
       console.error('❌ [TEXT-TO-3D] No authorization header provided');
-      throw new Error('No authorization header');
+      return new Response(
+        JSON.stringify({ success: false, error: 'No authorization header' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     // Enhanced token extraction
     const token = authHeader.replace('Bearer ', '').trim();
     if (!token || token === 'Bearer' || token === '') {
       console.error('❌ [TEXT-TO-3D] Invalid or empty JWT token');
-      throw new Error('Invalid JWT token format');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid JWT token format' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     // Initialize Supabase client
@@ -45,11 +59,29 @@ serve(async (req) => {
       
       // Provide more specific error messages
       if (userError?.message?.includes('invalid claim') || userError?.message?.includes('missing sub claim')) {
-        throw new Error('Invalid authentication token. Please refresh the page and try again.');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid authentication token. Please refresh the page and try again.' }),
+          { 
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       } else if (userError?.message?.includes('expired')) {
-        throw new Error('Authentication token expired. Please refresh the page and try again.');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Authentication token expired. Please refresh the page and try again.' }),
+          { 
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       } else {
-        throw new Error('Authentication failed. Please sign in again.');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Authentication failed. Please sign in again.' }),
+          { 
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
     }
 
@@ -58,20 +90,43 @@ serve(async (req) => {
     // Enhanced request body parsing with comprehensive error handling
     let requestBody;
     try {
+      // Check content-type header
+      const contentType = req.headers.get('content-type');
+      console.log('📋 [TEXT-TO-3D] Content-Type:', contentType);
+      
+      if (!contentType || !contentType.includes('application/json')) {
+        console.warn('⚠️ [TEXT-TO-3D] Missing or invalid Content-Type header');
+      }
+
+      // Get raw body and validate
       const rawBody = await req.text();
-      console.log('📝 [TEXT-TO-3D] Raw request body length:', rawBody.length);
+      console.log('📝 [TEXT-TO-3D] Raw request body length:', rawBody?.length || 0);
+      console.log('📝 [TEXT-TO-3D] Raw request body preview:', rawBody?.substring(0, 200) || 'empty');
       
       if (!rawBody || rawBody.trim() === '') {
-        throw new Error('Request body is empty');
+        console.error('❌ [TEXT-TO-3D] Request body is empty');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Request body is empty. Please provide a valid JSON request.' 
+          }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
       
-      requestBody = JSON.parse(rawBody);
-      console.log('📊 [TEXT-TO-3D] Parsed request body keys:', Object.keys(requestBody));
-      
-    } catch (parseError) {
-      console.error('❌ [TEXT-TO-3D] JSON parsing error:', parseError);
-      
-      if (parseError instanceof SyntaxError) {
+      // Parse JSON with detailed error handling
+      try {
+        requestBody = JSON.parse(rawBody);
+        console.log('📊 [TEXT-TO-3D] Parsed request body successfully');
+        console.log('📊 [TEXT-TO-3D] Request body keys:', Object.keys(requestBody || {}));
+        console.log('📊 [TEXT-TO-3D] Request body:', requestBody);
+      } catch (jsonError) {
+        console.error('❌ [TEXT-TO-3D] JSON parsing failed:', jsonError);
+        console.error('❌ [TEXT-TO-3D] Invalid JSON content:', rawBody);
+        
         return new Response(
           JSON.stringify({ 
             success: false, 
@@ -84,7 +139,18 @@ serve(async (req) => {
         );
       }
       
-      throw parseError;
+    } catch (bodyError) {
+      console.error('❌ [TEXT-TO-3D] Error reading request body:', bodyError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Failed to read request body. Please try again.' 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     // Enhanced usage consumption with better error handling
@@ -106,11 +172,29 @@ serve(async (req) => {
         
         // Handle specific consumption errors
         if (consumeError.message?.includes('JWT token')) {
-          throw new Error('Authentication session expired. Please refresh the page and try again.');
+          return new Response(
+            JSON.stringify({ success: false, error: 'Authentication session expired. Please refresh the page and try again.' }),
+            { 
+              status: 401,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
         } else if (consumeError.message?.includes('Invalid user session')) {
-          throw new Error('Invalid user session. Please sign out and sign in again.');
+          return new Response(
+            JSON.stringify({ success: false, error: 'Invalid user session. Please sign out and sign in again.' }),
+            { 
+              status: 401,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
         } else {
-          throw new Error('Failed to check usage limits. Please try again.');
+          return new Response(
+            JSON.stringify({ success: false, error: 'Failed to check usage limits. Please try again.' }),
+            { 
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
         }
       }
 
@@ -137,9 +221,20 @@ serve(async (req) => {
       console.log('⚠️ [TEXT-TO-3D] Proceeding without usage check due to authentication issues');
     }
 
-    // Comprehensive request validation
-    let prompt, artStyle, negativePrompt, mode, targetPolycount, topologyType, texture, seedValue;
-    
+    // Comprehensive request validation with detailed error messages
+    if (!requestBody || typeof requestBody !== 'object') {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid request body format. Expected a JSON object.' 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
     // Validate required fields
     if (!requestBody.prompt || typeof requestBody.prompt !== 'string') {
       return new Response(
@@ -154,8 +249,8 @@ serve(async (req) => {
       );
     }
 
-    // Extract and validate parameters
-    ({
+    // Extract and validate parameters with defaults
+    const {
       prompt,
       artStyle = 'realistic',
       negativePrompt = '',
@@ -164,7 +259,7 @@ serve(async (req) => {
       topologyType,
       texture,
       seedValue
-    } = requestBody);
+    } = requestBody;
 
     // Validate prompt length
     if (prompt.trim().length === 0) {
@@ -195,15 +290,15 @@ serve(async (req) => {
 
     // Validate art style
     const validArtStyles = ['realistic', 'cartoon', 'low-poly', 'sculpture', 'pbr'];
-    if (artStyle && !validArtStyles.includes(artStyle)) {
-      artStyle = 'realistic'; // fallback to default
+    const finalArtStyle = validArtStyles.includes(artStyle) ? artStyle : 'realistic';
+    if (artStyle !== finalArtStyle) {
       console.log('⚠️ [TEXT-TO-3D] Invalid art style, using default: realistic');
     }
 
     // Validate mode
     const validModes = ['preview', 'refine'];
-    if (mode && !validModes.includes(mode)) {
-      mode = 'preview'; // fallback to default
+    const finalMode = validModes.includes(mode) ? mode : 'preview';
+    if (mode !== finalMode) {
       console.log('⚠️ [TEXT-TO-3D] Invalid mode, using default: preview');
     }
 
@@ -224,13 +319,13 @@ serve(async (req) => {
     }
 
     console.log('🔧 [TEXT-TO-3D] Processing text to 3D request with prompt:', prompt.substring(0, 50) + '...');
-    console.log('🔧 [TEXT-TO-3D] Configuration:', { artStyle, mode, targetPolycount, topologyType, texture });
+    console.log('🔧 [TEXT-TO-3D] Configuration:', { artStyle: finalArtStyle, mode: finalMode, targetPolycount, topologyType, texture });
 
-    // Prepare Meshy API request body
+    // Prepare Meshy API request body with validated parameters
     const meshyRequestBody: any = {
-      mode: mode,
+      mode: finalMode,
       prompt: prompt.trim(),
-      art_style: artStyle,
+      art_style: finalArtStyle,
       negative_prompt: negativePrompt || ''
     };
 
@@ -250,6 +345,8 @@ serve(async (req) => {
     if (seedValue !== undefined && typeof seedValue === 'number') {
       meshyRequestBody.seed = seedValue;
     }
+
+    console.log('📤 [TEXT-TO-3D] Meshy request body:', meshyRequestBody);
 
     // Call Meshy Text to 3D API with timeout and retry logic
     console.log('📤 [TEXT-TO-3D] Sending request to Meshy Text to 3D API...');
@@ -384,9 +481,9 @@ serve(async (req) => {
           status: 'processing',
           task_type: 'text_to_3d',
           prompt: prompt,
-          art_style: artStyle,
+          art_style: finalArtStyle,
           negative_prompt: negativePrompt || null,
-          generation_mode: mode,
+          generation_mode: finalMode,
           target_polycount: targetPolycount,
           topology_type: topologyType,
           generate_texture: texture,

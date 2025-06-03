@@ -40,7 +40,7 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
     }
   }));
 
-  // Validate input in real-time
+  // Enhanced validation with better error messages
   const validateInput = (input: string): string | null => {
     if (!input || input.trim().length === 0) {
       return null; // Don't show error for empty input until form submission
@@ -48,6 +48,12 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
     
     if (input.length > 1000) {
       return 'Prompt is too long. Maximum 1000 characters allowed.';
+    }
+    
+    // Check for potentially problematic characters
+    const problematicChars = /[<>{}[\]\\]/;
+    if (problematicChars.test(input)) {
+      return 'Prompt contains invalid characters. Please use only letters, numbers, and basic punctuation.';
     }
     
     return null;
@@ -62,7 +68,7 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
       setValidationError(null);
     }
     
-    // Real-time validation for length
+    // Real-time validation for length and characters
     const error = validateInput(newValue);
     setValidationError(error);
   };
@@ -72,9 +78,15 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
     
     const trimmedPrompt = prompt.trim();
     
-    // Validate before submission
+    // Enhanced validation before submission
     if (!trimmedPrompt) {
       setValidationError('Please enter a description for your 3D model');
+      textareaRef.current?.focus();
+      return;
+    }
+    
+    if (trimmedPrompt.length < 3) {
+      setValidationError('Please provide a more detailed description (at least 3 characters)');
       textareaRef.current?.focus();
       return;
     }
@@ -86,7 +98,8 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
     }
     
     if (!isGenerating) {
-      // Quick generate with default settings
+      console.log('📤 [FORM] Quick generate with prompt:', trimmedPrompt);
+      // Quick generate with default settings - ensure proper parameters
       onGenerate(trimmedPrompt, "realistic", "");
     }
   };
@@ -94,9 +107,15 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
   const handleAdvancedGenerate = () => {
     const trimmedPrompt = prompt.trim();
     
-    // Validate before opening modal
+    // Enhanced validation before opening modal
     if (!trimmedPrompt) {
       setValidationError('Please enter a description for your 3D model');
+      textareaRef.current?.focus();
+      return;
+    }
+    
+    if (trimmedPrompt.length < 3) {
+      setValidationError('Please provide a more detailed description (at least 3 characters)');
       textareaRef.current?.focus();
       return;
     }
@@ -108,6 +127,7 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
     }
     
     if (!isGenerating) {
+      console.log('📤 [FORM] Opening config modal with prompt:', trimmedPrompt);
       onOpenConfigModal(trimmedPrompt);
     }
   };
@@ -165,7 +185,7 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
           <div className="grid grid-cols-2 gap-3">
             <Button
               type="submit"
-              disabled={!prompt.trim() || isGenerating || !!validationError}
+              disabled={!prompt.trim() || isGenerating || !!validationError || prompt.trim().length < 3}
               className="bg-figuro-accent hover:bg-figuro-accent-hover disabled:opacity-50"
             >
               {isGenerating ? (
@@ -184,7 +204,7 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
             <Button
               type="button"
               onClick={handleAdvancedGenerate}
-              disabled={!prompt.trim() || isGenerating || !!validationError}
+              disabled={!prompt.trim() || isGenerating || !!validationError || prompt.trim().length < 3}
               variant="outline"
               className="border-white/20 text-white hover:bg-white/10 disabled:opacity-50"
             >
@@ -193,7 +213,7 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
             </Button>
           </div>
           
-          {prompt.trim() && !validationError && (
+          {prompt.trim() && !validationError && prompt.trim().length >= 3 && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

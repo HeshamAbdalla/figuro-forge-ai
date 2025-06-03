@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -143,14 +144,38 @@ export const useStudioHandlers = ({
     }
   };
 
-  const handleTextTo3D = async (prompt: string, artStyle: string, negativePrompt?: string) => {
+  // Enhanced Text to 3D handling with improved error management and input validation
+  const handleTextTo3D = async (prompt: string, artStyle: string, negativePrompt: string = "") => {
+    console.log('🔄 [HANDLER] Starting text to 3D generation:', { prompt, artStyle, negativePrompt });
+    
+    // Input validation
+    if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+      toast({
+        title: "Invalid Input",
+        description: "Please provide a valid prompt for 3D generation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (prompt.trim().length < 3) {
+      toast({
+        title: "Invalid Input",
+        description: "Please provide a more detailed description (at least 3 characters).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const result = await generateTextTo3DModel(prompt, artStyle, negativePrompt);
+      const result = await generateTextTo3DModel(prompt.trim(), artStyle, negativePrompt);
+      console.log('✅ [HANDLER] Text to 3D generation result:', result);
+      
       if (!result.success) {
         throw new Error(result.error || 'Failed to generate 3D model from text');
       }
     } catch (error) {
-      console.error("Text to 3D error:", error);
+      console.error("❌ [HANDLER] Text to 3D error:", error);
       
       // Enhanced error handling for authentication issues
       if (error instanceof Error) {
@@ -172,6 +197,13 @@ export const useStudioHandlers = ({
           if (showUpgradeModal) {
             showUpgradeModal("model_conversion");
           }
+          return;
+        } else if (error.message.includes('Request body is empty') || error.message.includes('JSON')) {
+          toast({
+            title: "Request Error",
+            description: "There was an issue with your request. Please try again.",
+            variant: "destructive",
+          });
           return;
         }
       }
@@ -185,19 +217,55 @@ export const useStudioHandlers = ({
   };
 
   const handleOpenTextTo3DConfigModal = (prompt: string) => {
-    setTextTo3DConfigPrompt(prompt);
+    console.log('🔧 [HANDLER] Opening config modal with prompt:', prompt);
+    
+    // Validate prompt before opening modal
+    if (!prompt || prompt.trim().length < 3) {
+      toast({
+        title: "Invalid Input",
+        description: "Please provide a more detailed description before opening advanced options.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setTextTo3DConfigPrompt(prompt.trim());
     setTextTo3DConfigModalOpen(true);
   };
 
   const handleTextTo3DWithConfig = async (config: TextTo3DConfig) => {
+    console.log('🔄 [HANDLER] Starting text to 3D with config:', config);
+    
+    // Enhanced input validation
+    if (!config || typeof config !== 'object') {
+      toast({
+        title: "Invalid Configuration",
+        description: "Invalid configuration provided.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!config.prompt || config.prompt.trim().length < 3) {
+      toast({
+        title: "Invalid Input",
+        description: "Please provide a more detailed description (at least 3 characters).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const result = await generateTextTo3DModelWithConfig(config);
+      console.log('✅ [HANDLER] Text to 3D with config result:', result);
+      
       setTextTo3DConfigModalOpen(false);
+      
       if (!result.success) {
         throw new Error(result.error || 'Failed to generate 3D model with config');
       }
     } catch (error) {
-      console.error("Text to 3D with config error:", error);
+      console.error("❌ [HANDLER] Text to 3D with config error:", error);
       
       // Enhanced error handling for authentication issues
       if (error instanceof Error) {
@@ -219,6 +287,13 @@ export const useStudioHandlers = ({
           if (showUpgradeModal) {
             showUpgradeModal("model_conversion");
           }
+          return;
+        } else if (error.message.includes('Request body is empty') || error.message.includes('JSON')) {
+          toast({
+            title: "Request Error",
+            description: "There was an issue with your request. Please try again.",
+            variant: "destructive",
+          });
           return;
         }
       }

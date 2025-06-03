@@ -31,7 +31,7 @@ export const useTextTo3D = () => {
   });
   const { toast } = useToast();
 
-  // Enhanced authentication helper
+  // Enhanced authentication helper with better session management
   const ensureValidSession = async () => {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -64,10 +64,14 @@ export const useTextTo3D = () => {
     }
   };
 
-  // Enhanced input validation
+  // Enhanced input validation with comprehensive checks
   const validateTextTo3DInput = (config: TextTo3DConfig): string | null => {
+    if (!config || typeof config !== 'object') {
+      return 'Invalid configuration object';
+    }
+
     if (!config.prompt || typeof config.prompt !== 'string') {
-      return 'Prompt is required';
+      return 'Prompt is required and must be a string';
     }
     
     if (config.prompt.trim().length === 0) {
@@ -95,6 +99,7 @@ export const useTextTo3D = () => {
     return null;
   };
 
+  // Enhanced status checking with better error handling and timeout management
   const checkStatus = useCallback(async (taskId: string): Promise<void> => {
     try {
       console.log('🔍 [TEXT-TO-3D] Checking status for task:', taskId);
@@ -102,12 +107,16 @@ export const useTextTo3D = () => {
       // Ensure we have a valid session before making the request
       await ensureValidSession();
       
+      // Create request body for status check
+      const requestBody = { taskId };
+      console.log('📤 [TEXT-TO-3D] Status check request body:', requestBody);
+      
       // Add timeout to the status check
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
       
       const { data, error } = await supabase.functions.invoke('check-text-to-3d-status', {
-        body: { taskId },
+        body: requestBody,
         headers: {
           'Content-Type': 'application/json'
         }
@@ -126,8 +135,8 @@ export const useTextTo3D = () => {
         throw new Error(error.message);
       }
 
-      if (!data.success) {
-        throw new Error(data.error || 'Status check failed');
+      if (!data?.success) {
+        throw new Error(data?.error || 'Status check failed');
       }
 
       console.log('📊 [TEXT-TO-3D] Status update:', data);
@@ -232,6 +241,7 @@ export const useTextTo3D = () => {
     });
   };
 
+  // Enhanced generation function with improved request handling
   const generateModelWithConfig = async (config: TextTo3DConfig): Promise<TextTo3DResult> => {
     console.log("🔄 [TEXT-TO-3D] Starting text to 3D generation with config:", config);
     
@@ -262,19 +272,32 @@ export const useTextTo3D = () => {
       // Ensure we have a valid session before making the request
       const accessToken = await ensureValidSession();
       
-      // Create a clean request body
+      // Create a clean, validated request body with proper structure
       const requestBody = {
         prompt: config.prompt.trim(),
         artStyle: config.artStyle || 'realistic',
         negativePrompt: config.negativePrompt || '',
-        mode: config.mode || 'preview',
-        ...(config.targetPolycount && { targetPolycount: config.targetPolycount }),
-        ...(config.topologyType && { topologyType: config.topologyType }),
-        ...(config.texture !== undefined && { texture: config.texture }),
-        ...(config.seedValue !== undefined && { seedValue: config.seedValue })
+        mode: config.mode || 'preview'
       };
 
-      console.log("📤 [TEXT-TO-3D] Sending request body:", requestBody);
+      // Add optional advanced parameters only if they are valid
+      if (config.targetPolycount && typeof config.targetPolycount === 'number' && config.targetPolycount > 0) {
+        requestBody.targetPolycount = config.targetPolycount;
+      }
+      
+      if (config.topologyType && typeof config.topologyType === 'string') {
+        requestBody.topologyType = config.topologyType;
+      }
+      
+      if (config.texture !== undefined && typeof config.texture === 'boolean') {
+        requestBody.texture = config.texture;
+      }
+      
+      if (config.seedValue !== undefined && typeof config.seedValue === 'number') {
+        requestBody.seedValue = config.seedValue;
+      }
+
+      console.log("📤 [TEXT-TO-3D] Sending validated request body:", requestBody);
       
       // Add timeout to the generation request
       const controller = new AbortController();
