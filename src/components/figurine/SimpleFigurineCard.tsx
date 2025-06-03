@@ -114,11 +114,11 @@ const SimpleFigurineCard: React.FC<SimpleFigurineCardProps> = ({
         <CardTitle className="text-sm font-medium truncate flex items-center justify-between">
           <span className="flex items-center gap-2">
             {isTextTo3D && (
-              <Sparkles size={14} className="text-figuro-accent flex-shrink-0" title="Text-to-3D Generated" />
+              <Sparkles size={14} className="text-figuro-accent flex-shrink-0" />
             )}
             <span className="truncate">{displayTitle}</span>
             {figurine.model_url && (
-              <Box size={14} className="text-figuro-accent flex-shrink-0" title="3D Model Available" />
+              <Box size={14} className="text-figuro-accent flex-shrink-0" />
             )}
           </span>
           <div className="flex items-center gap-1 ml-2 flex-shrink-0">
@@ -156,7 +156,6 @@ const SimpleFigurineCard: React.FC<SimpleFigurineCardProps> = ({
             size="icon"
             className="h-8 w-8 bg-transparent border-white/10"
             onClick={() => onDownload(figurine)}
-            title={isTextTo3D ? "Download 3D Model" : isWebIcon ? "Download Web Icon" : "Download Image"}
           >
             <Download size={14} />
           </Button>
@@ -168,7 +167,6 @@ const SimpleFigurineCard: React.FC<SimpleFigurineCardProps> = ({
               size="icon"
               className={`h-8 w-8 bg-transparent border-white/10 ${figurine.is_public ? 'text-green-400' : ''}`}
               onClick={() => onTogglePublish(figurine)}
-              title={figurine.is_public ? "Remove from Gallery" : "Publish to Gallery"}
             >
               <GalleryHorizontal size={14} />
             </Button>
@@ -181,7 +179,6 @@ const SimpleFigurineCard: React.FC<SimpleFigurineCardProps> = ({
               size="icon"
               className="h-8 w-8 bg-transparent border-white/10"
               onClick={() => onUploadModel(figurine)}
-              title="Upload 3D Model"
             >
               <Upload size={14} />
             </Button>
@@ -194,7 +191,6 @@ const SimpleFigurineCard: React.FC<SimpleFigurineCardProps> = ({
               size="icon"
               className="h-8 w-8 bg-transparent border-white/10"
               onClick={() => onViewModel(figurine)}
-              title="View 3D model"
             >
               <Eye size={14} />
             </Button>
