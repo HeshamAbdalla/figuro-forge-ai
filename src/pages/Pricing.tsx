@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -8,66 +9,7 @@ import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-
-const pricingPlans = [
-  {
-    id: "free",
-    name: "Free",
-    price: "$0",
-    features: [
-      { name: "3 Image Generations / Month", included: true },
-      { name: "1 Model Conversion / Month", included: true },
-      { name: "Basic Art Styles", included: true },
-      { name: "Standard Resolution", included: true },
-      { name: "Personal Use License", included: true },
-      { name: "Commercial License", included: false },
-      { name: "Priority Support", included: false },
-    ],
-  },
-  {
-    id: "starter",
-    name: "Starter",
-    price: "$12.99",
-    features: [
-      { name: "20 Image Generations / Month", included: true },
-      { name: "5 Model Conversions / Month", included: true },
-      { name: "All Art Styles", included: true },
-      { name: "High Resolution", included: true },
-      { name: "Personal Use License", included: true },
-      { name: "Commercial License", included: false },
-      { name: "Priority Support", included: false },
-    ],
-    recommended: true,
-  },
-  {
-    id: "pro",
-    name: "Professional",
-    price: "$29.99",
-    features: [
-      { name: "100 Image Generations / Month", included: true },
-      { name: "20 Model Conversions / Month", included: true },
-      { name: "All Art Styles", included: true },
-      { name: "Ultra High Resolution", included: true },
-      { name: "Personal Use License", included: true },
-      { name: "Commercial License", included: true },
-      { name: "Priority Support", included: true },
-    ],
-  },
-  {
-    id: "unlimited",
-    name: "Unlimited",
-    price: "$59.99",
-    features: [
-      { name: "Unlimited Image Generations", included: true },
-      { name: "Unlimited Model Conversions", included: true },
-      { name: "All Art Styles + Beta Features", included: true },
-      { name: "Ultra High Resolution", included: true },
-      { name: "Personal Use License", included: true },
-      { name: "Commercial License", included: true },
-      { name: "Priority Support", included: true },
-    ],
-  },
-];
+import { PLANS } from "@/config/plans";
 
 const Pricing = () => {
   const { user, profile } = useEnhancedAuth();
@@ -77,6 +19,25 @@ const Pricing = () => {
   const currentPlan = profile?.plan || "free";
   const success = searchParams.get("success");
   const canceled = searchParams.get("canceled");
+  
+  // Convert PLANS config to pricing format with enhanced features
+  const pricingPlans = Object.values(PLANS).map(plan => ({
+    id: plan.id,
+    name: plan.name,
+    price: plan.price === 0 ? "$0" : `$${plan.price}`,
+    features: [
+      ...plan.features,
+      // Add standard features based on plan level
+      ...(plan.order >= 1 ? ["High Resolution"] : ["Standard Resolution"]),
+      ...(plan.order >= 2 ? ["Commercial License"] : [{ name: "Commercial License", included: false }]),
+      ...(plan.order >= 2 ? ["Priority Support"] : [{ name: "Priority Support", included: false }]),
+    ].map(feature => 
+      typeof feature === 'string' 
+        ? { name: feature, included: true }
+        : feature
+    ),
+    recommended: plan.id === 'starter'
+  }));
   
   // Show toast messages for Stripe redirects
   useEffect(() => {

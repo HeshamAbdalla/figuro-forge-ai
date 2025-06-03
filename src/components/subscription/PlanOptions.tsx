@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmbeddedCheckout } from "./EmbeddedCheckout";
 import { supabase } from "@/integrations/supabase/client";
+import { PLANS } from "@/config/plans";
 
 export const PlanOptions = () => {
   const { subscription, isLoading, openCustomerPortal, user } = useSubscription();
@@ -14,61 +16,8 @@ export const PlanOptions = () => {
   const [showCheckout, setShowCheckout] = React.useState(false);
   const [selectedPlan, setSelectedPlan] = React.useState<string>('');
   
-  const plans = [
-    {
-      id: 'free',
-      name: 'Free',
-      price: 0,
-      description: 'Basic access to get started',
-      features: [
-        '3 Image generations per month',
-        '1 3D Model conversion per month',
-        'Personal use license',
-        'Access to basic gallery',
-      ],
-    },
-    {
-      id: 'starter',
-      name: 'Starter',
-      price: 12.99,
-      description: 'Perfect for hobbyists',
-      features: [
-        '20 Image generations per month',
-        '5 3D Model conversions per month',
-        'Personal use license',
-        'Access to full gallery',
-        'Priority support',
-      ],
-    },
-    {
-      id: 'pro',
-      name: 'Pro',
-      price: 29.99,
-      description: 'For serious creators',
-      features: [
-        '100 Image generations per month',
-        '20 3D Model conversions per month',
-        'Personal use license',
-        'Access to exclusive models',
-        'Advanced controls',
-        '24/7 Priority support',
-      ],
-    },
-    {
-      id: 'unlimited',
-      name: 'Unlimited',
-      price: 59.99,
-      description: 'For professionals',
-      features: [
-        'Unlimited Image generations',
-        'Unlimited 3D Model conversions',
-        'Commercial use license included',
-        'Access to all premium content',
-        'Advanced controls and customization',
-        'Dedicated support team',
-      ],
-    },
-  ];
+  // Convert PLANS config to array format sorted by order
+  const plans = Object.values(PLANS).sort((a, b) => a.order - b.order);
 
   const handlePlanAction = async (planId: string) => {
     try {
@@ -131,10 +80,9 @@ export const PlanOptions = () => {
 
   // Function to check if switching to this plan would be an upgrade
   const isPlanUpgrade = (planId: string) => {
-    const planOrder = ['free', 'starter', 'pro', 'unlimited'];
-    const currentIndex = planOrder.indexOf(subscription?.plan || 'free');
-    const targetIndex = planOrder.indexOf(planId);
-    return targetIndex > currentIndex;
+    const currentOrder = PLANS[subscription?.plan || 'free']?.order || 0;
+    const targetOrder = PLANS[planId]?.order || 0;
+    return targetOrder > currentOrder;
   };
 
   if (isLoading) {
