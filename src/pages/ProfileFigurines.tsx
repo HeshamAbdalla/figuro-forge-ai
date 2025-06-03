@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { motion } from "framer-motion";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
-import EnhancedFigurineGallery from "@/components/figurine/EnhancedFigurineGallery";
+import SimplifiedFigurineGallery from "@/components/figurine/SimplifiedFigurineGallery";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +16,6 @@ const ProfileFigurines = () => {
   const { toast } = useToast();
   
   useEffect(() => {
-    // If authentication is complete (not loading) and user is not authenticated, redirect to auth page
     if (!isLoading && !user) {
       navigate("/auth");
     }
@@ -30,7 +29,6 @@ const ProfileFigurines = () => {
     });
   };
   
-  // If still loading or no user, show loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-figuro-dark">
@@ -46,7 +44,6 @@ const ProfileFigurines = () => {
     );
   }
 
-  // If no user after loading, redirect will happen in useEffect
   if (!user) {
     return (
       <div className="min-h-screen bg-figuro-dark">
@@ -82,7 +79,7 @@ const ProfileFigurines = () => {
             <div className="mb-10 flex flex-wrap justify-between items-center">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-4">My Figurines</h1>
-                <p className="text-white/70">View and manage all your created figurines with enhanced 3D preview capabilities.</p>
+                <p className="text-white/70">View and manage all your created figurines. Click on a figurine with a 3D model to view it in our enhanced 3D viewer.</p>
               </div>
               
               <Button 
@@ -93,7 +90,7 @@ const ProfileFigurines = () => {
               </Button>
             </div>
             
-            <EnhancedFigurineGallery />
+            <SimplifiedFigurineGallery />
           </motion.div>
         </div>
       </section>
