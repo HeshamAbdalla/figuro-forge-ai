@@ -372,6 +372,7 @@ export type Database = {
       subscriptions: {
         Row: {
           additional_conversions: number | null
+          bonus_credits: number | null
           commercial_license: boolean | null
           converted_3d_this_month: number | null
           created_at: string | null
@@ -395,6 +396,7 @@ export type Database = {
         }
         Insert: {
           additional_conversions?: number | null
+          bonus_credits?: number | null
           commercial_license?: boolean | null
           converted_3d_this_month?: number | null
           created_at?: string | null
@@ -418,6 +420,7 @@ export type Database = {
         }
         Update: {
           additional_conversions?: number | null
+          bonus_credits?: number | null
           commercial_license?: boolean | null
           converted_3d_this_month?: number | null
           created_at?: string | null

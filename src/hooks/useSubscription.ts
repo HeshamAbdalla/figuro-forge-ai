@@ -89,13 +89,16 @@ export const useSubscription = () => {
         subscriptionData = newSub;
       }
 
-      // Calculate total credits including bonus credits
-      const totalCredits = (subscriptionData.credits_remaining || 0) + (subscriptionData.bonus_credits || 0);
+      // Calculate total credits including bonus credits - ensure bonus_credits is not null
+      const bonusCredits = subscriptionData.bonus_credits || 0;
+      const regularCredits = subscriptionData.credits_remaining || 0;
+      const totalCredits = regularCredits + bonusCredits;
 
       // Add plan alias and other missing properties
       const enhancedSubscriptionData: SubscriptionData = {
         ...subscriptionData,
         plan: subscriptionData.plan_type,
+        bonus_credits: bonusCredits,
         total_credits: totalCredits,
         is_active: subscriptionData.status === 'active',
       };
