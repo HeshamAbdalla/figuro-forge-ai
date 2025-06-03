@@ -1,12 +1,17 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0"
 
 // CORS headers for browser requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`🔄 [CONVERT-TO-3D] ${step}${detailsStr}`);
+};
 
 // Handle CORS preflight requests
 const handleCors = (req: Request) => {
@@ -22,12 +27,12 @@ serve(async (req: Request) => {
   if (corsResponse) return corsResponse
 
   try {
-    console.log("🔄 [CONVERT-TO-3D] Function started")
+    logStep("Function started")
 
     // Get authentication header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      console.error("❌ [CONVERT-TO-3D] No authorization header provided")
+      logStep("ERROR: No authorization header provided")
       return new Response(
         JSON.stringify({ error: 'Authentication required' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
@@ -39,21 +44,23 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
     
     if (!supabaseServiceKey || !supabaseUrl) {
-      console.error("❌ [CONVERT-TO-3D] Missing Supabase configuration")
+      logStep("ERROR: Missing Supabase configuration")
       return new Response(
         JSON.stringify({ error: 'Server configuration error' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false }
+    })
 
-    // Verify user authentication
+    // Verify user authentication using the new enhanced auth system
     const token = authHeader.replace('Bearer ', '')
-    const { data: userData, error: userError } = await supabase.auth.getUser(token)
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
     
     if (userError || !userData.user) {
-      console.error("❌ [CONVERT-TO-3D] Authentication failed:", userError?.message)
+      logStep("ERROR: Authentication failed", { error: userError?.message })
       return new Response(
         JSON.stringify({ error: 'Invalid authentication' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
@@ -61,18 +68,22 @@ serve(async (req: Request) => {
     }
 
     const userId = userData.user.id
-    console.log("✅ [CONVERT-TO-3D] User authenticated:", userId)
+    logStep("User authenticated", { userId })
 
-    // Check and consume model conversion usage
-    console.log("🔍 [CONVERT-TO-3D] Checking user limits and consuming usage...")
-    const { data: canConsume, error: consumeError } = await supabase.rpc('consume_feature_usage', {
-      feature_type: 'model_conversion',
-      user_id_param: userId,
-      amount: 1
+    // Check and consume model conversion usage using the new enhanced system
+    logStep("Checking user limits and consuming usage...")
+    const { data: consumeData, error: consumeError } = await supabaseAdmin.functions.invoke('enhanced-consume-usage', {
+      body: {
+        feature_type: 'model_conversion',
+        amount: 1
+      },
+      headers: {
+        'Authorization': authHeader
+      }
     })
 
     if (consumeError) {
-      console.error("❌ [CONVERT-TO-3D] Database error during usage check:", consumeError.message, consumeError)
+      logStep("ERROR: Usage consumption failed", { error: consumeError.message })
       return new Response(
         JSON.stringify({ 
           error: 'Failed to check usage limits',
@@ -82,25 +93,27 @@ serve(async (req: Request) => {
       )
     }
 
-    if (!canConsume) {
-      console.log("🚫 [CONVERT-TO-3D] User has reached model conversion limit")
+    if (!consumeData?.success) {
+      logStep("ERROR: User has reached model conversion limit", { response: consumeData })
       return new Response(
         JSON.stringify({ 
           error: 'Model conversion limit reached',
-          message: 'You have reached your monthly 3D model conversion limit. Please upgrade your plan to continue.'
+          message: 'You have reached your 3D model conversion limit. Please upgrade your plan to continue.',
+          credits_remaining: consumeData?.credits_remaining || 0,
+          total_credits: consumeData?.total_credits || 0
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
       )
     }
 
-    console.log("✅ [CONVERT-TO-3D] Usage consumed successfully")
+    logStep("Usage consumed successfully", { remaining: consumeData.credits_remaining })
 
     // Parse request body
     let requestBody
     try {
       requestBody = await req.json()
     } catch (parseError) {
-      console.error("❌ [CONVERT-TO-3D] Failed to parse request body:", parseError)
+      logStep("ERROR: Failed to parse request body", { error: parseError })
       return new Response(
         JSON.stringify({ error: 'Invalid request body' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
@@ -110,27 +123,27 @@ serve(async (req: Request) => {
     const { imageUrl, imageBase64, config } = requestBody
 
     if (!imageUrl && !imageBase64) {
-      console.error("❌ [CONVERT-TO-3D] Missing image data in request")
+      logStep("ERROR: Missing image data in request")
       return new Response(
         JSON.stringify({ error: 'Image URL or Base64 data is required' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }
 
-    console.log("🔧 [CONVERT-TO-3D] Processing with config:", config)
-    console.log("📊 [CONVERT-TO-3D] Image data type:", imageBase64 ? 'base64' : 'url')
+    logStep("Processing with config", { config })
+    logStep("Image data type", { type: imageBase64 ? 'base64' : 'url' })
 
     // Get Meshy.ai API key from environment variables
     const MESHY_API_KEY = Deno.env.get('MESHY_API_KEY')
     if (!MESHY_API_KEY) {
-      console.error("❌ [CONVERT-TO-3D] Meshy API key not configured")
+      logStep("ERROR: Meshy API key not configured")
       return new Response(
         JSON.stringify({ error: 'Meshy API key not configured. Please contact support.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
     
-    console.log("🔄 [CONVERT-TO-3D] Creating 3D conversion request with Meshy API...")
+    logStep("Creating 3D conversion request with Meshy API...")
     
     // Step 1: Prepare the request payload with correct structure for Meshy API v1
     const requestPayload: any = {}
@@ -139,30 +152,32 @@ serve(async (req: Request) => {
     if (imageBase64) {
       // Ensure base64 string has proper data URI format
       if (!imageBase64.startsWith('data:')) {
-        console.error("❌ [CONVERT-TO-3D] Invalid base64 format, missing data URI prefix")
+        logStep("ERROR: Invalid base64 format, missing data URI prefix")
         return new Response(
           JSON.stringify({ error: 'Invalid image format. Base64 data must include data URI prefix.' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         )
       }
       requestPayload.image_url = imageBase64
-      console.log("📷 [CONVERT-TO-3D] Using base64 image data")
+      logStep("Using base64 image data")
     } else {
-      // Validate HTTP URL format
-      try {
-        const url = new URL(imageUrl)
-        if (!['http:', 'https:'].includes(url.protocol)) {
-          throw new Error('URL must use HTTP or HTTPS protocol')
+      // Validate HTTP URL format for non-blob URLs
+      if (!imageUrl.startsWith('blob:')) {
+        try {
+          const url = new URL(imageUrl)
+          if (!['http:', 'https:'].includes(url.protocol)) {
+            throw new Error('URL must use HTTP or HTTPS protocol')
+          }
+        } catch (urlError) {
+          logStep("ERROR: Invalid image URL format", { error: urlError })
+          return new Response(
+            JSON.stringify({ error: 'Invalid image URL format. Must be a valid HTTP/HTTPS URL.' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          )
         }
-        requestPayload.image_url = imageUrl
-        console.log("🌐 [CONVERT-TO-3D] Using HTTP image URL:", imageUrl)
-      } catch (urlError) {
-        console.error("❌ [CONVERT-TO-3D] Invalid image URL format:", urlError)
-        return new Response(
-          JSON.stringify({ error: 'Invalid image URL format. Must be a valid HTTP/HTTPS URL.' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        )
       }
+      requestPayload.image_url = imageUrl
+      logStep("Using image URL", { url: imageUrl.substring(0, 100) + '...' })
     }
     
     // Add optional configuration if provided
@@ -175,8 +190,7 @@ serve(async (req: Request) => {
       requestPayload.art_style = config.art_style
     }
 
-    console.log("📤 [CONVERT-TO-3D] Sending request to Meshy API endpoint...")
-    console.log("🔧 [CONVERT-TO-3D] Request payload keys:", Object.keys(requestPayload))
+    logStep("Sending request to Meshy API endpoint...")
 
     // Using the correct v1 API endpoint for image-to-3d
     const response = await fetch('https://api.meshy.ai/v1/image-to-3d', {
@@ -188,11 +202,11 @@ serve(async (req: Request) => {
       body: JSON.stringify(requestPayload)
     })
 
-    console.log("📊 [CONVERT-TO-3D] Meshy API response status:", response.status)
+    logStep("Meshy API response status", { status: response.status })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`❌ [CONVERT-TO-3D] Meshy API error (${response.status}):`, errorText)
+      logStep("ERROR: Meshy API error", { status: response.status, error: errorText })
       
       // Provide more specific error messages based on status code
       let userMessage = 'Failed to convert image to 3D model'
@@ -218,13 +232,13 @@ serve(async (req: Request) => {
 
     // Parse the response from Meshy API
     const initialResult = await response.json()
-    console.log("📊 [CONVERT-TO-3D] Meshy API success response:", JSON.stringify(initialResult))
+    logStep("Meshy API success response", { result: initialResult })
     
     // Extract the task ID from the response
     const taskId = initialResult.result || initialResult.id || initialResult.task_id
     
     if (!taskId) {
-      console.error("❌ [CONVERT-TO-3D] No task ID found in Meshy response:", initialResult)
+      logStep("ERROR: No task ID found in Meshy response", { response: initialResult })
       return new Response(
         JSON.stringify({ 
           error: 'No task ID returned from conversion API',
@@ -236,7 +250,7 @@ serve(async (req: Request) => {
     
     // Store task information with configuration
     try {
-      await supabase.from('conversion_tasks').upsert({
+      await supabaseAdmin.from('conversion_tasks').upsert({
         task_id: taskId,
         status: 'processing',
         created_at: new Date().toISOString(),
@@ -245,13 +259,13 @@ serve(async (req: Request) => {
         config: config
       }).select()
       
-      console.log(`💾 [CONVERT-TO-3D] Stored task info. Task ID: ${taskId}`)
+      logStep("Stored task info", { taskId })
     } catch (dbError) {
-      console.error("⚠️ [CONVERT-TO-3D] Failed to store task info:", dbError)
+      logStep("WARNING: Failed to store task info", { error: dbError })
     }
 
     // Return the task ID to the client immediately
-    console.log(`✅ [CONVERT-TO-3D] Task created successfully with ID: ${taskId}`)
+    logStep("Task created successfully", { taskId })
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -264,7 +278,7 @@ serve(async (req: Request) => {
     )
 
   } catch (error) {
-    console.error('❌ [CONVERT-TO-3D] Unexpected error:', error.message, error)
+    logStep("ERROR: Unexpected error", { message: error.message, stack: error.stack })
     return new Response(
       JSON.stringify({ 
         error: 'Failed to convert image to 3D', 

@@ -8,27 +8,72 @@ const convertBlobToBase64 = async (blobUrl: string): Promise<string> => {
     console.log('🔄 [CONVERSION] Converting blob URL to base64:', blobUrl);
     
     const response = await fetch(blobUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch blob: ${response.status} ${response.statusText}`);
+    }
+    
     const blob = await response.blob();
+    
+    // Validate blob size (limit to 10MB)
+    if (blob.size > 10 * 1024 * 1024) {
+      throw new Error('Image file is too large (max 10MB)');
+    }
+    
+    // Validate blob type
+    if (!blob.type.startsWith('image/')) {
+      throw new Error('File must be an image');
+    }
     
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
-        console.log('✅ [CONVERSION] Successfully converted blob to base64');
+        console.log('✅ [CONVERSION] Successfully converted blob to base64, size:', blob.size);
         resolve(base64String);
       };
-      reader.onerror = reject;
+      reader.onerror = () => {
+        console.error('❌ [CONVERSION] FileReader error');
+        reject(new Error('Failed to read image file'));
+      };
       reader.readAsDataURL(blob);
     });
   } catch (error) {
     console.error('❌ [CONVERSION] Failed to convert blob to base64:', error);
-    throw new Error('Failed to convert image to base64 format');
+    throw new Error(`Failed to convert image: ${error.message}`);
   }
 };
 
 // Helper function to check if URL is a blob URL
 const isBlobUrl = (url: string): boolean => {
   return url.startsWith('blob:');
+};
+
+// Helper function to validate authentication
+const validateAuthentication = async (): Promise<boolean> => {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error('❌ [CONVERSION] Auth session error:', error);
+      return false;
+    }
+    
+    if (!session?.user) {
+      console.error('❌ [CONVERSION] No authenticated user');
+      return false;
+    }
+    
+    // Check if token is still valid (not expired)
+    if (session.expires_at && Date.now() / 1000 > session.expires_at) {
+      console.error('❌ [CONVERSION] Session expired');
+      return false;
+    }
+    
+    console.log('✅ [CONVERSION] Authentication validated for user:', session.user.id);
+    return true;
+  } catch (error) {
+    console.error('❌ [CONVERSION] Authentication validation failed:', error);
+    return false;
+  }
 };
 
 export const startConversion = async (
@@ -39,10 +84,23 @@ export const startConversion = async (
   try {
     console.log('🔄 [CONVERSION] Starting 3D conversion with config:', config);
 
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
+    // Enhanced authentication check
+    const isAuthenticated = await validateAuthentication();
+    if (!isAuthenticated) {
       throw new Error('Please log in to generate 3D models');
+    }
+
+    callbacks.onProgressUpdate({
+      status: 'converting',
+      progress: 10,
+      percentage: 10,
+      message: 'Validating authentication...'
+    });
+
+    // Get fresh session for API calls
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error('Authentication session expired. Please refresh the page and try again.');
     }
 
     callbacks.onProgressUpdate({
@@ -62,11 +120,17 @@ export const startConversion = async (
         status: 'converting',
         progress: 25,
         percentage: 25,
-        message: 'Converting image format...'
+        message: 'Converting camera image...'
       });
       
-      imageBase64 = await convertBlobToBase64(imageUrl);
-      processedImageUrl = ''; // Clear the URL since we're using base64
+      try {
+        imageBase64 = await convertBlobToBase64(imageUrl);
+        processedImageUrl = ''; // Clear the URL since we're using base64
+        console.log('✅ [CONVERSION] Blob URL successfully converted to base64');
+      } catch (blobError) {
+        console.error('❌ [CONVERSION] Blob conversion failed:', blobError);
+        throw new Error(`Failed to process camera image: ${blobError.message}`);
+      }
     }
 
     // Use the provided config or fall back to defaults
@@ -105,24 +169,38 @@ export const startConversion = async (
 
     console.log('📤 [CONVERSION] Sending conversion request with payload type:', imageBase64 ? 'base64' : 'url');
 
-    // Call the convert-to-3d edge function with configuration
+    // Call the convert-to-3d edge function with fresh authentication
     const { data, error } = await supabase.functions.invoke('convert-to-3d', {
-      body: requestPayload
+      body: requestPayload,
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      }
     });
 
     if (error) {
       console.error('❌ [CONVERSION] Conversion error:', error);
       
-      // Handle specific error cases
+      // Enhanced error handling for different failure types
+      let errorMessage = 'Conversion failed';
+      
       if (error.message?.includes('limit reached') || error.message?.includes('429')) {
-        throw new Error('You have reached your 3D model conversion limit. Please upgrade your plan to continue.');
+        errorMessage = 'You have reached your 3D model conversion limit. Please upgrade your plan to continue.';
+      } else if (error.message?.includes('authentication') || error.message?.includes('401')) {
+        errorMessage = 'Authentication failed. Please refresh the page and try again.';
+      } else if (error.message?.includes('Invalid image')) {
+        errorMessage = 'Invalid image format. Please try a different image.';
+      } else if (error.message?.includes('network') || error.message?.includes('timeout')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
       
-      throw new Error(`Conversion failed: ${error.message}`);
+      throw new Error(errorMessage);
     }
 
     if (!data?.taskId) {
-      throw new Error('No task ID received from conversion service');
+      console.error('❌ [CONVERSION] No task ID received:', data);
+      throw new Error('No task ID received from conversion service. Please try again.');
     }
 
     console.log('✅ [CONVERSION] Conversion started, task ID:', data.taskId);

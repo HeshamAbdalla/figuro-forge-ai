@@ -148,11 +148,21 @@ export const useSubscription = () => {
     if (!user) return false;
 
     try {
-      // Use the enhanced consume usage function
+      // Get fresh session for API calls
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('No valid session for consuming action');
+        return false;
+      }
+
+      // Use the enhanced consume usage function with proper authentication
       const { data, error } = await supabase.functions.invoke('enhanced-consume-usage', {
         body: {
           feature_type: actionType === 'model_remesh' ? 'model_conversion' : actionType,
           amount: 1
+        },
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
         }
       });
 
@@ -161,8 +171,8 @@ export const useSubscription = () => {
         return false;
       }
 
-      if (!data.success) {
-        console.error('Action consumption failed:', data.error);
+      if (!data?.success) {
+        console.error('Action consumption failed:', data?.error);
         return false;
       }
 
@@ -226,7 +236,22 @@ export const useSubscription = () => {
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
+      // Get fresh session for API calls
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast({
+          title: "Session Expired",
+          description: "Please refresh the page and try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('customer-portal', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
       
       if (error) {
         console.error('Error opening customer portal:', error);
