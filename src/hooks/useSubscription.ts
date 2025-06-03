@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -82,6 +81,23 @@ export const useSubscription = () => {
       }
     }
   }, [retryCount]);
+
+  // Listen for auth subscription refresh events
+  useEffect(() => {
+    const handleAuthSubscriptionRefresh = () => {
+      console.log('🔄 [useSubscription] Auth triggered subscription refresh');
+      if (user) {
+        debouncedFetch(true);
+      }
+    };
+
+    // Listen for custom auth events
+    window.addEventListener('auth-subscription-refresh', handleAuthSubscriptionRefresh);
+
+    return () => {
+      window.removeEventListener('auth-subscription-refresh', handleAuthSubscriptionRefresh);
+    };
+  }, [user, debouncedFetch]);
 
   useEffect(() => {
     if (user) {

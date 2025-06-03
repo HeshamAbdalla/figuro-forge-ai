@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -34,6 +35,20 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [securityScore, setSecurityScore] = useState(0);
 
+  // Get the correct redirect URL based on environment
+  const getRedirectUrl = () => {
+    // Check if we're in production based on hostname
+    const hostname = window.location.hostname;
+    const isProduction = hostname === 'figuros.ai' || hostname.includes('figuro');
+    
+    if (isProduction) {
+      return `https://${hostname}/studio`;
+    }
+    
+    // For development/preview environments
+    return `${window.location.origin}/studio`;
+  };
+
   // Simplified security score calculation
   const calculateSecurityScore = (user: User | null, session: Session | null): number => {
     let score = 0;
@@ -50,7 +65,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     return Math.max(0, Math.min(100, score));
   };
 
-  // Simplified auth refresh
+  // Enhanced auth refresh with subscription loading
   const refreshAuth = async () => {
     try {
       console.log("🔄 [ENHANCED-AUTH] Refreshing auth state...");
@@ -68,11 +83,14 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       setSecurityScore(newSecurityScore);
       
       if (session?.user) {
-        // Defer profile loading to prevent blocking
+        // Load profile and trigger subscription refresh
         setTimeout(async () => {
           try {
             const profileData = await sessionManager.getProfile(session.user.id);
             setProfile(profileData);
+            
+            // Trigger subscription refresh after successful auth
+            window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
           } catch (error) {
             console.error("❌ [ENHANCED-AUTH] Profile fetch failed:", error);
           }
@@ -113,18 +131,47 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user && mounted) {
-            // Defer profile loading
-            setTimeout(async () => {
-              if (mounted) {
-                try {
-                  const profileData = await sessionManager.getProfile(session.user.id);
-                  setProfile(profileData);
-                } catch (error) {
-                  console.error("❌ [ENHANCED-AUTH] Profile fetch failed:", error);
+            // Handle Google OAuth redirect
+            if (session.user.app_metadata?.provider === 'google') {
+              console.log("✅ [ENHANCED-AUTH] Google sign-in successful, redirecting to studio");
+              
+              // Defer profile loading and redirect
+              setTimeout(async () => {
+                if (mounted) {
+                  try {
+                    const profileData = await sessionManager.getProfile(session.user.id);
+                    setProfile(profileData);
+                    
+                    // Trigger subscription refresh
+                    window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
+                    
+                    // Redirect to studio for Google OAuth
+                    window.location.href = '/studio';
+                  } catch (error) {
+                    console.error("❌ [ENHANCED-AUTH] Profile fetch failed:", error);
+                    setIsLoading(false);
+                  }
                 }
-                setIsLoading(false);
-              }
-            }, 100);
+              }, 200);
+            } else {
+              // Regular email/password sign-in
+              setTimeout(async () => {
+                if (mounted) {
+                  try {
+                    const profileData = await sessionManager.getProfile(session.user.id);
+                    setProfile(profileData);
+                    
+                    // Trigger subscription refresh
+                    window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
+                    
+                    setIsLoading(false);
+                  } catch (error) {
+                    console.error("❌ [ENHANCED-AUTH] Profile fetch failed:", error);
+                    setIsLoading(false);
+                  }
+                }
+              }, 100);
+            }
           }
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
@@ -139,10 +186,15 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                 try {
                   const profileData = await sessionManager.getProfile(session.user.id);
                   setProfile(profileData);
+                  
+                  // Trigger subscription refresh on initial load
+                  window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
+                  
+                  setIsLoading(false);
                 } catch (error) {
                   console.error("❌ [ENHANCED-AUTH] Initial profile fetch failed:", error);
+                  setIsLoading(false);
                 }
-                setIsLoading(false);
               }
             }, 100);
           } else {
@@ -174,10 +226,15 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                 try {
                   const profileData = await sessionManager.getProfile(session.user.id);
                   setProfile(profileData);
+                  
+                  // Trigger subscription refresh on initial load
+                  window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
+                  
+                  setIsLoading(false);
                 } catch (error) {
                   console.error("❌ [ENHANCED-AUTH] Profile load failed:", error);
+                  setIsLoading(false);
                 }
-                setIsLoading(false);
               }
             }, 100);
           } else {
@@ -324,8 +381,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       console.log("Attempting sign-up...");
       
-      const origin = window.location.origin || 'http://localhost:5173';
-      const redirectTo = `${origin}/complete-profile`;
+      const redirectTo = getRedirectUrl();
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -397,8 +453,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
 
       console.log("🔄 [ENHANCED-AUTH] Sending password reset email...");
       
-      const origin = window.location.origin || 'http://localhost:5173';
-      const redirectTo = `${origin}/auth`;
+      const redirectTo = getRedirectUrl();
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectTo
@@ -474,12 +529,14 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
+  // Enhanced Google sign-in with production-ready redirects
   const signInWithGoogle = async () => {
     try {
       cleanupAuthState();
       
-      const origin = window.location.origin || 'http://localhost:5173';
-      const redirectTo = `${origin}/complete-profile`;
+      const redirectTo = getRedirectUrl();
+      
+      console.log("🚀 [ENHANCED-AUTH] Starting Google sign-in with redirect:", redirectTo);
       
       securityManager.logSecurityEvent({
         event_type: 'google_signin_initiated',
@@ -487,13 +544,22 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         success: true
       });
       
-      await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectTo
+          redirectTo: redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
+
+      if (error) {
+        throw error;
+      }
     } catch (error: any) {
+      console.error("❌ [ENHANCED-AUTH] Google sign-in error:", error);
       const friendlyError = getAuthErrorMessage(error);
       
       securityManager.logSecurityEvent({
