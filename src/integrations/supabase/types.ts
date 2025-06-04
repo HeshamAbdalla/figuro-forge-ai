@@ -219,6 +219,7 @@ export type Database = {
           full_name: string | null
           generation_count: number | null
           id: string
+          is_onboarding_complete: boolean
           plan: string | null
           updated_at: string | null
         }
@@ -230,6 +231,7 @@ export type Database = {
           full_name?: string | null
           generation_count?: number | null
           id: string
+          is_onboarding_complete?: boolean
           plan?: string | null
           updated_at?: string | null
         }
@@ -241,6 +243,7 @@ export type Database = {
           full_name?: string | null
           generation_count?: number | null
           id?: string
+          is_onboarding_complete?: boolean
           plan?: string | null
           updated_at?: string | null
         }

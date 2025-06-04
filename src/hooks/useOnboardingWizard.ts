@@ -25,19 +25,44 @@ export const useOnboardingWizard = () => {
         .from('profiles')
         .select('is_onboarding_complete')
         .eq('id', user?.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('❌ [ONBOARDING] Error fetching profile:', error);
         return;
       }
 
-      const isComplete = profile?.is_onboarding_complete ?? false;
+      // If no profile exists, create one for new users
+      if (!profile) {
+        console.log('🆕 [ONBOARDING] No profile found, creating new profile for user');
+        
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user?.id,
+            is_onboarding_complete: false,
+            plan: 'free'
+          })
+          .select('is_onboarding_complete')
+          .single();
+
+        if (createError) {
+          console.error('❌ [ONBOARDING] Error creating profile:', createError);
+          return;
+        }
+
+        setIsOnboardingComplete(false);
+        setShowWelcomeModal(true);
+        console.log('✨ [ONBOARDING] New user profile created, showing welcome modal');
+        return;
+      }
+
+      const isComplete = profile.is_onboarding_complete ?? false;
       setIsOnboardingComplete(isComplete);
 
       // Show welcome modal for new users
       if (!isComplete) {
-        console.log('✨ [ONBOARDING] New user detected, showing welcome modal');
+        console.log('✨ [ONBOARDING] Existing user with incomplete onboarding, showing welcome modal');
         setShowWelcomeModal(true);
       }
 
