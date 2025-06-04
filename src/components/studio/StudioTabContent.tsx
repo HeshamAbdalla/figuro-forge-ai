@@ -18,6 +18,7 @@ import MobileCameraSection from "@/components/studio/camera/MobileCameraSection"
 import EnhancedCameraWorkflow from "@/components/studio/camera/EnhancedCameraWorkflow";
 import { useFigurines } from "@/components/figurine/useFigurines";
 import { useWebIconsGeneration } from "@/hooks/useWebIconsGeneration";
+import { useTextTo3D } from "@/hooks/useTextTo3D";
 import type { TabKey } from "@/hooks/useTabNavigation";
 
 interface StudioTabContentProps {
@@ -83,6 +84,10 @@ const StudioTabContent = ({
 }: StudioTabContentProps) => {
   const { figurines } = useFigurines();
   const { isGenerating: isGeneratingIcon, generatedIcon, generateIcon, clearIcon } = useWebIconsGeneration();
+
+  // Get text-to-3D model info from the hook
+  const { getModelInfo } = useTextTo3D();
+  const textTo3DModelInfo = getModelInfo();
 
   // Create refs for form inputs to enable focusing
   const promptFormRef = useRef<{ focusInput: () => void } | null>(null);
@@ -304,16 +309,31 @@ const StudioTabContent = ({
             transition={{ duration: 0.5, delay: 0.1 }}
             className="lg:col-span-2"
           >
-            <EnhancedModelViewer 
-              modelUrl={displayModelUrl} 
-              isLoading={shouldModelViewerLoad && !displayModelUrl}
-              progress={textTo3DProgress.progress || 0}
-              errorMessage={textTo3DProgress.status === 'error' ? 'Failed to generate 3D model' : undefined}
-              onCustomModelLoad={(url, file) => setCustomModelUrl(url)}
-              variant="standard"
-              showControls={true}
-              autoRotate={true}
-            />
+            {/* Use specialized text-to-3D model viewer when we have model info */}
+            {textTo3DModelInfo ? (
+              <EnhancedModelViewer 
+                modelInfo={textTo3DModelInfo}
+                viewerType="text-to-3d"
+                isLoading={isGeneratingTextTo3D && !textTo3DModelInfo.modelUrl}
+                progress={textTo3DProgress.progress || 0}
+                errorMessage={textTo3DProgress.status === 'error' ? 'Failed to generate 3D model' : undefined}
+                onCustomModelLoad={(url, file) => setCustomModelUrl(url)}
+                variant="standard"
+                showControls={true}
+                autoRotate={true}
+              />
+            ) : (
+              <EnhancedModelViewer 
+                modelUrl={displayModelUrl} 
+                isLoading={shouldModelViewerLoad && !displayModelUrl}
+                progress={textTo3DProgress.progress || 0}
+                errorMessage={textTo3DProgress.status === 'error' ? 'Failed to generate 3D model' : undefined}
+                onCustomModelLoad={(url, file) => setCustomModelUrl(url)}
+                variant="standard"
+                showControls={true}
+                autoRotate={true}
+              />
+            )}
           </motion.div>
         </motion.div>
       );
