@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Download, Eye, RotateCcw, CheckCircle, AlertCircle } from 'lucide-react';
-import OptimizedModelPreview from '@/components/gallery/performance/OptimizedModelPreview';
+import EnhancedModelViewer from '@/components/model-viewer/EnhancedModelViewer';
 import { useModelViewer } from '@/components/gallery/useModelViewer';
 
 interface CameraModelPreviewProps {
@@ -84,70 +84,48 @@ const CameraModelPreview: React.FC<CameraModelPreviewProps> = ({
         )}
       </div>
 
-      {/* Model Preview Area */}
-      <div className="relative aspect-square bg-black/20 rounded-lg overflow-hidden">
-        {isConverting ? (
-          // Converting state
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="w-16 h-16 border-4 border-figuro-accent/30 border-t-figuro-accent rounded-full animate-spin mb-4" />
-            <p className="text-white/80 text-sm text-center mb-2">{progress.message}</p>
-            <div className="w-48 bg-white/10 rounded-full h-2 mb-2">
+      {/* Enhanced Model Preview Area */}
+      <div className="relative aspect-square rounded-lg overflow-hidden">
+        <EnhancedModelViewer 
+          modelUrl={modelUrl}
+          isLoading={isConverting}
+          progress={progress.percentage}
+          errorMessage={progress.status === 'error' ? progress.message : undefined}
+          variant="compact"
+          showControls={!!modelUrl && !isConverting}
+          autoRotate={true}
+          className="h-full"
+        />
+        
+        {/* Success overlay */}
+        <AnimatePresence>
+          {showSuccess && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-green-500/20 flex items-center justify-center rounded-lg"
+            >
               <motion.div
-                className="bg-figuro-accent h-2 rounded-full"
-                initial={{ width: "0%" }}
-                animate={{ width: `${progress.percentage}%` }}
-                transition={{ duration: 0.5 }}
-              />
-            </div>
-            <span className="text-xs text-white/60">{progress.percentage}%</span>
-            
-            {/* Show thumbnail if available during conversion */}
-            {progress.thumbnailUrl && (
-              <div className="absolute bottom-4 right-4">
-                <img 
-                  src={progress.thumbnailUrl} 
-                  alt="Conversion preview"
-                  className="w-16 h-16 rounded-lg object-cover border border-white/20"
-                />
-              </div>
-            )}
-          </div>
-        ) : modelUrl ? (
-          // Model ready state
-          <div className="relative w-full h-full">
-            <OptimizedModelPreview
-              modelUrl={modelUrl}
-              fileName={`Camera Capture ${Date.now()}`}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                className="bg-green-500 text-white rounded-full p-4"
+              >
+                <CheckCircle size={32} />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Thumbnail overlay during conversion */}
+        {isConverting && progress.thumbnailUrl && (
+          <div className="absolute bottom-4 right-4">
+            <img 
+              src={progress.thumbnailUrl} 
+              alt="Conversion preview"
+              className="w-16 h-16 rounded-lg object-cover border border-white/20"
             />
-            
-            {/* Success overlay */}
-            <AnimatePresence>
-              {showSuccess && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 bg-green-500/20 flex items-center justify-center"
-                >
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="bg-green-500 text-white rounded-full p-4"
-                  >
-                    <CheckCircle size={32} />
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        ) : (
-          // Empty state
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50">
-            <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4">
-              <Eye size={24} />
-            </div>
-            <p className="text-sm text-center">Take a photo to see your 3D model here</p>
           </div>
         )}
       </div>

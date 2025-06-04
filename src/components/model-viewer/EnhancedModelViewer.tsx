@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Canvas } from "@react-three/fiber";
@@ -30,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import EnhancedModelScene from "./EnhancedModelScene";
 import { useModelViewerState } from "./useModelViewerState";
 import { useTextTo3DModelLoader } from "@/hooks/useTextTo3DModelLoader";
+import { isTextTo3DModel, createTextTo3DModelInfo, getModelTypeInfo } from "@/utils/modelTypeDetection";
 
 interface EnhancedModelViewerProps {
   modelUrl: string | null;
@@ -112,33 +112,6 @@ const EnhancedErrorView = ({
   </Html>
 );
 
-// Helper function to detect if this is a text-to-3D model
-const isTextTo3DModel = (modelUrl: string | null): boolean => {
-  if (!modelUrl) return false;
-  
-  // Check if URL contains text-to-3D indicators
-  return modelUrl.includes('meshy.ai') || 
-         modelUrl.includes('text-to-3d') ||
-         modelUrl.includes('figurine-models') || // Supabase storage path for text-to-3D models
-         modelUrl.includes('tasks/'); // Meshy task ID pattern
-};
-
-// Helper function to create TextTo3DModelInfo from URL
-const createTextTo3DModelInfo = (modelUrl: string) => {
-  // Extract task ID from URL if possible
-  const taskIdMatch = modelUrl.match(/tasks\/([^\/]+)/);
-  const taskId = taskIdMatch ? taskIdMatch[1] : `extracted-${Date.now()}`;
-  
-  return {
-    taskId,
-    modelUrl,
-    status: 'SUCCEEDED', // Assume completed if we have the URL
-    localModelUrl: undefined,
-    thumbnailUrl: undefined,
-    downloadStatus: 'completed'
-  };
-};
-
 const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
   modelUrl,
   isLoading,
@@ -173,7 +146,8 @@ const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
     handleModelError
   } = useModelViewerState(modelUrl, onCustomModelLoad);
 
-  // Determine if we should use text-to-3D loader
+  // Get model type information
+  const modelTypeInfo = getModelTypeInfo(displayModelUrl);
   const useTextTo3DLoader = isTextTo3DModel(displayModelUrl);
   
   // Create model info for text-to-3D loader
@@ -287,11 +261,15 @@ const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
                     Custom Upload
                   </Badge>
                 )}
-                {useTextTo3DLoader && (
-                  <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                    Text-to-3D
-                  </Badge>
-                )}
+                <Badge className={cn(
+                  "border",
+                  modelTypeInfo.type === 'text-to-3d' && "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                  modelTypeInfo.type === 'image-to-3d' && "bg-purple-500/20 text-purple-400 border-purple-500/30",
+                  modelTypeInfo.type === 'camera-capture' && "bg-green-500/20 text-green-400 border-green-500/30",
+                  modelTypeInfo.type === 'custom-upload' && "bg-orange-500/20 text-orange-400 border-orange-500/30"
+                )}>
+                  {modelTypeInfo.source}
+                </Badge>
               </div>
               
               <div className="flex items-center space-x-2">
@@ -470,7 +448,7 @@ const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Badge variant="outline" className="border-white/30 text-white/70">
-                      {customFile?.name || (useTextTo3DLoader ? "Text-to-3D Model" : "Generated Model")}
+                      {customFile?.name || modelTypeInfo.source}
                     </Badge>
                   </div>
                   

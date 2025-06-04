@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, Box, Download, Eye } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface ConversionProgress {
   status: 'idle' | 'converting' | 'downloading' | 'completed' | 'error';
@@ -61,6 +62,21 @@ const ImageTo3DProgress: React.FC<ImageTo3DProgressProps> = ({
     }
   };
 
+  const getStatusBadge = () => {
+    switch (progress.status) {
+      case 'converting':
+        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Converting</Badge>;
+      case 'downloading':
+        return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Downloading</Badge>;
+      case 'completed':
+        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Completed</Badge>;
+      case 'error':
+        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Failed</Badge>;
+      default:
+        return <Badge className="bg-white/20 text-white/60 border-white/30">Processing</Badge>;
+    }
+  };
+
   const isProcessing = isGenerating || progress.status === 'converting' || progress.status === 'downloading';
   const isCompleted = progress.status === 'completed' && progress.modelUrl;
 
@@ -76,9 +92,12 @@ const ImageTo3DProgress: React.FC<ImageTo3DProgressProps> = ({
           <div className="flex items-center gap-3">
             {getStatusIcon()}
             <div>
-              <h3 className="font-medium text-white">3D Model Generation</h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-medium text-white">Image to 3D Conversion</h3>
+                {getStatusBadge()}
+              </div>
               <p className={`text-sm ${getStatusColor()}`}>
-                {progress.message || 'Processing...'}
+                {progress.message || 'Processing your image...'}
               </p>
             </div>
           </div>
@@ -109,6 +128,21 @@ const ImageTo3DProgress: React.FC<ImageTo3DProgressProps> = ({
           </div>
         )}
 
+        {/* Thumbnail Preview */}
+        {progress.thumbnailUrl && (
+          <div className="flex items-center gap-3">
+            <img 
+              src={progress.thumbnailUrl} 
+              alt="Conversion preview"
+              className="w-12 h-12 rounded-lg object-cover border border-white/20"
+            />
+            <div className="text-sm text-white/70">
+              <p>Preview thumbnail</p>
+              <p className="text-xs text-white/50">Full model will be available when complete</p>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         {isCompleted && (
           <div className="flex gap-2">
@@ -119,7 +153,7 @@ const ImageTo3DProgress: React.FC<ImageTo3DProgressProps> = ({
               className="flex-1 border-white/20 hover:bg-white/10"
             >
               <Eye className="h-4 w-4 mr-2" />
-              View Model
+              View in 3D
             </Button>
             <Button
               variant="outline"
@@ -136,7 +170,7 @@ const ImageTo3DProgress: React.FC<ImageTo3DProgressProps> = ({
         {/* Task ID for debugging */}
         {progress.taskId && (
           <div className="text-xs text-white/40 font-mono">
-            Task ID: {progress.taskId}
+            Task: {progress.taskId.substring(0, 8)}...
           </div>
         )}
       </div>
