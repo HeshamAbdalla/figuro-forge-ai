@@ -1,3 +1,4 @@
+
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,15 @@ interface StudioTabContentProps {
   isGenerating: boolean;
   isGeneratingTextTo3D: boolean;
   currentTaskId: string | null;
-  textTo3DProgress: { status: string; progress: number; modelUrl: string; taskId?: string; thumbnailUrl?: string };
+  textTo3DProgress: { 
+    status: string; 
+    progress: number; 
+    modelUrl: string; 
+    taskId?: string; 
+    thumbnailUrl?: string;
+    localModelUrl?: string;
+    downloadStatus?: string;
+  };
   displayModelUrl: string | null;
   shouldModelViewerLoad: boolean;
   progress: any;
@@ -263,16 +272,20 @@ const StudioTabContent = ({
                 status={textTo3DProgress.status}
                 progress={textTo3DProgress.progress}
                 modelUrl={textTo3DProgress.modelUrl}
+                localModelUrl={textTo3DProgress.localModelUrl}
                 thumbnailUrl={textTo3DProgress.thumbnailUrl}
+                downloadStatus={textTo3DProgress.downloadStatus}
                 onViewModel={() => {
                   // Model is already displayed in the ModelViewer component
                   console.log('Model already displayed in viewer');
                 }}
                 onDownload={() => {
-                  if (textTo3DProgress.modelUrl) {
+                  // Use the best available URL for download
+                  const downloadUrl = textTo3DProgress.localModelUrl || textTo3DProgress.modelUrl;
+                  if (downloadUrl) {
                     const link = document.createElement('a');
-                    link.href = textTo3DProgress.modelUrl;
-                    link.download = 'text-to-3d-model.glb';
+                    link.href = downloadUrl;
+                    link.download = `text-to-3d-model-${currentTaskId?.substring(0, 8) || 'unknown'}.glb`;
                     link.click();
                   }
                 }}

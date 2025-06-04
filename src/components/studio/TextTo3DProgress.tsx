@@ -11,6 +11,7 @@ interface TextTo3DProgressProps {
   status: string;
   progress: number;
   modelUrl?: string;
+  localModelUrl?: string;
   thumbnailUrl?: string;
   downloadStatus?: string;
   onDownload?: () => void;
@@ -105,11 +106,22 @@ const getProgressDescription = (progress: number, status: string) => {
   }
 };
 
+const getModelUrlForDownload = (modelUrl?: string, localModelUrl?: string, downloadStatus?: string): string | null => {
+  // Prefer local URL if download completed successfully
+  if (localModelUrl && downloadStatus === 'completed') {
+    return localModelUrl;
+  }
+  
+  // Fall back to original model URL
+  return modelUrl || null;
+};
+
 const TextTo3DProgress = ({ 
   taskId, 
   status, 
   progress, 
-  modelUrl, 
+  modelUrl,
+  localModelUrl,
   thumbnailUrl,
   downloadStatus,
   onDownload, 
@@ -126,8 +138,24 @@ const TextTo3DProgress = ({
   const isSavedToCollection = downloadStatus === 'completed';
   const isProcessing = status === 'processing' || status === 'pending' || status === 'IN_PROGRESS' || status === 'PENDING' || status === 'starting';
 
+  const downloadUrl = getModelUrlForDownload(modelUrl, localModelUrl, downloadStatus);
+
   const handleViewCollection = () => {
     navigate('/profile/figurines');
+  };
+
+  const handleDownload = () => {
+    if (onDownload && downloadUrl) {
+      onDownload();
+    } else if (downloadUrl) {
+      // Fallback download logic
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `text-to-3d-model-${taskId?.substring(0, 8) || 'unknown'}.glb`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const estimatedTimeRemaining = () => {
@@ -186,7 +214,7 @@ const TextTo3DProgress = ({
             </div>
           )}
 
-          {isCompleted && modelUrl && !isDownloading && (
+          {isCompleted && downloadUrl && !isDownloading && (
             <div className="flex gap-2 pt-2">
               <Button
                 onClick={onViewModel}
@@ -207,15 +235,13 @@ const TextTo3DProgress = ({
                 </Button>
               )}
               
-              {onDownload && (
-                <Button
-                  onClick={onDownload}
-                  variant="outline"
-                  className="border-white/20 hover:border-white/40 bg-white/5"
-                >
-                  <Download size={16} />
-                </Button>
-              )}
+              <Button
+                onClick={handleDownload}
+                variant="outline"
+                className="border-white/20 hover:border-white/40 bg-white/5"
+              >
+                <Download size={16} />
+              </Button>
             </div>
           )}
 
@@ -245,7 +271,7 @@ const TextTo3DProgress = ({
             </div>
           )}
 
-          {downloadStatus === 'failed' && modelUrl && (
+          {downloadStatus === 'failed' && downloadUrl && (
             <div className="space-y-3">
               <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
                 <p className="text-sm text-yellow-400">
@@ -261,17 +287,15 @@ const TextTo3DProgress = ({
                   <Eye size={14} className="mr-2" />
                   View Model
                 </Button>
-                {onDownload && (
-                  <Button
-                    onClick={onDownload}
-                    size="sm"
-                    variant="outline"
-                    className="border-white/20 hover:border-white/40 bg-white/5"
-                  >
-                    <Download size={14} className="mr-2" />
-                    Download
-                  </Button>
-                )}
+                <Button
+                  onClick={handleDownload}
+                  size="sm"
+                  variant="outline"
+                  className="border-white/20 hover:border-white/40 bg-white/5"
+                >
+                  <Download size={14} className="mr-2" />
+                  Download
+                </Button>
               </div>
             </div>
           )}

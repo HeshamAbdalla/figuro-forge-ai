@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { TextTo3DConfig } from "@/components/studio/types/textTo3DConfig";
+import type { TextTo3DModelInfo } from "@/utils/textTo3DModelUtils";
 
 export interface TextTo3DResult {
   success: boolean;
@@ -18,6 +19,7 @@ export interface TextTo3DProgress {
   taskId?: string;
   thumbnailUrl?: string;
   downloadStatus?: string;
+  localModelUrl?: string;
 }
 
 export const useTextTo3D = () => {
@@ -138,11 +140,12 @@ export const useTextTo3D = () => {
 
       console.log('📊 [TEXT-TO-3D] Status update:', data);
 
-      // Update progress with download status
+      // Update progress with enhanced data including local URLs
       const newProgress: TextTo3DProgress = {
         status: data.status,
         progress: data.progress || 0,
         modelUrl: data.modelUrl || '',
+        localModelUrl: data.localModelUrl,
         taskId: taskId,
         thumbnailUrl: data.thumbnailUrl,
         downloadStatus: data.downloadStatus || 'pending'
@@ -399,6 +402,22 @@ export const useTextTo3D = () => {
     }
   };
 
+  // Get enhanced model info for the model loader
+  const getModelInfo = useCallback((): TextTo3DModelInfo | null => {
+    if (!currentTaskId || !progress.modelUrl) {
+      return null;
+    }
+    
+    return {
+      taskId: currentTaskId,
+      modelUrl: progress.modelUrl,
+      localModelUrl: progress.localModelUrl,
+      thumbnailUrl: progress.thumbnailUrl,
+      status: progress.status,
+      downloadStatus: progress.downloadStatus
+    };
+  }, [currentTaskId, progress]);
+
   const resetProgress = useCallback(() => {
     setProgress({
       status: '',
@@ -417,6 +436,7 @@ export const useTextTo3D = () => {
     generateModel,
     generateModelWithConfig,
     resetProgress,
-    setCurrentTaskId
+    setCurrentTaskId,
+    getModelInfo
   };
 };
