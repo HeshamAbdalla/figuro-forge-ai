@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,8 @@ import * as THREE from "three";
 import { useToast } from "@/hooks/use-toast";
 import { disposeModel, handleObjectUrl } from "@/components/model-viewer/utils/modelUtils";
 import { useModelLoader } from "@/hooks/useModelLoader";
+import { prioritizeUrls } from "@/utils/urlValidationUtils";
+import { logModelDebugInfo } from "@/utils/modelDebugUtils";
 
 interface ModelViewerProps {
   modelUrl: string | null;
@@ -52,8 +55,14 @@ const Model = ({ url, onError }: { url: string; onError: (error: any) => void })
       previousModelRef.current = null;
     }
     
-    // Load the new model
-    loadModel(url);
+    // Prioritize URLs if multiple options available
+    const prioritizedUrl = prioritizeUrls([url]);
+    const finalUrl = prioritizedUrl || url;
+    
+    console.log("🎯 [MODEL-VIEWER] Using prioritized URL:", finalUrl);
+    
+    // Load the model
+    loadModel(finalUrl);
   }, [url, loadModel]);
 
   useEffect(() => {
@@ -127,15 +136,21 @@ const ModelViewer = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const customObjectUrlRef = useRef<string | null>(null);
-  // Keep track of original URL for downloads
   const originalUrlRef = useRef<string | null>(modelUrl);
 
   // Reset error state when modelUrl changes
   useEffect(() => {
     if (modelUrl) {
+      console.log("🔄 [MODEL-VIEWER] Model URL changed, resetting state");
       setModelError(null);
       setModelLoadAttempted(false);
       originalUrlRef.current = modelUrl;
+      
+      // Log debug info for the new model URL
+      if (modelUrl) {
+        console.log("🔍 [MODEL-VIEWER] Debugging new model URL:", modelUrl);
+      }
+      
       // Reset custom model when a new model is provided
       if (customObjectUrlRef.current) {
         handleObjectUrl(null, customObjectUrlRef.current);
@@ -216,7 +231,7 @@ const ModelViewer = ({
         a.click();
         document.body.removeChild(a);
       } else {
-        // For generated models, use the original URL for downloads, not the proxied version
+        // For generated models, use the original URL for downloads
         const a = document.createElement('a');
         a.href = downloadUrl;
         a.download = `figurine-model-${new Date().getTime()}.glb`;
@@ -230,7 +245,7 @@ const ModelViewer = ({
         description: "Your 3D model download has started."
       });
     } catch (error) {
-      console.error("Download error:", error);
+      console.error("❌ [MODEL-VIEWER] Download error:", error);
       toast({
         title: "Download failed",
         description: "Failed to download the model. Try again or check console for details.",
@@ -240,16 +255,20 @@ const ModelViewer = ({
   };
 
   const handleModelError = (error: any) => {
-    console.error("Error loading 3D model:", error);
+    console.error("❌ [MODEL-VIEWER] Error loading 3D model:", error);
     
     let errorMsg = "Failed to load 3D model. The download may still work.";
     
-    // Check for specific CORS or network errors
-    if (error.message) {
-      if (error.message.includes("Failed to fetch")) {
+    // Check for specific error types
+    if (error?.message) {
+      if (error.message.includes("Failed to fetch") || error.message.includes("Network error")) {
         errorMsg = "Network error loading 3D model. The model URL might be restricted by CORS policy. Try the download button instead.";
-      } else if (error.message.includes("Cross-Origin")) {
+      } else if (error.message.includes("Cross-Origin") || error.message.includes("CORS")) {
         errorMsg = "CORS policy prevented loading the 3D model. Try the download button instead.";
+      } else if (error.message.includes("expired")) {
+        errorMsg = "Model URL has expired. Please regenerate the model.";
+      } else if (error.message.includes("not found") || error.message.includes("404")) {
+        errorMsg = "Model file not found. Please check if the model exists.";
       }
     }
     
