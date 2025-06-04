@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import EnhancedModelScene from "./EnhancedModelScene";
 import { useModelViewerState } from "./useModelViewerState";
+import { useTextTo3DModelLoader } from "@/hooks/useTextTo3DModelLoader";
 
 interface EnhancedModelViewerProps {
   modelUrl: string | null;
@@ -111,6 +112,33 @@ const EnhancedErrorView = ({
   </Html>
 );
 
+// Helper function to detect if this is a text-to-3D model
+const isTextTo3DModel = (modelUrl: string | null): boolean => {
+  if (!modelUrl) return false;
+  
+  // Check if URL contains text-to-3D indicators
+  return modelUrl.includes('meshy.ai') || 
+         modelUrl.includes('text-to-3d') ||
+         modelUrl.includes('figurine-models') || // Supabase storage path for text-to-3D models
+         modelUrl.includes('tasks/'); // Meshy task ID pattern
+};
+
+// Helper function to create TextTo3DModelInfo from URL
+const createTextTo3DModelInfo = (modelUrl: string) => {
+  // Extract task ID from URL if possible
+  const taskIdMatch = modelUrl.match(/tasks\/([^\/]+)/);
+  const taskId = taskIdMatch ? taskIdMatch[1] : `extracted-${Date.now()}`;
+  
+  return {
+    taskId,
+    modelUrl,
+    status: 'SUCCEEDED', // Assume completed if we have the URL
+    localModelUrl: undefined,
+    thumbnailUrl: undefined,
+    downloadStatus: 'completed'
+  };
+};
+
 const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
   modelUrl,
   isLoading,
@@ -144,6 +172,26 @@ const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
     handleDownload,
     handleModelError
   } = useModelViewerState(modelUrl, onCustomModelLoad);
+
+  // Determine if we should use text-to-3D loader
+  const useTextTo3DLoader = isTextTo3DModel(displayModelUrl);
+  
+  // Create model info for text-to-3D loader
+  const textTo3DModelInfo = useTextTo3DLoader && displayModelUrl ? 
+    createTextTo3DModelInfo(displayModelUrl) : null;
+
+  // Use text-to-3D loader when appropriate
+  const {
+    loading: textTo3DLoading,
+    model: textTo3DModel,
+    error: textTo3DError,
+    loadModel: loadTextTo3DModel,
+    progress: textTo3DProgress
+  } = useTextTo3DModelLoader({
+    modelInfo: textTo3DModelInfo,
+    onError: handleModelError,
+    autoLoad: useTextTo3DLoader && !!textTo3DModelInfo
+  });
 
   // Initialize autoRotate from props
   useEffect(() => {
@@ -192,8 +240,16 @@ const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
     }
   };
 
+  // Determine loading state based on model type
+  const isModelLoading = useTextTo3DLoader ? textTo3DLoading : isLoading;
+  const modelLoadingProgress = useTextTo3DLoader ? textTo3DProgress : progress;
+  const currentModelError = useTextTo3DLoader ? textTo3DError : (errorMessage || modelError);
+  const shouldShowModelError = useTextTo3DLoader ? 
+    !!textTo3DError : 
+    shouldShowError;
+
   // Skip rendering if there's nothing to display
-  if (!modelUrl && !customFile && !isLoading) {
+  if (!modelUrl && !customFile && !isModelLoading) {
     return null;
   }
 
@@ -229,6 +285,11 @@ const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
                 {customFile && (
                   <Badge className="bg-figuro-accent/20 text-figuro-accent border-figuro-accent/30">
                     Custom Upload
+                  </Badge>
+                )}
+                {useTextTo3DLoader && (
+                  <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                    Text-to-3D
                   </Badge>
                 )}
               </div>
@@ -339,13 +400,19 @@ const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
           
           <PerspectiveCamera makeDefault position={cameraPosition as [number, number, number]} />
           
-          {/* Model Scene */}
-          {isLoading ? (
-            <EnhancedLoadingView progress={progress} />
-          ) : shouldShowError ? (
+          {/* Model Scene - Use text-to-3D model when available */}
+          {isModelLoading ? (
+            <EnhancedLoadingView progress={modelLoadingProgress} />
+          ) : shouldShowModelError ? (
             <EnhancedErrorView 
-              error={errorMessage || modelError || "Failed to load model"}
-              onRetry={() => window.location.reload()}
+              error={currentModelError || "Failed to load model"}
+              onRetry={() => {
+                if (useTextTo3DLoader) {
+                  loadTextTo3DModel();
+                } else {
+                  window.location.reload();
+                }
+              }}
             />
           ) : (
             <EnhancedModelScene
@@ -354,6 +421,7 @@ const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
               autoRotate={autoRotate}
               showWireframe={showWireframe}
               onModelError={handleModelError}
+              preloadedModel={useTextTo3DLoader ? textTo3DModel : undefined}
             />
           )}
           
@@ -391,7 +459,7 @@ const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
         
         {/* Overlay controls */}
         <AnimatePresence>
-          {displayModelUrl && showControls && !isLoading && (
+          {displayModelUrl && showControls && !isModelLoading && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -402,7 +470,7 @@ const EnhancedModelViewer: React.FC<EnhancedModelViewerProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Badge variant="outline" className="border-white/30 text-white/70">
-                      {customFile?.name || "Generated Model"}
+                      {customFile?.name || (useTextTo3DLoader ? "Text-to-3D Model" : "Generated Model")}
                     </Badge>
                   </div>
                   
