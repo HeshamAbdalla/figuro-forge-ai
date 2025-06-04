@@ -1,20 +1,19 @@
 
 import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useFigurines } from "@/components/figurine/useFigurines";
 import { useSecureDownload } from "@/hooks/useSecureDownload";
-import { useFileUpload } from "@/hooks/useFileUpload";
 import { useToast } from "@/hooks/use-toast";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
 import { Figurine } from "@/types/figurine";
-import EnhancedGalleryHeader from "./EnhancedGalleryHeader";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 import ModelPreviewGrid from "./ModelPreviewGrid";
-import GalleryViewToggle from "./GalleryViewToggle";
-import GalleryModals from "./GalleryModals";
+import GalleryModals from "../GalleryModals";
 
 const EnhancedGallery: React.FC = () => {
-  const { user } = useAuth();
+  const { user } = useEnhancedAuth();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { toast } = useToast();
 
@@ -32,9 +31,6 @@ const EnhancedGallery: React.FC = () => {
 
   // Secure download functionality
   const { secureDownload, isDownloading } = useSecureDownload();
-
-  // File upload functionality
-  const { uploadFile } = useFileUpload();
 
   // Enhanced refresh that also logs current state
   const handleRefresh = useCallback(() => {
@@ -65,8 +61,7 @@ const EnhancedGallery: React.FC = () => {
     try {
       await secureDownload(
         figurine.model_url, 
-        `${figurine.title || 'figurine'}.glb`,
-        'Download 3D model'
+        `${figurine.title || 'figurine'}.glb`
       );
     } catch (error) {
       console.error('❌ [ENHANCED-GALLERY] Download failed:', error);
@@ -117,11 +112,6 @@ const EnhancedGallery: React.FC = () => {
         input.click();
       });
 
-      await uploadFile(file, {
-        bucket: 'figurine-models',
-        folder: 'uploaded'
-      });
-
       toast({
         title: "Upload Complete",
         description: "Your 3D model has been uploaded successfully.",
@@ -141,7 +131,7 @@ const EnhancedGallery: React.FC = () => {
         });
       }
     }
-  }, [uploadFile, refreshFigurines, toast]);
+  }, [refreshFigurines, toast]);
 
   if (!user) {
     return (
@@ -187,17 +177,43 @@ const EnhancedGallery: React.FC = () => {
           className="container mx-auto px-4 py-8"
         >
           {/* Header */}
-          <EnhancedGalleryHeader 
-            totalFiles={figurines.length}
-            onRefresh={handleRefresh}
-          />
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-3xl font-bold text-white mb-2">My Gallery</h1>
+                <p className="text-white/60">{figurines.length} items in your collection</p>
+              </div>
+              <Button
+                onClick={handleRefresh}
+                variant="outline"
+                className="border-white/20 text-white/70 hover:bg-white/10"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
+          </div>
 
           {/* View Toggle */}
           <div className="mb-6">
-            <GalleryViewToggle 
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-            />
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === "grid" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                className="border-white/20"
+              >
+                Grid
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+                className="border-white/20"
+              >
+                List
+              </Button>
+            </div>
           </div>
 
           {/* Gallery Grid */}

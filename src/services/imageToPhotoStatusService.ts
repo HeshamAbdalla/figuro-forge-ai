@@ -330,7 +330,7 @@ export class ImageTo3DStatusService {
           .insert({
             user_id: userId,
             prompt: prompt,
-            style: 'realistic',
+            style: 'realistic' as const, // Use const assertion for proper typing
             title: title,
             image_url: originalImageUrl,
             saved_image_url: originalImageUrl,
@@ -419,7 +419,7 @@ export class ImageTo3DStatusService {
             .insert({
               user_id: userId,
               prompt: prompt,
-              style: task.art_style || 'realistic',
+              style: (task.art_style as any) || 'realistic' as const, // Handle style properly
               title: title,
               image_url: task.local_thumbnail_url || '',
               saved_image_url: task.local_thumbnail_url,
