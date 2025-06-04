@@ -79,7 +79,8 @@ const validateAuthentication = async (): Promise<boolean> => {
 export const startConversion = async (
   imageUrl: string,
   config: Generate3DConfig,
-  callbacks: ConversionCallbacks
+  callbacks: ConversionCallbacks,
+  prompt?: string
 ): Promise<string> => {
   try {
     console.log('🔄 [CONVERSION] Starting 3D conversion with config:', config);
@@ -156,6 +157,7 @@ export const startConversion = async (
       imageUrl?: string;
       imageBase64?: string;
       config: Generate3DConfig;
+      prompt?: string;
     } = {
       config: finalConfig
     };
@@ -165,6 +167,11 @@ export const startConversion = async (
       requestPayload.imageBase64 = imageBase64;
     } else {
       requestPayload.imageUrl = processedImageUrl;
+    }
+
+    // Add prompt if provided
+    if (prompt) {
+      requestPayload.prompt = prompt;
     }
 
     console.log('📤 [CONVERSION] Sending conversion request with payload type:', imageBase64 ? 'base64' : 'url');

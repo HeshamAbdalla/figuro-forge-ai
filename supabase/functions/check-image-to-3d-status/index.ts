@@ -319,7 +319,26 @@ serve(async (req) => {
           }
         }
 
-        // Update conversion task status if it exists
+        // Get the stored prompt from conversion_tasks table
+        let storedPrompt = '';
+        try {
+          const { data: conversionTask, error: taskError } = await supabase
+            .from('conversion_tasks')
+            .select('prompt')
+            .eq('task_id', taskId)
+            .eq('user_id', user.id)
+            .limit(1)
+            .single();
+
+          if (!taskError && conversionTask?.prompt) {
+            storedPrompt = conversionTask.prompt;
+            console.log('✅ [CHECK-IMAGE-TO-3D-STATUS] Retrieved stored prompt:', storedPrompt);
+          }
+        } catch (promptError) {
+          console.warn('⚠️ [CHECK-IMAGE-TO-3D-STATUS] Could not retrieve stored prompt:', promptError);
+        }
+
+        // Update conversion task status
         try {
           await supabase
             .from('conversion_tasks')
@@ -337,7 +356,7 @@ serve(async (req) => {
           console.error('⚠️ [CHECK-IMAGE-TO-3D-STATUS] Failed to update conversion task:', dbError);
         }
 
-        // ENHANCED: Always try to create a figurine record for image-to-3D conversions
+        // Create figurine record with better naming using stored prompt
         try {
           console.log('🔄 [CHECK-IMAGE-TO-3D-STATUS] Creating figurine record for image-to-3D conversion...');
           
@@ -354,9 +373,14 @@ serve(async (req) => {
           }
 
           if (!existingFigurines || existingFigurines.length === 0) {
-            // Create new figurine record
-            const title = `3D Model - ${taskId.substring(0, 8)}...`;
-            const prompt = `Image-to-3D conversion from task ${taskId}`;
+            // Create new figurine record with better naming
+            const title = storedPrompt 
+              ? storedPrompt.length > 50 
+                ? `${storedPrompt.substring(0, 47)}...`
+                : storedPrompt
+              : `3D Model - ${taskId.substring(0, 8)}...`;
+            
+            const prompt = storedPrompt || `Image-to-3D conversion from task ${taskId}`;
             
             const { data: newFigurine, error: insertError } = await supabase
               .from('figurines')

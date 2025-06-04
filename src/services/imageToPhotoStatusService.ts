@@ -123,7 +123,7 @@ export class ImageTo3DStatusService {
     originalImageUrl: string,
     callbacks: ImageTo3DCallbacks,
     shouldCreateFigurine: boolean = true
-  ): Promise<void> {
+  ): Promise<void> => {
     let attempts = 0;
     let consecutiveErrors = 0;
     const maxConsecutiveErrors = 3;
@@ -282,7 +282,7 @@ export class ImageTo3DStatusService {
     modelUrl: string,
     thumbnailUrl: string | null,
     fileName: string
-  ): Promise<void> {
+  ): Promise<void> => {
     try {
       console.log('🔄 [IMAGE-TO-3D-POLL] Ensuring conversion task record exists...');
 
@@ -369,7 +369,7 @@ export class ImageTo3DStatusService {
     fileName: string,
     taskId: string,
     thumbnailUrl?: string | null
-  ): Promise<void> {
+  ): Promise<void> => {
     try {
       console.log('🔄 [IMAGE-TO-3D-POLL] Ensuring figurine record exists...');
 
@@ -379,6 +379,25 @@ export class ImageTo3DStatusService {
       }
 
       const userId = session.user.id;
+
+      // Get the stored prompt from conversion_tasks table for better naming
+      let storedPrompt = '';
+      try {
+        const { data: conversionTask, error: taskError } = await supabase
+          .from('conversion_tasks')
+          .select('prompt')
+          .eq('task_id', taskId)
+          .eq('user_id', userId)
+          .limit(1)
+          .single();
+
+        if (!taskError && conversionTask?.prompt) {
+          storedPrompt = conversionTask.prompt;
+          console.log('✅ [IMAGE-TO-3D-POLL] Retrieved stored prompt for figurine:', storedPrompt);
+        }
+      } catch (promptError) {
+        console.warn('⚠️ [IMAGE-TO-3D-POLL] Could not retrieve stored prompt:', promptError);
+      }
 
       // First, try to find an existing figurine with this image URL
       const { data: existingFigurines, error: searchError } = await supabase
@@ -412,16 +431,20 @@ export class ImageTo3DStatusService {
 
         console.log('✅ [IMAGE-TO-3D-POLL] Successfully updated existing figurine');
       } else {
-        // Create new figurine
+        // Create new figurine with better naming
         console.log('🔄 [IMAGE-TO-3D-POLL] Creating new figurine record...');
         
-        const prompt = fileName.includes('camera-capture') 
+        const prompt = storedPrompt || (fileName.includes('camera-capture') 
           ? `Camera captured model - ${new Date().toLocaleDateString()}`
-          : `Generated from ${fileName.replace(/\.[^/.]+$/, '')}`;
+          : `Generated from ${fileName.replace(/\.[^/.]+$/, '')}`);
 
-        const title = fileName.includes('camera-capture') 
-          ? `Camera 3D Model - ${new Date().toLocaleDateString()}`
-          : `3D Model - ${fileName.replace(/\.[^/.]+$/, '')}`;
+        const title = storedPrompt 
+          ? (storedPrompt.length > 50 
+            ? `${storedPrompt.substring(0, 47)}...`
+            : storedPrompt)
+          : (fileName.includes('camera-capture') 
+            ? `Camera 3D Model - ${new Date().toLocaleDateString()}`
+            : `3D Model - ${fileName.replace(/\.[^/.]+$/, '')}`);
 
         const { data: newFigurine, error: insertError } = await supabase
           .from('figurines')
@@ -460,7 +483,7 @@ export class ImageTo3DStatusService {
   }
 
   /**
-   * Recovery mechanism to find and link orphaned models
+   * Recovery mechanism to find and link orphaned models with better naming
    */
   async findOrphanedModels(userId: string): Promise<{found: number, linked: number}> {
     try {
@@ -508,9 +531,13 @@ export class ImageTo3DStatusService {
             continue;
           }
 
-          // Create figurine for orphaned model
+          // Create figurine for orphaned model with better naming
           const prompt = task.prompt || `Recovered model from task ${task.task_id}`;
-          const title = `3D Model - ${task.task_id.substring(0, 8)}...`;
+          const title = task.prompt 
+            ? (task.prompt.length > 50 
+              ? `${task.prompt.substring(0, 47)}...`
+              : task.prompt)
+            : `3D Model - ${task.task_id.substring(0, 8)}...`;
 
           const { error: insertError } = await supabase
             .from('figurines')
