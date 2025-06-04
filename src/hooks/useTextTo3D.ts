@@ -269,8 +269,17 @@ export const useTextTo3D = () => {
       // Ensure we have a valid session before making the request
       await ensureValidSession();
       
-      // Create a clean, validated request body with proper structure
-      const requestBody = {
+      // Create a clean, validated request body with proper structure including all optional properties
+      const requestBody: {
+        prompt: string;
+        artStyle: string;
+        negativePrompt: string;
+        mode: string;
+        targetPolycount?: number;
+        topologyType?: string;
+        texture?: boolean;
+        seedValue?: number;
+      } = {
         prompt: config.prompt.trim(),
         artStyle: config.artStyle || 'realistic',
         negativePrompt: config.negativePrompt || '',
