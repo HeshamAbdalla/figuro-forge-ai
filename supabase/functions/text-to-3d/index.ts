@@ -101,7 +101,7 @@ serve(async (req) => {
       // Get raw body and validate
       const rawBody = await req.text();
       console.log('📝 [TEXT-TO-3D] Raw request body length:', rawBody?.length || 0);
-      console.log('📝 [TEXT-TO-3D] Raw request body preview:', rawBody?.substring(0, 200) || 'empty');
+      console.log('📝 [TEXT-TO-3D] Raw request body preview:', rawBody?.substring(0, 500) || 'empty');
       
       if (!rawBody || rawBody.trim() === '') {
         console.error('❌ [TEXT-TO-3D] Request body is empty');
@@ -122,7 +122,7 @@ serve(async (req) => {
         requestBody = JSON.parse(rawBody);
         console.log('📊 [TEXT-TO-3D] Parsed request body successfully');
         console.log('📊 [TEXT-TO-3D] Request body keys:', Object.keys(requestBody || {}));
-        console.log('📊 [TEXT-TO-3D] Request body:', requestBody);
+        console.log('📊 [TEXT-TO-3D] Request body:', JSON.stringify(requestBody));
       } catch (jsonError) {
         console.error('❌ [TEXT-TO-3D] JSON parsing failed:', jsonError);
         console.error('❌ [TEXT-TO-3D] Invalid JSON content:', rawBody);

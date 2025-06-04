@@ -116,10 +116,7 @@ export const useTextTo3D = () => {
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
       
       const { data, error } = await supabase.functions.invoke('check-text-to-3d-status', {
-        body: requestBody,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        body: requestBody
       });
 
       clearTimeout(timeoutId);
@@ -270,10 +267,10 @@ export const useTextTo3D = () => {
 
     try {
       // Ensure we have a valid session before making the request
-      const accessToken = await ensureValidSession();
+      await ensureValidSession();
       
       // Create a clean, validated request body with proper structure
-      const requestBody: Partial<TextTo3DConfig> = {
+      const requestBody = {
         prompt: config.prompt.trim(),
         artStyle: config.artStyle || 'realistic',
         negativePrompt: config.negativePrompt || '',
@@ -298,20 +295,14 @@ export const useTextTo3D = () => {
       }
 
       console.log("📤 [TEXT-TO-3D] Sending validated request body:", requestBody);
+      console.log("📤 [TEXT-TO-3D] Request body JSON:", JSON.stringify(requestBody));
       
-      // Add timeout to the generation request
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
+      // Call the edge function using Supabase client (no manual headers)
       const { data, error } = await supabase.functions.invoke('text-to-3d', {
-        body: requestBody,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        }
+        body: requestBody
       });
 
-      clearTimeout(timeoutId);
+      console.log("📊 [TEXT-TO-3D] Edge function response - data:", data, "error:", error);
 
       if (error) {
         console.error("❌ [TEXT-TO-3D] Generation error:", error);
