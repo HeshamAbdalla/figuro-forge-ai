@@ -5,6 +5,7 @@ import { useTabNavigation } from "@/hooks/useTabNavigation";
 import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { useCameraProgress } from "@/hooks/useCameraProgress";
 import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
+import { useToast } from "@/hooks/use-toast";
 import EnhancedUpgradeModal from "@/components/upgrade/EnhancedUpgradeModal";
 import UpgradeCelebration from "@/components/upgrade/UpgradeCelebration";
 import Header from "@/components/Header";
@@ -20,6 +21,7 @@ const Studio = () => {
 
   // Use simplified auth for Studio
   const { user: authUser, isLoading: authLoading, isAuthenticated } = useStudioAuth();
+  const { toast } = useToast();
 
   const {
     customModelUrl,

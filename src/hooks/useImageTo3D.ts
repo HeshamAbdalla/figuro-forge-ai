@@ -265,7 +265,7 @@ export const useImageTo3D = () => {
       const requestBody: {
         imageUrl?: string;
         imageBase64?: string;
-        config: ImageTo3DConfig;
+        config: any;
       } = {
         config: {
           art_style: config?.artStyle || 'realistic',
