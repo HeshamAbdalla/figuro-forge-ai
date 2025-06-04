@@ -153,7 +153,31 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
               setTimeout(async () => {
                 if (mounted) {
                   try {
-                    const profileData = await sessionManager.getProfile(session.user.id);
+                    let profileData = await sessionManager.getProfile(session.user.id);
+                    
+                    // If no profile exists, it means this is a new user
+                    if (!profileData) {
+                      console.log("🆕 [ENHANCED-AUTH] New user detected, creating profile with onboarding flag");
+                      
+                      // Create a new profile with onboarding incomplete
+                      const { data: newProfile, error: createError } = await supabase
+                        .from('profiles')
+                        .insert({
+                          id: session.user.id,
+                          is_onboarding_complete: false,
+                          plan: 'free'
+                        })
+                        .select()
+                        .single();
+                      
+                      if (createError) {
+                        console.error("❌ [ENHANCED-AUTH] Failed to create profile:", createError);
+                      } else {
+                        profileData = newProfile;
+                        console.log("✅ [ENHANCED-AUTH] Created new profile for onboarding");
+                      }
+                    }
+                    
                     setProfile(profileData);
                     
                     // Trigger subscription refresh
