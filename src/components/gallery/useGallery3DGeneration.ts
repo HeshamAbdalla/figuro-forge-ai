@@ -1,172 +1,151 @@
 
-import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { useSubscription } from '@/hooks/useSubscription';
-import { useConversionProgress } from './hooks/useConversionProgress';
-import { startConversion } from './services/conversionService';
-import { pollConversionStatus } from './services/statusPollingService';
-import { Generate3DConfig, ConversionProgress } from './types/conversion';
+import { useState, useCallback } from "react";
+import { useImageTo3D } from "@/hooks/useImageTo3D";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-export type { Generate3DConfig, ConversionProgress };
+interface ConversionProgress {
+  status: 'idle' | 'converting' | 'downloading' | 'completed' | 'error';
+  progress: number;
+  percentage: number;
+  message: string;
+  taskId?: string;
+  modelUrl?: string;
+  thumbnailUrl?: string;
+}
 
 export const useGallery3DGeneration = () => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const { progress, updateProgress, resetProgress } = useConversionProgress();
   const { toast } = useToast();
-  const { canPerformAction, checkSubscription, consumeAction } = useSubscription();
+  const {
+    isGenerating: isImageTo3DGenerating,
+    progress: imageToThreeDProgress,
+    generateModelFromImage,
+    resetProgress: resetImageTo3DProgress
+  } = useImageTo3D();
 
-  const generate3DModel = async (
-    imageUrl: string, 
-    fileName: string, 
-    config?: Generate3DConfig,
-    shouldUpdateExisting: boolean = true // FIXED: Default to true for backward compatibility, but allow override
+  const [progress, setProgress] = useState<ConversionProgress>({
+    status: 'idle',
+    progress: 0,
+    percentage: 0,
+    message: ''
+  });
+
+  // Map the imageToThreeD progress to gallery progress format
+  const mappedProgress: ConversionProgress = {
+    status: imageToThreeDProgress.status === 'processing' ? 'converting' :
+           imageToThreeDProgress.status === 'SUCCEEDED' ? 'completed' :
+           imageToThreeDProgress.status === 'error' ? 'error' : 'idle',
+    progress: imageToThreeDProgress.progress,
+    percentage: imageToThreeDProgress.progress,
+    message: imageToThreeDProgress.status === 'processing' ? 'Converting image to 3D model...' :
+             imageToThreeDProgress.status === 'SUCCEEDED' ? 'Conversion completed!' :
+             imageToThreeDProgress.status === 'error' ? 'Conversion failed' : '',
+    taskId: imageToThreeDProgress.taskId,
+    modelUrl: imageToThreeDProgress.modelUrl,
+    thumbnailUrl: imageToThreeDProgress.thumbnailUrl
+  };
+
+  const generate3DModel = useCallback(async (
+    imageUrl: string,
+    filename: string,
+    config?: any,
+    shouldUpdateExisting: boolean = true
   ) => {
     try {
-      setIsGenerating(true);
-      updateProgress({
-        status: 'converting',
-        progress: 10,
-        percentage: 10,
-        message: 'Checking usage limits...'
-      });
-
-      console.log('🔄 [GALLERY] Starting 3D conversion for:', fileName, 'with config:', config, 'shouldUpdateExisting:', shouldUpdateExisting);
-
-      // Check authentication
+      console.log('🔄 [GALLERY-3D] Starting 3D generation:', { imageUrl, filename, config, shouldUpdateExisting });
+      
+      // Enhanced authentication check
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
         throw new Error('Please log in to generate 3D models');
       }
 
-      // Check if user can perform model conversion
-      if (!canPerformAction('model_conversion')) {
-        throw new Error('You have reached your 3D model conversion limit. Please upgrade your plan to continue.');
-      }
-
-      // Consume usage before conversion
-      const consumed = await consumeAction("model_conversion");
-      if (!consumed) {
-        throw new Error('You have reached your 3D model conversion limit. Please upgrade your plan to continue.');
-      }
-
-      const defaultConfig: Generate3DConfig = {
-        art_style: 'realistic',
-        ai_model: 'meshy-5',
-        topology: 'quad',
-        target_polycount: 20000,
-        texture_richness: 'high',
-        moderation: true
+      // Map config to ImageTo3DConfig format
+      const imageToThreeDConfig = {
+        artStyle: config?.art_style || 'realistic',
+        aiModel: config?.ai_model || 'meshy-5',
+        topology: config?.topology || 'quad',
+        targetPolycount: config?.target_polycount || 20000,
+        textureRichness: config?.texture_richness || 'high',
+        moderation: config?.moderation !== undefined ? config.moderation : true,
+        negativePrompt: config?.negative_prompt
       };
 
-      const conversionCallbacks = {
-        onProgressUpdate: updateProgress,
-        onSuccess: (modelUrl: string, thumbnailUrl?: string) => {
-          console.log('✅ [GALLERY] 3D conversion completed successfully');
-          setIsGenerating(false);
+      console.log('📤 [GALLERY-3D] Calling generateModelFromImage with config:', imageToThreeDConfig);
+      
+      const result = await generateModelFromImage(imageUrl, filename, imageToThreeDConfig);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate 3D model');
+      }
+
+      console.log('✅ [GALLERY-3D] 3D generation started successfully');
+
+      // If we need to create a new figurine record (for camera captures)
+      if (!shouldUpdateExisting && result.taskId) {
+        try {
+          console.log('💾 [GALLERY-3D] Creating new figurine record for camera capture');
           
-          // IMPROVED: Better success messages based on whether we're updating or creating
-          const successMessage = shouldUpdateExisting 
-            ? "Your 3D model has been added to the existing figurine"
-            : "Your 3D model has been created and saved to the gallery";
-            
-          toast({
-            title: "3D Model Generated",
-            description: successMessage,
-            variant: "default"
-          });
-        },
-        onError: (error: string) => {
-          console.error('❌ [GALLERY] 3D conversion failed:', error);
-          setIsGenerating(false);
-          updateProgress({
-            status: 'error',
-            progress: 0,
-            percentage: 0,
-            message: error
-          });
-          
-          // Provide user-friendly error messages
-          let userMessage = error;
-          let toastTitle = "3D Generation Failed";
-          
-          if (error.includes('limit') || error.includes('upgrade')) {
-            toastTitle = "3D Conversion Limit Reached";
-          } else if (error.includes('image format') || error.includes('Invalid image')) {
-            userMessage = "The image format is not supported. Please try with a different image or format.";
-          } else if (error.includes('rate limit')) {
-            userMessage = "Service is temporarily busy. Please try again in a few minutes.";
-          } else if (error.includes('authentication')) {
-            userMessage = "Authentication error. Please try signing in again.";
-          } else if (error.includes('failed to save to gallery')) {
-            userMessage = "3D model was generated but couldn't be saved to gallery. You can still download it.";
-            toastTitle = "Partial Success";
+          const { error: figurineError } = await supabase
+            .from('figurines')
+            .insert({
+              user_id: session.user.id,
+              task_id: result.taskId,
+              status: 'processing',
+              image_url: imageUrl.startsWith('blob:') ? null : imageUrl,
+              name: `Camera Capture ${new Date().toLocaleDateString()}`,
+              prompt: 'Camera captured image converted to 3D',
+              art_style: imageToThreeDConfig.artStyle,
+              ai_model: imageToThreeDConfig.aiModel
+            });
+
+          if (figurineError) {
+            console.error('⚠️ [GALLERY-3D] Failed to create figurine record:', figurineError);
+          } else {
+            console.log('✅ [GALLERY-3D] Figurine record created successfully');
           }
-          
-          toast({
-            title: toastTitle,
-            description: userMessage,
-            variant: "destructive"
-          });
+        } catch (dbError) {
+          console.error('⚠️ [GALLERY-3D] Database error creating figurine:', dbError);
         }
-      };
-
-      // Start conversion with user config or defaults
-      const taskId = await startConversion(
-        imageUrl,
-        config || defaultConfig,
-        conversionCallbacks
-      );
-
-      // FIXED: Pass the shouldUpdateExisting parameter to polling service
-      await pollConversionStatus(taskId, fileName, imageUrl, conversionCallbacks, shouldUpdateExisting);
-
-      // Refresh subscription data after successful conversion
-      setTimeout(() => {
-        checkSubscription();
-      }, 1000);
+      }
 
     } catch (error) {
-      console.error('❌ [GALLERY] 3D generation error:', error);
+      console.error('❌ [GALLERY-3D] 3D generation error:', error);
       
-      const errorMessage = error instanceof Error ? error.message : 'Failed to generate 3D model';
-      
-      setIsGenerating(false);
-      
-      updateProgress({
-        status: 'error',
-        progress: 0,
-        percentage: 0,
-        message: errorMessage
-      });
-      
-      // Provide user-friendly error messages
-      let userMessage = errorMessage;
-      let toastTitle = "3D Generation Failed";
-      
-      if (errorMessage.includes('limit') || errorMessage.includes('upgrade')) {
-        toastTitle = "3D Conversion Limit Reached";
-      } else if (errorMessage.includes('image format') || errorMessage.includes('Invalid image')) {
-        userMessage = "The image format is not supported. Please try with a different image or format.";
-      } else if (errorMessage.includes('rate limit')) {
-        userMessage = "Service is temporarily busy. Please try again in a few minutes.";
-      } else if (errorMessage.includes('authentication')) {
-        userMessage = "Authentication error. Please try signing in again.";
-      } else if (errorMessage.includes('Failed to convert image to base64')) {
-        userMessage = "Unable to process the image. Please try generating a new image or using a different format.";
+      let errorMessage = "Failed to generate 3D model";
+      if (error instanceof Error) {
+        if (error.message.includes('authentication') || error.message.includes('JWT')) {
+          errorMessage = "Authentication expired. Please refresh the page and try again.";
+        } else if (error.message.includes('limit reached')) {
+          errorMessage = "You have reached your conversion limit. Please upgrade your plan to continue.";
+        } else {
+          errorMessage = error.message;
+        }
       }
       
       toast({
-        title: toastTitle,
-        description: userMessage,
-        variant: "destructive"
+        title: "3D Generation Failed",
+        description: errorMessage,
+        variant: "destructive",
       });
+      
+      throw error;
     }
-  };
+  }, [generateModelFromImage, toast]);
+
+  const resetProgress = useCallback(() => {
+    resetImageTo3DProgress();
+    setProgress({
+      status: 'idle',
+      progress: 0,
+      percentage: 0,
+      message: ''
+    });
+  }, [resetImageTo3DProgress]);
 
   return {
-    isGenerating,
-    progress,
+    isGenerating: isImageTo3DGenerating,
+    progress: mappedProgress,
     generate3DModel,
     resetProgress
   };

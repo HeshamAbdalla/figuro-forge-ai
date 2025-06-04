@@ -129,46 +129,92 @@ const Studio = () => {
     handleModelUpload(file);
   };
 
-  // Handle camera image capture - FIXED: Now properly creates figurine records
+  // Enhanced camera image capture with better error handling and validation
   const handleCameraImageCapture = async (imageBlob: Blob) => {
     try {
-      console.log('📸 [CAMERA] Image captured, converting to URL...');
+      console.log('📸 [CAMERA] Image captured, starting enhanced processing...');
+      
+      // Validate blob
+      if (!imageBlob || imageBlob.size === 0) {
+        throw new Error('Invalid image data captured');
+      }
+      
+      // Validate blob size (max 10MB)
+      if (imageBlob.size > 10 * 1024 * 1024) {
+        throw new Error('Captured image is too large (max 10MB)');
+      }
+      
+      // Validate blob type
+      if (!imageBlob.type.startsWith('image/')) {
+        throw new Error('Captured data is not a valid image');
+      }
+      
+      console.log('✅ [CAMERA] Image validation passed:', {
+        size: imageBlob.size,
+        type: imageBlob.type
+      });
       
       // Reset any previous camera progress
       resetCameraProgress();
       
-      // Convert blob to URL for display
+      // Convert blob to URL for display and processing
       const imageUrl = URL.createObjectURL(imageBlob);
       
       // Generate a filename for the captured image
       const fileName = `camera-capture-${Date.now()}.jpg`;
       
-      console.log('📸 [CAMERA] Starting 3D conversion for captured image...');
+      console.log('📸 [CAMERA] Starting enhanced 3D conversion for captured image...');
+      
+      // Enhanced configuration for camera captures
+      const cameraConfig = {
+        art_style: 'realistic',
+        ai_model: 'meshy-5',
+        topology: 'quad',
+        target_polycount: 20000,
+        texture_richness: 'high',
+        moderation: true
+      };
       
       // FIXED: Pass shouldUpdateExisting as false to create NEW figurine records
       // This ensures camera captures are saved as new figurines in the gallery
       await generate3DModel(
         imageUrl,
         fileName,
-        {
-          art_style: 'realistic',
-          ai_model: 'meshy-5',
-          topology: 'quad',
-          target_polycount: 20000,
-          texture_richness: 'high',
-          moderation: true
-        },
+        cameraConfig,
         false // shouldUpdateExisting: false to create new figurine records
       );
       
-      console.log('📸 [CAMERA] 3D conversion initiated successfully - will create new figurine');
+      console.log('✅ [CAMERA] Enhanced 3D conversion initiated successfully - will create new figurine');
       
     } catch (error) {
-      console.error('❌ [CAMERA] Failed to process captured image:', error);
+      console.error('❌ [CAMERA] Enhanced camera processing failed:', error);
       
-      // Better error handling for camera captures
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      // Enhanced error handling for camera captures
+      let errorMessage = 'Failed to process camera image';
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid image data')) {
+          errorMessage = 'Failed to capture image. Please try again.';
+        } else if (error.message.includes('too large')) {
+          errorMessage = 'Captured image is too large. Please try from a different angle.';
+        } else if (error.message.includes('not a valid image')) {
+          errorMessage = 'Invalid image format captured. Please try again.';
+        } else if (error.message.includes('authentication')) {
+          errorMessage = 'Authentication expired. Please refresh the page and try again.';
+        } else if (error.message.includes('limit reached')) {
+          errorMessage = 'You have reached your conversion limit. Please upgrade your plan.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       console.error('❌ [CAMERA] Error details:', errorMessage);
+      
+      // Show user-friendly error message
+      toast({
+        title: "Camera Processing Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
       
       // Update camera progress to show error state
       resetCameraProgress();
