@@ -7,8 +7,7 @@ import {
   PerspectiveCamera, 
   Environment,
   Center,
-  Html,
-  useGLTF
+  Html
 } from "@react-three/drei";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download, Upload } from "lucide-react";
@@ -16,8 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import * as THREE from "three";
 import { useToast } from "@/hooks/use-toast";
 import { disposeModel, handleObjectUrl } from "@/components/model-viewer/utils/modelUtils";
-// Import GLTFLoader through drei's exposed version instead of directly from three.js
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { useModelLoader } from "@/hooks/useModelLoader";
 
 interface ModelViewerProps {
   modelUrl: string | null;
@@ -37,141 +35,40 @@ const LoadingSpinner = () => (
   </Html>
 );
 
-// This component will load and display the actual 3D model
+// Enhanced model content component using the new model loader
 const Model = ({ url, onError }: { url: string; onError: (error: any) => void }) => {
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-  const [model, setModel] = useState<THREE.Group | null>(null);
+  const { loading, model, error, loadModel } = useModelLoader();
   const previousModelRef = useRef<THREE.Group | null>(null);
   
   useEffect(() => {
     if (!url) return;
     
-    setLoading(true);
-    console.log("Attempting to load model from URL:", url);
+    console.log("🔄 [MODEL-VIEWER] Attempting to load model from URL:", url);
     
     // Dispose previous model before loading new one
     if (previousModelRef.current) {
-      console.log("Disposing previous model before loading new one");
+      console.log("🗑️ [MODEL-VIEWER] Disposing previous model before loading new one");
       disposeModel(previousModelRef.current);
       previousModelRef.current = null;
     }
     
-    // For blob URLs, we need special handling
-    if (url.startsWith('blob:')) {
-      try {
-        const loader = new GLTFLoader();
-        
-        loader.load(
-          url,
-          (gltf) => {
-            console.log("Blob URL model loaded successfully:", gltf);
-            
-            // Store reference for disposal
-            previousModelRef.current = gltf.scene;
-            setModel(gltf.scene);
-            setLoading(false);
-            toast({
-              title: "Model loaded",
-              description: "Custom 3D model loaded successfully",
-            });
-          },
-          // Progress callback
-          (progress) => {
-            console.log(`Loading progress: ${Math.round((progress.loaded / progress.total) * 100)}%`);
-          },
-          // Error callback
-          (error) => {
-            console.error("Error loading blob URL model:", error);
-            onError(error);
-            setLoading(false);
-          }
-        );
-      } catch (error) {
-        console.error("Error setting up blob URL model loader:", error);
-        onError(error);
-        setLoading(false);
-      }
-      
-      return () => {
-        // Cleanup function for blob URLs - dispose model on cleanup
-        if (previousModelRef.current) {
-          disposeModel(previousModelRef.current);
-          previousModelRef.current = null;
-        }
-      };
+    // Load the new model
+    loadModel(url);
+  }, [url, loadModel]);
+
+  useEffect(() => {
+    if (error) {
+      console.error("❌ [MODEL-VIEWER] Model loading error:", error);
+      onError(new Error(error));
     }
-    
-    // For remote URLs, use the original approach
-    const loader = new GLTFLoader();
-    
-    // Try to load the model directly first
-    loader.load(
-      url,
-      (gltf) => {
-        console.log("Model loaded successfully:", gltf);
-        
-        // Store reference for disposal
-        previousModelRef.current = gltf.scene;
-        setModel(gltf.scene);
-        setLoading(false);
-        toast({
-          title: "Model loaded",
-          description: "3D model loaded successfully",
-        });
-      },
-      // Progress callback
-      (progress) => {
-        console.log(`Loading progress: ${Math.round((progress.loaded / progress.total) * 100)}%`);
-      },
-      // Error callback
-      (error) => {
-        console.error("Direct loading failed:", error);
-        
-        // If direct loading fails, try with a CORS proxy
-        const proxyUrl = `https://cors-proxy.fringe.zone/${encodeURIComponent(url)}`;
-        console.log("Trying with CORS proxy:", proxyUrl);
-        
-        loader.load(
-          proxyUrl,
-          (gltf) => {
-            console.log("Model loaded successfully with proxy:", gltf);
-            
-            // Store reference for disposal
-            previousModelRef.current = gltf.scene;
-            setModel(gltf.scene);
-            setLoading(false);
-            toast({
-              title: "Model loaded",
-              description: "3D model loaded successfully using proxy",
-            });
-          },
-          (progress) => {
-            console.log(`Proxy loading progress: ${Math.round((progress.loaded / progress.total) * 100)}%`);
-          },
-          (proxyError) => {
-            console.error("Proxy loading failed:", proxyError);
-            onError(proxyError);
-            setLoading(false);
-            toast({
-              title: "Loading failed",
-              description: "Failed to load the 3D model. Please try downloading it instead.",
-              variant: "destructive",
-            });
-          }
-        );
-      }
-    );
-    
-    return () => {
-      // Cleanup function - dispose model on cleanup
-      if (previousModelRef.current) {
-        disposeModel(previousModelRef.current);
-        previousModelRef.current = null;
-      }
-    };
-  }, [url, onError, toast]);
-  
+  }, [error, onError]);
+
+  useEffect(() => {
+    if (model) {
+      previousModelRef.current = model;
+    }
+  }, [model]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -185,12 +82,25 @@ const Model = ({ url, onError }: { url: string; onError: (error: any) => void })
   if (loading) {
     return <LoadingSpinner />;
   }
+
+  if (error || !model) {
+    return (
+      <Html center>
+        <div className="text-center text-white">
+          <div className="text-red-400 text-lg mb-2">Failed to Load Model</div>
+          <div className="text-sm text-white/70">
+            {error || "Unknown error occurred"}
+          </div>
+        </div>
+      </Html>
+    );
+  }
   
-  return model ? (
+  return (
     <Center scale={[1.5, 1.5, 1.5]}>
       <primitive object={model} />
     </Center>
-  ) : null;
+  );
 };
 
 // Fallback component shown when no model is available
@@ -413,86 +323,74 @@ const ModelViewer = ({
             )}
           </div>
         ) : shouldShowError ? (
-          <div className="w-full h-full p-4 flex items-center justify-center text-center">
-            <div className="text-red-400">
-              <p>{errorMessage || modelError}</p>
+          <div className="w-full h-full flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="text-red-400 text-lg mb-2">Failed to Load Model</div>
+              <p className="text-white/70 text-sm mb-4">
+                {errorMessage || modelError}
+              </p>
               {displayModelUrl && (
-                <p className="text-sm text-green-400 mt-2">
-                  A model URL was received. Try downloading it using the button below.
-                </p>
-              )}
-              {!displayModelUrl && (
-                <p className="text-sm text-white/50 mt-2">Try converting the image again or upload your own GLB file</p>
+                <Button
+                  onClick={handleDownload}
+                  className="bg-figuro-accent hover:bg-figuro-accent/80"
+                >
+                  <Download size={16} className="mr-2" />
+                  Download Model
+                </Button>
               )}
             </div>
           </div>
-        ) : (
-          <Canvas shadows>
-            <ambientLight intensity={0.5} />
-            <directionalLight position={[10, 10, 5]} intensity={1} />
-            <PerspectiveCamera makeDefault position={[0, 0, 5]} />
+        ) : displayModelUrl ? (
+          <Canvas
+            camera={{ position: [0, 0, 5], fov: 50 }}
+            style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #2d1b69 100%)' }}
+          >
+            <ambientLight intensity={0.4} />
+            <directionalLight position={[2, 2, 2]} intensity={0.8} />
             
             <Suspense fallback={<LoadingSpinner />}>
-              {displayModelUrl ? (
-                <ErrorBoundary 
-                  fallback={<DummyBox />} 
-                  onError={handleModelError}
-                >
-                  <Model url={displayModelUrl} onError={handleModelError} />
-                </ErrorBoundary>
-              ) : (
-                <DummyBox />
-              )}
+              <Model url={displayModelUrl} onError={handleModelError} />
             </Suspense>
             
             <OrbitControls 
               autoRotate={autoRotate}
               autoRotateSpeed={2}
-              enablePan={true}
-              enableZoom={true}
-              enableRotate={true}
+              enablePan={false}
+              maxDistance={10}
+              minDistance={2}
             />
-            <Environment preset="sunset" />
+            
+            <Environment preset="studio" />
           </Canvas>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Canvas
+              camera={{ position: [0, 0, 5], fov: 50 }}
+              style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #2d1b69 100%)' }}
+            >
+              <ambientLight intensity={0.4} />
+              <directionalLight position={[2, 2, 2]} intensity={0.8} />
+              <DummyBox />
+              <OrbitControls enablePan={false} />
+            </Canvas>
+          </div>
         )}
-      </div>
-      
-      <div className="p-4 flex justify-center">
-        <Button
-          className="w-full bg-figuro-accent hover:bg-figuro-accent-hover flex items-center gap-2"
-          disabled={!displayModelUrl}
-          onClick={handleDownload}
-        >
-          <Download size={16} />
-          {customFile ? `Download ${customFile.name}` : "Download 3D Model"}
-        </Button>
+
+        {displayModelUrl && !isLoading && !shouldShowError && (
+          <div className="absolute bottom-4 right-4">
+            <Button
+              onClick={handleDownload}
+              size="sm"
+              className="bg-figuro-accent hover:bg-figuro-accent/80 text-white shadow-lg"
+            >
+              <Download size={16} className="mr-2" />
+              Download
+            </Button>
+          </div>
+        )}
       </div>
     </motion.div>
   );
 };
-
-// Simple error boundary for the 3D model
-class ErrorBoundary extends React.Component<{
-  children: React.ReactNode;
-  fallback: React.ReactNode;
-  onError: (error: any) => void;
-}> {
-  state = { hasError: false };
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: any) {
-    this.props.onError(error);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback;
-    }
-    return this.props.children;
-  }
-}
 
 export default ModelViewer;
