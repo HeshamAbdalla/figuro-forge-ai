@@ -28,10 +28,7 @@ const EnhancedModelScene: React.FC<EnhancedModelSceneProps> = ({
   const { scene } = useThree();
 
   // Use the regular model loader only if we don't have a preloaded model
-  const { loading, model, error, loadModel } = useModelLoader({
-    onError: onModelError,
-    autoLoad: false // We'll manually control loading
-  });
+  const { loading, model, error, loadModel } = useModelLoader();
 
   // Handle model loading logic
   useEffect(() => {
