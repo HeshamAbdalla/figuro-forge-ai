@@ -6,6 +6,7 @@ import { useFigurines } from "@/components/figurine/useFigurines";
 import { useSecureDownload } from "@/hooks/useSecureDownload";
 import { useToast } from "@/hooks/use-toast";
 import { useModelViewer } from "@/components/gallery/useModelViewer";
+import { useImageViewer } from "@/components/gallery/useImageViewer";
 import { Figurine } from "@/types/figurine";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
@@ -15,6 +16,17 @@ import GalleryModals from "../GalleryModals";
 const EnhancedGallery: React.FC = () => {
   const { user } = useEnhancedAuth();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [authPromptOpen, setAuthPromptOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
+  const [progress, setProgress] = useState({
+    status: 'idle' as const,
+    progress: 0,
+    message: '',
+    taskId: undefined,
+    modelUrl: undefined,
+    thumbnailUrl: undefined
+  });
   const { toast } = useToast();
 
   // Fetch figurines with enhanced error handling
@@ -23,11 +35,22 @@ const EnhancedGallery: React.FC = () => {
   // Model viewer functionality
   const { 
     viewingModel, 
+    viewingFileName,
     modelViewerOpen, 
     setModelViewerOpen, 
     onViewModel, 
     onCloseModelViewer 
   } = useModelViewer();
+
+  // Image viewer functionality
+  const {
+    viewingImage,
+    viewingImageName,
+    imageViewerOpen,
+    setImageViewerOpen,
+    onViewImage,
+    onCloseImageViewer
+  } = useImageViewer();
 
   // Secure download functionality
   const { secureDownload, isDownloading } = useSecureDownload();
@@ -133,6 +156,25 @@ const EnhancedGallery: React.FC = () => {
     }
   }, [refreshFigurines, toast]);
 
+  const handleGenerate = useCallback(async (config: any) => {
+    console.log('🎨 [ENHANCED-GALLERY] Generate 3D with config:', config);
+    toast({
+      title: "Feature Coming Soon",
+      description: "3D generation will be available soon.",
+    });
+  }, [toast]);
+
+  const handleResetProgress = useCallback(() => {
+    setProgress({
+      status: 'idle',
+      progress: 0,
+      message: '',
+      taskId: undefined,
+      modelUrl: undefined,
+      thumbnailUrl: undefined
+    });
+  }, []);
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-figuro-bg via-figuro-bg to-figuro-accent/10 flex items-center justify-center">
@@ -231,9 +273,24 @@ const EnhancedGallery: React.FC = () => {
 
         {/* Modals */}
         <GalleryModals
-          viewingModel={viewingModel}
           modelViewerOpen={modelViewerOpen}
+          setModelViewerOpen={setModelViewerOpen}
+          viewingModel={viewingModel}
+          viewingFileName={viewingFileName}
           onCloseModelViewer={onCloseModelViewer}
+          imageViewerOpen={imageViewerOpen}
+          setImageViewerOpen={setImageViewerOpen}
+          viewingImage={viewingImage}
+          viewingImageName={viewingImageName}
+          onCloseImageViewer={onCloseImageViewer}
+          isGenerating={isGenerating}
+          progress={progress}
+          onGeneration3DOpenChange={setIsGenerating}
+          onResetProgress={handleResetProgress}
+          onGenerate={handleGenerate}
+          sourceImageUrl={sourceImageUrl}
+          authPromptOpen={authPromptOpen}
+          onAuthPromptChange={setAuthPromptOpen}
         />
       </div>
     </div>
