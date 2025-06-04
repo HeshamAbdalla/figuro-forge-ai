@@ -57,8 +57,7 @@ export const tryLoadWithCorsProxies = async (
       console.log(`🔄 [CORS-PROXY] Trying proxy ${i + 1}/${CORS_PROXIES.length}:`, proxy);
       
       const testResponse = await fetch(proxiedUrl, { 
-        method: 'HEAD',
-        timeout: 10000 // 10 second timeout
+        method: 'HEAD'
       });
       
       if (testResponse.ok) {
