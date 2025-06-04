@@ -337,7 +337,62 @@ serve(async (req) => {
           console.error('⚠️ [CHECK-IMAGE-TO-3D-STATUS] Failed to update conversion task:', dbError);
         }
 
-        console.log('✅ [CHECK-IMAGE-TO-3D-STATUS] Model and thumbnail saved successfully');
+        // ENHANCED: Always try to create a figurine record for image-to-3D conversions
+        try {
+          console.log('🔄 [CHECK-IMAGE-TO-3D-STATUS] Creating figurine record for image-to-3D conversion...');
+          
+          // Check if a figurine already exists for this task
+          const { data: existingFigurines, error: searchError } = await supabase
+            .from('figurines')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('model_url', modelUrlData.publicUrl)
+            .limit(1);
+
+          if (searchError) {
+            console.error('❌ [CHECK-IMAGE-TO-3D-STATUS] Error searching for existing figurine:', searchError);
+          }
+
+          if (!existingFigurines || existingFigurines.length === 0) {
+            // Create new figurine record
+            const title = `3D Model - ${taskId.substring(0, 8)}...`;
+            const prompt = `Image-to-3D conversion from task ${taskId}`;
+            
+            const { data: newFigurine, error: insertError } = await supabase
+              .from('figurines')
+              .insert({
+                user_id: user.id,
+                prompt: prompt,
+                style: 'realistic',
+                title: title,
+                image_url: savedThumbnailUrl || '',
+                saved_image_url: savedThumbnailUrl,
+                model_url: modelUrlData.publicUrl,
+                is_public: true,
+                file_type: 'image',
+                metadata: {
+                  conversion_type: 'image-to-3d',
+                  task_id: taskId,
+                  created_via: 'image_conversion',
+                  created_at: new Date().toISOString()
+                }
+              })
+              .select()
+              .single();
+
+            if (insertError) {
+              console.error('❌ [CHECK-IMAGE-TO-3D-STATUS] Failed to create figurine:', insertError);
+            } else {
+              console.log('✅ [CHECK-IMAGE-TO-3D-STATUS] Successfully created figurine:', newFigurine.id);
+            }
+          } else {
+            console.log('✅ [CHECK-IMAGE-TO-3D-STATUS] Figurine already exists for this model');
+          }
+        } catch (figurineError) {
+          console.error('❌ [CHECK-IMAGE-TO-3D-STATUS] Error creating figurine record:', figurineError);
+        }
+
+        console.log('✅ [CHECK-IMAGE-TO-3D-STATUS] Model, thumbnail, and figurine record processed successfully');
 
         const response = {
           success: true,
