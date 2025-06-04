@@ -123,7 +123,7 @@ export class ImageTo3DStatusService {
     originalImageUrl: string,
     callbacks: ImageTo3DCallbacks,
     shouldCreateFigurine: boolean = true
-  ): Promise<void> => {
+  ): Promise<void> {
     let attempts = 0;
     let consecutiveErrors = 0;
     const maxConsecutiveErrors = 3;
@@ -282,7 +282,7 @@ export class ImageTo3DStatusService {
     modelUrl: string,
     thumbnailUrl: string | null,
     fileName: string
-  ): Promise<void> => {
+  ): Promise<void> {
     try {
       console.log('🔄 [IMAGE-TO-3D-POLL] Ensuring conversion task record exists...');
 
@@ -369,7 +369,7 @@ export class ImageTo3DStatusService {
     fileName: string,
     taskId: string,
     thumbnailUrl?: string | null
-  ): Promise<void> => {
+  ): Promise<void> {
     try {
       console.log('🔄 [IMAGE-TO-3D-POLL] Ensuring figurine record exists...');
 
