@@ -60,7 +60,7 @@ export const useGallery3DGeneration = () => {
         throw new Error('Please log in to generate 3D models');
       }
 
-      // Map config to ImageTo3DConfig format
+      // Map config to ImageTo3DConfig format with proper structure
       const imageToThreeDConfig = {
         artStyle: config?.art_style || 'realistic',
         aiModel: config?.ai_model || 'meshy-5',
@@ -86,17 +86,43 @@ export const useGallery3DGeneration = () => {
         try {
           console.log('💾 [GALLERY-3D] Creating new figurine record for camera capture');
           
-          const { error: figurineError } = await supabase
-            .from('figurines')
+          // Create conversion task record for tracking
+          const { error: conversionError } = await supabase
+            .from('conversion_tasks')
             .insert({
               user_id: session.user.id,
               task_id: result.taskId,
               status: 'processing',
-              image_url: imageUrl.startsWith('blob:') ? null : imageUrl,
-              name: `Camera Capture ${new Date().toLocaleDateString()}`,
-              prompt: 'Camera captured image converted to 3D',
+              task_type: 'image_to_3d',
+              prompt: `Camera capture ${new Date().toLocaleDateString()}`,
               art_style: imageToThreeDConfig.artStyle,
-              ai_model: imageToThreeDConfig.aiModel
+              original_model_url: imageUrl.startsWith('blob:') ? null : imageUrl,
+              config: {
+                art_style: imageToThreeDConfig.artStyle,
+                ai_model: imageToThreeDConfig.aiModel,
+                topology: imageToThreeDConfig.topology,
+                target_polycount: imageToThreeDConfig.targetPolycount,
+                texture_richness: imageToThreeDConfig.textureRichness,
+                moderation: imageToThreeDConfig.moderation,
+                negative_prompt: imageToThreeDConfig.negativePrompt
+              }
+            });
+
+          if (conversionError) {
+            console.error('⚠️ [GALLERY-3D] Failed to create conversion task record:', conversionError);
+          } else {
+            console.log('✅ [GALLERY-3D] Conversion task record created successfully');
+          }
+
+          // Also create figurine record if needed for backwards compatibility
+          const { error: figurineError } = await supabase
+            .from('figurines')
+            .insert({
+              user_id: session.user.id,
+              image_url: imageUrl.startsWith('blob:') ? null : imageUrl,
+              prompt: `Camera Capture ${new Date().toLocaleDateString()}`,
+              style: imageToThreeDConfig.artStyle === 'realistic' ? 'isometric' : 'isometric', // Map to valid enum value
+              title: `Camera 3D Model - ${new Date().toLocaleDateString()}`
             });
 
           if (figurineError) {
@@ -105,7 +131,7 @@ export const useGallery3DGeneration = () => {
             console.log('✅ [GALLERY-3D] Figurine record created successfully');
           }
         } catch (dbError) {
-          console.error('⚠️ [GALLERY-3D] Database error creating figurine:', dbError);
+          console.error('⚠️ [GALLERY-3D] Database error creating records:', dbError);
         }
       }
 

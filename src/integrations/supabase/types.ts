@@ -12,6 +12,7 @@ export type Database = {
       conversion_tasks: {
         Row: {
           art_style: string | null
+          config: Json | null
           created_at: string
           download_error: string | null
           download_status: string | null
@@ -38,6 +39,7 @@ export type Database = {
         }
         Insert: {
           art_style?: string | null
+          config?: Json | null
           created_at?: string
           download_error?: string | null
           download_status?: string | null
@@ -64,6 +66,7 @@ export type Database = {
         }
         Update: {
           art_style?: string | null
+          config?: Json | null
           created_at?: string
           download_error?: string | null
           download_status?: string | null

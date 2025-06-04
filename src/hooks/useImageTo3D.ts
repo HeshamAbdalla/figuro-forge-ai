@@ -261,21 +261,23 @@ export const useImageTo3D = () => {
       // Ensure we have a valid session before making the request
       await ensureValidSession();
       
-      // Create a clean, validated request body
+      // Create a clean, validated request body with proper config format
+      const conversionConfig = {
+        art_style: config?.artStyle || 'realistic',
+        ai_model: config?.aiModel || 'meshy-5',
+        topology: config?.topology || 'quad',
+        target_polycount: config?.targetPolycount || 20000,
+        texture_richness: config?.textureRichness || 'high',
+        moderation: config?.moderation !== undefined ? config.moderation : true,
+        negative_prompt: config?.negativePrompt
+      };
+
       const requestBody: {
         imageUrl?: string;
         imageBase64?: string;
         config: any;
       } = {
-        config: {
-          art_style: config?.artStyle || 'realistic',
-          ai_model: config?.aiModel || 'meshy-5',
-          topology: config?.topology || 'quad',
-          target_polycount: config?.targetPolycount || 20000,
-          texture_richness: config?.textureRichness || 'high',
-          moderation: config?.moderation !== undefined ? config.moderation : true,
-          negative_prompt: config?.negativePrompt
-        }
+        config: conversionConfig
       };
 
       // Handle different image URL types

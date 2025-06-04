@@ -286,7 +286,7 @@ serve(async (req) => {
         console.log('✅ [DOWNLOAD] Model saved to storage:', modelUrlData.publicUrl);
 
         // Download and save thumbnail if available
-        let thumbnailUrl = '';
+        let savedThumbnailUrl = '';
         if (meshyData.thumbnail_url) {
           console.log('🔄 [DOWNLOAD] Starting thumbnail download for task:', taskId);
           
@@ -310,8 +310,8 @@ serve(async (req) => {
                 const { data: thumbUrlData } = supabase.storage
                   .from('figurine-images')
                   .getPublicUrl(thumbPath);
-                thumbnailUrl = thumbUrlData.publicUrl;
-                console.log('✅ [DOWNLOAD] Thumbnail saved to storage:', thumbnailUrl);
+                savedThumbnailUrl = thumbUrlData.publicUrl;
+                console.log('✅ [DOWNLOAD] Thumbnail saved to storage:', savedThumbnailUrl);
               }
             }
           } catch (thumbError) {
@@ -319,19 +319,22 @@ serve(async (req) => {
           }
         }
 
-        // Update task status
+        // Update conversion task status if it exists
         try {
           await supabase
             .from('conversion_tasks')
             .update({
-              status: 'completed',
+              status: 'SUCCEEDED',
               model_url: modelUrlData.publicUrl,
-              thumbnail_url: thumbnailUrl,
-              completed_at: new Date().toISOString()
+              thumbnail_url: savedThumbnailUrl,
+              local_model_url: modelUrlData.publicUrl,
+              local_thumbnail_url: savedThumbnailUrl,
+              download_status: 'completed',
+              updated_at: new Date().toISOString()
             })
             .eq('task_id', taskId);
         } catch (dbError) {
-          console.error('⚠️ [CHECK-IMAGE-TO-3D-STATUS] Failed to update task status:', dbError);
+          console.error('⚠️ [CHECK-IMAGE-TO-3D-STATUS] Failed to update conversion task:', dbError);
         }
 
         console.log('✅ [CHECK-IMAGE-TO-3D-STATUS] Model and thumbnail saved successfully');
@@ -341,7 +344,7 @@ serve(async (req) => {
           status: 'SUCCEEDED',
           progress: 100,
           modelUrl: modelUrlData.publicUrl,
-          thumbnailUrl: thumbnailUrl,
+          thumbnailUrl: savedThumbnailUrl,
           taskId: taskId,
           downloadStatus: 'completed'
         };
