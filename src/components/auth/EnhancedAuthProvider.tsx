@@ -35,6 +35,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   const [profile, setProfile] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [securityScore, setSecurityScore] = useState(0);
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   // Simplified security score calculation
   const calculateSecurityScore = (user: User | null, session: Session | null): number => {
@@ -107,7 +108,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           event_details: {
             user_id: session?.user?.id,
             email: session?.user?.email,
-            provider: session?.user?.app_metadata?.provider
+            provider: session?.user?.app_metadata?.provider,
+            current_path: window.location.pathname
           },
           success: true
         });
@@ -118,9 +120,13 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user && mounted) {
-            // Handle Google OAuth redirect
-            if (session.user.app_metadata?.provider === 'google') {
+            // Handle Google OAuth redirect ONLY if we're on the auth page and haven't redirected yet
+            if (session.user.app_metadata?.provider === 'google' && 
+                window.location.pathname === '/auth' && 
+                !hasRedirected) {
+              
               console.log("✅ [ENHANCED-AUTH] Google sign-in successful, redirecting to studio");
+              setHasRedirected(true);
               
               // Defer profile loading and redirect
               setTimeout(async () => {
@@ -132,8 +138,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                     // Trigger subscription refresh
                     window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
                     
-                    // Redirect to studio for Google OAuth
-                    window.location.href = '/studio';
+                    // Only redirect if we're still on the auth page
+                    if (window.location.pathname === '/auth') {
+                      window.location.href = '/studio';
+                    }
                   } catch (error) {
                     console.error("❌ [ENHANCED-AUTH] Profile fetch failed:", error);
                     setIsLoading(false);
@@ -163,6 +171,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
           setSecurityScore(0);
+          setHasRedirected(false);
           sessionManager.clearCache();
           setIsLoading(false);
         } else if (event === 'INITIAL_SESSION') {
@@ -242,7 +251,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [hasRedirected]);
 
   // Enhanced sign in with "Remember Me" support
   const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
@@ -279,7 +288,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         localStorage.removeItem('figuro_remember_me');
       }
       
-      // Perform sign-in (removed invalid options parameter)
+      // Perform sign-in
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password

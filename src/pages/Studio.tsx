@@ -1,3 +1,4 @@
+
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
@@ -6,21 +7,22 @@ import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { useCameraProgress } from "@/hooks/useCameraProgress";
 import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
 import { useToast } from "@/hooks/use-toast";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import EnhancedUpgradeModal from "@/components/upgrade/EnhancedUpgradeModal";
 import UpgradeCelebration from "@/components/upgrade/UpgradeCelebration";
 import Header from "@/components/Header";
 import StudioLayout from "@/components/studio/StudioLayout";
 import UpgradeModal from "@/components/UpgradeModal";
 import { StudioErrorBoundary } from "@/components/studio/StudioErrorBoundary";
-import { useStudioAuth } from "@/components/studio/hooks/useStudioAuth";
 import { useStudioState } from "@/components/studio/hooks/useStudioState";
 import { useStudioHandlers } from "@/components/studio/hooks/useStudioHandlers";
 
 const Studio = () => {
   console.log('🎬 [STUDIO] Component rendering...');
 
-  // Use simplified auth for Studio
-  const { user: authUser, isLoading: authLoading, isAuthenticated } = useStudioAuth();
+  // Use EnhancedAuth instead of useStudioAuth to prevent duplicate listeners
+  const { user: authUser, isLoading: authLoading, session } = useEnhancedAuth();
+  const isAuthenticated = !!session?.user;
   const { toast } = useToast();
 
   const {
