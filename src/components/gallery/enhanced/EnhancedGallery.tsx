@@ -12,6 +12,9 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import ModelPreviewGrid from "./ModelPreviewGrid";
 import GalleryModals from "../GalleryModals";
+import EnhancedGalleryHeader from "./EnhancedGalleryHeader";
+import GalleryViewToggle from "./GalleryViewToggle";
+import EnhancedGalleryActions from "./EnhancedGalleryActions";
 
 const EnhancedGallery: React.FC = () => {
   const { user } = useEnhancedAuth();
@@ -220,42 +223,23 @@ const EnhancedGallery: React.FC = () => {
         >
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-3xl font-bold text-white mb-2">My Gallery</h1>
-                <p className="text-white/60">{figurines.length} items in your collection</p>
-              </div>
-              <Button
-                onClick={handleRefresh}
-                variant="outline"
-                className="border-white/20 text-white/70 hover:bg-white/10"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
+            <EnhancedGalleryHeader 
+              totalFiles={figurines.length}
+              onRefresh={handleRefresh}
+            />
           </div>
 
-          {/* View Toggle */}
-          <div className="mb-6">
-            <div className="flex gap-2">
-              <Button
-                variant={viewMode === "grid" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("grid")}
-                className="border-white/20"
-              >
-                Grid
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("list")}
-                className="border-white/20"
-              >
-                List
-              </Button>
-            </div>
+          {/* Controls Section */}
+          <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+            <GalleryViewToggle
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
+            
+            <EnhancedGalleryActions
+              onRefresh={handleRefresh}
+              isLoading={loading}
+            />
           </div>
 
           {/* Gallery Grid */}

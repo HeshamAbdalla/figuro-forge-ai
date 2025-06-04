@@ -178,9 +178,19 @@ export class ImageTo3DStatusService {
                   originalImageUrl,
                   savedModelUrl,
                   fileName,
-                  taskId
+                  taskId,
+                  savedThumbnailUrl
                 );
               }
+
+              // Also ensure conversion task record exists
+              await this.ensureConversionTaskRecord(
+                taskId,
+                originalImageUrl,
+                savedModelUrl,
+                savedThumbnailUrl,
+                fileName
+              );
 
               callbacks.onProgressUpdate({
                 status: 'completed',
@@ -264,13 +274,101 @@ export class ImageTo3DStatusService {
   }
 
   /**
+   * Ensure a conversion task record exists in the database
+   */
+  private async ensureConversionTaskRecord(
+    taskId: string,
+    originalImageUrl: string,
+    modelUrl: string,
+    thumbnailUrl: string | null,
+    fileName: string
+  ): Promise<void> {
+    try {
+      console.log('🔄 [IMAGE-TO-3D-POLL] Ensuring conversion task record exists...');
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('Authentication required');
+      }
+
+      const userId = session.user.id;
+
+      // Check if conversion task already exists
+      const { data: existingTask, error: searchError } = await supabase
+        .from('conversion_tasks')
+        .select('id, status, local_model_url')
+        .eq('user_id', userId)
+        .eq('task_id', taskId)
+        .limit(1)
+        .single();
+
+      if (searchError && searchError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('❌ [IMAGE-TO-3D-POLL] Error searching for conversion task:', searchError);
+      }
+
+      if (existingTask) {
+        // Update existing task
+        console.log('🔄 [IMAGE-TO-3D-POLL] Updating existing conversion task:', existingTask.id);
+        
+        const { error: updateError } = await supabase
+          .from('conversion_tasks')
+          .update({
+            status: 'SUCCEEDED',
+            local_model_url: modelUrl,
+            local_thumbnail_url: thumbnailUrl,
+            download_status: 'completed',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingTask.id);
+        
+        if (updateError) {
+          console.error('❌ [IMAGE-TO-3D-POLL] Failed to update conversion task:', updateError);
+        } else {
+          console.log('✅ [IMAGE-TO-3D-POLL] Successfully updated conversion task');
+        }
+      } else {
+        // Create new conversion task
+        console.log('🔄 [IMAGE-TO-3D-POLL] Creating new conversion task record...');
+        
+        const { data: newTask, error: insertError } = await supabase
+          .from('conversion_tasks')
+          .insert({
+            user_id: userId,
+            task_id: taskId,
+            task_type: 'image_to_3d',
+            status: 'SUCCEEDED',
+            local_model_url: modelUrl,
+            local_thumbnail_url: thumbnailUrl,
+            download_status: 'completed',
+            prompt: `Image-to-3D conversion from ${fileName}`,
+            art_style: 'realistic'
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('❌ [IMAGE-TO-3D-POLL] Failed to create conversion task:', insertError);
+        } else {
+          console.log('✅ [IMAGE-TO-3D-POLL] Successfully created conversion task:', newTask.id);
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ [IMAGE-TO-3D-POLL] Error ensuring conversion task record:', error);
+      // Don't throw here - we still want to provide the model even if task record creation fails
+      console.warn('⚠️ [IMAGE-TO-3D-POLL] Continuing without conversion task record');
+    }
+  }
+
+  /**
    * Ensure a figurine record exists and is properly linked to the 3D model
    */
   private async ensureFigurineRecord(
     originalImageUrl: string,
     modelUrl: string,
     fileName: string,
-    taskId: string
+    taskId: string,
+    thumbnailUrl?: string | null
   ): Promise<void> {
     try {
       console.log('🔄 [IMAGE-TO-3D-POLL] Ensuring figurine record exists...');
@@ -330,10 +428,10 @@ export class ImageTo3DStatusService {
           .insert({
             user_id: userId,
             prompt: prompt,
-            style: 'realistic' as const, // Use const assertion for proper typing
+            style: 'realistic' as const,
             title: title,
             image_url: originalImageUrl,
-            saved_image_url: originalImageUrl,
+            saved_image_url: thumbnailUrl || originalImageUrl,
             model_url: modelUrl,
             is_public: true,
             file_type: 'image',
@@ -419,7 +517,7 @@ export class ImageTo3DStatusService {
             .insert({
               user_id: userId,
               prompt: prompt,
-              style: (task.art_style as any) || 'realistic' as const, // Handle style properly
+              style: (task.art_style as any) || 'realistic' as const,
               title: title,
               image_url: task.local_thumbnail_url || '',
               saved_image_url: task.local_thumbnail_url,

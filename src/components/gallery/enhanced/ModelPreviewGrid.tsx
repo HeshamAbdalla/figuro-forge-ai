@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import VirtualizedGalleryGrid from "./VirtualizedGalleryGrid";
 import { useImageTo3DRecovery } from "@/hooks/useImageTo3DRecovery";
 import { useToast } from "@/hooks/use-toast";
+import RecoveryButton from "./RecoveryButton";
 
 interface GalleryFile {
   id: string;
@@ -101,15 +102,11 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
         
         {/* Recovery action for empty gallery */}
         <div className="flex flex-col items-center gap-3">
-          <Button
-            onClick={handleRecovery}
-            disabled={isRecovering}
+          <RecoveryButton
+            onRecovery={handleRecovery}
+            isRecovering={isRecovering}
             variant="outline"
-            className="border-white/20 text-white/70 hover:bg-white/10"
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-2", isRecovering && "animate-spin")} />
-            {isRecovering ? 'Searching...' : 'Find Missing Models'}
-          </Button>
+          />
           <p className="text-xs text-white/50 max-w-xs">
             If you had 3D models that aren't showing up, this will search for and recover them.
           </p>
@@ -120,35 +117,10 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Recovery action in header area */}
+      {/* Status info */}
       <div className="flex justify-between items-center">
         <div className="text-sm text-white/60">
           {processedFigurines.length} items in gallery
-        </div>
-        
-        <div className="flex gap-2">
-          {onRefresh && (
-            <Button
-              onClick={onRefresh}
-              variant="ghost"
-              size="sm"
-              className="text-white/70 hover:bg-white/10"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-          )}
-          
-          <Button
-            onClick={handleRecovery}
-            disabled={isRecovering}
-            variant="outline"
-            size="sm"
-            className="border-white/20 text-white/70 hover:bg-white/10"
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-2", isRecovering && "animate-spin")} />
-            {isRecovering ? 'Searching...' : 'Find Missing'}
-          </Button>
         </div>
       </div>
 
