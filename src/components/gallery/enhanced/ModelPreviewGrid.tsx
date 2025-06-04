@@ -1,9 +1,11 @@
 
 import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Upload, Globe, Lock } from "lucide-react";
+import { Download, Eye, Upload, Globe, Lock, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import VirtualizedGalleryGrid from "./VirtualizedGalleryGrid";
+import { useImageTo3DRecovery } from "@/hooks/useImageTo3DRecovery";
+import { useToast } from "@/hooks/use-toast";
 
 interface GalleryFile {
   id: string;
@@ -24,6 +26,7 @@ interface ModelPreviewGridProps {
   onViewModel: (figurine: GalleryFile) => void;
   onTogglePublish: (figurine: GalleryFile) => void;
   onUploadModel: (figurine: GalleryFile) => void;
+  onRefresh?: () => void;
   viewMode: "grid" | "list";
 }
 
@@ -34,14 +37,40 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
   onViewModel,
   onTogglePublish,
   onUploadModel,
+  onRefresh,
   viewMode
 }) => {
+  const { runRecovery, isRecovering } = useImageTo3DRecovery();
+  const { toast } = useToast();
+
   // Filter and sort figurines
   const processedFigurines = useMemo(() => {
     const filtered = figurines.filter(figurine => figurine && figurine.id);
-    console.log(`Processed ${filtered.length} figurines for optimized gallery`);
+    console.log(`📊 [MODEL-PREVIEW-GRID] Processed ${filtered.length} figurines for gallery`);
+    
+    // Log model availability
+    const withModels = filtered.filter(f => f.model_url);
+    const withoutModels = filtered.filter(f => !f.model_url);
+    
+    console.log(`📊 [MODEL-PREVIEW-GRID] Models: ${withModels.length} with URLs, ${withoutModels.length} without URLs`);
+    
     return filtered;
   }, [figurines]);
+
+  const handleRecovery = async () => {
+    try {
+      const result = await runRecovery();
+      
+      if (result.linked > 0 && onRefresh) {
+        // Refresh the gallery to show recovered models
+        setTimeout(() => {
+          onRefresh();
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('❌ [MODEL-PREVIEW-GRID] Recovery error:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -66,23 +95,73 @@ const ModelPreviewGrid: React.FC<ModelPreviewGridProps> = ({
           <Eye size={24} className="text-white/50" />
         </div>
         <h3 className="text-lg font-medium text-white mb-2">No files yet</h3>
-        <p className="text-white/60 max-w-sm mx-auto">
+        <p className="text-white/60 max-w-sm mx-auto mb-6">
           Upload some models or create figurines to see them here. Your creations will appear in this gallery.
         </p>
+        
+        {/* Recovery action for empty gallery */}
+        <div className="flex flex-col items-center gap-3">
+          <Button
+            onClick={handleRecovery}
+            disabled={isRecovering}
+            variant="outline"
+            className="border-white/20 text-white/70 hover:bg-white/10"
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", isRecovering && "animate-spin")} />
+            {isRecovering ? 'Searching...' : 'Find Missing Models'}
+          </Button>
+          <p className="text-xs text-white/50 max-w-xs">
+            If you had 3D models that aren't showing up, this will search for and recover them.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <VirtualizedGalleryGrid
-      figurines={processedFigurines}
-      loading={loading}
-      onDownload={onDownload}
-      onViewModel={onViewModel}
-      onTogglePublish={onTogglePublish}
-      onUploadModel={onUploadModel}
-      viewMode={viewMode}
-    />
+    <div className="space-y-4">
+      {/* Recovery action in header area */}
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-white/60">
+          {processedFigurines.length} items in gallery
+        </div>
+        
+        <div className="flex gap-2">
+          {onRefresh && (
+            <Button
+              onClick={onRefresh}
+              variant="ghost"
+              size="sm"
+              className="text-white/70 hover:bg-white/10"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          )}
+          
+          <Button
+            onClick={handleRecovery}
+            disabled={isRecovering}
+            variant="outline"
+            size="sm"
+            className="border-white/20 text-white/70 hover:bg-white/10"
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", isRecovering && "animate-spin")} />
+            {isRecovering ? 'Searching...' : 'Find Missing'}
+          </Button>
+        </div>
+      </div>
+
+      <VirtualizedGalleryGrid
+        figurines={processedFigurines}
+        loading={loading}
+        onDownload={onDownload}
+        onViewModel={onViewModel}
+        onTogglePublish={onTogglePublish}
+        onUploadModel={onUploadModel}
+        viewMode={viewMode}
+      />
+    </div>
   );
 };
 

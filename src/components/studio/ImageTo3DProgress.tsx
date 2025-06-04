@@ -3,7 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Loader2, Box, Download, Eye } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Box, Download, Eye, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface ConversionProgress {
@@ -21,6 +21,7 @@ interface ImageTo3DProgressProps {
   onViewModel?: (url: string) => void;
   onDownload?: (url: string) => void;
   onCancel?: () => void;
+  onRetry?: () => void;
 }
 
 const ImageTo3DProgress: React.FC<ImageTo3DProgressProps> = ({
@@ -28,7 +29,8 @@ const ImageTo3DProgress: React.FC<ImageTo3DProgressProps> = ({
   progress,
   onViewModel,
   onDownload,
-  onCancel
+  onCancel,
+  onRetry
 }) => {
   if (!isGenerating && progress.status === 'idle') {
     return null;
@@ -79,6 +81,7 @@ const ImageTo3DProgress: React.FC<ImageTo3DProgressProps> = ({
 
   const isProcessing = isGenerating || progress.status === 'converting' || progress.status === 'downloading';
   const isCompleted = progress.status === 'completed' && progress.modelUrl;
+  const isError = progress.status === 'error';
 
   return (
     <motion.div
@@ -102,16 +105,30 @@ const ImageTo3DProgress: React.FC<ImageTo3DProgressProps> = ({
             </div>
           </div>
           
-          {isProcessing && onCancel && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onCancel}
-              className="border-white/20 text-white/70 hover:bg-white/10"
-            >
-              Cancel
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {isError && onRetry && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRetry}
+                className="border-white/20 text-white/70 hover:bg-white/10"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            )}
+            
+            {isProcessing && onCancel && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onCancel}
+                className="border-white/20 text-white/70 hover:bg-white/10"
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Progress Bar */}
@@ -164,6 +181,14 @@ const ImageTo3DProgress: React.FC<ImageTo3DProgressProps> = ({
               <Download className="h-4 w-4 mr-2" />
               Download
             </Button>
+          </div>
+        )}
+
+        {/* Error state help text */}
+        {isError && (
+          <div className="text-xs text-red-400/80 bg-red-500/10 rounded-lg p-3 border border-red-500/20">
+            <p className="font-medium mb-1">Conversion failed</p>
+            <p>The image-to-3D conversion encountered an error. You can try again or check if your image meets the requirements.</p>
           </div>
         )}
 
