@@ -5,7 +5,7 @@ import { OrbitControls, Center, Environment } from '@react-three/drei';
 import { motion } from 'framer-motion';
 import { useModelLoader } from '@/hooks/useModelLoader';
 import { ErrorBoundary } from './ErrorBoundary';
-import { prioritizeUrls } from '@/utils/urlValidationUtils';
+import { prioritizeUrls, validateModelUrl } from '@/utils/urlValidationUtils';
 import { logModelDebugInfo, testUrlAccessibility } from '@/utils/modelDebugUtils';
 
 interface ModelContentProps {
@@ -22,10 +22,17 @@ const ModelContent: React.FC<ModelContentProps> = ({ modelUrl, onError, fileName
     if (modelUrl && !hasStartedLoading.current) {
       hasStartedLoading.current = true;
       
-      // Debug the URL before loading
-      console.log('🔄 [MODEL-PREVIEW] Starting model load debug for:', fileName);
+      console.log('🔄 [MODEL-PREVIEW] Starting model load for:', fileName, 'URL:', modelUrl);
       
-      // Test URL accessibility first
+      // Validate URL before attempting to load
+      const validation = validateModelUrl(modelUrl);
+      if (!validation.valid) {
+        console.error('❌ [MODEL-PREVIEW] URL validation failed:', validation.reason);
+        onError(validation.reason || 'Invalid model URL');
+        return;
+      }
+      
+      // Test URL accessibility
       testUrlAccessibility(modelUrl).then(result => {
         console.log('🔍 [MODEL-PREVIEW] URL accessibility test:', result);
         if (!result.accessible && result.error) {
@@ -35,7 +42,7 @@ const ModelContent: React.FC<ModelContentProps> = ({ modelUrl, onError, fileName
       
       loadModel(modelUrl);
     }
-  }, [modelUrl, loadModel, fileName]);
+  }, [modelUrl, loadModel, fileName, onError]);
 
   useEffect(() => {
     if (error) {
@@ -98,8 +105,19 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({
     );
   }
 
-  // Log debug info for troubleshooting
-  console.log('🔄 [MODEL-PREVIEW] Initializing ModelPreview for:', fileName, 'URL:', modelUrl);
+  // Prioritize URL if it's an array (shouldn't happen in this component, but for consistency)
+  const finalModelUrl = Array.isArray(modelUrl) ? prioritizeUrls(modelUrl) : modelUrl;
+  
+  if (!finalModelUrl) {
+    console.log('⚠️ [MODEL-PREVIEW] No valid model URL after prioritization for:', fileName);
+    return (
+      <div className={`${className} flex items-center justify-center bg-gray-100 rounded-lg`}>
+        <p className="text-gray-500">No valid model URL</p>
+      </div>
+    );
+  }
+
+  console.log('🔄 [MODEL-PREVIEW] Initializing ModelPreview for:', fileName, 'URL:', finalModelUrl);
 
   return (
     <motion.div
@@ -128,7 +146,7 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({
           
           <Suspense fallback={null}>
             <ModelContent 
-              modelUrl={modelUrl} 
+              modelUrl={finalModelUrl} 
               onError={handleError}
               fileName={fileName}
             />

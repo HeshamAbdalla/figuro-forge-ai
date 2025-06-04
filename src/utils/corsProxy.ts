@@ -12,40 +12,32 @@ export const tryLoadWithCorsProxies = async (
 ): Promise<void> => {
   console.log('🔄 [CORS-PROXY] Attempting to load URL:', url);
 
-  // First try the direct URL (prioritize Supabase storage URLs)
+  // For Supabase storage URLs, try direct access first as they should be public
+  if (url.includes('supabase.co/storage/v1/object/public/')) {
+    console.log('✅ [CORS-PROXY] Supabase storage URL detected, using direct access');
+    onSuccess(url);
+    return;
+  }
+
+  // First try the direct URL for other URLs
   try {
     console.log('🔄 [CORS-PROXY] Trying direct URL first...');
     
-    // For Supabase storage URLs, try direct access first as they should be public
-    if (url.includes('cwjxbwqdfejhmiixoiym.supabase.co/storage')) {
-      console.log('✅ [CORS-PROXY] Supabase storage URL detected, using direct access');
-      onSuccess(url);
-      return;
-    }
-    
-    // Test if URL is accessible for other URLs
+    // Test if URL is accessible with a simple HEAD request
     const testResponse = await fetch(url, { 
       method: 'HEAD',
-      mode: 'no-cors' // Try no-cors first
+      mode: 'cors' // Use CORS mode for proper error detection
     });
     
-    console.log('✅ [CORS-PROXY] Direct URL accessible');
-    onSuccess(url);
-    return;
-  } catch (error) {
-    console.log('⚠️ [CORS-PROXY] Direct URL failed, trying with CORS mode...');
-    
-    // Try with CORS mode
-    try {
-      const testResponse = await fetch(url, { method: 'HEAD' });
-      if (testResponse.ok) {
-        console.log('✅ [CORS-PROXY] Direct URL accessible with CORS');
-        onSuccess(url);
-        return;
-      }
-    } catch (corsError) {
-      console.log('⚠️ [CORS-PROXY] CORS mode also failed, trying proxies...');
+    if (testResponse.ok) {
+      console.log('✅ [CORS-PROXY] Direct URL accessible');
+      onSuccess(url);
+      return;
+    } else {
+      console.log('⚠️ [CORS-PROXY] Direct URL returned non-OK status:', testResponse.status);
     }
+  } catch (error) {
+    console.log('⚠️ [CORS-PROXY] Direct URL failed:', error);
   }
 
   // Try each CORS proxy
@@ -64,6 +56,8 @@ export const tryLoadWithCorsProxies = async (
         console.log('✅ [CORS-PROXY] Proxy successful:', proxy);
         onSuccess(proxiedUrl);
         return;
+      } else {
+        console.log(`⚠️ [CORS-PROXY] Proxy ${i + 1} returned status:`, testResponse.status);
       }
     } catch (error) {
       console.log(`⚠️ [CORS-PROXY] Proxy ${i + 1} failed:`, error);

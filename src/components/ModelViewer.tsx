@@ -17,7 +17,7 @@ import * as THREE from "three";
 import { useToast } from "@/hooks/use-toast";
 import { disposeModel, handleObjectUrl } from "@/components/model-viewer/utils/modelUtils";
 import { useModelLoader } from "@/hooks/useModelLoader";
-import { prioritizeUrls } from "@/utils/urlValidationUtils";
+import { prioritizeUrls, validateModelUrl } from "@/utils/urlValidationUtils";
 import { logModelDebugInfo } from "@/utils/modelDebugUtils";
 
 interface ModelViewerProps {
@@ -28,7 +28,7 @@ interface ModelViewerProps {
   onCustomModelLoad?: (url: string) => void;
 }
 
-// This component displays a loading spinner inside the 3D canvas
+// Enhanced loading component
 const LoadingSpinner = () => (
   <Html center>
     <div className="flex flex-col items-center justify-center">
@@ -38,7 +38,7 @@ const LoadingSpinner = () => (
   </Html>
 );
 
-// Enhanced model content component using the new model loader
+// Enhanced model content component
 const Model = ({ url, onError }: { url: string; onError: (error: any) => void }) => {
   const { loading, model, error, loadModel } = useModelLoader();
   const previousModelRef = useRef<THREE.Group | null>(null);
@@ -47,6 +47,14 @@ const Model = ({ url, onError }: { url: string; onError: (error: any) => void })
     if (!url) return;
     
     console.log("🔄 [MODEL-VIEWER] Attempting to load model from URL:", url);
+    
+    // Validate URL before loading
+    const validation = validateModelUrl(url);
+    if (!validation.valid) {
+      console.error("❌ [MODEL-VIEWER] URL validation failed:", validation.reason);
+      onError(new Error(validation.reason || 'Invalid model URL'));
+      return;
+    }
     
     // Dispose previous model before loading new one
     if (previousModelRef.current) {
@@ -63,7 +71,7 @@ const Model = ({ url, onError }: { url: string; onError: (error: any) => void })
     
     // Load the model
     loadModel(finalUrl);
-  }, [url, loadModel]);
+  }, [url, loadModel, onError]);
 
   useEffect(() => {
     if (error) {
