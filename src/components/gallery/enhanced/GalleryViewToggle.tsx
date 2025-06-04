@@ -28,6 +28,9 @@ const GalleryViewToggle: React.FC<GalleryViewToggleProps> = ({
         size="sm"
         onClick={() => onViewModeChange("list")}
         className="border-white/20"
+      >
+        <List className="h-4 w-4 mr-2" />
+        List
       </Button>
     </div>
   );
