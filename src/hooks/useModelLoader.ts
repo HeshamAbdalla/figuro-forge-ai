@@ -140,13 +140,15 @@ export const useModelLoader = (): ModelLoaderResult => {
                     undefined,
                     (proxyError) => {
                       console.error('❌ [MODEL-LOADER] Proxy GLTFLoader error:', proxyError);
-                      reject(new Error(`Failed to load model: ${proxyError.message || 'Unknown error'}`));
+                      const errorMessage = proxyError instanceof Error ? proxyError.message : 'Unknown error';
+                      reject(new Error(`Failed to load model: ${errorMessage}`));
                     }
                   );
                 },
                 (proxyError) => {
                   console.error('❌ [MODEL-LOADER] All loading attempts failed:', proxyError);
-                  reject(new Error(`All loading attempts failed: ${proxyError.message || 'Unknown error'}`));
+                  const errorMessage = proxyError instanceof Error ? proxyError.message : 'Unknown error';
+                  reject(new Error(`All loading attempts failed: ${errorMessage}`));
                 }
               );
             }
@@ -176,13 +178,15 @@ export const useModelLoader = (): ModelLoaderResult => {
                 },
                 (error) => {
                   console.error('❌ [MODEL-LOADER] GLTFLoader error:', error);
-                  reject(new Error(`Failed to load model: ${error.message || 'Unknown GLTFLoader error'}`));
+                  const errorMessage = error instanceof Error ? error.message : 'Unknown GLTFLoader error';
+                  reject(new Error(`Failed to load model: ${errorMessage}`));
                 }
               );
             },
             (error: Error) => {
               console.error('❌ [MODEL-LOADER] All CORS proxy attempts failed:', error);
-              reject(new Error(`Network error: ${error.message || 'Unknown network error'}`));
+              const errorMessage = error instanceof Error ? error.message : 'Unknown network error';
+              reject(new Error(`Network error: ${errorMessage}`));
             }
           );
         }

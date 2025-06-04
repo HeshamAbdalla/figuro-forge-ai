@@ -6,6 +6,13 @@ interface UrlInfo {
   priority: number;
 }
 
+interface UrlValidationResult {
+  isValid: boolean;
+  cleanUrl: string;
+  isLocal: boolean;
+  error?: string;
+}
+
 const analyzeUrl = (url: string): UrlInfo => {
   const isSupabaseStorage = url.includes('supabase.co/storage/v1/object/public/');
   const isMeshyUrl = url.includes('meshy.ai') || url.includes('assets.meshy.ai');
@@ -46,6 +53,55 @@ const analyzeUrl = (url: string): UrlInfo => {
   };
 };
 
+export const validateAndCleanUrl = (url: string | null | undefined): UrlValidationResult => {
+  if (!url || typeof url !== 'string') {
+    return {
+      isValid: false,
+      cleanUrl: '',
+      isLocal: false,
+      error: 'URL is empty or invalid'
+    };
+  }
+  
+  const trimmedUrl = url.trim();
+  if (trimmedUrl.length === 0) {
+    return {
+      isValid: false,
+      cleanUrl: '',
+      isLocal: false,
+      error: 'URL is empty'
+    };
+  }
+  
+  try {
+    const urlObj = new URL(trimmedUrl);
+    const isLocal = urlObj.hostname.includes('supabase.co');
+    const info = analyzeUrl(trimmedUrl);
+    
+    if (info.isMeshyUrl && info.isExpired) {
+      return {
+        isValid: false,
+        cleanUrl: trimmedUrl,
+        isLocal,
+        error: 'Meshy URL has expired'
+      };
+    }
+    
+    return {
+      isValid: true,
+      cleanUrl: trimmedUrl,
+      isLocal
+    };
+  } catch (e) {
+    return {
+      isValid: false,
+      cleanUrl: trimmedUrl,
+      isLocal: false,
+      error: 'URL format is invalid'
+    };
+  }
+};
+
 export const prioritizeUrls = (urls: string[]): string | null => {
   if (!urls || urls.length === 0) {
     return null;
@@ -80,46 +136,41 @@ export const prioritizeUrls = (urls: string[]): string | null => {
   return selectedUrl;
 };
 
-export const isUrlAccessible = async (url: string): Promise<boolean> => {
+export const isUrlAccessible = async (url: string, timeout = 5000): Promise<boolean> => {
   try {
     // For Supabase storage URLs, assume they're accessible
     if (url.includes('supabase.co/storage/v1/object/public/')) {
       return true;
     }
     
-    // For other URLs, do a quick HEAD request
-    const response = await fetch(url, { 
-      method: 'HEAD',
-      mode: 'no-cors' // Use no-cors to avoid CORS issues in testing
-    });
+    // For other URLs, do a quick HEAD request with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
     
-    return true; // If no error thrown, assume accessible
+    try {
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        mode: 'no-cors',
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return true; // If no error thrown, assume accessible
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.warn('⚠️ [URL-VALIDATION] URL not accessible:', url, error);
+      return false;
+    }
   } catch (error) {
-    console.warn('⚠️ [URL-VALIDATION] URL not accessible:', url, error);
+    console.warn('⚠️ [URL-VALIDATION] URL accessibility check failed:', url, error);
     return false;
   }
 };
 
 export const validateModelUrl = (url: string): { valid: boolean; reason?: string } => {
-  if (!url || typeof url !== 'string') {
-    return { valid: false, reason: 'URL is empty or invalid' };
-  }
+  const validation = validateAndCleanUrl(url);
   
-  const trimmedUrl = url.trim();
-  if (trimmedUrl.length === 0) {
-    return { valid: false, reason: 'URL is empty' };
-  }
-  
-  try {
-    new URL(trimmedUrl);
-  } catch (e) {
-    return { valid: false, reason: 'URL format is invalid' };
-  }
-  
-  const info = analyzeUrl(trimmedUrl);
-  
-  if (info.isMeshyUrl && info.isExpired) {
-    return { valid: false, reason: 'Meshy URL has expired' };
+  if (!validation.isValid) {
+    return { valid: false, reason: validation.error };
   }
   
   return { valid: true };
