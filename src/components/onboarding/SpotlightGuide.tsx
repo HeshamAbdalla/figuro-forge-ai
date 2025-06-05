@@ -29,6 +29,37 @@ const SpotlightGuide = ({
   const step = onboardingSteps[currentStep];
   const isLastStep = currentStep === totalSteps - 1;
 
+  // Add highlighting styles to document head
+  useEffect(() => {
+    if (!isVisible) return;
+
+    // Create and inject the CSS for highlighting
+    const styleId = 'onboarding-highlight-styles';
+    let styleElement = document.getElementById(styleId) as HTMLStyleElement;
+    
+    if (!styleElement) {
+      styleElement = document.createElement('style');
+      styleElement.id = styleId;
+      document.head.appendChild(styleElement);
+    }
+
+    styleElement.textContent = `
+      .onboarding-highlight {
+        position: relative !important;
+        z-index: 51 !important;
+        box-shadow: 0 0 0 2px rgba(139, 69, 255, 0.5) !important;
+        border-radius: 4px !important;
+      }
+    `;
+
+    return () => {
+      // Clean up styles when component unmounts or becomes invisible
+      if (styleElement && styleElement.parentNode) {
+        styleElement.parentNode.removeChild(styleElement);
+      }
+    };
+  }, [isVisible]);
+
   // Find and track the target element
   useEffect(() => {
     if (!isVisible || !step) return;
@@ -317,16 +348,6 @@ const SpotlightGuide = ({
           </div>
         </motion.div>
       </div>
-
-      {/* Custom styles for highlighting */}
-      <style jsx global>{`
-        .onboarding-highlight {
-          position: relative;
-          z-index: 51 !important;
-          box-shadow: 0 0 0 2px rgba(139, 69, 255, 0.5) !important;
-          border-radius: 4px !important;
-        }
-      `}</style>
     </AnimatePresence>
   );
 };
