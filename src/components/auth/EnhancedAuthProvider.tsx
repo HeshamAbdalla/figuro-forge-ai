@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
 import { cleanupAuthState, getAuthErrorMessage, checkRateLimitSafe, isExistingAccountError } from "@/utils/authUtils";
-import { detectExistingAccountFromResponse } from "@/utils/authValidation";
+import { detectExistingAccountFromResponse, validateSignupAttempt } from "@/utils/authValidation";
 import { sessionManager } from "@/utils/sessionManager";
 import { securityManager } from "@/utils/securityUtils";
 
@@ -370,10 +370,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced sign up with better existing account detection
+  // Enhanced sign up with comprehensive existing account detection
   const signUp = async (email: string, password: string) => {
     try {
-      console.log("🚀 [ENHANCED-AUTH] Starting signup process for:", email);
+      console.log("🚀 [ENHANCED-AUTH] Starting comprehensive signup process for:", email);
       
       // Validation
       if (!securityManager.validateEmail(email)) {
@@ -400,10 +400,30 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         console.log("⚠️ [ENHANCED-AUTH] Pre-signup signout failed (non-critical)");
       }
       
-      // Always redirect to studio for email verification
+      // STEP 1: Pre-signup validation
+      console.log("🔍 [ENHANCED-AUTH] Performing pre-signup validation...");
+      const preValidation = await validateSignupAttempt(email);
+      
+      if (preValidation.accountExists) {
+        console.log("👤 [ENHANCED-AUTH] Pre-validation detected existing account");
+        
+        securityManager.logSecurityEvent({
+          event_type: 'signup_existing_account_pre_detected',
+          event_details: { 
+            email, 
+            needs_verification: preValidation.needsVerification,
+            detection_method: 'pre_validation'
+          },
+          success: true
+        });
+        
+        return { error: null, data: null, accountExists: true };
+      }
+      
+      // STEP 2: Attempt actual signup
       const redirectTo = `${window.location.origin}/studio`;
       
-      console.log("📧 [ENHANCED-AUTH] Attempting Supabase signup...");
+      console.log("📧 [ENHANCED-AUTH] Pre-validation passed, attempting Supabase signup...");
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -418,21 +438,27 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         hasUser: !!data?.user,
         hasSession: !!data?.session,
         userEmailConfirmed: data?.user?.email_confirmed_at,
-        userCreatedAt: data?.user?.created_at
+        userCreatedAt: data?.user?.created_at,
+        userId: data?.user?.id
       });
       
-      // Use enhanced detection logic to check for existing accounts
+      // STEP 3: Enhanced post-signup detection
       const accountExists = detectExistingAccountFromResponse(error, data);
       
       if (accountExists) {
-        console.log("👤 [ENHANCED-AUTH] Existing account detected for:", email);
+        console.log("👤 [ENHANCED-AUTH] Post-signup detection found existing account");
         
         securityManager.logSecurityEvent({
-          event_type: 'signup_existing_account_detected',
+          event_type: 'signup_existing_account_post_detected',
           event_details: { 
             email, 
             error: error?.message || 'No error',
-            detection_reason: 'Enhanced detection logic'
+            detection_method: 'post_validation',
+            response_data: {
+              hasUser: !!data?.user,
+              hasSession: !!data?.session,
+              userEmailConfirmed: data?.user?.email_confirmed_at
+            }
           },
           success: true
         });
