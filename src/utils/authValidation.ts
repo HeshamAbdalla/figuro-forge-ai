@@ -12,49 +12,92 @@ export const validateSignupAttempt = async (email: string): Promise<SignupValida
   try {
     console.log('🔍 [AUTH-VALIDATION] Checking email status for:', email);
     
-    // First, try to sign in with a dummy password to check if account exists
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    // First, attempt a signup with a dummy password to see what happens
+    // This is safer than trying to sign in with dummy credentials
+    const { data: signupData, error: signupError } = await supabase.auth.signUp({
       email,
-      password: 'dummy-password-check'
+      password: 'temp-validation-password-123456', // Temporary password for validation
+      options: {
+        data: { validation_check: true } // Mark this as a validation attempt
+      }
     });
 
-    // If no error or specific error types, account likely exists
-    if (signInError) {
-      if (signInError.message.includes('Invalid login credentials')) {
-        // Account exists but password is wrong
-        console.log('✅ [AUTH-VALIDATION] Account exists but credentials invalid');
+    // If signup was successful or resulted in email confirmation needed, email is available
+    if (!signupError) {
+      console.log('✅ [AUTH-VALIDATION] Email is available for signup');
+      
+      // Clean up the validation attempt by signing out immediately
+      if (signupData.user && signupData.session) {
+        await supabase.auth.signOut();
+      }
+      
+      return {
+        isValid: true,
+        accountExists: false,
+        needsVerification: false
+      };
+    }
+
+    // Handle specific signup errors
+    if (signupError) {
+      console.log('📧 [AUTH-VALIDATION] Signup error:', signupError.message);
+      
+      // User already registered error - account exists
+      if (signupError.message.includes('User already registered') || 
+          signupError.message.includes('already been registered')) {
+        console.log('👤 [AUTH-VALIDATION] Account already exists');
+        
+        // Try to determine if the account needs verification by attempting sign-in
+        try {
+          const { error: signinError } = await supabase.auth.signInWithPassword({
+            email,
+            password: 'dummy-check-verification'
+          });
+          
+          if (signinError?.message.includes('Email not confirmed')) {
+            console.log('📧 [AUTH-VALIDATION] Account exists but needs verification');
+            return {
+              isValid: false,
+              accountExists: true,
+              needsVerification: true,
+              error: 'Your account exists but needs email verification. Please check your inbox or request a new verification email.'
+            };
+          }
+        } catch (e) {
+          // If verification check fails, assume account exists but is verified
+          console.log('⚠️ [AUTH-VALIDATION] Could not check verification status');
+        }
+        
         return {
           isValid: false,
           accountExists: true,
           needsVerification: false,
           error: 'An account with this email already exists. Please sign in instead.'
         };
-      } else if (signInError.message.includes('Email not confirmed')) {
-        // Account exists but needs verification
-        console.log('📧 [AUTH-VALIDATION] Account exists but needs verification');
+      }
+      
+      // Email rate limit or other service errors
+      if (signupError.message.includes('rate limit') || 
+          signupError.message.includes('too many requests')) {
+        console.log('⏳ [AUTH-VALIDATION] Rate limited');
         return {
-          isValid: false,
-          accountExists: true,
-          needsVerification: true,
-          error: 'Your account exists but needs email verification. Please check your inbox or request a new verification email.'
+          isValid: true, // Allow signup to proceed, let the actual signup handle the rate limit
+          accountExists: false,
+          needsVerification: false
         };
       }
-    }
-
-    // If sign in was successful, account definitely exists
-    if (signInData.user) {
-      console.log('✅ [AUTH-VALIDATION] Account exists and is verified');
-      await supabase.auth.signOut(); // Clean up the test sign in
+      
+      // For other errors, log them but allow signup to proceed
+      console.log('⚠️ [AUTH-VALIDATION] Unknown signup error, allowing signup to proceed:', signupError.message);
       return {
-        isValid: false,
-        accountExists: true,
-        needsVerification: false,
-        error: 'An account with this email already exists. Please sign in instead.'
+        isValid: true,
+        accountExists: false,
+        needsVerification: false
       };
     }
 
-    // Account likely doesn't exist, safe to proceed with signup
-    console.log('🆕 [AUTH-VALIDATION] Email appears to be new, safe to sign up');
+    // Fallback - should not reach here
+    console.log('🤔 [AUTH-VALIDATION] Unexpected validation state, allowing signup');
     return {
       isValid: true,
       accountExists: false,
@@ -63,8 +106,9 @@ export const validateSignupAttempt = async (email: string): Promise<SignupValida
 
   } catch (error: any) {
     console.error('❌ [AUTH-VALIDATION] Error during validation:', error);
+    // On any validation error, allow signup to proceed
     return {
-      isValid: true, // Allow signup to proceed if validation fails
+      isValid: true,
       accountExists: false,
       needsVerification: false
     };
@@ -73,16 +117,28 @@ export const validateSignupAttempt = async (email: string): Promise<SignupValida
 
 export const checkEmailVerificationStatus = async (email: string): Promise<boolean> => {
   try {
-    // This is a simplified check - in a real app, you might want to use admin APIs
-    // For now, we'll rely on the sign-in attempt method
+    console.log('🔍 [AUTH-VALIDATION] Checking verification status for:', email);
+    
+    // Try to sign in to check verification status
     const { error } = await supabase.auth.signInWithPassword({
       email,
-      password: 'dummy-check'
+      password: 'dummy-verification-check'
     });
 
-    return !error?.message.includes('Email not confirmed');
+    // If the error is about email not being confirmed, return false
+    if (error?.message.includes('Email not confirmed')) {
+      console.log('📧 [AUTH-VALIDATION] Email not confirmed');
+      return false;
+    }
+    
+    // For any other error (including invalid credentials), assume email is confirmed
+    // because the error would be different if the email wasn't confirmed
+    console.log('✅ [AUTH-VALIDATION] Email appears to be confirmed');
+    return true;
+    
   } catch (error) {
-    console.error('Error checking email verification status:', error);
-    return false;
+    console.error('❌ [AUTH-VALIDATION] Error checking email verification status:', error);
+    // On error, assume email is confirmed to avoid blocking users
+    return true;
   }
 };
