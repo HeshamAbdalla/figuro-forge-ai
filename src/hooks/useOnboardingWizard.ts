@@ -23,7 +23,7 @@ export const useOnboardingWizard = () => {
 
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('is_onboarding_complete')
+        .select('is_onboarding_complete, created_at')
         .eq('id', user?.id)
         .maybeSingle();
 
@@ -43,7 +43,7 @@ export const useOnboardingWizard = () => {
             is_onboarding_complete: false,
             plan: 'free'
           })
-          .select('is_onboarding_complete')
+          .select('is_onboarding_complete, created_at')
           .single();
 
         if (createError) {
@@ -60,10 +60,12 @@ export const useOnboardingWizard = () => {
       const isComplete = profile.is_onboarding_complete ?? false;
       setIsOnboardingComplete(isComplete);
 
-      // Show welcome modal for new users
+      // Show welcome modal for users who haven't completed onboarding
       if (!isComplete) {
-        console.log('✨ [ONBOARDING] Existing user with incomplete onboarding, showing welcome modal');
+        console.log('✨ [ONBOARDING] User has incomplete onboarding, showing welcome modal');
         setShowWelcomeModal(true);
+      } else {
+        console.log('✅ [ONBOARDING] User has completed onboarding');
       }
 
     } catch (error) {

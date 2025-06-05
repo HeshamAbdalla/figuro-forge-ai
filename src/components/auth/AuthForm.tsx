@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,25 +11,37 @@ import { useEnhancedAuth } from "./EnhancedAuthProvider";
 import { cleanupAuthState, clearAuthRateLimits, isRateLimitError } from "@/utils/authUtils";
 import { AlertCircle, Mail, Eye, EyeOff, Loader2, CheckCircle, RefreshCw, KeyRound } from "lucide-react";
 import { isEmailVerificationError } from "@/utils/authUtils";
+import { validateSignupAttempt } from "@/utils/authValidation";
+import { EmailVerificationHandler } from "./EmailVerificationHandler";
+import { ExistingAccountHandler } from "./ExistingAccountHandler";
 
 export function AuthForm() {
   const { signIn, signUp, signInWithGoogle, resendVerificationEmail, resetPassword } = useEnhancedAuth();
   const navigate = useNavigate();
+  
+  // Form state
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [activeTab, setActiveTab] = useState("signin");
+
+  // UI state
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [showResendOption, setShowResendOption] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("signin");
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [clearingLimits, setClearingLimits] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+
+  // Enhanced validation state
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [showExistingAccount, setShowExistingAccount] = useState(false);
+  const [validationInProgress, setValidationInProgress] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,8 +82,37 @@ export function AuthForm() {
     setErrorMessage("");
     setSuccessMessage("");
     setIsRateLimited(false);
+    setShowEmailVerification(false);
+    setShowExistingAccount(false);
+    setValidationInProgress(true);
     
     try {
+      console.log("🔍 [AUTH-FORM] Validating signup attempt for:", email);
+      
+      // Validate signup attempt first
+      const validation = await validateSignupAttempt(email);
+      setValidationInProgress(false);
+      
+      if (!validation.isValid) {
+        if (validation.needsVerification) {
+          console.log("📧 [AUTH-FORM] Account needs verification, showing verification handler");
+          setShowEmailVerification(true);
+          setIsLoading(false);
+          return;
+        } else if (validation.accountExists) {
+          console.log("👤 [AUTH-FORM] Account exists, showing existing account handler");
+          setShowExistingAccount(true);
+          setIsLoading(false);
+          return;
+        } else {
+          setErrorMessage(validation.error || 'Unable to create account');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      console.log("✅ [AUTH-FORM] Validation passed, proceeding with signup");
+      
       const { error, data } = await signUp(email, password);
       
       if (error) {
@@ -85,9 +125,11 @@ export function AuthForm() {
         setShowResendOption(true);
       }
     } catch (error) {
+      console.error("❌ [AUTH-FORM] Signup exception:", error);
       setErrorMessage("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
+      setValidationInProgress(false);
     }
   };
 
@@ -167,7 +209,67 @@ export function AuthForm() {
     }
   };
 
+  const resetFormState = () => {
+    setShowEmailVerification(false);
+    setShowExistingAccount(false);
+    setErrorMessage("");
+    setSuccessMessage("");
+    setShowResendOption(false);
+  };
+
   const isFormValid = email && password && password.length >= 6;
+
+  // Show email verification handler
+  if (showEmailVerification) {
+    return (
+      <div className="w-full max-w-md animate-fade-in">
+        <Card className="glass-panel border-white/10 bg-white/5 backdrop-blur-xl">
+          <CardHeader className="space-y-3 pb-6">
+            <CardTitle className="text-2xl font-bold text-white text-center">
+              Verify Your Email 📧
+            </CardTitle>
+            <CardDescription className="text-white/70 text-center">
+              Your account is almost ready! Just need to verify your email address.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <EmailVerificationHandler
+              email={email}
+              onSuccess={() => {
+                setSuccessMessage("Verification email sent! Please check your inbox.");
+                resetFormState();
+              }}
+              onCancel={resetFormState}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show existing account handler
+  if (showExistingAccount) {
+    return (
+      <div className="w-full max-w-md animate-fade-in">
+        <Card className="glass-panel border-white/10 bg-white/5 backdrop-blur-xl">
+          <CardHeader className="space-y-3 pb-6">
+            <CardTitle className="text-2xl font-bold text-white text-center">
+              Account Found! 👋
+            </CardTitle>
+            <CardDescription className="text-white/70 text-center">
+              Looks like you already have an account. Let's get you signed in!
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ExistingAccountHandler
+              email={email}
+              onCancel={resetFormState}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md animate-fade-in">
@@ -454,6 +556,15 @@ export function AuthForm() {
                 </Alert>
               )}
 
+              {validationInProgress && (
+                <Alert className="bg-blue-500/10 border-blue-500/30 animate-scale-in">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                  <AlertDescription className="text-white/90">
+                    Checking account status...
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {isRateLimited && (
                 <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg animate-fade-in">
                   <p className="text-sm mb-3 text-white/90 font-medium">
@@ -511,7 +622,7 @@ export function AuthForm() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    disabled={isLoading}
+                    disabled={isLoading || validationInProgress}
                     required
                     className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300"
                   />
@@ -527,7 +638,7 @@ export function AuthForm() {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      disabled={isLoading}
+                      disabled={isLoading || validationInProgress}
                       required
                       className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300 pr-10"
                     />
@@ -552,12 +663,12 @@ export function AuthForm() {
                 <Button 
                   className="w-full bg-figuro-accent hover:bg-figuro-accent-hover text-white font-medium py-2.5 transition-all duration-300 disabled:opacity-50" 
                   type="submit" 
-                  disabled={isLoading || !isFormValid || clearingLimits}
+                  disabled={isLoading || !isFormValid || clearingLimits || validationInProgress}
                 >
-                  {isLoading ? (
+                  {isLoading || validationInProgress ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating account...
+                      {validationInProgress ? "Checking..." : "Creating account..."}
                     </>
                   ) : (
                     "Create Account"
