@@ -373,6 +373,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   // Enhanced sign up with better existing account detection
   const signUp = async (email: string, password: string) => {
     try {
+      console.log("🚀 [ENHANCED-AUTH] Starting signup process for:", email);
+      
       // Validation
       if (!securityManager.validateEmail(email)) {
         throw new Error('Invalid email format');
@@ -395,14 +397,13 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       try {
         await supabase.auth.signOut({ scope: 'global' });
       } catch (err) {
-        console.log("Pre-signUp global sign out error (non-critical)");
+        console.log("⚠️ [ENHANCED-AUTH] Pre-signup signout failed (non-critical)");
       }
-      
-      console.log("🚀 [ENHANCED-AUTH] Attempting signup for:", email);
       
       // Always redirect to studio for email verification
       const redirectTo = `${window.location.origin}/studio`;
       
+      console.log("📧 [ENHANCED-AUTH] Attempting Supabase signup...");
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -412,23 +413,40 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         }
       });
       
+      console.log("📊 [ENHANCED-AUTH] Signup response - Error:", error?.message || 'None');
+      console.log("📊 [ENHANCED-AUTH] Signup response - Data:", {
+        hasUser: !!data?.user,
+        hasSession: !!data?.session,
+        userEmailConfirmed: data?.user?.email_confirmed_at,
+        userCreatedAt: data?.user?.created_at
+      });
+      
+      // Use enhanced detection logic to check for existing accounts
+      const accountExists = detectExistingAccountFromResponse(error, data);
+      
+      if (accountExists) {
+        console.log("👤 [ENHANCED-AUTH] Existing account detected for:", email);
+        
+        securityManager.logSecurityEvent({
+          event_type: 'signup_existing_account_detected',
+          event_details: { 
+            email, 
+            error: error?.message || 'No error',
+            detection_reason: 'Enhanced detection logic'
+          },
+          success: true
+        });
+        
+        return { error: null, data: null, accountExists: true };
+      }
+      
+      // Handle explicit signup errors (that aren't existing account related)
       if (error) {
         console.log("❌ [ENHANCED-AUTH] Signup error:", error.message);
         
-        // Check for existing account using enhanced detection
-        if (isExistingAccountError(error.message) || detectExistingAccountFromResponse(error, data)) {
-          console.log("👤 [ENHANCED-AUTH] Existing account detected for:", email);
-          
-          securityManager.logSecurityEvent({
-            event_type: 'signup_existing_account_detected',
-            event_details: { email, error: error.message },
-            success: true
-          });
-          
-          return { error: null, data: null, accountExists: true };
-        } else if (error.message.includes('email not confirmed') || 
-                   error.message.includes('verification') ||
-                   error.message.includes('Email not confirmed')) {
+        if (error.message.includes('email not confirmed') || 
+            error.message.includes('verification') ||
+            error.message.includes('Email not confirmed')) {
           console.log("📧 [ENHANCED-AUTH] Email verification needed");
           
           securityManager.logSecurityEvent({
