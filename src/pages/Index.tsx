@@ -6,7 +6,6 @@ import InteractiveDemo from "@/components/InteractiveDemo";
 import HomepageGallery from "@/components/HomepageGallery";
 import UseCaseExamples from "@/components/UseCaseExamples";
 import Features from "@/components/Features";
-import SocialProof from "@/components/SocialProof";
 import PricingCTA from "@/components/PricingCTA";
 import VantaBackground from "@/components/VantaBackground";
 import SEO from "@/components/SEO";
@@ -31,7 +30,6 @@ const Index = () => {
           <HomepageGallery />
           <UseCaseExamples />
           <Features />
-          <SocialProof />
           <PricingCTA />
           <Footer />
         </div>
