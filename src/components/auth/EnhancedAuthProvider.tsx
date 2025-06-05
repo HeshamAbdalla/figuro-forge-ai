@@ -6,7 +6,6 @@ import { toast } from "@/hooks/use-toast";
 import { cleanupAuthState, getAuthErrorMessage, checkRateLimitSafe } from "@/utils/authUtils";
 import { sessionManager } from "@/utils/sessionManager";
 import { securityManager } from "@/utils/securityUtils";
-import { getStudioUrl } from "@/utils/environmentUtils";
 
 interface EnhancedAuthContextType {
   user: User | null;
@@ -401,7 +400,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       console.log("Attempting sign-up...");
       
-      const redirectTo = getStudioUrl();
+      // Always redirect to studio for email verification
+      const redirectTo = `${window.location.origin}/studio`;
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -473,7 +473,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
 
       console.log("🔄 [ENHANCED-AUTH] Sending password reset email...");
       
-      const redirectTo = getStudioUrl();
+      const redirectTo = `${window.location.origin}/studio`;
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectTo
@@ -554,7 +554,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     try {
       cleanupAuthState();
       
-      const redirectTo = getStudioUrl();
+      const redirectTo = `${window.location.origin}/studio`;
       
       console.log("🚀 [ENHANCED-AUTH] Starting Google sign-in with redirect:", redirectTo);
       

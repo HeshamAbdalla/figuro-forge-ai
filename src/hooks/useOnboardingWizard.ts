@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedAuth } from '@/components/auth/EnhancedAuthProvider';
+import { useNavigate } from 'react-router-dom';
 
 export const useOnboardingWizard = () => {
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(true);
@@ -9,6 +10,7 @@ export const useOnboardingWizard = () => {
   const [isActive, setIsActive] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const { user, session } = useEnhancedAuth();
+  const navigate = useNavigate();
 
   // Check onboarding status when user changes
   useEffect(() => {
@@ -52,6 +54,14 @@ export const useOnboardingWizard = () => {
         }
 
         setIsOnboardingComplete(false);
+        
+        // If user is not on studio page, redirect them there for onboarding
+        if (window.location.pathname !== '/studio') {
+          console.log('🔄 [ONBOARDING] Redirecting new user to studio for onboarding');
+          navigate('/studio');
+          return;
+        }
+        
         setShowWelcomeModal(true);
         console.log('✨ [ONBOARDING] New user profile created, showing welcome modal');
         return;
@@ -62,7 +72,15 @@ export const useOnboardingWizard = () => {
 
       // Show welcome modal for users who haven't completed onboarding
       if (!isComplete) {
-        console.log('✨ [ONBOARDING] User has incomplete onboarding, showing welcome modal');
+        console.log('✨ [ONBOARDING] User has incomplete onboarding');
+        
+        // If user is not on studio page, redirect them there for onboarding
+        if (window.location.pathname !== '/studio') {
+          console.log('🔄 [ONBOARDING] Redirecting user to studio for onboarding');
+          navigate('/studio');
+          return;
+        }
+        
         setShowWelcomeModal(true);
       } else {
         console.log('✅ [ONBOARDING] User has completed onboarding');

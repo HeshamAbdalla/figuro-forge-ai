@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/toaster";
 import PageTransition from "@/components/PageTransition";
 import { PerformanceDashboard } from "@/components/debug/PerformanceDashboard";
 import { SecurityErrorBoundary } from "@/components/security/SecurityErrorBoundary";
+import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
 
 import Index from "@/pages/Index";
 import Features from "@/pages/Features";
@@ -96,6 +97,7 @@ function App() {
             </Suspense>
             <Toaster />
             <PerformanceDashboard />
+            <OnboardingWizard />
           </BrowserRouter>
         </EnhancedAuthProvider>
       </HelmetProvider>
