@@ -12,7 +12,6 @@ import { useEnhancedAuth } from "./EnhancedAuthProvider";
 import { cleanupAuthState, clearAuthRateLimits, isRateLimitError } from "@/utils/authUtils";
 import { AlertCircle, Mail, Eye, EyeOff, Loader2, CheckCircle, RefreshCw, KeyRound } from "lucide-react";
 import { isEmailVerificationError } from "@/utils/authUtils";
-import { validateSignupAttempt } from "@/utils/authValidation";
 import { EmailVerificationHandler } from "./EmailVerificationHandler";
 import { ExistingAccountHandler } from "./ExistingAccountHandler";
 
@@ -42,7 +41,6 @@ export function AuthForm() {
   // Enhanced validation state
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [showExistingAccount, setShowExistingAccount] = useState(false);
-  const [validationInProgress, setValidationInProgress] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,53 +83,48 @@ export function AuthForm() {
     setIsRateLimited(false);
     setShowEmailVerification(false);
     setShowExistingAccount(false);
-    setValidationInProgress(true);
     
     try {
-      console.log("🔍 [AUTH-FORM] Starting signup process for:", email);
+      console.log("🚀 [AUTH-FORM] Starting direct signup for:", email);
       
-      // Quick validation check
-      const validation = await validateSignupAttempt(email);
-      setValidationInProgress(false);
-      
-      if (!validation.isValid && validation.accountExists) {
-        console.log("👤 [AUTH-FORM] Account exists, showing existing account handler");
-        setShowExistingAccount(true);
-        setIsLoading(false);
-        return;
-      }
-
-      console.log("✅ [AUTH-FORM] Proceeding with signup");
-      
-      // Proceed with signup - let Supabase handle existing account errors
+      // Direct signup approach - let Supabase handle all validation
       const { error, data } = await signUp(email, password);
       
       if (error) {
-        // Handle specific error cases
-        if (error.includes('User already registered')) {
-          console.log("👤 [AUTH-FORM] User already registered, showing existing account handler");
+        console.log("❌ [AUTH-FORM] Signup error:", error);
+        
+        // Handle specific error cases based on Supabase responses
+        if (error.includes('User already registered') || 
+            error.includes('already been registered') ||
+            error.includes('already exists')) {
+          console.log("👤 [AUTH-FORM] User already exists, showing existing account handler");
           setShowExistingAccount(true);
-        } else if (error.includes('email not confirmed') || error.includes('verification')) {
+        } else if (error.includes('email not confirmed') || 
+                   error.includes('verification') ||
+                   error.includes('Email not confirmed')) {
           console.log("📧 [AUTH-FORM] Email verification needed");
           setShowEmailVerification(true);
+        } else if (isRateLimitError(error)) {
+          setIsRateLimited(true);
+          setErrorMessage(error);
         } else {
           setErrorMessage(error);
-          if (isRateLimitError(error)) {
-            setIsRateLimited(true);
-          }
         }
       } else if (!data?.session) {
-        // Successful signup, email verification required
+        // Successful signup but no immediate session = email verification required
         console.log("✅ [AUTH-FORM] Signup successful, email verification required");
         setSuccessMessage("Account created successfully! Please check your email for the verification link.");
         setShowResendOption(true);
+      } else {
+        // Immediate signup success with session
+        console.log("✅ [AUTH-FORM] Signup successful with immediate session");
+        navigate("/studio");
       }
     } catch (error) {
       console.error("❌ [AUTH-FORM] Signup exception:", error);
       setErrorMessage("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
-      setValidationInProgress(false);
     }
   };
 
@@ -558,15 +551,6 @@ export function AuthForm() {
                 </Alert>
               )}
 
-              {validationInProgress && (
-                <Alert className="bg-blue-500/10 border-blue-500/30 animate-scale-in">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                  <AlertDescription className="text-white/90">
-                    Checking account status...
-                  </AlertDescription>
-                </Alert>
-              )}
-
               {isRateLimited && (
                 <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg animate-fade-in">
                   <p className="text-sm mb-3 text-white/90 font-medium">
@@ -624,7 +608,7 @@ export function AuthForm() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    disabled={isLoading || validationInProgress}
+                    disabled={isLoading}
                     required
                     className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300"
                   />
@@ -640,7 +624,7 @@ export function AuthForm() {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      disabled={isLoading || validationInProgress}
+                      disabled={isLoading}
                       required
                       className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300 pr-10"
                     />
@@ -665,12 +649,12 @@ export function AuthForm() {
                 <Button 
                   className="w-full bg-figuro-accent hover:bg-figuro-accent-hover text-white font-medium py-2.5 transition-all duration-300 disabled:opacity-50" 
                   type="submit" 
-                  disabled={isLoading || !isFormValid || clearingLimits || validationInProgress}
+                  disabled={isLoading || !isFormValid || clearingLimits}
                 >
-                  {isLoading || validationInProgress ? (
+                  {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {validationInProgress ? "Checking..." : "Creating account..."}
+                      Creating account...
                     </>
                   ) : (
                     "Create Account"
