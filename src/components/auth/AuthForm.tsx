@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -85,23 +84,20 @@ export function AuthForm() {
     setShowExistingAccount(false);
     
     try {
-      console.log("🚀 [AUTH-FORM] Starting direct signup for:", email);
+      console.log("🚀 [AUTH-FORM] Starting signup for:", email);
       
-      // Direct signup approach - let Supabase handle all validation
-      const { error, data } = await signUp(email, password);
+      // Direct signup approach with enhanced existing account detection
+      const { error, data, accountExists } = await signUp(email, password);
       
-      if (error) {
+      if (accountExists) {
+        console.log("👤 [AUTH-FORM] Existing account detected, showing existing account handler");
+        setShowExistingAccount(true);
+      } else if (error) {
         console.log("❌ [AUTH-FORM] Signup error:", error);
         
-        // Handle specific error cases based on Supabase responses
-        if (error.includes('User already registered') || 
-            error.includes('already been registered') ||
-            error.includes('already exists')) {
-          console.log("👤 [AUTH-FORM] User already exists, showing existing account handler");
-          setShowExistingAccount(true);
-        } else if (error.includes('email not confirmed') || 
-                   error.includes('verification') ||
-                   error.includes('Email not confirmed')) {
+        if (error.includes('email not confirmed') || 
+            error.includes('verification') ||
+            error.includes('Email not confirmed')) {
           console.log("📧 [AUTH-FORM] Email verification needed");
           setShowEmailVerification(true);
         } else if (isRateLimitError(error)) {

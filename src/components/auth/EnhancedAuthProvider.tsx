@@ -1,9 +1,9 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
-import { cleanupAuthState, getAuthErrorMessage, checkRateLimitSafe } from "@/utils/authUtils";
+import { cleanupAuthState, getAuthErrorMessage, checkRateLimitSafe, isExistingAccountError } from "@/utils/authUtils";
+import { detectExistingAccountFromResponse } from "@/utils/authValidation";
 import { sessionManager } from "@/utils/sessionManager";
 import { securityManager } from "@/utils/securityUtils";
 
@@ -13,7 +13,7 @@ interface EnhancedAuthContextType {
   profile: any | null;
   isLoading: boolean;
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any, data: any }>;
+  signUp: (email: string, password: string) => Promise<{ error: any, data: any, accountExists?: boolean }>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<{ error: any }>;
@@ -370,7 +370,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Streamlined sign up
+  // Enhanced sign up with better existing account detection
   const signUp = async (email: string, password: string) => {
     try {
       // Validation
@@ -398,7 +398,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         console.log("Pre-signUp global sign out error (non-critical)");
       }
       
-      console.log("Attempting sign-up...");
+      console.log("🚀 [ENHANCED-AUTH] Attempting signup for:", email);
       
       // Always redirect to studio for email verification
       const redirectTo = `${window.location.origin}/studio`;
@@ -413,40 +413,77 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       });
       
       if (error) {
-        const friendlyError = getAuthErrorMessage(error);
+        console.log("❌ [ENHANCED-AUTH] Signup error:", error.message);
+        
+        // Check for existing account using enhanced detection
+        if (isExistingAccountError(error.message) || detectExistingAccountFromResponse(error, data)) {
+          console.log("👤 [ENHANCED-AUTH] Existing account detected for:", email);
+          
+          securityManager.logSecurityEvent({
+            event_type: 'signup_existing_account_detected',
+            event_details: { email, error: error.message },
+            success: true
+          });
+          
+          return { error: null, data: null, accountExists: true };
+        } else if (error.message.includes('email not confirmed') || 
+                   error.message.includes('verification') ||
+                   error.message.includes('Email not confirmed')) {
+          console.log("📧 [ENHANCED-AUTH] Email verification needed");
+          
+          securityManager.logSecurityEvent({
+            event_type: 'signup_verification_needed',
+            event_details: { email },
+            success: true
+          });
+          
+          return { error: null, data, accountExists: false };
+        } else {
+          const friendlyError = getAuthErrorMessage(error);
+          
+          securityManager.logSecurityEvent({
+            event_type: 'signup_failed',
+            event_details: { email, error: error.message },
+            success: false
+          });
+          
+          toast({
+            title: "Error signing up",
+            description: friendlyError,
+            variant: "destructive",
+          });
+          return { error: friendlyError, data: null, accountExists: false };
+        }
+      } else if (!data?.session) {
+        // Successful signup but no immediate session = email verification required
+        console.log("✅ [ENHANCED-AUTH] Signup successful, email verification required");
         
         securityManager.logSecurityEvent({
-          event_type: 'signup_failed',
-          event_details: { email, error: error.message },
-          success: false
-        });
-        
-        toast({
-          title: "Error signing up",
-          description: friendlyError,
-          variant: "destructive",
-        });
-        return { error: friendlyError, data: null };
-      } else {
-        const isEmailVerificationRequired = !data.session;
-        
-        securityManager.logSecurityEvent({
-          event_type: 'signup_success',
-          event_details: { email, user_id: data.user?.id, email_verification_required: isEmailVerificationRequired },
+          event_type: 'signup_success_verification_required',
+          event_details: { email, user_id: data?.user?.id },
           success: true
         });
         
         toast({
-          title: isEmailVerificationRequired ? "Verification email sent" : "Signup successful",
-          description: isEmailVerificationRequired 
-            ? "Please check your email to confirm your account."
-            : "Your account has been created successfully.",
+          title: "Account created successfully!",
+          description: "Please check your email for the verification link.",
         });
+        
+        return { error: null, data, accountExists: false };
+      } else {
+        // Immediate signup success with session
+        console.log("✅ [ENHANCED-AUTH] Signup successful with immediate session");
+        
+        securityManager.logSecurityEvent({
+          event_type: 'signup_success_immediate',
+          event_details: { email, user_id: data?.user?.id },
+          success: true
+        });
+        
+        return { error: null, data, accountExists: false };
       }
-      
-      return { error: null, data };
     } catch (error: any) {
-      console.error("Sign-up exception:", error);
+      console.error("❌ [ENHANCED-AUTH] Signup exception:", error);
       const friendlyError = getAuthErrorMessage(error);
       
       securityManager.logSecurityEvent({
@@ -460,7 +497,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         description: friendlyError,
         variant: "destructive",
       });
-      return { error: friendlyError, data: null };
+      return { error: friendlyError, data: null, accountExists: false };
     }
   };
 

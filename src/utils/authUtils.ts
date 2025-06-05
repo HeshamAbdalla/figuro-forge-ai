@@ -80,6 +80,16 @@ export const checkRateLimitSafe = async (endpoint: string): Promise<boolean> => 
 };
 
 /**
+ * Check if an error indicates an existing account that needs sign-in
+ */
+export const isExistingAccountError = (error: string): boolean => {
+  return error.includes('User already registered') || 
+         error.includes('already been registered') ||
+         error.includes('already exists') ||
+         error.includes('user_repeated_signup');
+};
+
+/**
  * Parse authentication errors and return user-friendly messages
  */
 export const getAuthErrorMessage = (error: any): string => {
@@ -99,7 +109,7 @@ export const getAuthErrorMessage = (error: any): string => {
     return 'Invalid email or password. Please try again.';
   }
 
-  if (errorMessage.includes('Email already registered')) {
+  if (isExistingAccountError(errorMessage)) {
     return 'This email is already registered. Please sign in instead.';
   }
 
