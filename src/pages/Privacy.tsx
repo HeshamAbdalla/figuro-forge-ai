@@ -1,4 +1,5 @@
 
+
 import SEO from "@/components/SEO";
 
 const Privacy = () => {
@@ -7,7 +8,7 @@ const Privacy = () => {
       <SEO 
         title="Privacy Policy - Figuro"
         description="Learn how Figuro collects, uses, and protects your personal information when you use our AI-powered 3D figurine creation platform."
-        canonical="/privacy"
+        canonicalUrl="/privacy"
       />
       
       <div className="container mx-auto px-4 py-16 max-w-4xl">
@@ -289,3 +290,4 @@ const Privacy = () => {
 };
 
 export default Privacy;
+
