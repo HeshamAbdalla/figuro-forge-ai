@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -87,40 +88,41 @@ export function AuthForm() {
     setValidationInProgress(true);
     
     try {
-      console.log("🔍 [AUTH-FORM] Validating signup attempt for:", email);
+      console.log("🔍 [AUTH-FORM] Starting signup process for:", email);
       
-      // Validate signup attempt first
+      // Quick validation check
       const validation = await validateSignupAttempt(email);
       setValidationInProgress(false);
       
-      if (!validation.isValid) {
-        if (validation.needsVerification) {
-          console.log("📧 [AUTH-FORM] Account needs verification, showing verification handler");
-          setShowEmailVerification(true);
-          setIsLoading(false);
-          return;
-        } else if (validation.accountExists) {
-          console.log("👤 [AUTH-FORM] Account exists, showing existing account handler");
-          setShowExistingAccount(true);
-          setIsLoading(false);
-          return;
-        } else {
-          setErrorMessage(validation.error || 'Unable to create account');
-          setIsLoading(false);
-          return;
-        }
+      if (!validation.isValid && validation.accountExists) {
+        console.log("👤 [AUTH-FORM] Account exists, showing existing account handler");
+        setShowExistingAccount(true);
+        setIsLoading(false);
+        return;
       }
 
-      console.log("✅ [AUTH-FORM] Validation passed, proceeding with signup");
+      console.log("✅ [AUTH-FORM] Proceeding with signup");
       
+      // Proceed with signup - let Supabase handle existing account errors
       const { error, data } = await signUp(email, password);
       
       if (error) {
-        setErrorMessage(error);
-        if (isRateLimitError(error)) {
-          setIsRateLimited(true);
+        // Handle specific error cases
+        if (error.includes('User already registered')) {
+          console.log("👤 [AUTH-FORM] User already registered, showing existing account handler");
+          setShowExistingAccount(true);
+        } else if (error.includes('email not confirmed') || error.includes('verification')) {
+          console.log("📧 [AUTH-FORM] Email verification needed");
+          setShowEmailVerification(true);
+        } else {
+          setErrorMessage(error);
+          if (isRateLimitError(error)) {
+            setIsRateLimited(true);
+          }
         }
       } else if (!data?.session) {
+        // Successful signup, email verification required
+        console.log("✅ [AUTH-FORM] Signup successful, email verification required");
         setSuccessMessage("Account created successfully! Please check your email for the verification link.");
         setShowResendOption(true);
       }
