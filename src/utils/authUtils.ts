@@ -80,13 +80,16 @@ export const checkRateLimitSafe = async (endpoint: string): Promise<boolean> => 
 };
 
 /**
- * Check if an error indicates an existing account that needs sign-in
+ * Enhanced check for existing account errors with better pattern detection
  */
 export const isExistingAccountError = (error: string): boolean => {
-  return error.includes('User already registered') || 
-         error.includes('already been registered') ||
-         error.includes('already exists') ||
-         error.includes('user_repeated_signup');
+  const errorLower = error.toLowerCase();
+  return errorLower.includes('user already registered') || 
+         errorLower.includes('already been registered') ||
+         errorLower.includes('already exists') ||
+         errorLower.includes('user_repeated_signup') ||
+         errorLower.includes('email already in use') ||
+         errorLower.includes('user with this email already exists');
 };
 
 /**
