@@ -1,5 +1,5 @@
 
-import { SEO } from "@/components/SEO";
+import SEO from "@/components/SEO";
 
 const Privacy = () => {
   return (
