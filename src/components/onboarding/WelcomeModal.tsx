@@ -12,8 +12,16 @@ interface WelcomeModalProps {
 
 const WelcomeModal = ({ isOpen, onStartTour, onSkip }: WelcomeModalProps) => {
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md bg-figuro-dark border-figuro-accent/20">
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={() => {}} // Prevent closing on background click
+      modal={true}
+    >
+      <DialogContent 
+        className="sm:max-w-md bg-figuro-dark border-figuro-accent/20"
+        onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click
+        onEscapeKeyDown={(e) => e.preventDefault()} // Prevent closing on escape
+      >
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-white text-center">
             Welcome to Figuro.AI! 🎉

@@ -11,58 +11,58 @@ export interface OnboardingStep {
 export const onboardingSteps: OnboardingStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to Figuro.AI! 🎉',
-    description: 'Let\'s take a quick tour to help you get started with creating amazing 3D figurines.',
+    title: 'Welcome to Your Creative Studio! 🎨',
+    description: 'This is your command center for creating amazing 3D figurines. Let\'s explore the main features together.',
     target: '.studio-header',
     position: 'bottom',
     showSkip: true
   },
   {
     id: 'image-generation',
-    title: 'Generate Images',
-    description: 'Start by describing what you want to create. Our AI will generate a beautiful image for you.',
+    title: 'Start with Image Generation',
+    description: 'The "Image to 3D" tab is your starting point. Describe what you want to create and our AI will generate a beautiful image.',
     target: '[data-tab="image-to-3d"]',
     position: 'bottom'
   },
   {
     id: 'prompt-form',
-    title: 'Describe Your Vision',
-    description: 'Type your creative prompt here. Be as detailed as you want - the more specific, the better the result!',
+    title: 'Describe Your Vision ✨',
+    description: 'Type your creative prompt here. Try something like "a cute cartoon dragon" or "a medieval knight figurine". Be as detailed as you want!',
     target: '.prompt-form',
     position: 'top'
   },
   {
     id: 'generate-button',
-    title: 'Create Your Image',
-    description: 'Click here to generate your image. It usually takes 10-30 seconds.',
+    title: 'Generate Your Image 🚀',
+    description: 'Click this button to bring your prompt to life! Image generation usually takes 10-30 seconds.',
     target: '.generate-button',
     position: 'top'
   },
   {
     id: 'convert-to-3d',
-    title: 'Convert to 3D',
-    description: 'Once you have an image you love, convert it to a 3D model that you can download and 3D print!',
+    title: 'Transform to 3D Magic! 🎯',
+    description: 'Once you have an image you love, click here to convert it to a downloadable 3D model perfect for printing.',
     target: '.convert-3d-button',
     position: 'top'
   },
   {
     id: 'camera-tab',
-    title: 'Camera Feature',
-    description: 'You can also take photos with your camera and convert them directly to 3D models.',
+    title: 'Camera to 3D Feature 📸',
+    description: 'Got a photo on your phone? Use this tab to take pictures and convert them directly to 3D models.',
     target: '[data-tab="camera"]',
     position: 'bottom'
   },
   {
     id: 'text-to-3d',
-    title: 'Text to 3D',
-    description: 'Skip the image step entirely and go straight from text to 3D model!',
+    title: 'Skip Straight to 3D 🎲',
+    description: 'Want to skip the image step entirely? This tab goes directly from text description to 3D model!',
     target: '[data-tab="text-to-3d"]',
     position: 'bottom'
   },
   {
     id: 'gallery',
-    title: 'Your Gallery',
-    description: 'All your creations are saved here. You can view, download, and manage your 3D models.',
+    title: 'Your Personal Gallery 🖼️',
+    description: 'All your creations are automatically saved here. Download, share, or get inspired by your previous work!',
     target: '[data-tab="gallery"]',
     position: 'bottom'
   }

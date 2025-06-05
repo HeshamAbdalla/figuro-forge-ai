@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import CompactStudioHeader from "./CompactStudioHeader";
 import StudioProgressHeader from "./StudioProgressHeader";
@@ -7,7 +6,6 @@ import StudioConfigPanel from "./StudioConfigPanel";
 import TextTo3DConfigModal from "./TextTo3DConfigModal";
 import ImageTo3DConfigModal from "./ImageTo3DConfigModal";
 import UploadModelModal from "@/components/UploadModelModal";
-import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
 import type { TabKey } from "@/hooks/useTabNavigation";
 import type { TextTo3DConfig } from "@/components/studio/types/textTo3DConfig";
 
@@ -152,9 +150,6 @@ const StudioLayout = ({
           />
         </motion.div>
       </div>
-      
-      {/* Onboarding Wizard */}
-      <OnboardingWizard />
     </div>
   );
 };
