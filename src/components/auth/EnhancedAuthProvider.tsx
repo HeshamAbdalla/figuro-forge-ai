@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
 import { cleanupAuthState, getAuthErrorMessage, checkRateLimitSafe, isExistingAccountError } from "@/utils/authUtils";
-import { detectExistingAccountFromResponse, validateSignupAttempt } from "@/utils/authValidation";
+import { validateSignupAttempt, validateSignupResponse } from "@/utils/authValidation";
+import { EmailVerificationEnforcer } from "@/utils/emailVerificationEnforcer";
 import { sessionManager } from "@/utils/sessionManager";
 import { securityManager } from "@/utils/securityUtils";
 
@@ -36,31 +37,59 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   const [securityScore, setSecurityScore] = useState(0);
   const [hasRedirected, setHasRedirected] = useState(false);
 
-  // Simplified security score calculation
+  // Enhanced security score calculation
   const calculateSecurityScore = (user: User | null, session: Session | null): number => {
     let score = 0;
     
-    if (user?.email_confirmed_at) score += 25;
-    if (session?.access_token) score += 25;
-    if (user?.app_metadata?.provider === 'google') score += 25;
+    if (user?.email_confirmed_at) score += 40; // Higher weight for verification
+    if (session?.access_token) score += 30;
+    if (user?.app_metadata?.provider === 'google') score += 20;
     if (session?.expires_at) {
       const expiresAt = new Date(session.expires_at * 1000);
       const hoursUntilExpiry = (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60);
-      if (hoursUntilExpiry > 0) score += 25;
+      if (hoursUntilExpiry > 0) score += 10;
     }
     
     return Math.max(0, Math.min(100, score));
   };
 
-  // Enhanced auth refresh with subscription loading
+  // Enhanced auth refresh with security enforcement
   const refreshAuth = async () => {
     try {
-      console.log("🔄 [ENHANCED-AUTH] Refreshing auth state...");
+      console.log("🔄 [ENHANCED-AUTH] Refreshing auth state with security enforcement...");
       
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
         console.error("❌ [ENHANCED-AUTH] Session error:", error.message);
         return;
+      }
+      
+      // SECURITY ENFORCEMENT: Always validate session integrity
+      if (session?.user) {
+        const enforcementResult = await EmailVerificationEnforcer.enforceVerification(
+          session.user,
+          session
+        );
+
+        if (!enforcementResult.allowAccess) {
+          console.log("🚫 [ENHANCED-AUTH] Access denied due to verification enforcement");
+          
+          // Force sign out if verification is required
+          await EmailVerificationEnforcer.forceSignOutUnverified(
+            enforcementResult.error || 'Verification required'
+          );
+          
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setSecurityScore(0);
+          
+          // Redirect to auth page if on protected route
+          if (window.location.pathname !== '/auth') {
+            window.location.href = '/auth';
+          }
+          return;
+        }
       }
       
       setSession(session);
@@ -94,7 +123,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener
+    // Set up auth state listener with enhanced security
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -108,10 +137,39 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
             user_id: session?.user?.id,
             email: session?.user?.email,
             provider: session?.user?.app_metadata?.provider,
-            current_path: window.location.pathname
+            current_path: window.location.pathname,
+            email_confirmed: !!session?.user?.email_confirmed_at
           },
           success: true
         });
+        
+        // SECURITY ENFORCEMENT: Validate every auth state change
+        if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+          const enforcementResult = await EmailVerificationEnforcer.enforceVerification(
+            session.user,
+            session
+          );
+
+          if (!enforcementResult.allowAccess) {
+            console.log("🚫 [ENHANCED-AUTH] Access denied during auth state change");
+            
+            // Force sign out for unverified users
+            await EmailVerificationEnforcer.forceSignOutUnverified(
+              enforcementResult.error || 'Verification required'
+            );
+            
+            // Clear state and redirect
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setSecurityScore(0);
+            
+            if (window.location.pathname !== '/auth') {
+              window.location.href = '/auth';
+            }
+            return;
+          }
+        }
         
         setSession(session);
         setUser(session?.user ?? null);
@@ -119,7 +177,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user && mounted) {
-            // Handle Google OAuth redirect ONLY if we're on the auth page and haven't redirected yet
+            // Handle Google OAuth redirect with verification check
             if (session.user.app_metadata?.provider === 'google' && 
                 window.location.pathname === '/auth' && 
                 !hasRedirected) {
@@ -148,17 +206,16 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                 }
               }, 200);
             } else {
-              // Regular email/password sign-in
+              // Regular email/password sign-in with verification enforcement
               setTimeout(async () => {
                 if (mounted) {
                   try {
                     let profileData = await sessionManager.getProfile(session.user.id);
                     
-                    // If no profile exists, it means this is a new user
+                    // If no profile exists, create one for new user
                     if (!profileData) {
                       console.log("🆕 [ENHANCED-AUTH] New user detected, creating profile with onboarding flag");
                       
-                      // Create a new profile with onboarding incomplete
                       const { data: newProfile, error: createError } = await supabase
                         .from('profiles')
                         .insert({
@@ -223,10 +280,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       }
     );
 
-    // Initialize auth
+    // Initialize auth with security enforcement
     const initializeAuth = async () => {
       try {
-        console.log("🚀 [ENHANCED-AUTH] Initializing...");
+        console.log("🚀 [ENHANCED-AUTH] Initializing with security enforcement...");
         
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
@@ -234,6 +291,34 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         }
         
         if (mounted) {
+          // SECURITY ENFORCEMENT: Validate initial session
+          if (session?.user) {
+            const enforcementResult = await EmailVerificationEnforcer.enforceVerification(
+              session.user,
+              session
+            );
+
+            if (!enforcementResult.allowAccess) {
+              console.log("🚫 [ENHANCED-AUTH] Initial session denied due to verification");
+              
+              // Force sign out and redirect
+              await EmailVerificationEnforcer.forceSignOutUnverified(
+                enforcementResult.error || 'Verification required'
+              );
+              
+              setSession(null);
+              setUser(null);
+              setProfile(null);
+              setSecurityScore(0);
+              setIsLoading(false);
+              
+              if (window.location.pathname !== '/auth') {
+                window.location.href = '/auth';
+              }
+              return;
+            }
+          }
+          
           setSession(session);
           setUser(session?.user ?? null);
           setSecurityScore(calculateSecurityScore(session?.user ?? null, session));
@@ -275,6 +360,161 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       subscription.unsubscribe();
     };
   }, [hasRedirected]);
+
+  // Enhanced sign up with comprehensive security validation
+  const signUp = async (email: string, password: string) => {
+    try {
+      console.log("🚀 [ENHANCED-AUTH] Starting comprehensive secure signup process for:", email);
+      
+      // Validation
+      if (!securityManager.validateEmail(email)) {
+        throw new Error('Invalid email format');
+      }
+
+      const passwordValidation = securityManager.validatePassword(password);
+      if (!passwordValidation.isValid) {
+        throw new Error(passwordValidation.errors.join('. '));
+      }
+
+      // Optional rate limit check
+      const canProceed = await checkRateLimitSafe('auth_signup');
+      if (!canProceed) {
+        throw new Error('Too many sign up attempts. Please wait a few minutes.');
+      }
+
+      cleanupAuthState();
+      
+      // Quick sign out attempt
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        console.log("⚠️ [ENHANCED-AUTH] Pre-signup signout failed (non-critical)");
+      }
+      
+      // STEP 1: Pre-signup validation
+      console.log("🔍 [ENHANCED-AUTH] Performing comprehensive pre-signup validation...");
+      const preValidation = await validateSignupAttempt(email);
+      
+      if (preValidation.accountExists) {
+        console.log("👤 [ENHANCED-AUTH] Pre-validation detected existing account");
+        
+        securityManager.logSecurityEvent({
+          event_type: 'signup_existing_account_pre_detected',
+          event_details: { 
+            email, 
+            needs_verification: preValidation.needsVerification,
+            detection_method: 'pre_validation'
+          },
+          success: true
+        });
+        
+        return { error: null, data: null, accountExists: true };
+      }
+      
+      // STEP 2: Attempt actual signup with security enforcement
+      const redirectTo = `${window.location.origin}/studio`;
+      
+      console.log("📧 [ENHANCED-AUTH] Pre-validation passed, attempting secure Supabase signup...");
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { plan: 'free' },
+          emailRedirectTo: redirectTo
+        }
+      });
+      
+      console.log("📊 [ENHANCED-AUTH] Signup response - Error:", error?.message || 'None');
+      console.log("📊 [ENHANCED-AUTH] Signup response - Data:", {
+        hasUser: !!data?.user,
+        hasSession: !!data?.session,
+        userEmailConfirmed: data?.user?.email_confirmed_at,
+        userCreatedAt: data?.user?.created_at,
+        userId: data?.user?.id
+      });
+      
+      // STEP 3: Enhanced post-signup validation with security enforcement
+      const validationResult = await validateSignupResponse(data, error);
+      
+      // Log validation result
+      securityManager.logSecurityEvent({
+        event_type: 'signup_validation_completed',
+        event_details: {
+          email,
+          validation_result: validationResult,
+          has_session: !!data?.session,
+          has_user: !!data?.user
+        },
+        success: true
+      });
+      
+      if (validationResult.accountExists) {
+        console.log("👤 [ENHANCED-AUTH] Post-signup validation found existing account");
+        return { error: null, data: null, accountExists: true };
+      }
+      
+      // SECURITY ENFORCEMENT: Never allow immediate access without verification
+      if (!validationResult.allowAccess) {
+        console.log("🔒 [ENHANCED-AUTH] Access denied by security enforcement");
+        
+        // If there's a session but verification is required, force sign out
+        if (data?.session) {
+          console.log("🚪 [ENHANCED-AUTH] Forcing sign out due to verification requirement");
+          await EmailVerificationEnforcer.forceSignOutUnverified('Email verification required');
+        }
+        
+        // Always show verification required message
+        toast({
+          title: "Email verification required",
+          description: "Please check your email for the verification link before signing in.",
+        });
+        
+        return { error: null, data: data, accountExists: false };
+      }
+      
+      // Handle explicit signup errors
+      if (error) {
+        console.log("❌ [ENHANCED-AUTH] Signup error:", error.message);
+        
+        const friendlyError = getAuthErrorMessage(error);
+        
+        securityManager.logSecurityEvent({
+          event_type: 'signup_failed',
+          event_details: { email, error: error.message },
+          success: false
+        });
+        
+        toast({
+          title: "Error signing up",
+          description: friendlyError,
+          variant: "destructive",
+        });
+        return { error: friendlyError, data: null, accountExists: false };
+      }
+      
+      // This should not be reached due to security enforcement above
+      console.log("✅ [ENHANCED-AUTH] Signup completed with verification requirement");
+      
+      return { error: null, data, accountExists: false };
+      
+    } catch (error: any) {
+      console.error("❌ [ENHANCED-AUTH] Signup exception:", error);
+      const friendlyError = getAuthErrorMessage(error);
+      
+      securityManager.logSecurityEvent({
+        event_type: 'signup_exception',
+        event_details: { email, error: error.message },
+        success: false
+      });
+      
+      toast({
+        title: "Error signing up",
+        description: friendlyError,
+        variant: "destructive",
+      });
+      return { error: friendlyError, data: null, accountExists: false };
+    }
+  };
 
   // Enhanced sign in with "Remember Me" support
   const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
@@ -367,181 +607,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         variant: "destructive",
       });
       return { error: friendlyError };
-    }
-  };
-
-  // Enhanced sign up with comprehensive existing account detection
-  const signUp = async (email: string, password: string) => {
-    try {
-      console.log("🚀 [ENHANCED-AUTH] Starting comprehensive signup process for:", email);
-      
-      // Validation
-      if (!securityManager.validateEmail(email)) {
-        throw new Error('Invalid email format');
-      }
-
-      const passwordValidation = securityManager.validatePassword(password);
-      if (!passwordValidation.isValid) {
-        throw new Error(passwordValidation.errors.join('. '));
-      }
-
-      // Optional rate limit check
-      const canProceed = await checkRateLimitSafe('auth_signup');
-      if (!canProceed) {
-        throw new Error('Too many sign up attempts. Please wait a few minutes.');
-      }
-
-      cleanupAuthState();
-      
-      // Quick sign out attempt
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        console.log("⚠️ [ENHANCED-AUTH] Pre-signup signout failed (non-critical)");
-      }
-      
-      // STEP 1: Pre-signup validation
-      console.log("🔍 [ENHANCED-AUTH] Performing pre-signup validation...");
-      const preValidation = await validateSignupAttempt(email);
-      
-      if (preValidation.accountExists) {
-        console.log("👤 [ENHANCED-AUTH] Pre-validation detected existing account");
-        
-        securityManager.logSecurityEvent({
-          event_type: 'signup_existing_account_pre_detected',
-          event_details: { 
-            email, 
-            needs_verification: preValidation.needsVerification,
-            detection_method: 'pre_validation'
-          },
-          success: true
-        });
-        
-        return { error: null, data: null, accountExists: true };
-      }
-      
-      // STEP 2: Attempt actual signup
-      const redirectTo = `${window.location.origin}/studio`;
-      
-      console.log("📧 [ENHANCED-AUTH] Pre-validation passed, attempting Supabase signup...");
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { plan: 'free' },
-          emailRedirectTo: redirectTo
-        }
-      });
-      
-      console.log("📊 [ENHANCED-AUTH] Signup response - Error:", error?.message || 'None');
-      console.log("📊 [ENHANCED-AUTH] Signup response - Data:", {
-        hasUser: !!data?.user,
-        hasSession: !!data?.session,
-        userEmailConfirmed: data?.user?.email_confirmed_at,
-        userCreatedAt: data?.user?.created_at,
-        userId: data?.user?.id
-      });
-      
-      // STEP 3: Enhanced post-signup detection
-      const accountExists = detectExistingAccountFromResponse(error, data);
-      
-      if (accountExists) {
-        console.log("👤 [ENHANCED-AUTH] Post-signup detection found existing account");
-        
-        securityManager.logSecurityEvent({
-          event_type: 'signup_existing_account_post_detected',
-          event_details: { 
-            email, 
-            error: error?.message || 'No error',
-            detection_method: 'post_validation',
-            response_data: {
-              hasUser: !!data?.user,
-              hasSession: !!data?.session,
-              userEmailConfirmed: data?.user?.email_confirmed_at
-            }
-          },
-          success: true
-        });
-        
-        return { error: null, data: null, accountExists: true };
-      }
-      
-      // Handle explicit signup errors (that aren't existing account related)
-      if (error) {
-        console.log("❌ [ENHANCED-AUTH] Signup error:", error.message);
-        
-        if (error.message.includes('email not confirmed') || 
-            error.message.includes('verification') ||
-            error.message.includes('Email not confirmed')) {
-          console.log("📧 [ENHANCED-AUTH] Email verification needed");
-          
-          securityManager.logSecurityEvent({
-            event_type: 'signup_verification_needed',
-            event_details: { email },
-            success: true
-          });
-          
-          return { error: null, data, accountExists: false };
-        } else {
-          const friendlyError = getAuthErrorMessage(error);
-          
-          securityManager.logSecurityEvent({
-            event_type: 'signup_failed',
-            event_details: { email, error: error.message },
-            success: false
-          });
-          
-          toast({
-            title: "Error signing up",
-            description: friendlyError,
-            variant: "destructive",
-          });
-          return { error: friendlyError, data: null, accountExists: false };
-        }
-      } else if (!data?.session) {
-        // Successful signup but no immediate session = email verification required
-        console.log("✅ [ENHANCED-AUTH] Signup successful, email verification required");
-        
-        securityManager.logSecurityEvent({
-          event_type: 'signup_success_verification_required',
-          event_details: { email, user_id: data?.user?.id },
-          success: true
-        });
-        
-        toast({
-          title: "Account created successfully!",
-          description: "Please check your email for the verification link.",
-        });
-        
-        return { error: null, data, accountExists: false };
-      } else {
-        // Immediate signup success with session
-        console.log("✅ [ENHANCED-AUTH] Signup successful with immediate session");
-        
-        securityManager.logSecurityEvent({
-          event_type: 'signup_success_immediate',
-          event_details: { email, user_id: data?.user?.id },
-          success: true
-        });
-        
-        return { error: null, data, accountExists: false };
-      }
-    } catch (error: any) {
-      console.error("❌ [ENHANCED-AUTH] Signup exception:", error);
-      const friendlyError = getAuthErrorMessage(error);
-      
-      securityManager.logSecurityEvent({
-        event_type: 'signup_exception',
-        event_details: { email, error: error.message },
-        success: false
-      });
-      
-      toast({
-        title: "Error signing up",
-        description: friendlyError,
-        variant: "destructive",
-      });
-      return { error: friendlyError, data: null, accountExists: false };
     }
   };
 
