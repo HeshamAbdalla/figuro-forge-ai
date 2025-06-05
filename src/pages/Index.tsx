@@ -3,7 +3,6 @@ import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import FreeTierSpotlight from "@/components/FreeTierSpotlight";
 import InteractiveDemo from "@/components/InteractiveDemo";
-import HowItWorks from "@/components/HowItWorks";
 import HomepageGallery from "@/components/HomepageGallery";
 import CreatorSpotlight from "@/components/CreatorSpotlight";
 import UseCaseExamples from "@/components/UseCaseExamples";
@@ -30,7 +29,6 @@ const Index = () => {
           <Hero />
           <FreeTierSpotlight />
           <InteractiveDemo />
-          <HowItWorks />
           <HomepageGallery />
           <CreatorSpotlight />
           <UseCaseExamples />
