@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -7,6 +8,7 @@ import { validateSignupAttempt, validateSignupResponse } from "@/utils/authValid
 import { EmailVerificationEnforcer } from "@/utils/emailVerificationEnforcer";
 import { sessionManager } from "@/utils/sessionManager";
 import { securityManager } from "@/utils/securityUtils";
+import { executeRecaptcha, ReCaptchaAction, withRecaptcha, ensureRecaptchaLoaded } from "@/utils/recaptchaUtils";
 
 interface EnhancedAuthContextType {
   user: User | null;
@@ -36,6 +38,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [securityScore, setSecurityScore] = useState(0);
   const [hasRedirected, setHasRedirected] = useState(false);
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
 
   // Enhanced security score calculation
   const calculateSecurityScore = (user: User | null, session: Session | null): number => {
@@ -52,6 +55,23 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     
     return Math.max(0, Math.min(100, score));
   };
+
+  // Load reCAPTCHA when component mounts
+  useEffect(() => {
+    const loadRecaptcha = async () => {
+      try {
+        const loaded = await ensureRecaptchaLoaded();
+        if (loaded) {
+          console.log('✅ [RECAPTCHA] Successfully loaded');
+          setRecaptchaLoaded(true);
+        }
+      } catch (error) {
+        console.error('❌ [RECAPTCHA] Failed to load:', error);
+      }
+    };
+    
+    loadRecaptcha();
+  }, []);
 
   // Enhanced auth refresh with security enforcement
   const refreshAuth = async () => {
@@ -361,10 +381,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     };
   }, [hasRedirected]);
 
-  // Enhanced sign up with comprehensive security validation
+  // Enhanced sign up with reCAPTCHA protection
   const signUp = async (email: string, password: string) => {
     try {
-      console.log("🚀 [ENHANCED-AUTH] Starting comprehensive secure signup process for:", email);
+      console.log("🚀 [ENHANCED-AUTH] Starting secure signup process for:", email);
       
       // Validation
       if (!securityManager.validateEmail(email)) {
@@ -380,6 +400,13 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       const canProceed = await checkRateLimitSafe('auth_signup');
       if (!canProceed) {
         throw new Error('Too many sign up attempts. Please wait a few minutes.');
+      }
+
+      // Ensure reCAPTCHA is loaded
+      if (!recaptchaLoaded) {
+        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to load...");
+        await ensureRecaptchaLoaded();
+        setRecaptchaLoaded(true);
       }
 
       cleanupAuthState();
@@ -411,18 +438,33 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         return { error: null, data: null, accountExists: true };
       }
       
-      // STEP 2: Attempt actual signup with security enforcement
+      // STEP 2: Execute reCAPTCHA and get token
+      console.log("🤖 [RECAPTCHA] Getting token for signup action");
+      const recaptchaToken = await executeRecaptcha("signup");
+      
+      if (!recaptchaToken) {
+        console.error("❌ [RECAPTCHA] Failed to get reCAPTCHA token");
+        throw new Error("Security verification failed. Please try again.");
+      }
+      
+      // STEP 3: Attempt actual signup with security enforcement
       const redirectTo = `${window.location.origin}/studio`;
       
-      console.log("📧 [ENHANCED-AUTH] Pre-validation passed, attempting secure Supabase signup...");
-      const { data, error } = await supabase.auth.signUp({
+      console.log("📧 [ENHANCED-AUTH] Attempting secure Supabase signup with reCAPTCHA...");
+      
+      // Use withRecaptcha helper to add token to auth request
+      const signupParams = {
         email,
         password,
         options: {
           data: { plan: 'free' },
-          emailRedirectTo: redirectTo
+          emailRedirectTo: redirectTo,
+          captchaToken: recaptchaToken
         }
-      });
+      };
+      
+      // Execute signup with reCAPTCHA token
+      const { data, error } = await supabase.auth.signUp(signupParams);
       
       console.log("📊 [ENHANCED-AUTH] Signup response - Error:", error?.message || 'None');
       console.log("📊 [ENHANCED-AUTH] Signup response - Data:", {
@@ -433,7 +475,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         userId: data?.user?.id
       });
       
-      // STEP 3: Enhanced post-signup validation with security enforcement
+      // STEP 4: Enhanced post-signup validation with security enforcement
       const validationResult = await validateSignupResponse(data, error);
       
       // Log validation result
@@ -443,7 +485,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           email,
           validation_result: validationResult,
           has_session: !!data?.session,
-          has_user: !!data?.user
+          has_user: !!data?.user,
+          recaptcha_used: true
         },
         success: true
       });
@@ -516,9 +559,9 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced sign in with "Remember Me" support
+  // Enhanced sign in with reCAPTCHA protection
   const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
-    console.log("🚀 [ENHANCED-AUTH] Starting sign-in...");
+    console.log("🚀 [ENHANCED-AUTH] Starting secure sign-in...");
     
     try {
       // Quick validation
@@ -532,6 +575,13 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         throw new Error('Too many sign in attempts. Please wait a few minutes.');
       }
 
+      // Ensure reCAPTCHA is loaded
+      if (!recaptchaLoaded) {
+        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to load...");
+        await ensureRecaptchaLoaded();
+        setRecaptchaLoaded(true);
+      }
+
       // Clean up state
       cleanupAuthState();
       
@@ -541,8 +591,17 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       } catch (err) {
         console.log("⚠️ [ENHANCED-AUTH] Pre-signin signout failed (non-critical)");
       }
+
+      // Execute reCAPTCHA for login action
+      console.log("🤖 [RECAPTCHA] Getting token for login action");
+      const recaptchaToken = await executeRecaptcha("login");
       
-      console.log("🔐 [ENHANCED-AUTH] Attempting sign-in...");
+      if (!recaptchaToken) {
+        console.error("❌ [RECAPTCHA] Failed to get reCAPTCHA token");
+        throw new Error("Security verification failed. Please try again.");
+      }
+      
+      console.log("🔐 [ENHANCED-AUTH] Attempting sign-in with reCAPTCHA...");
       
       // Set session persistence in localStorage based on "Remember Me"
       if (rememberMe) {
@@ -551,11 +610,17 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         localStorage.removeItem('figuro_remember_me');
       }
       
-      // Perform sign-in
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // Perform sign-in with reCAPTCHA token
+      const signInParams = {
         email,
-        password
-      });
+        password,
+        options: {
+          captchaToken: recaptchaToken
+        }
+      };
+      
+      // Execute login with reCAPTCHA token
+      const { data, error } = await supabase.auth.signInWithPassword(signInParams);
       
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
@@ -564,7 +629,12 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         // Log failure (non-blocking)
         securityManager.logSecurityEvent({
           event_type: 'signin_failed',
-          event_details: { email, error: error.message, remember_me: rememberMe },
+          event_details: { 
+            email, 
+            error: error.message, 
+            remember_me: rememberMe,
+            recaptcha_used: true
+          },
           success: false
         });
         
@@ -579,11 +649,16 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       // Log success (non-blocking)
       securityManager.logSecurityEvent({
         event_type: 'signin_success',
-        event_details: { email, user_id: data.user?.id, remember_me: rememberMe },
+        event_details: { 
+          email, 
+          user_id: data.user?.id, 
+          remember_me: rememberMe,
+          recaptcha_used: true
+        },
         success: true
       });
       
-      console.log("✅ [ENHANCED-AUTH] Sign-in successful");
+      console.log("✅ [ENHANCED-AUTH] Secure sign-in successful");
       
       toast({
         title: "Welcome back! 🎉",
@@ -610,19 +685,35 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Password reset functionality
+  // Password reset with reCAPTCHA security
   const resetPassword = async (email: string) => {
     try {
       if (!securityManager.validateEmail(email)) {
         throw new Error('Invalid email format');
       }
 
-      console.log("🔄 [ENHANCED-AUTH] Sending password reset email...");
+      // Ensure reCAPTCHA is loaded
+      if (!recaptchaLoaded) {
+        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to load...");
+        await ensureRecaptchaLoaded();
+        setRecaptchaLoaded(true);
+      }
+
+      console.log("🔄 [ENHANCED-AUTH] Securely sending password reset email...");
+      
+      // Execute reCAPTCHA for password reset
+      const recaptchaToken = await executeRecaptcha("password_reset");
+      
+      if (!recaptchaToken) {
+        console.error("❌ [RECAPTCHA] Failed to get reCAPTCHA token");
+        throw new Error("Security verification failed. Please try again.");
+      }
       
       const redirectTo = `${window.location.origin}/studio`;
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectTo
+        redirectTo: redirectTo,
+        captchaToken: recaptchaToken
       });
       
       if (error) {
@@ -630,7 +721,11 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         
         securityManager.logSecurityEvent({
           event_type: 'password_reset_failed',
-          event_details: { email, error: error.message },
+          event_details: { 
+            email, 
+            error: error.message,
+            recaptcha_used: true
+          },
           success: false
         });
         
@@ -639,11 +734,14 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       securityManager.logSecurityEvent({
         event_type: 'password_reset_success',
-        event_details: { email },
+        event_details: { 
+          email,
+          recaptcha_used: true
+        },
         success: true
       });
       
-      console.log("✅ [ENHANCED-AUTH] Password reset email sent");
+      console.log("✅ [ENHANCED-AUTH] Password reset email sent securely");
       
       return { error: null };
     } catch (error: any) {
@@ -656,6 +754,86 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         success: false
       });
       
+      return { error: friendlyError };
+    }
+  };
+
+  // Resend verification email with reCAPTCHA
+  const resendVerificationEmail = async (email: string) => {
+    try {
+      // Ensure reCAPTCHA is loaded
+      if (!recaptchaLoaded) {
+        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to load...");
+        await ensureRecaptchaLoaded();
+        setRecaptchaLoaded(true);
+      }
+      
+      // Execute reCAPTCHA for email verification
+      const recaptchaToken = await executeRecaptcha("email_verification");
+      
+      if (!recaptchaToken) {
+        console.error("❌ [RECAPTCHA] Failed to get reCAPTCHA token");
+        throw new Error("Security verification failed. Please try again.");
+      }
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          captchaToken: recaptchaToken
+        }
+      });
+      
+      if (error) {
+        const friendlyError = getAuthErrorMessage(error);
+        
+        securityManager.logSecurityEvent({
+          event_type: 'verification_resend_failed',
+          event_details: { 
+            email, 
+            error: error.message,
+            recaptcha_used: true
+          },
+          success: false
+        });
+        
+        toast({
+          title: "Error sending verification email",
+          description: friendlyError,
+          variant: "destructive",
+        });
+        return { error: friendlyError };
+      }
+      
+      securityManager.logSecurityEvent({
+        event_type: 'verification_resend_success',
+        event_details: { 
+          email,
+          recaptcha_used: true
+        },
+        success: true
+      });
+      
+      toast({
+        title: "Verification email sent",
+        description: "Please check your inbox for the verification link.",
+      });
+      
+      return { error: null };
+    } catch (error: any) {
+      const friendlyError = getAuthErrorMessage(error);
+      
+      securityManager.logSecurityEvent({
+        event_type: 'verification_resend_exception',
+        event_details: { email, error: error.message },
+        success: false
+      });
+      
+      toast({
+        title: "Error sending verification email",
+        description: friendlyError,
+        variant: "destructive",
+      });
       return { error: friendlyError };
     }
   };
@@ -695,21 +873,34 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced Google sign-in with environment-aware redirects
+  // Enhanced Google sign-in with reCAPTCHA
   const signInWithGoogle = async () => {
     try {
       cleanupAuthState();
       
+      // Ensure reCAPTCHA is loaded
+      if (!recaptchaLoaded) {
+        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to load...");
+        await ensureRecaptchaLoaded();
+        setRecaptchaLoaded(true);
+      }
+
       const redirectTo = `${window.location.origin}/studio`;
       
       console.log("🚀 [ENHANCED-AUTH] Starting Google sign-in with redirect:", redirectTo);
       
+      // Execute reCAPTCHA for Google login
+      const recaptchaToken = await executeRecaptcha("login");
+      
       securityManager.logSecurityEvent({
         event_type: 'google_signin_initiated',
-        event_details: { redirect_to: redirectTo },
+        event_details: { 
+          redirect_to: redirectTo,
+          recaptcha_used: !!recaptchaToken
+        },
         success: true
       });
-      
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -717,7 +908,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
-          }
+          },
+          captchaToken: recaptchaToken || undefined
         }
       });
 
@@ -739,60 +931,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         description: friendlyError,
         variant: "destructive",
       });
-    }
-  };
-  
-  const resendVerificationEmail = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-      });
-      
-      if (error) {
-        const friendlyError = getAuthErrorMessage(error);
-        
-        securityManager.logSecurityEvent({
-          event_type: 'verification_resend_failed',
-          event_details: { email, error: error.message },
-          success: false
-        });
-        
-        toast({
-          title: "Error sending verification email",
-          description: friendlyError,
-          variant: "destructive",
-        });
-        return { error: friendlyError };
-      }
-      
-      securityManager.logSecurityEvent({
-        event_type: 'verification_resend_success',
-        event_details: { email },
-        success: true
-      });
-      
-      toast({
-        title: "Verification email sent",
-        description: "Please check your inbox for the verification link.",
-      });
-      
-      return { error: null };
-    } catch (error: any) {
-      const friendlyError = getAuthErrorMessage(error);
-      
-      securityManager.logSecurityEvent({
-        event_type: 'verification_resend_exception',
-        event_details: { email, error: error.message },
-        success: false
-      });
-      
-      toast({
-        title: "Error sending verification email",
-        description: friendlyError,
-        variant: "destructive",
-      });
-      return { error: friendlyError };
     }
   };
 

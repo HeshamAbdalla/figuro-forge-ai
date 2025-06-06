@@ -1,147 +1,175 @@
 
+import { supabase } from '@/integrations/supabase/client';
+
 /**
- * Clean up all Supabase auth-related state from storage
- * This helps prevent "limbo" states when switching accounts or sessions
+ * Comprehensive auth cleanup utility to prevent auth limbo states
+ * Clears all Supabase auth keys from storage
  */
 export const cleanupAuthState = () => {
-  // Remove standard auth tokens
-  localStorage.removeItem('supabase.auth.token');
-  
-  // Remove all Supabase auth keys from localStorage
-  Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-      localStorage.removeItem(key);
-    }
-  });
-  
-  // Also clean sessionStorage if in use
-  if (typeof sessionStorage !== 'undefined') {
-    Object.keys(sessionStorage).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        sessionStorage.removeItem(key);
+  try {
+    console.log("🧹 [AUTH-UTILS] Cleaning up auth state");
+    
+    // Remove all Supabase auth-related items from localStorage
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || 
+          key.includes('sb-') ||
+          key === 'figuro_remember_me') {
+        localStorage.removeItem(key);
       }
     });
-  }
-};
-
-/**
- * Clear rate limits for debugging purposes
- */
-export const clearAuthRateLimits = async () => {
-  try {
-    const { supabase } = await import('@/integrations/supabase/client');
-    await supabase.rpc('clear_rate_limits_for_endpoint', {
-      p_endpoint: 'auth_signin'
-    });
-    console.log('✅ [AUTH-UTILS] Rate limits cleared for auth_signin');
+    
+    // Remove from sessionStorage if used
+    try {
+      Object.keys(sessionStorage || {}).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch (e) {
+      // Ignore sessionStorage errors (may not be available in some contexts)
+    }
+    
   } catch (error) {
-    console.error('❌ [AUTH-UTILS] Failed to clear rate limits:', error);
+    console.error('❌ [AUTH-UTILS] Error during auth state cleanup:', error);
   }
 };
 
 /**
- * Simplified rate limit check that fails open
+ * Format auth error messages to be more user-friendly
+ */
+export const getAuthErrorMessage = (error: any): string => {
+  if (!error) return 'An unknown error occurred';
+  
+  const errorMessage = error.message || error.toString();
+  const lowerMessage = errorMessage.toLowerCase();
+  
+  // Handle email verification errors
+  if (lowerMessage.includes('email not confirmed') || 
+      lowerMessage.includes('email verification')) {
+    return 'Please verify your email address before signing in.';
+  }
+  
+  // Handle invalid credentials
+  if (lowerMessage.includes('invalid login') || 
+      lowerMessage.includes('invalid credentials') ||
+      lowerMessage.includes('incorrect username or password')) {
+    return 'Invalid email or password.';
+  }
+  
+  // Handle rate limiting
+  if (lowerMessage.includes('too many requests') ||
+      lowerMessage.includes('rate limit') ||
+      lowerMessage.includes('too many attempts')) {
+    return 'Too many login attempts. Please try again later.';
+  }
+  
+  // Handle reCAPTCHA errors
+  if (lowerMessage.includes('recaptcha') ||
+      lowerMessage.includes('security check') ||
+      lowerMessage.includes('captcha')) {
+    return 'Security verification failed. Please try again.';
+  }
+  
+  // Handle user not found
+  if (lowerMessage.includes('user not found')) {
+    return 'No account found with this email address.';
+  }
+  
+  // Handle existing account
+  if (lowerMessage.includes('already registered') || 
+      lowerMessage.includes('already exists') ||
+      lowerMessage.includes('email already')) {
+    return 'An account with this email already exists. Please sign in instead.';
+  }
+  
+  // Weak password
+  if (lowerMessage.includes('password') && lowerMessage.includes('weak')) {
+    return 'Please choose a stronger password.';
+  }
+  
+  // General network/server errors
+  if (lowerMessage.includes('network') || 
+      lowerMessage.includes('connection') ||
+      lowerMessage.includes('timeout')) {
+    return 'Connection error. Please check your internet and try again.';
+  }
+  
+  // Default case - pass through cleaned up error message
+  return errorMessage.replace('AuthApiError: ', '')
+                    .replace('AuthError: ', '')
+                    .replace('Error: ', '');
+};
+
+/**
+ * Check if error message indicates an email verification issue
+ */
+export const isEmailVerificationError = (error: string): boolean => {
+  if (!error) return false;
+  
+  const lowerError = error.toLowerCase();
+  return lowerError.includes('email not confirmed') || 
+         lowerError.includes('verify your email') ||
+         lowerError.includes('email verification');
+};
+
+/**
+ * Check if error message indicates rate limiting
+ */
+export const isRateLimitError = (error: string): boolean => {
+  if (!error) return false;
+  
+  const lowerError = error.toLowerCase();
+  return lowerError.includes('too many requests') || 
+         lowerError.includes('rate limit') ||
+         lowerError.includes('too many attempts');
+};
+
+/**
+ * Check if error indicates existing account
+ */
+export const isExistingAccountError = (error: any): boolean => {
+  if (!error) return false;
+  
+  const errorMsg = typeof error === 'string' 
+    ? error.toLowerCase() 
+    : (error.message || '').toLowerCase();
+  
+  return errorMsg.includes('already registered') || 
+         errorMsg.includes('already been registered') ||
+         errorMsg.includes('already exists') ||
+         errorMsg.includes('email already in use');
+};
+
+/**
+ * Safe rate limit checking with fallback
  */
 export const checkRateLimitSafe = async (endpoint: string): Promise<boolean> => {
   try {
-    console.log(`🔍 [AUTH-UTILS] Quick rate limit check for ${endpoint}...`);
-    
-    const { supabase } = await import('@/integrations/supabase/client');
-    
-    // Very short timeout to prevent hanging
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Rate limit timeout')), 1000);
-    });
-    
-    const checkPromise = supabase.rpc('check_rate_limit', {
+    const { data } = await supabase.rpc('check_rate_limit', { 
       p_user_id: null,
       p_ip_address: null,
       p_endpoint: endpoint,
-      p_limit: 50, // More lenient limit
-      p_window_minutes: 15
+      p_limit: 10,
+      p_window_minutes: 5
     });
     
-    const result = await Promise.race([checkPromise, timeoutPromise]);
-    const { data, error } = result;
-    
-    if (error) {
-      console.log('⚠️ [AUTH-UTILS] Rate limit check failed, allowing:', error.message);
-      return true; // Fail open
-    }
-    
-    const canProceed = data === true;
-    console.log(`${canProceed ? '✅' : '⚠️'} [AUTH-UTILS] Rate limit result:`, canProceed);
-    return canProceed;
-    
+    return data === true;
   } catch (error) {
-    console.log('⚠️ [AUTH-UTILS] Rate limit check error, allowing:', error instanceof Error ? error.message : 'Unknown');
-    return true; // Always fail open to prevent blocking
+    console.log("⚠️ [AUTH-UTILS] Rate limit check failed, allowing:", error);
+    return true; // Fail open if check fails
   }
 };
 
 /**
- * Enhanced check for existing account errors with better pattern detection
+ * Reset auth rate limits for testing
  */
-export const isExistingAccountError = (error: string): boolean => {
-  const errorLower = error.toLowerCase();
-  return errorLower.includes('user already registered') || 
-         errorLower.includes('already been registered') ||
-         errorLower.includes('already exists') ||
-         errorLower.includes('user_repeated_signup') ||
-         errorLower.includes('email already in use') ||
-         errorLower.includes('user with this email already exists');
-};
-
-/**
- * Parse authentication errors and return user-friendly messages
- */
-export const getAuthErrorMessage = (error: any): string => {
-  const errorMessage = error?.message || error?.error_description || String(error);
-  
-  // Handle rate limiting errors specifically
-  if (errorMessage.includes('rate limit') || errorMessage.includes('too many')) {
-    return 'Too many sign-in attempts. Please wait a few minutes before trying again.';
+export const clearAuthRateLimits = async (): Promise<void> => {
+  try {
+    await supabase.rpc('clear_rate_limits_for_endpoint', { p_endpoint: 'auth_signin' });
+    await supabase.rpc('clear_rate_limits_for_endpoint', { p_endpoint: 'auth_signup' });
+    console.log("✅ [AUTH-UTILS] Auth rate limits cleared");
+  } catch (error) {
+    console.error('❌ [AUTH-UTILS] Failed to clear rate limits:', error);
+    throw error;
   }
-  
-  // Handle common auth error scenarios
-  if (errorMessage.includes('Email not confirmed')) {
-    return 'Please verify your email before signing in. Check your inbox for the verification link.';
-  }
-  
-  if (errorMessage.includes('Invalid login')) {
-    return 'Invalid email or password. Please try again.';
-  }
-
-  if (isExistingAccountError(errorMessage)) {
-    return 'This email is already registered. Please sign in instead.';
-  }
-
-  if (errorMessage.includes('Password should be')) {
-    return 'Password should be at least 6 characters long.';
-  }
-
-  if (errorMessage.includes('Invalid email format')) {
-    return 'Please enter a valid email address.';
-  }
-  
-  // Return the original error if no specific handling
-  return errorMessage;
-};
-
-/**
- * Check if an error is related to email verification
- */
-export const isEmailVerificationError = (error: string): boolean => {
-  return error.includes('verify your email') || 
-         error.includes('Email not confirmed') || 
-         error.includes('confirmation');
-};
-
-/**
- * Check if an error is related to rate limiting
- */
-export const isRateLimitError = (error: string): boolean => {
-  return error.includes('rate limit') || 
-         error.includes('too many') ||
-         error.includes('Too many sign in attempts');
 };

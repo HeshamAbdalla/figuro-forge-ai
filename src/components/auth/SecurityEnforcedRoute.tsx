@@ -2,8 +2,9 @@
 import { useEffect, useState } from 'react';
 import { useEnhancedAuth } from './EnhancedAuthProvider';
 import { EmailVerificationEnforcer } from '@/utils/emailVerificationEnforcer';
+import { ensureRecaptchaLoaded } from '@/utils/recaptchaUtils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ShieldAlert, Loader2 } from 'lucide-react';
+import { ShieldAlert, Loader2, Lock } from 'lucide-react';
 
 interface SecurityEnforcedRouteProps {
   children: React.ReactNode;
@@ -11,7 +12,7 @@ interface SecurityEnforcedRouteProps {
 }
 
 /**
- * Route wrapper that enforces email verification and security policies
+ * Enhanced route wrapper that enforces email verification, security policies and reCAPTCHA
  */
 export const SecurityEnforcedRoute = ({ 
   children, 
@@ -26,6 +27,21 @@ export const SecurityEnforcedRoute = ({
     isChecking: true,
     isAllowed: false
   });
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
+
+  // Ensure reCAPTCHA is loaded
+  useEffect(() => {
+    const loadRecaptcha = async () => {
+      try {
+        const loaded = await ensureRecaptchaLoaded();
+        setRecaptchaLoaded(loaded);
+      } catch (error) {
+        console.error('❌ [RECAPTCHA] Failed to load:', error);
+      }
+    };
+    
+    loadRecaptcha();
+  }, []);
 
   useEffect(() => {
     const checkVerificationStatus = async () => {
@@ -50,7 +66,7 @@ export const SecurityEnforcedRoute = ({
       }
 
       try {
-        // Enforce verification requirements
+        // Enforce verification requirements with enhanced security
         const enforcementResult = await EmailVerificationEnforcer.enforceVerification(user, session);
         
         console.log('🔍 [SECURITY-ROUTE] Enforcement result:', enforcementResult);
@@ -65,6 +81,7 @@ export const SecurityEnforcedRoute = ({
           return;
         }
 
+        // All security checks passed
         setVerificationStatus({
           isChecking: false,
           isAllowed: true
@@ -85,7 +102,7 @@ export const SecurityEnforcedRoute = ({
   }, [user, session, isLoading, requireVerification]);
 
   // Show loading while checking
-  if (isLoading || verificationStatus.isChecking) {
+  if (isLoading || verificationStatus.isChecking || !recaptchaLoaded) {
     return (
       <div className="min-h-screen bg-figuro-dark flex items-center justify-center">
         <div className="text-center space-y-4">

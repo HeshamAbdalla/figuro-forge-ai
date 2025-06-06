@@ -29,6 +29,7 @@ import CompleteProfile from "./pages/CompleteProfile";
 import CheckoutReturn from "./pages/CheckoutReturn";
 import NotFound from "./pages/NotFound";
 import { EnhancedAuthProvider } from "./components/auth/EnhancedAuthProvider";
+import { SecurityEnforcedRoute } from "./components/auth/SecurityEnforcedRoute";
 
 // Doc pages
 import Introduction from "./pages/docs/Introduction";
@@ -49,36 +50,39 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Public routes - no authentication required */}
               <Route path="/" element={<Index />} />
-              <Route path="/studio" element={<Studio />} />
-              <Route path="/gallery" element={<Gallery />} />
               <Route path="/features" element={<Features />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
-              <Route path="/docs" element={<Docs />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/profile/figurines" element={<ProfileFigurines />} />
-              <Route path="/profile/pictures" element={<ProfilePictures />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/subscription" element={<Subscription />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/solutions" element={<Solutions />} />
               <Route path="/resources" element={<Resources />} />
               <Route path="/community" element={<Community />} />
               <Route path="/careers" element={<Careers />} />
-              <Route path="/complete-profile" element={<CompleteProfile />} />
-              <Route path="/checkout/return" element={<CheckoutReturn />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/gallery" element={<Gallery />} />
+              <Route path="/docs" element={<Docs />} />
               
-              {/* Documentation Routes */}
+              {/* Documentation Routes - public */}
               <Route path="/docs/introduction" element={<Introduction />} />
               <Route path="/docs/creating-your-first-figurine" element={<CreatingYourFirstFigurine />} />
               <Route path="/docs/understanding-art-styles" element={<UnderstandingArtStyles />} />
               <Route path="/docs/prompt-engineering-tips" element={<PromptEngineeringTips />} />
               <Route path="/docs/combining-multiple-styles" element={<CombiningMultipleStyles />} />
               <Route path="/docs/preparing-models-for-printing" element={<PreparingModelsForPrinting />} />
+              
+              {/* Protected routes with reCAPTCHA and email verification enforcement */}
+              <Route path="/studio" element={<SecurityEnforcedRoute requireVerification={true}><Studio /></SecurityEnforcedRoute>} />
+              <Route path="/profile" element={<SecurityEnforcedRoute requireVerification={true}><Profile /></SecurityEnforcedRoute>} />
+              <Route path="/profile/figurines" element={<SecurityEnforcedRoute requireVerification={true}><ProfileFigurines /></SecurityEnforcedRoute>} />
+              <Route path="/profile/pictures" element={<SecurityEnforcedRoute requireVerification={true}><ProfilePictures /></SecurityEnforcedRoute>} />
+              <Route path="/settings" element={<SecurityEnforcedRoute requireVerification={true}><Settings /></SecurityEnforcedRoute>} />
+              <Route path="/subscription" element={<SecurityEnforcedRoute requireVerification={true}><Subscription /></SecurityEnforcedRoute>} />
+              <Route path="/complete-profile" element={<SecurityEnforcedRoute requireVerification={true}><CompleteProfile /></SecurityEnforcedRoute>} />
+              <Route path="/checkout/return" element={<SecurityEnforcedRoute requireVerification={true}><CheckoutReturn /></SecurityEnforcedRoute>} />
               
               {/* Catch all route for 404 */}
               <Route path="*" element={<NotFound />} />
