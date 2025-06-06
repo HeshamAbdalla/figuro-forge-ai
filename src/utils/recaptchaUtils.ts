@@ -1,4 +1,3 @@
-
 /**
  * Google reCAPTCHA v3 utilities
  * Handles token generation and validation for security enforcement
@@ -7,7 +6,7 @@
 import { securityManager } from "./securityUtils";
 
 // reCAPTCHA site key - for production this should come from environment variables
-const RECAPTCHA_SITE_KEY = "6LezjlcrAAAAAK7x2og5wsiROqcf_bwkbQG6a-Wx";
+const RECAPTCHA_SITE_KEY = "6Le5lFcrAAAAAOySTtpVoOrDH7EQx8pQiLFq5pRT";
 
 // Action types for reCAPTCHA
 export type ReCaptchaAction = 
