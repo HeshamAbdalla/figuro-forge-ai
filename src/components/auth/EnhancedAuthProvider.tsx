@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -139,6 +138,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       console.error("❌ [ENHANCED-AUTH] Error refreshing auth:", error);
     }
   };
+
+  // ... keep existing code (useEffect for auth state management)
 
   useEffect(() => {
     let mounted = true;
@@ -889,7 +890,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       console.log("🚀 [ENHANCED-AUTH] Starting Google sign-in with redirect:", redirectTo);
       
-      // Execute reCAPTCHA for Google login
+      // Execute reCAPTCHA for Google login (for logging purposes)
       const recaptchaToken = await executeRecaptcha("login");
       
       securityManager.logSecurityEvent({
@@ -908,8 +909,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
-          },
-          captchaToken: recaptchaToken || undefined
+          }
         }
       });
 
