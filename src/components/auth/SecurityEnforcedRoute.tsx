@@ -4,7 +4,7 @@ import { useEnhancedAuth } from './EnhancedAuthProvider';
 import { EmailVerificationEnforcer } from '@/utils/emailVerificationEnforcer';
 import { initializeRecaptcha, isRecaptchaReady } from '@/utils/recaptchaUtils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ShieldAlert, Loader2, Lock } from 'lucide-react';
+import { ShieldAlert, Loader2 } from 'lucide-react';
 
 interface SecurityEnforcedRouteProps {
   children: React.ReactNode;
@@ -12,7 +12,7 @@ interface SecurityEnforcedRouteProps {
 }
 
 /**
- * Enhanced route wrapper that enforces email verification, security policies and reCAPTCHA
+ * Enhanced route wrapper that enforces email verification and security policies
  */
 export const SecurityEnforcedRoute = ({ 
   children, 
@@ -29,7 +29,7 @@ export const SecurityEnforcedRoute = ({
   });
   const [recaptchaReady, setRecaptchaReady] = useState(false);
 
-  // Ensure reCAPTCHA is ready (but don't block on it)
+  // Ensure reCAPTCHA is ready (but don't block the app)
   useEffect(() => {
     const setupRecaptcha = async () => {
       try {
@@ -39,14 +39,16 @@ export const SecurityEnforcedRoute = ({
           return;
         }
         
-        // Try to initialize
+        // Try to initialize with faster timeout
         const loaded = await initializeRecaptcha();
-        setRecaptchaReady(true); // Always set to true to avoid blocking
+        
+        // Always set to true to avoid blocking the app
+        setRecaptchaReady(true);
         
         if (loaded) {
           console.log('✅ [SECURITY-ROUTE] reCAPTCHA ready');
         } else {
-          console.warn('⚠️ [SECURITY-ROUTE] reCAPTCHA not available, continuing');
+          console.log('⚠️ [SECURITY-ROUTE] reCAPTCHA not available, continuing without it');
         }
       } catch (error) {
         console.error('❌ [SECURITY-ROUTE] reCAPTCHA setup error:', error);
@@ -115,16 +117,14 @@ export const SecurityEnforcedRoute = ({
     checkVerificationStatus();
   }, [user, session, isLoading, requireVerification]);
 
-  // Show loading while checking (but don't wait for reCAPTCHA)
-  if (isLoading || verificationStatus.isChecking || !recaptchaReady) {
+  // Show loading while checking auth and verification (but not for reCAPTCHA)
+  if (isLoading || verificationStatus.isChecking) {
     return (
       <div className="min-h-screen bg-figuro-dark flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-figuro-accent animate-spin mx-auto" />
           <p className="text-white/80">
-            {isLoading ? 'Loading authentication...' : 
-             verificationStatus.isChecking ? 'Verifying security status...' :
-             'Initializing security...'}
+            {isLoading ? 'Loading authentication...' : 'Verifying security status...'}
           </p>
         </div>
       </div>
@@ -145,6 +145,6 @@ export const SecurityEnforcedRoute = ({
     );
   }
 
-  // Render children if verification passed
+  // Render children if verification passed (reCAPTCHA status doesn't block)
   return <>{children}</>;
 };

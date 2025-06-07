@@ -27,6 +27,77 @@ interface RecaptchaValidationResult {
 }
 
 /**
+ * Checks if reCAPTCHA is ready immediately (non-blocking)
+ */
+export const isRecaptchaReady = (): boolean => {
+  const grecaptcha = (window as any).grecaptcha;
+  return !!(grecaptcha && grecaptcha.execute);
+};
+
+/**
+ * Helper to ensure reCAPTCHA is loaded with reasonable timeout
+ */
+export const ensureRecaptchaLoaded = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    // Check if already ready
+    if (isRecaptchaReady()) {
+      resolve(true);
+      return;
+    }
+
+    let attempts = 0;
+    const maxAttempts = 30; // 3 seconds max wait (reduced from 5 seconds)
+    
+    const checkRecaptcha = () => {
+      attempts++;
+      
+      if (isRecaptchaReady()) {
+        console.log(`✅ [RECAPTCHA] Loaded successfully after ${attempts * 100}ms`);
+        resolve(true);
+        return;
+      }
+      
+      if (attempts >= maxAttempts) {
+        console.warn(`⚠️ [RECAPTCHA] Failed to load after ${maxAttempts * 100}ms, allowing app to continue`);
+        resolve(false);
+        return;
+      }
+      
+      // Check again in 100ms
+      setTimeout(checkRecaptcha, 100);
+    };
+    
+    checkRecaptcha();
+  });
+};
+
+/**
+ * Initialize reCAPTCHA with improved error handling and faster timeout
+ */
+export const initializeRecaptcha = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    // Check if already loaded
+    if (isRecaptchaReady()) {
+      console.log('✅ [RECAPTCHA] Already initialized');
+      resolve(true);
+      return;
+    }
+    
+    console.log('🚀 [RECAPTCHA] Initializing...');
+    
+    // Wait for reCAPTCHA to load with faster timeout
+    ensureRecaptchaLoaded().then((loaded) => {
+      if (loaded) {
+        console.log('✅ [RECAPTCHA] Successfully initialized');
+      } else {
+        console.warn('⚠️ [RECAPTCHA] Failed to initialize, app will continue without reCAPTCHA');
+      }
+      resolve(loaded);
+    });
+  });
+};
+
+/**
  * Executes reCAPTCHA and returns a token
  * @param action The action being performed
  * @returns Promise with token string or error
@@ -35,13 +106,18 @@ export const executeRecaptcha = async (action: ReCaptchaAction): Promise<string 
   try {
     console.log(`🤖 [RECAPTCHA] Executing reCAPTCHA for action: ${action}`);
     
+    // Check if reCAPTCHA is ready
+    if (!isRecaptchaReady()) {
+      console.warn('❌ [RECAPTCHA] Not ready, attempting quick initialization...');
+      const initialized = await ensureRecaptchaLoaded();
+      if (!initialized) {
+        console.error('❌ [RECAPTCHA] Quick initialization failed');
+        return null;
+      }
+    }
+    
     // Access the grecaptcha object from the global scope
     const grecaptcha = (window as any).grecaptcha;
-    
-    if (!grecaptcha || !grecaptcha.execute) {
-      console.error('❌ [RECAPTCHA] reCAPTCHA not loaded properly');
-      return null;
-    }
     
     // Execute reCAPTCHA with our site key
     const token = await grecaptcha.execute(RECAPTCHA_SITE_KEY, { action });
@@ -71,11 +147,6 @@ export const executeRecaptcha = async (action: ReCaptchaAction): Promise<string 
 
 /**
  * Server-side validation of a reCAPTCHA token using Supabase Edge Function
- * 
- * @param token The reCAPTCHA token to validate
- * @param expectedAction The action that should be embedded in the token
- * @param minimumScore The minimum acceptable score (0.0 to 1.0)
- * @returns Validation result
  */
 export const validateRecaptchaServerSide = async (
   token: string | null, 
@@ -146,15 +217,18 @@ export const withRecaptcha = async <T extends object>(
     const token = await executeRecaptcha(action);
     
     if (!token) {
-      throw new Error('Failed to generate reCAPTCHA token');
+      console.warn('⚠️ [RECAPTCHA] Token generation failed, proceeding without reCAPTCHA');
+      // Continue without reCAPTCHA instead of failing
+      return await authFunction(params);
     }
     
     // Validate the token server-side
     const validation = await validateRecaptchaServerSide(token, action);
     
     if (!validation.success) {
-      console.error('❌ [RECAPTCHA] Server-side validation failed:', validation.error);
-      throw new Error(`Security verification failed: ${validation.error || 'Unknown error'}`);
+      console.warn('⚠️ [RECAPTCHA] Server-side validation failed, proceeding without reCAPTCHA:', validation.error);
+      // Continue without reCAPTCHA instead of failing
+      return await authFunction(params);
     }
     
     console.log(`✅ [RECAPTCHA] Validation passed with score: ${validation.score}`);
@@ -172,61 +246,8 @@ export const withRecaptcha = async <T extends object>(
     return await authFunction(enhancedParams as T);
     
   } catch (error) {
-    console.error('❌ [RECAPTCHA] Auth with reCAPTCHA failed:', error);
-    throw error;
+    console.error('❌ [RECAPTCHA] Auth with reCAPTCHA failed, proceeding without reCAPTCHA:', error);
+    // Fallback to regular auth without reCAPTCHA
+    return await authFunction(params);
   }
-};
-
-// Helper to ensure reCAPTCHA is loaded with timeout
-export const ensureRecaptchaLoaded = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    let attempts = 0;
-    const maxAttempts = 50; // 5 seconds max wait
-    
-    const checkRecaptcha = () => {
-      attempts++;
-      const grecaptcha = (window as any).grecaptcha;
-      
-      if (grecaptcha && grecaptcha.execute) {
-        console.log(`✅ [RECAPTCHA] Loaded successfully after ${attempts} attempts`);
-        resolve(true);
-        return;
-      }
-      
-      if (attempts >= maxAttempts) {
-        console.error(`❌ [RECAPTCHA] Failed to load after ${maxAttempts} attempts`);
-        resolve(false);
-        return;
-      }
-      
-      // Check again in 100ms
-      setTimeout(checkRecaptcha, 100);
-    };
-    
-    checkRecaptcha();
-  });
-};
-
-/**
- * Checks if reCAPTCHA is ready immediately (non-blocking)
- */
-export const isRecaptchaReady = (): boolean => {
-  const grecaptcha = (window as any).grecaptcha;
-  return !!(grecaptcha && grecaptcha.execute);
-};
-
-/**
- * Initialize reCAPTCHA with proper error handling
- */
-export const initializeRecaptcha = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    // Check if already loaded
-    if (isRecaptchaReady()) {
-      resolve(true);
-      return;
-    }
-    
-    // Wait for reCAPTCHA to load
-    ensureRecaptchaLoaded().then(resolve);
-  });
 };

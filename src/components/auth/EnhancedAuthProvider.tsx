@@ -55,24 +55,33 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     return Math.max(0, Math.min(100, score));
   };
 
-  // Load reCAPTCHA when component mounts
+  // Load reCAPTCHA when component mounts with improved handling
   useEffect(() => {
     const loadRecaptcha = async () => {
       try {
-        console.log('🚀 [RECAPTCHA] Initializing reCAPTCHA...');
+        console.log('🚀 [ENHANCED-AUTH] Initializing reCAPTCHA...');
+        
+        // Check if it's already ready
+        if (isRecaptchaReady()) {
+          console.log('✅ [ENHANCED-AUTH] reCAPTCHA already ready');
+          setRecaptchaLoaded(true);
+          return;
+        }
+        
+        // Try to initialize with improved timeout
         const loaded = await initializeRecaptcha();
+        
+        // Always set to true to allow the app to continue
+        setRecaptchaLoaded(true);
+        
         if (loaded) {
-          console.log('✅ [RECAPTCHA] Successfully initialized');
-          setRecaptchaLoaded(true);
+          console.log('✅ [ENHANCED-AUTH] reCAPTCHA loaded successfully');
         } else {
-          console.error('❌ [RECAPTCHA] Failed to initialize');
-          // Allow the app to continue without reCAPTCHA for now
-          setRecaptchaLoaded(true);
+          console.log('⚠️ [ENHANCED-AUTH] reCAPTCHA failed to load, app will continue without it');
         }
       } catch (error) {
-        console.error('❌ [RECAPTCHA] Initialization error:', error);
-        // Allow the app to continue without reCAPTCHA for now
-        setRecaptchaLoaded(true);
+        console.error('❌ [ENHANCED-AUTH] reCAPTCHA initialization error:', error);
+        setRecaptchaLoaded(true); // Allow app to continue
       }
     };
     

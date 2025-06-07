@@ -45,7 +45,7 @@ export function AuthForm() {
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [showExistingAccount, setShowExistingAccount] = useState(false);
 
-  // Check if reCAPTCHA is loaded with improved error handling
+  // Check if reCAPTCHA is loaded with improved error handling and faster timeout
   useEffect(() => {
     const loadRecaptcha = async () => {
       try {
@@ -59,16 +59,17 @@ export function AuthForm() {
           return;
         }
         
-        // Try to initialize
+        // Try to initialize with faster timeout
         const loaded = await initializeRecaptcha();
+        
+        // Always set to true to allow app to continue
+        setRecaptchaLoaded(true);
         
         if (loaded) {
           console.log('✅ [AUTH-FORM] reCAPTCHA loaded successfully');
-          setRecaptchaLoaded(true);
           setRecaptchaError(false);
         } else {
-          console.warn('⚠️ [AUTH-FORM] reCAPTCHA failed to load, but allowing app to continue');
-          setRecaptchaLoaded(true); // Allow app to continue
+          console.log('⚠️ [AUTH-FORM] reCAPTCHA failed to load, continuing without it');
           setRecaptchaError(true);
         }
       } catch (error) {
