@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useEnhancedAuth } from './EnhancedAuthProvider';
 import { EmailVerificationEnforcer } from '@/utils/emailVerificationEnforcer';
-import { ensureRecaptchaLoaded } from '@/utils/recaptchaUtils';
+import { initializeRecaptcha, isRecaptchaReady } from '@/utils/recaptchaUtils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ShieldAlert, Loader2, Lock } from 'lucide-react';
 
@@ -27,20 +27,34 @@ export const SecurityEnforcedRoute = ({
     isChecking: true,
     isAllowed: false
   });
-  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
 
-  // Ensure reCAPTCHA is loaded
+  // Ensure reCAPTCHA is ready (but don't block on it)
   useEffect(() => {
-    const loadRecaptcha = async () => {
+    const setupRecaptcha = async () => {
       try {
-        const loaded = await ensureRecaptchaLoaded();
-        setRecaptchaLoaded(loaded);
+        // Check if already ready
+        if (isRecaptchaReady()) {
+          setRecaptchaReady(true);
+          return;
+        }
+        
+        // Try to initialize
+        const loaded = await initializeRecaptcha();
+        setRecaptchaReady(true); // Always set to true to avoid blocking
+        
+        if (loaded) {
+          console.log('✅ [SECURITY-ROUTE] reCAPTCHA ready');
+        } else {
+          console.warn('⚠️ [SECURITY-ROUTE] reCAPTCHA not available, continuing');
+        }
       } catch (error) {
-        console.error('❌ [RECAPTCHA] Failed to load:', error);
+        console.error('❌ [SECURITY-ROUTE] reCAPTCHA setup error:', error);
+        setRecaptchaReady(true); // Don't block the app
       }
     };
     
-    loadRecaptcha();
+    setupRecaptcha();
   }, []);
 
   useEffect(() => {
@@ -101,13 +115,17 @@ export const SecurityEnforcedRoute = ({
     checkVerificationStatus();
   }, [user, session, isLoading, requireVerification]);
 
-  // Show loading while checking
-  if (isLoading || verificationStatus.isChecking || !recaptchaLoaded) {
+  // Show loading while checking (but don't wait for reCAPTCHA)
+  if (isLoading || verificationStatus.isChecking || !recaptchaReady) {
     return (
       <div className="min-h-screen bg-figuro-dark flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-figuro-accent animate-spin mx-auto" />
-          <p className="text-white/80">Verifying security status...</p>
+          <p className="text-white/80">
+            {isLoading ? 'Loading authentication...' : 
+             verificationStatus.isChecking ? 'Verifying security status...' :
+             'Initializing security...'}
+          </p>
         </div>
       </div>
     );

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ import { AlertCircle, Mail, Eye, EyeOff, Loader2, CheckCircle, RefreshCw, KeyRou
 import { isEmailVerificationError } from "@/utils/authUtils";
 import { EmailVerificationHandler } from "./EmailVerificationHandler";
 import { ExistingAccountHandler } from "./ExistingAccountHandler";
-import { ensureRecaptchaLoaded } from "@/utils/recaptchaUtils";
+import { initializeRecaptcha, isRecaptchaReady } from "@/utils/recaptchaUtils";
 import { Badge } from "@/components/ui/badge";
 
 export function AuthForm() {
@@ -40,20 +39,42 @@ export function AuthForm() {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
   const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
+  const [recaptchaError, setRecaptchaError] = useState(false);
 
   // Enhanced validation state
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [showExistingAccount, setShowExistingAccount] = useState(false);
 
-  // Check if reCAPTCHA is loaded
+  // Check if reCAPTCHA is loaded with improved error handling
   useEffect(() => {
     const loadRecaptcha = async () => {
       try {
-        const loaded = await ensureRecaptchaLoaded();
-        console.log(`${loaded ? '✅' : '❌'} [RECAPTCHA] reCAPTCHA ${loaded ? 'loaded' : 'failed to load'}`);
-        setRecaptchaLoaded(loaded);
+        console.log('🚀 [AUTH-FORM] Initializing reCAPTCHA...');
+        
+        // Check if it's already ready
+        if (isRecaptchaReady()) {
+          console.log('✅ [AUTH-FORM] reCAPTCHA already ready');
+          setRecaptchaLoaded(true);
+          setRecaptchaError(false);
+          return;
+        }
+        
+        // Try to initialize
+        const loaded = await initializeRecaptcha();
+        
+        if (loaded) {
+          console.log('✅ [AUTH-FORM] reCAPTCHA loaded successfully');
+          setRecaptchaLoaded(true);
+          setRecaptchaError(false);
+        } else {
+          console.warn('⚠️ [AUTH-FORM] reCAPTCHA failed to load, but allowing app to continue');
+          setRecaptchaLoaded(true); // Allow app to continue
+          setRecaptchaError(true);
+        }
       } catch (error) {
-        console.error('❌ [RECAPTCHA] Failed to load:', error);
+        console.error('❌ [AUTH-FORM] reCAPTCHA initialization error:', error);
+        setRecaptchaLoaded(true); // Allow app to continue
+        setRecaptchaError(true);
       }
     };
     
@@ -71,12 +92,6 @@ export function AuthForm() {
     setIsRateLimited(false);
     
     try {
-      if (!recaptchaLoaded) {
-        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to initialize...");
-        await ensureRecaptchaLoaded();
-        setRecaptchaLoaded(true);
-      }
-      
       const { error } = await signIn(email, password, rememberMe);
       
       if (error) {
@@ -110,12 +125,6 @@ export function AuthForm() {
     
     try {
       console.log("🚀 [AUTH-FORM] Starting signup for:", email);
-      
-      if (!recaptchaLoaded) {
-        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to initialize...");
-        await ensureRecaptchaLoaded();
-        setRecaptchaLoaded(true);
-      }
       
       // Direct signup approach with enhanced existing account detection
       const { error, data, accountExists } = await signUp(email, password);
@@ -168,12 +177,6 @@ export function AuthForm() {
     setSuccessMessage("");
     
     try {
-      if (!recaptchaLoaded) {
-        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to initialize...");
-        await ensureRecaptchaLoaded();
-        setRecaptchaLoaded(true);
-      }
-      
       const { error } = await resetPassword(email);
       if (error) {
         setErrorMessage(error);
@@ -196,12 +199,6 @@ export function AuthForm() {
     
     setResendLoading(true);
     try {
-      if (!recaptchaLoaded) {
-        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to initialize...");
-        await ensureRecaptchaLoaded();
-        setRecaptchaLoaded(true);
-      }
-      
       const { error } = await resendVerificationEmail(email);
       if (error) {
         setErrorMessage(error);
@@ -235,12 +232,6 @@ export function AuthForm() {
     setGoogleLoading(true);
     setIsRateLimited(false);
     try {
-      if (!recaptchaLoaded) {
-        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to initialize...");
-        await ensureRecaptchaLoaded();
-        setRecaptchaLoaded(true);
-      }
-      
       await signInWithGoogle();
     } catch (error) {
       setErrorMessage("Failed to sign in with Google");
@@ -339,10 +330,17 @@ export function AuthForm() {
                 Ready to create something amazing? Let's get you signed in!
               </CardDescription>
               
-              {recaptchaLoaded && (
+              {recaptchaLoaded && !recaptchaError && (
                 <div className="flex items-center justify-center gap-1.5 mt-1">
                   <Shield className="w-3.5 h-3.5 text-figuro-accent/80" />
                   <span className="text-xs text-white/50">Protected by reCAPTCHA</span>
+                </div>
+              )}
+              
+              {recaptchaError && (
+                <div className="flex items-center justify-center gap-1.5 mt-1">
+                  <AlertCircle className="w-3.5 h-3.5 text-yellow-500/80" />
+                  <span className="text-xs text-yellow-400/70">reCAPTCHA unavailable - continuing with basic security</span>
                 </div>
               )}
             </CardHeader>
@@ -512,17 +510,12 @@ export function AuthForm() {
                   <Button 
                     className="w-full bg-figuro-accent hover:bg-figuro-accent-hover text-white font-medium py-2.5 transition-all duration-300 disabled:opacity-50" 
                     type="submit" 
-                    disabled={isLoading || !isFormValid || clearingLimits || !recaptchaLoaded}
+                    disabled={isLoading || !isFormValid || clearingLimits}
                   >
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Signing in...
-                      </>
-                    ) : !recaptchaLoaded ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Loading security...
                       </>
                     ) : (
                       "Sign In"
@@ -546,17 +539,12 @@ export function AuthForm() {
                     variant="outline" 
                     onClick={handleGoogleSignIn}
                     className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10 transition-all duration-300"
-                    disabled={isLoading || googleLoading || clearingLimits || !recaptchaLoaded}
+                    disabled={isLoading || googleLoading || clearingLimits}
                   >
                     {googleLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Connecting...
-                      </>
-                    ) : !recaptchaLoaded ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Loading security...
                       </>
                     ) : (
                       <>
@@ -598,10 +586,17 @@ export function AuthForm() {
                 Join thousands of creators and start building your dreams with AI
               </CardDescription>
               
-              {recaptchaLoaded && (
+              {recaptchaLoaded && !recaptchaError && (
                 <div className="flex items-center justify-center gap-1.5 mt-1">
                   <Shield className="w-3.5 h-3.5 text-figuro-accent/80" />
                   <span className="text-xs text-white/50">Protected by reCAPTCHA</span>
+                </div>
+              )}
+              
+              {recaptchaError && (
+                <div className="flex items-center justify-center gap-1.5 mt-1">
+                  <AlertCircle className="w-3.5 h-3.5 text-yellow-500/80" />
+                  <span className="text-xs text-yellow-400/70">reCAPTCHA unavailable - continuing with basic security</span>
                 </div>
               )}
             </CardHeader>
@@ -718,17 +713,12 @@ export function AuthForm() {
                 <Button 
                   className="w-full bg-figuro-accent hover:bg-figuro-accent-hover text-white font-medium py-2.5 transition-all duration-300 disabled:opacity-50" 
                   type="submit" 
-                  disabled={isLoading || !isFormValid || clearingLimits || !recaptchaLoaded}
+                  disabled={isLoading || !isFormValid || clearingLimits}
                 >
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Creating account...
-                    </>
-                  ) : !recaptchaLoaded ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Loading security...
                     </>
                   ) : (
                     "Create Account"
@@ -736,15 +726,17 @@ export function AuthForm() {
                 </Button>
               </form>
               
-              <div className="p-4 bg-figuro-accent/5 border border-figuro-accent/10 rounded-lg mt-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className="h-4 w-4 text-figuro-accent" />
-                  <h3 className="text-sm font-medium text-white/90">Enhanced Security</h3>
+              {!recaptchaError && (
+                <div className="p-4 bg-figuro-accent/5 border border-figuro-accent/10 rounded-lg mt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="h-4 w-4 text-figuro-accent" />
+                    <h3 className="text-sm font-medium text-white/90">Enhanced Security</h3>
+                  </div>
+                  <p className="text-xs text-white/70">
+                    Figuro uses reCAPTCHA to prevent fraud and abuse. Your data is securely processed in accordance with Google's Privacy Policy and Terms of Service.
+                  </p>
                 </div>
-                <p className="text-xs text-white/70">
-                  Figuro uses reCAPTCHA to prevent fraud and abuse. Your data is securely processed in accordance with Google's Privacy Policy and Terms of Service.
-                </p>
-              </div>
+              )}
               
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
@@ -759,17 +751,12 @@ export function AuthForm() {
                 variant="outline" 
                 onClick={handleGoogleSignIn}
                 className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10 transition-all duration-300"
-                disabled={isLoading || googleLoading || clearingLimits || !recaptchaLoaded}
+                disabled={isLoading || googleLoading || clearingLimits}
               >
                 {googleLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Connecting...
-                  </>
-                ) : !recaptchaLoaded ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading security...
                   </>
                 ) : (
                   <>

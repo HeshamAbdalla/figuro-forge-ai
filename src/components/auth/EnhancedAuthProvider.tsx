@@ -7,7 +7,7 @@ import { validateSignupAttempt, validateSignupResponse } from "@/utils/authValid
 import { EmailVerificationEnforcer } from "@/utils/emailVerificationEnforcer";
 import { sessionManager } from "@/utils/sessionManager";
 import { securityManager } from "@/utils/securityUtils";
-import { executeRecaptcha, ReCaptchaAction, withRecaptcha, ensureRecaptchaLoaded } from "@/utils/recaptchaUtils";
+import { executeRecaptcha, validateRecaptchaServerSide, ReCaptchaAction, initializeRecaptcha, isRecaptchaReady } from "@/utils/recaptchaUtils";
 
 interface EnhancedAuthContextType {
   user: User | null;
@@ -59,13 +59,20 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   useEffect(() => {
     const loadRecaptcha = async () => {
       try {
-        const loaded = await ensureRecaptchaLoaded();
+        console.log('🚀 [RECAPTCHA] Initializing reCAPTCHA...');
+        const loaded = await initializeRecaptcha();
         if (loaded) {
-          console.log('✅ [RECAPTCHA] Successfully loaded');
+          console.log('✅ [RECAPTCHA] Successfully initialized');
+          setRecaptchaLoaded(true);
+        } else {
+          console.error('❌ [RECAPTCHA] Failed to initialize');
+          // Allow the app to continue without reCAPTCHA for now
           setRecaptchaLoaded(true);
         }
       } catch (error) {
-        console.error('❌ [RECAPTCHA] Failed to load:', error);
+        console.error('❌ [RECAPTCHA] Initialization error:', error);
+        // Allow the app to continue without reCAPTCHA for now
+        setRecaptchaLoaded(true);
       }
     };
     
@@ -382,7 +389,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     };
   }, [hasRedirected]);
 
-  // Enhanced sign up with reCAPTCHA protection
+  // Enhanced sign up with improved reCAPTCHA handling
   const signUp = async (email: string, password: string) => {
     try {
       console.log("🚀 [ENHANCED-AUTH] Starting secure signup process for:", email);
@@ -403,11 +410,13 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         throw new Error('Too many sign up attempts. Please wait a few minutes.');
       }
 
-      // Ensure reCAPTCHA is loaded
-      if (!recaptchaLoaded) {
-        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to load...");
-        await ensureRecaptchaLoaded();
-        setRecaptchaLoaded(true);
+      // Check if reCAPTCHA is ready, but don't block if it's not
+      if (!isRecaptchaReady()) {
+        console.log("⏳ [RECAPTCHA] Not ready yet, trying to initialize...");
+        const loaded = await initializeRecaptcha();
+        if (!loaded) {
+          console.warn("⚠️ [RECAPTCHA] Could not load, continuing without reCAPTCHA");
+        }
       }
 
       cleanupAuthState();
@@ -439,32 +448,45 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         return { error: null, data: null, accountExists: true };
       }
       
-      // STEP 2: Execute reCAPTCHA and get token
-      console.log("🤖 [RECAPTCHA] Getting token for signup action");
-      const recaptchaToken = await executeRecaptcha("signup");
+      // STEP 2: Try to execute reCAPTCHA (but don't fail if it doesn't work)
+      let recaptchaToken: string | null = null;
+      let recaptchaValidationPassed = false;
       
-      if (!recaptchaToken) {
-        console.error("❌ [RECAPTCHA] Failed to get reCAPTCHA token");
-        throw new Error("Security verification failed. Please try again.");
+      if (isRecaptchaReady()) {
+        console.log("🤖 [RECAPTCHA] Getting token for signup action");
+        recaptchaToken = await executeRecaptcha("signup");
+        
+        if (recaptchaToken) {
+          // Validate server-side
+          const validation = await validateRecaptchaServerSide(recaptchaToken, "signup");
+          recaptchaValidationPassed = validation.success;
+          
+          if (!recaptchaValidationPassed) {
+            console.error("❌ [RECAPTCHA] Server-side validation failed:", validation.error);
+          } else {
+            console.log("✅ [RECAPTCHA] Server-side validation passed");
+          }
+        }
+      } else {
+        console.warn("⚠️ [RECAPTCHA] Not available, proceeding without reCAPTCHA");
       }
       
       // STEP 3: Attempt actual signup with security enforcement
       const redirectTo = `${window.location.origin}/studio`;
       
-      console.log("📧 [ENHANCED-AUTH] Attempting secure Supabase signup with reCAPTCHA...");
+      console.log("📧 [ENHANCED-AUTH] Attempting secure Supabase signup...");
       
-      // Use withRecaptcha helper to add token to auth request
       const signupParams = {
         email,
         password,
         options: {
           data: { plan: 'free' },
           emailRedirectTo: redirectTo,
-          captchaToken: recaptchaToken
+          ...(recaptchaToken && { captchaToken: recaptchaToken })
         }
       };
       
-      // Execute signup with reCAPTCHA token
+      // Execute signup
       const { data, error } = await supabase.auth.signUp(signupParams);
       
       console.log("📊 [ENHANCED-AUTH] Signup response - Error:", error?.message || 'None');
@@ -487,7 +509,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           validation_result: validationResult,
           has_session: !!data?.session,
           has_user: !!data?.user,
-          recaptcha_used: true
+          recaptcha_used: !!recaptchaToken,
+          recaptcha_validated: recaptchaValidationPassed
         },
         success: true
       });
@@ -524,7 +547,12 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         
         securityManager.logSecurityEvent({
           event_type: 'signup_failed',
-          event_details: { email, error: error.message },
+          event_details: { 
+            email, 
+            error: error.message,
+            recaptcha_used: !!recaptchaToken,
+            recaptcha_validated: recaptchaValidationPassed
+          },
           success: false
         });
         
@@ -560,7 +588,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced sign in with reCAPTCHA protection
+  // Enhanced sign in with improved reCAPTCHA handling
   const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
     console.log("🚀 [ENHANCED-AUTH] Starting secure sign-in...");
     
@@ -576,11 +604,13 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         throw new Error('Too many sign in attempts. Please wait a few minutes.');
       }
 
-      // Ensure reCAPTCHA is loaded
-      if (!recaptchaLoaded) {
-        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to load...");
-        await ensureRecaptchaLoaded();
-        setRecaptchaLoaded(true);
+      // Check if reCAPTCHA is ready, but don't block if it's not
+      if (!isRecaptchaReady()) {
+        console.log("⏳ [RECAPTCHA] Not ready yet, trying to initialize...");
+        const loaded = await initializeRecaptcha();
+        if (!loaded) {
+          console.warn("⚠️ [RECAPTCHA] Could not load, continuing without reCAPTCHA");
+        }
       }
 
       // Clean up state
@@ -593,16 +623,30 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         console.log("⚠️ [ENHANCED-AUTH] Pre-signin signout failed (non-critical)");
       }
 
-      // Execute reCAPTCHA for login action
-      console.log("🤖 [RECAPTCHA] Getting token for login action");
-      const recaptchaToken = await executeRecaptcha("login");
+      // Try to execute reCAPTCHA (but don't fail if it doesn't work)
+      let recaptchaToken: string | null = null;
+      let recaptchaValidationPassed = false;
       
-      if (!recaptchaToken) {
-        console.error("❌ [RECAPTCHA] Failed to get reCAPTCHA token");
-        throw new Error("Security verification failed. Please try again.");
+      if (isRecaptchaReady()) {
+        console.log("🤖 [RECAPTCHA] Getting token for login action");
+        recaptchaToken = await executeRecaptcha("login");
+        
+        if (recaptchaToken) {
+          // Validate server-side
+          const validation = await validateRecaptchaServerSide(recaptchaToken, "login");
+          recaptchaValidationPassed = validation.success;
+          
+          if (!recaptchaValidationPassed) {
+            console.error("❌ [RECAPTCHA] Server-side validation failed:", validation.error);
+          } else {
+            console.log("✅ [RECAPTCHA] Server-side validation passed");
+          }
+        }
+      } else {
+        console.warn("⚠️ [RECAPTCHA] Not available, proceeding without reCAPTCHA");
       }
       
-      console.log("🔐 [ENHANCED-AUTH] Attempting sign-in with reCAPTCHA...");
+      console.log("🔐 [ENHANCED-AUTH] Attempting sign-in...");
       
       // Set session persistence in localStorage based on "Remember Me"
       if (rememberMe) {
@@ -611,16 +655,16 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         localStorage.removeItem('figuro_remember_me');
       }
       
-      // Perform sign-in with reCAPTCHA token
+      // Perform sign-in
       const signInParams = {
         email,
         password,
         options: {
-          captchaToken: recaptchaToken
+          ...(recaptchaToken && { captchaToken: recaptchaToken })
         }
       };
       
-      // Execute login with reCAPTCHA token
+      // Execute login
       const { data, error } = await supabase.auth.signInWithPassword(signInParams);
       
       if (error) {
@@ -634,7 +678,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
             email, 
             error: error.message, 
             remember_me: rememberMe,
-            recaptcha_used: true
+            recaptcha_used: !!recaptchaToken,
+            recaptcha_validated: recaptchaValidationPassed
           },
           success: false
         });
@@ -654,7 +699,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           email, 
           user_id: data.user?.id, 
           remember_me: rememberMe,
-          recaptcha_used: true
+          recaptcha_used: !!recaptchaToken,
+          recaptcha_validated: recaptchaValidationPassed
         },
         success: true
       });
@@ -686,36 +732,37 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Password reset with reCAPTCHA security
+  // Password reset with improved reCAPTCHA handling
   const resetPassword = async (email: string) => {
     try {
       if (!securityManager.validateEmail(email)) {
         throw new Error('Invalid email format');
       }
 
-      // Ensure reCAPTCHA is loaded
-      if (!recaptchaLoaded) {
-        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to load...");
-        await ensureRecaptchaLoaded();
-        setRecaptchaLoaded(true);
-      }
-
       console.log("🔄 [ENHANCED-AUTH] Securely sending password reset email...");
       
-      // Execute reCAPTCHA for password reset
-      const recaptchaToken = await executeRecaptcha("password_reset");
+      // Try to execute reCAPTCHA (but don't fail if it doesn't work)
+      let recaptchaToken: string | null = null;
       
-      if (!recaptchaToken) {
-        console.error("❌ [RECAPTCHA] Failed to get reCAPTCHA token");
-        throw new Error("Security verification failed. Please try again.");
+      if (isRecaptchaReady()) {
+        recaptchaToken = await executeRecaptcha("password_reset");
+        
+        if (recaptchaToken) {
+          const validation = await validateRecaptchaServerSide(recaptchaToken, "password_reset");
+          if (!validation.success) {
+            console.error("❌ [RECAPTCHA] Validation failed for password reset");
+          }
+        }
       }
       
       const redirectTo = `${window.location.origin}/studio`;
       
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const resetParams = {
         redirectTo: redirectTo,
-        captchaToken: recaptchaToken
-      });
+        ...(recaptchaToken && { captchaToken: recaptchaToken })
+      };
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, resetParams);
       
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
@@ -725,7 +772,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           event_details: { 
             email, 
             error: error.message,
-            recaptcha_used: true
+            recaptcha_used: !!recaptchaToken
           },
           success: false
         });
@@ -737,7 +784,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         event_type: 'password_reset_success',
         event_details: { 
           email,
-          recaptcha_used: true
+          recaptcha_used: !!recaptchaToken
         },
         success: true
       });
@@ -759,31 +806,32 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Resend verification email with reCAPTCHA
+  // Resend verification email with improved reCAPTCHA handling
   const resendVerificationEmail = async (email: string) => {
     try {
-      // Ensure reCAPTCHA is loaded
-      if (!recaptchaLoaded) {
-        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to load...");
-        await ensureRecaptchaLoaded();
-        setRecaptchaLoaded(true);
+      // Try to execute reCAPTCHA (but don't fail if it doesn't work)
+      let recaptchaToken: string | null = null;
+      
+      if (isRecaptchaReady()) {
+        recaptchaToken = await executeRecaptcha("email_verification");
+        
+        if (recaptchaToken) {
+          const validation = await validateRecaptchaServerSide(recaptchaToken, "email_verification");
+          if (!validation.success) {
+            console.error("❌ [RECAPTCHA] Validation failed for email verification");
+          }
+        }
       }
       
-      // Execute reCAPTCHA for email verification
-      const recaptchaToken = await executeRecaptcha("email_verification");
-      
-      if (!recaptchaToken) {
-        console.error("❌ [RECAPTCHA] Failed to get reCAPTCHA token");
-        throw new Error("Security verification failed. Please try again.");
-      }
-      
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
+      const resendParams = {
+        type: 'signup' as const,
         email,
         options: {
-          captchaToken: recaptchaToken
+          ...(recaptchaToken && { captchaToken: recaptchaToken })
         }
-      });
+      };
+      
+      const { error } = await supabase.auth.resend(resendParams);
       
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
@@ -793,7 +841,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           event_details: { 
             email, 
             error: error.message,
-            recaptcha_used: true
+            recaptcha_used: !!recaptchaToken
           },
           success: false
         });
@@ -810,7 +858,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         event_type: 'verification_resend_success',
         event_details: { 
           email,
-          recaptcha_used: true
+          recaptcha_used: !!recaptchaToken
         },
         success: true
       });
@@ -874,24 +922,20 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced Google sign-in with reCAPTCHA
+  // Enhanced Google sign-in
   const signInWithGoogle = async () => {
     try {
       cleanupAuthState();
       
-      // Ensure reCAPTCHA is loaded
-      if (!recaptchaLoaded) {
-        console.log("⏳ [RECAPTCHA] Waiting for reCAPTCHA to load...");
-        await ensureRecaptchaLoaded();
-        setRecaptchaLoaded(true);
-      }
-
       const redirectTo = `${window.location.origin}/studio`;
       
       console.log("🚀 [ENHANCED-AUTH] Starting Google sign-in with redirect:", redirectTo);
       
-      // Execute reCAPTCHA for Google login (for logging purposes)
-      const recaptchaToken = await executeRecaptcha("login");
+      // Try to execute reCAPTCHA for logging purposes (but don't block)
+      let recaptchaToken: string | null = null;
+      if (isRecaptchaReady()) {
+        recaptchaToken = await executeRecaptcha("login");
+      }
       
       securityManager.logSecurityEvent({
         event_type: 'google_signin_initiated',

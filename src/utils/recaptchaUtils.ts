@@ -1,11 +1,13 @@
+
 /**
  * Google reCAPTCHA v3 utilities
  * Handles token generation and validation for security enforcement
  */
 
 import { securityManager } from "./securityUtils";
+import { supabase } from "@/integrations/supabase/client";
 
-// reCAPTCHA site key - for production this should come from environment variables
+// reCAPTCHA site key - matches the one in index.html
 const RECAPTCHA_SITE_KEY = "6Le5lFcrAAAAAOySTtpVoOrDH7EQx8pQiLFq5pRT";
 
 // Action types for reCAPTCHA
@@ -43,7 +45,7 @@ export const executeRecaptcha = async (action: ReCaptchaAction): Promise<string 
     
     // Execute reCAPTCHA with our site key
     const token = await grecaptcha.execute(RECAPTCHA_SITE_KEY, { action });
-    console.log(`✅ [RECAPTCHA] Token generated for ${action}`);
+    console.log(`✅ [RECAPTCHA] Token generated for ${action}, length: ${token.length}`);
     
     // Log the security event (non-blocking)
     securityManager.logSecurityEvent({
@@ -68,20 +70,21 @@ export const executeRecaptcha = async (action: ReCaptchaAction): Promise<string 
 };
 
 /**
- * Client-side validation of a reCAPTCHA token
- * Note: This should be paired with server-side validation for security
+ * Server-side validation of a reCAPTCHA token using Supabase Edge Function
  * 
  * @param token The reCAPTCHA token to validate
  * @param expectedAction The action that should be embedded in the token
  * @param minimumScore The minimum acceptable score (0.0 to 1.0)
  * @returns Validation result
  */
-export const validateRecaptchaClientSide = async (
+export const validateRecaptchaServerSide = async (
   token: string | null, 
   expectedAction: ReCaptchaAction,
   minimumScore: number = 0.5
 ): Promise<RecaptchaValidationResult> => {
   try {
+    console.log(`🔍 [RECAPTCHA] Server-side validation for action: ${expectedAction}`);
+    
     // If no token, fail early
     if (!token) {
       return { 
@@ -90,49 +93,35 @@ export const validateRecaptchaClientSide = async (
       };
     }
     
-    // In a production app, this should be validated server-side
-    // For a complete implementation, this would call a server endpoint
+    // Call the Supabase Edge Function for verification
+    const { data, error } = await supabase.functions.invoke('verify-recaptcha', {
+      body: {
+        token,
+        action: expectedAction,
+        minScore: minimumScore
+      }
+    });
     
-    // For demonstration purposes, we'll implement a minimal check
-    // that ensures the token is present and has the expected format
-    if (token.length < 20) {
+    if (error) {
+      console.error('❌ [RECAPTCHA] Server validation error:', error);
       return {
         success: false,
-        error: 'Invalid token format'
+        error: 'Server validation failed'
       };
     }
     
-    // For now, we'll simulate a successful verification
-    // In production, this should be replaced with server-side verification
-    const mockResult: RecaptchaValidationResult = {
-      success: true,
-      score: 0.9,
-      action: expectedAction,
-      hostname: window.location.hostname
+    console.log('✅ [RECAPTCHA] Server validation result:', data);
+    
+    return {
+      success: data.success,
+      score: data.score,
+      action: data.action,
+      hostname: data.hostname,
+      error: data.success ? undefined : 'Validation failed'
     };
     
-    // In production, verify the score against the minimum
-    if (mockResult.score && mockResult.score < minimumScore) {
-      return {
-        success: false,
-        score: mockResult.score,
-        error: 'reCAPTCHA score too low'
-      };
-    }
-    
-    // In production, verify the action matches
-    if (mockResult.action !== expectedAction) {
-      return {
-        success: false,
-        action: mockResult.action,
-        error: 'reCAPTCHA action mismatch'
-      };
-    }
-    
-    return mockResult;
-    
   } catch (error) {
-    console.error('❌ [RECAPTCHA] Validation error:', error);
+    console.error('❌ [RECAPTCHA] Validation exception:', error);
     
     return {
       success: false,
@@ -143,7 +132,7 @@ export const validateRecaptchaClientSide = async (
 
 /**
  * Enhanced auth request with reCAPTCHA
- * Adds a token to auth requests
+ * Adds a token to auth requests and validates server-side
  */
 export const withRecaptcha = async <T extends object>(
   action: ReCaptchaAction,
@@ -151,16 +140,24 @@ export const withRecaptcha = async <T extends object>(
   params: T
 ): Promise<any> => {
   try {
+    console.log(`🔐 [RECAPTCHA] Enhanced auth with action: ${action}`);
+    
     // Get reCAPTCHA token
     const token = await executeRecaptcha(action);
     
-    // Validate the token client-side (minimal check)
-    const validation = await validateRecaptchaClientSide(token, action);
+    if (!token) {
+      throw new Error('Failed to generate reCAPTCHA token');
+    }
+    
+    // Validate the token server-side
+    const validation = await validateRecaptchaServerSide(token, action);
     
     if (!validation.success) {
-      console.error('❌ [RECAPTCHA] Client-side validation failed:', validation.error);
-      throw new Error(`Security check failed: ${validation.error || 'Unknown error'}`);
+      console.error('❌ [RECAPTCHA] Server-side validation failed:', validation.error);
+      throw new Error(`Security verification failed: ${validation.error || 'Unknown error'}`);
     }
+    
+    console.log(`✅ [RECAPTCHA] Validation passed with score: ${validation.score}`);
     
     // Include the token in auth request
     const enhancedParams = {
@@ -180,13 +177,25 @@ export const withRecaptcha = async <T extends object>(
   }
 };
 
-// Helper to ensure reCAPTCHA is loaded
+// Helper to ensure reCAPTCHA is loaded with timeout
 export const ensureRecaptchaLoaded = (): Promise<boolean> => {
   return new Promise((resolve) => {
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds max wait
+    
     const checkRecaptcha = () => {
+      attempts++;
       const grecaptcha = (window as any).grecaptcha;
+      
       if (grecaptcha && grecaptcha.execute) {
+        console.log(`✅ [RECAPTCHA] Loaded successfully after ${attempts} attempts`);
         resolve(true);
+        return;
+      }
+      
+      if (attempts >= maxAttempts) {
+        console.error(`❌ [RECAPTCHA] Failed to load after ${maxAttempts} attempts`);
+        resolve(false);
         return;
       }
       
@@ -195,5 +204,29 @@ export const ensureRecaptchaLoaded = (): Promise<boolean> => {
     };
     
     checkRecaptcha();
+  });
+};
+
+/**
+ * Checks if reCAPTCHA is ready immediately (non-blocking)
+ */
+export const isRecaptchaReady = (): boolean => {
+  const grecaptcha = (window as any).grecaptcha;
+  return !!(grecaptcha && grecaptcha.execute);
+};
+
+/**
+ * Initialize reCAPTCHA with proper error handling
+ */
+export const initializeRecaptcha = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    // Check if already loaded
+    if (isRecaptchaReady()) {
+      resolve(true);
+      return;
+    }
+    
+    // Wait for reCAPTCHA to load
+    ensureRecaptchaLoaded().then(resolve);
   });
 };
