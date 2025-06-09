@@ -24,6 +24,7 @@ interface RecaptchaValidationResult {
   action?: string;
   hostname?: string;
   error?: string;
+  shouldFallback?: boolean;
 }
 
 /**
@@ -46,7 +47,7 @@ export const ensureRecaptchaLoaded = (): Promise<boolean> => {
     }
 
     let attempts = 0;
-    const maxAttempts = 30; // 3 seconds max wait (reduced from 5 seconds)
+    const maxAttempts = 30; // 3 seconds max wait
     
     const checkRecaptcha = () => {
       attempts++;
@@ -146,7 +147,7 @@ export const executeRecaptcha = async (action: ReCaptchaAction): Promise<string 
 };
 
 /**
- * Server-side validation of a reCAPTCHA token using Supabase Edge Function
+ * Enhanced server-side validation with better domain mismatch handling
  */
 export const validateRecaptchaServerSide = async (
   token: string | null, 
@@ -156,11 +157,12 @@ export const validateRecaptchaServerSide = async (
   try {
     console.log(`🔍 [RECAPTCHA] Server-side validation for action: ${expectedAction}`);
     
-    // If no token, fail early
+    // If no token, suggest fallback
     if (!token) {
       return { 
         success: false, 
-        error: 'No reCAPTCHA token provided' 
+        error: 'No reCAPTCHA token provided',
+        shouldFallback: true
       };
     }
     
@@ -177,18 +179,33 @@ export const validateRecaptchaServerSide = async (
       console.error('❌ [RECAPTCHA] Server validation error:', error);
       return {
         success: false,
-        error: 'Server validation failed'
+        error: 'Server validation failed',
+        shouldFallback: true
       };
     }
     
     console.log('✅ [RECAPTCHA] Server validation result:', data);
+    
+    // Check for domain mismatch or other validation failures
+    if (!data.success && data.errors?.includes('invalid-domain')) {
+      console.warn('⚠️ [RECAPTCHA] Domain mismatch detected - this is expected in development/preview environments');
+      return {
+        success: false,
+        error: 'Domain mismatch - please configure reCAPTCHA domains',
+        shouldFallback: true,
+        score: data.score,
+        action: data.action,
+        hostname: data.hostname
+      };
+    }
     
     return {
       success: data.success,
       score: data.score,
       action: data.action,
       hostname: data.hostname,
-      error: data.success ? undefined : 'Validation failed'
+      error: data.success ? undefined : 'Validation failed',
+      shouldFallback: !data.success
     };
     
   } catch (error) {
@@ -196,14 +213,14 @@ export const validateRecaptchaServerSide = async (
     
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown validation error'
+      error: error instanceof Error ? error.message : 'Unknown validation error',
+      shouldFallback: true
     };
   }
 };
 
 /**
- * Enhanced auth request with reCAPTCHA
- * Adds a token to auth requests and validates server-side
+ * Enhanced auth request with reCAPTCHA and graceful fallback
  */
 export const withRecaptcha = async <T extends object>(
   action: ReCaptchaAction,
@@ -218,7 +235,6 @@ export const withRecaptcha = async <T extends object>(
     
     if (!token) {
       console.warn('⚠️ [RECAPTCHA] Token generation failed, proceeding without reCAPTCHA');
-      // Continue without reCAPTCHA instead of failing
       return await authFunction(params);
     }
     
@@ -226,9 +242,15 @@ export const withRecaptcha = async <T extends object>(
     const validation = await validateRecaptchaServerSide(token, action);
     
     if (!validation.success) {
-      console.warn('⚠️ [RECAPTCHA] Server-side validation failed, proceeding without reCAPTCHA:', validation.error);
-      // Continue without reCAPTCHA instead of failing
-      return await authFunction(params);
+      if (validation.shouldFallback) {
+        console.warn('⚠️ [RECAPTCHA] Server-side validation failed with fallback recommendation:', validation.error);
+        // Continue without reCAPTCHA for domain mismatches and other recoverable errors
+        return await authFunction(params);
+      } else {
+        // For non-recoverable validation failures, still attempt auth but log the issue
+        console.error('❌ [RECAPTCHA] Critical validation failure:', validation.error);
+        return await authFunction(params);
+      }
     }
     
     console.log(`✅ [RECAPTCHA] Validation passed with score: ${validation.score}`);
@@ -250,4 +272,20 @@ export const withRecaptcha = async <T extends object>(
     // Fallback to regular auth without reCAPTCHA
     return await authFunction(params);
   }
+};
+
+/**
+ * Get current domain for debugging
+ */
+export const getCurrentDomain = (): string => {
+  return window.location.hostname;
+};
+
+/**
+ * Check if current domain is configured for reCAPTCHA
+ */
+export const isDomainConfigured = (): boolean => {
+  const domain = getCurrentDomain();
+  const configuredDomains = ['figuros.ai', 'www.figuros.ai', 'localhost'];
+  return configuredDomains.includes(domain);
 };

@@ -9,11 +9,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useEnhancedAuth } from "./EnhancedAuthProvider";
 import { cleanupAuthState, clearAuthRateLimits, isRateLimitError } from "@/utils/authUtils";
-import { AlertCircle, Mail, Eye, EyeOff, Loader2, CheckCircle, RefreshCw, KeyRound, Shield } from "lucide-react";
+import { AlertCircle, Mail, Eye, EyeOff, Loader2, CheckCircle, RefreshCw, KeyRound, Shield, AlertTriangle } from "lucide-react";
 import { isEmailVerificationError } from "@/utils/authUtils";
 import { EmailVerificationHandler } from "./EmailVerificationHandler";
 import { ExistingAccountHandler } from "./ExistingAccountHandler";
-import { initializeRecaptcha, isRecaptchaReady } from "@/utils/recaptchaUtils";
+import { initializeRecaptcha, isRecaptchaReady, getCurrentDomain, isDomainConfigured } from "@/utils/recaptchaUtils";
 import { Badge } from "@/components/ui/badge";
 
 export function AuthForm() {
@@ -40,16 +40,25 @@ export function AuthForm() {
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
   const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
   const [recaptchaError, setRecaptchaError] = useState(false);
+  const [domainConfigured, setDomainConfigured] = useState(true);
 
   // Enhanced validation state
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [showExistingAccount, setShowExistingAccount] = useState(false);
 
-  // Check if reCAPTCHA is loaded with improved error handling and faster timeout
+  // Check if reCAPTCHA is loaded and domain is configured
   useEffect(() => {
     const loadRecaptcha = async () => {
       try {
         console.log('🚀 [AUTH-FORM] Initializing reCAPTCHA...');
+        
+        // Check domain configuration
+        const isDomainOk = isDomainConfigured();
+        setDomainConfigured(isDomainOk);
+        
+        if (!isDomainOk) {
+          console.warn(`⚠️ [AUTH-FORM] Domain ${getCurrentDomain()} not configured for reCAPTCHA`);
+        }
         
         // Check if it's already ready
         if (isRecaptchaReady()) {
@@ -127,7 +136,6 @@ export function AuthForm() {
     try {
       console.log("🚀 [AUTH-FORM] Starting signup for:", email);
       
-      // Direct signup approach with enhanced existing account detection
       const { error, data, accountExists } = await signUp(email, password);
       
       if (accountExists) {
@@ -148,12 +156,10 @@ export function AuthForm() {
           setErrorMessage(error);
         }
       } else if (!data?.session) {
-        // Successful signup but no immediate session = email verification required
         console.log("✅ [AUTH-FORM] Signup successful, email verification required");
         setSuccessMessage("Account created successfully! Please check your email for the verification link.");
         setShowResendOption(true);
       } else {
-        // Immediate signup success with session
         console.log("✅ [AUTH-FORM] Signup successful with immediate session");
         navigate("/studio");
       }
@@ -331,21 +337,32 @@ export function AuthForm() {
                 Ready to create something amazing? Let's get you signed in!
               </CardDescription>
               
-              {recaptchaLoaded && !recaptchaError && (
+              {recaptchaLoaded && !recaptchaError && domainConfigured && (
                 <div className="flex items-center justify-center gap-1.5 mt-1">
                   <Shield className="w-3.5 h-3.5 text-figuro-accent/80" />
                   <span className="text-xs text-white/50">Protected by reCAPTCHA</span>
                 </div>
               )}
               
-              {recaptchaError && (
+              {(!domainConfigured || recaptchaError) && (
                 <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <AlertCircle className="w-3.5 h-3.5 text-yellow-500/80" />
-                  <span className="text-xs text-yellow-400/70">reCAPTCHA unavailable - continuing with basic security</span>
+                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-500/80" />
+                  <span className="text-xs text-yellow-400/70">
+                    {!domainConfigured ? 'reCAPTCHA domain configuration needed' : 'reCAPTCHA unavailable - continuing with basic security'}
+                  </span>
                 </div>
               )}
             </CardHeader>
             <CardContent className="space-y-6">
+              {!domainConfigured && (
+                <Alert className="bg-yellow-500/10 border-yellow-500/30 animate-scale-in">
+                  <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                  <AlertDescription className="text-white/90 text-sm">
+                    <strong>Domain Configuration Needed:</strong> To enable full reCAPTCHA protection, please add <strong>{getCurrentDomain()}</strong> to your Google reCAPTCHA console domains list.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {errorMessage && (
                 <Alert variant="destructive" className="bg-red-500/10 border-red-500/30 animate-scale-in">
                   <AlertCircle className="h-4 w-4" />
@@ -587,21 +604,32 @@ export function AuthForm() {
                 Join thousands of creators and start building your dreams with AI
               </CardDescription>
               
-              {recaptchaLoaded && !recaptchaError && (
+              {recaptchaLoaded && !recaptchaError && domainConfigured && (
                 <div className="flex items-center justify-center gap-1.5 mt-1">
                   <Shield className="w-3.5 h-3.5 text-figuro-accent/80" />
                   <span className="text-xs text-white/50">Protected by reCAPTCHA</span>
                 </div>
               )}
               
-              {recaptchaError && (
+              {(!domainConfigured || recaptchaError) && (
                 <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <AlertCircle className="w-3.5 h-3.5 text-yellow-500/80" />
-                  <span className="text-xs text-yellow-400/70">reCAPTCHA unavailable - continuing with basic security</span>
+                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-500/80" />
+                  <span className="text-xs text-yellow-400/70">
+                    {!domainConfigured ? 'reCAPTCHA domain configuration needed' : 'reCAPTCHA unavailable - continuing with basic security'}
+                  </span>
                 </div>
               )}
             </CardHeader>
             <CardContent className="space-y-6">
+              {!domainConfigured && (
+                <Alert className="bg-yellow-500/10 border-yellow-500/30 animate-scale-in">
+                  <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                  <AlertDescription className="text-white/90 text-sm">
+                    <strong>Domain Configuration Needed:</strong> To enable full reCAPTCHA protection, please add <strong>{getCurrentDomain()}</strong> to your Google reCAPTCHA console domains list.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {errorMessage && (
                 <Alert variant="destructive" className="bg-red-500/10 border-red-500/30 animate-scale-in">
                   <AlertCircle className="h-4 w-4" />
@@ -727,7 +755,7 @@ export function AuthForm() {
                 </Button>
               </form>
               
-              {!recaptchaError && (
+              {domainConfigured && !recaptchaError && (
                 <div className="p-4 bg-figuro-accent/5 border border-figuro-accent/10 rounded-lg mt-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Shield className="h-4 w-4 text-figuro-accent" />
