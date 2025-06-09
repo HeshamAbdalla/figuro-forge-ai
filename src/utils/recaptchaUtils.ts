@@ -1,11 +1,8 @@
 
 /**
- * Google reCAPTCHA v3 utilities
- * Handles token generation and validation for security enforcement
+ * Google reCAPTCHA v3 utilities - Simplified for Supabase integration
+ * Now uses Supabase's built-in reCAPTCHA instead of custom edge function
  */
-
-import { securityManager } from "./securityUtils";
-import { supabase } from "@/integrations/supabase/client";
 
 // reCAPTCHA site key - matches the one in index.html
 const RECAPTCHA_SITE_KEY = "6Le5lFcrAAAAAOySTtpVoOrDH7EQx8pQiLFq5pRT";
@@ -17,15 +14,6 @@ export type ReCaptchaAction =
   | "password_reset" 
   | "email_verification"
   | "contact_form";
-
-interface RecaptchaValidationResult {
-  success: boolean;
-  score?: number;
-  action?: string;
-  hostname?: string;
-  error?: string;
-  shouldFallback?: boolean;
-}
 
 /**
  * Checks if reCAPTCHA is ready immediately (non-blocking)
@@ -99,9 +87,9 @@ export const initializeRecaptcha = (): Promise<boolean> => {
 };
 
 /**
- * Executes reCAPTCHA and returns a token
+ * Executes reCAPTCHA and returns a token for Supabase auth
  * @param action The action being performed
- * @returns Promise with token string or error
+ * @returns Promise with token string or null
  */
 export const executeRecaptcha = async (action: ReCaptchaAction): Promise<string | null> => {
   try {
@@ -124,153 +112,10 @@ export const executeRecaptcha = async (action: ReCaptchaAction): Promise<string 
     const token = await grecaptcha.execute(RECAPTCHA_SITE_KEY, { action });
     console.log(`✅ [RECAPTCHA] Token generated for ${action}, length: ${token.length}`);
     
-    // Log the security event (non-blocking)
-    securityManager.logSecurityEvent({
-      event_type: 'recaptcha_executed',
-      event_details: { action, token_length: token.length },
-      success: true
-    });
-    
     return token;
   } catch (error) {
     console.error('❌ [RECAPTCHA] Error executing reCAPTCHA:', error);
-    
-    // Log the security event (non-blocking)
-    securityManager.logSecurityEvent({
-      event_type: 'recaptcha_error',
-      event_details: { action, error: error instanceof Error ? error.message : 'Unknown error' },
-      success: false
-    });
-    
     return null;
-  }
-};
-
-/**
- * Enhanced server-side validation with better domain mismatch handling
- */
-export const validateRecaptchaServerSide = async (
-  token: string | null, 
-  expectedAction: ReCaptchaAction,
-  minimumScore: number = 0.5
-): Promise<RecaptchaValidationResult> => {
-  try {
-    console.log(`🔍 [RECAPTCHA] Server-side validation for action: ${expectedAction}`);
-    
-    // If no token, suggest fallback
-    if (!token) {
-      return { 
-        success: false, 
-        error: 'No reCAPTCHA token provided',
-        shouldFallback: true
-      };
-    }
-    
-    // Call the Supabase Edge Function for verification
-    const { data, error } = await supabase.functions.invoke('verify-recaptcha', {
-      body: {
-        token,
-        action: expectedAction,
-        minScore: minimumScore
-      }
-    });
-    
-    if (error) {
-      console.error('❌ [RECAPTCHA] Server validation error:', error);
-      return {
-        success: false,
-        error: 'Server validation failed',
-        shouldFallback: true
-      };
-    }
-    
-    console.log('✅ [RECAPTCHA] Server validation result:', data);
-    
-    // Check for domain mismatch or other validation failures
-    if (!data.success && data.errors?.includes('invalid-domain')) {
-      console.warn('⚠️ [RECAPTCHA] Domain mismatch detected - this is expected in development/preview environments');
-      return {
-        success: false,
-        error: 'Domain mismatch - please configure reCAPTCHA domains',
-        shouldFallback: true,
-        score: data.score,
-        action: data.action,
-        hostname: data.hostname
-      };
-    }
-    
-    return {
-      success: data.success,
-      score: data.score,
-      action: data.action,
-      hostname: data.hostname,
-      error: data.success ? undefined : 'Validation failed',
-      shouldFallback: !data.success
-    };
-    
-  } catch (error) {
-    console.error('❌ [RECAPTCHA] Validation exception:', error);
-    
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown validation error',
-      shouldFallback: true
-    };
-  }
-};
-
-/**
- * Enhanced auth request with reCAPTCHA and graceful fallback
- */
-export const withRecaptcha = async <T extends object>(
-  action: ReCaptchaAction,
-  authFunction: (params: T) => Promise<any>,
-  params: T
-): Promise<any> => {
-  try {
-    console.log(`🔐 [RECAPTCHA] Enhanced auth with action: ${action}`);
-    
-    // Get reCAPTCHA token
-    const token = await executeRecaptcha(action);
-    
-    if (!token) {
-      console.warn('⚠️ [RECAPTCHA] Token generation failed, proceeding without reCAPTCHA');
-      return await authFunction(params);
-    }
-    
-    // Validate the token server-side
-    const validation = await validateRecaptchaServerSide(token, action);
-    
-    if (!validation.success) {
-      if (validation.shouldFallback) {
-        console.warn('⚠️ [RECAPTCHA] Server-side validation failed with fallback recommendation:', validation.error);
-        // Continue without reCAPTCHA for domain mismatches and other recoverable errors
-        return await authFunction(params);
-      } else {
-        // For non-recoverable validation failures, still attempt auth but log the issue
-        console.error('❌ [RECAPTCHA] Critical validation failure:', validation.error);
-        return await authFunction(params);
-      }
-    }
-    
-    console.log(`✅ [RECAPTCHA] Validation passed with score: ${validation.score}`);
-    
-    // Include the token in auth request
-    const enhancedParams = {
-      ...params,
-      options: {
-        ...(params as any).options,
-        captchaToken: token
-      }
-    };
-    
-    // Execute the auth function with the enhanced params
-    return await authFunction(enhancedParams as T);
-    
-  } catch (error) {
-    console.error('❌ [RECAPTCHA] Auth with reCAPTCHA failed, proceeding without reCAPTCHA:', error);
-    // Fallback to regular auth without reCAPTCHA
-    return await authFunction(params);
   }
 };
 

@@ -7,7 +7,7 @@ import { validateSignupAttempt, validateSignupResponse } from "@/utils/authValid
 import { EmailVerificationEnforcer } from "@/utils/emailVerificationEnforcer";
 import { sessionManager } from "@/utils/sessionManager";
 import { securityManager } from "@/utils/securityUtils";
-import { executeRecaptcha, validateRecaptchaServerSide, ReCaptchaAction, initializeRecaptcha, isRecaptchaReady } from "@/utils/recaptchaUtils";
+import { executeRecaptcha, ReCaptchaAction, initializeRecaptcha, isRecaptchaReady } from "@/utils/recaptchaUtils";
 
 interface EnhancedAuthContextType {
   user: User | null;
@@ -398,7 +398,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     };
   }, [hasRedirected]);
 
-  // Enhanced sign up with improved reCAPTCHA handling
+  // Enhanced sign up with Supabase's built-in reCAPTCHA
   const signUp = async (email: string, password: string) => {
     try {
       console.log("🚀 [ENHANCED-AUTH] Starting secure signup process for:", email);
@@ -417,15 +417,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       const canProceed = await checkRateLimitSafe('auth_signup');
       if (!canProceed) {
         throw new Error('Too many sign up attempts. Please wait a few minutes.');
-      }
-
-      // Check if reCAPTCHA is ready, but don't block if it's not
-      if (!isRecaptchaReady()) {
-        console.log("⏳ [RECAPTCHA] Not ready yet, trying to initialize...");
-        const loaded = await initializeRecaptcha();
-        if (!loaded) {
-          console.warn("⚠️ [RECAPTCHA] Could not load, continuing without reCAPTCHA");
-        }
       }
 
       cleanupAuthState();
@@ -457,30 +448,21 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         return { error: null, data: null, accountExists: true };
       }
       
-      // STEP 2: Try to execute reCAPTCHA (but don't fail if it doesn't work)
+      // STEP 2: Get reCAPTCHA token for Supabase auth
       let recaptchaToken: string | null = null;
-      let recaptchaValidationPassed = false;
       
       if (isRecaptchaReady()) {
         console.log("🤖 [RECAPTCHA] Getting token for signup action");
         recaptchaToken = await executeRecaptcha("signup");
         
         if (recaptchaToken) {
-          // Validate server-side
-          const validation = await validateRecaptchaServerSide(recaptchaToken, "signup");
-          recaptchaValidationPassed = validation.success;
-          
-          if (!recaptchaValidationPassed) {
-            console.error("❌ [RECAPTCHA] Server-side validation failed:", validation.error);
-          } else {
-            console.log("✅ [RECAPTCHA] Server-side validation passed");
-          }
+          console.log("✅ [RECAPTCHA] Token obtained for Supabase auth");
         }
       } else {
         console.warn("⚠️ [RECAPTCHA] Not available, proceeding without reCAPTCHA");
       }
       
-      // STEP 3: Attempt actual signup with security enforcement
+      // STEP 3: Attempt actual signup with Supabase's built-in reCAPTCHA
       const redirectTo = `${window.location.origin}/studio`;
       
       console.log("📧 [ENHANCED-AUTH] Attempting secure Supabase signup...");
@@ -518,8 +500,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           validation_result: validationResult,
           has_session: !!data?.session,
           has_user: !!data?.user,
-          recaptcha_used: !!recaptchaToken,
-          recaptcha_validated: recaptchaValidationPassed
+          recaptcha_used: !!recaptchaToken
         },
         success: true
       });
@@ -559,8 +540,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           event_details: { 
             email, 
             error: error.message,
-            recaptcha_used: !!recaptchaToken,
-            recaptcha_validated: recaptchaValidationPassed
+            recaptcha_used: !!recaptchaToken
           },
           success: false
         });
@@ -597,7 +577,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced sign in with improved reCAPTCHA handling
+  // Enhanced sign in with Supabase's built-in reCAPTCHA
   const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
     console.log("🚀 [ENHANCED-AUTH] Starting secure sign-in...");
     
@@ -613,15 +593,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         throw new Error('Too many sign in attempts. Please wait a few minutes.');
       }
 
-      // Check if reCAPTCHA is ready, but don't block if it's not
-      if (!isRecaptchaReady()) {
-        console.log("⏳ [RECAPTCHA] Not ready yet, trying to initialize...");
-        const loaded = await initializeRecaptcha();
-        if (!loaded) {
-          console.warn("⚠️ [RECAPTCHA] Could not load, continuing without reCAPTCHA");
-        }
-      }
-
       // Clean up state
       cleanupAuthState();
       
@@ -632,24 +603,15 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         console.log("⚠️ [ENHANCED-AUTH] Pre-signin signout failed (non-critical)");
       }
 
-      // Try to execute reCAPTCHA (but don't fail if it doesn't work)
+      // Get reCAPTCHA token for Supabase auth
       let recaptchaToken: string | null = null;
-      let recaptchaValidationPassed = false;
       
       if (isRecaptchaReady()) {
         console.log("🤖 [RECAPTCHA] Getting token for login action");
         recaptchaToken = await executeRecaptcha("login");
         
         if (recaptchaToken) {
-          // Validate server-side
-          const validation = await validateRecaptchaServerSide(recaptchaToken, "login");
-          recaptchaValidationPassed = validation.success;
-          
-          if (!recaptchaValidationPassed) {
-            console.error("❌ [RECAPTCHA] Server-side validation failed:", validation.error);
-          } else {
-            console.log("✅ [RECAPTCHA] Server-side validation passed");
-          }
+          console.log("✅ [RECAPTCHA] Token obtained for Supabase auth");
         }
       } else {
         console.warn("⚠️ [RECAPTCHA] Not available, proceeding without reCAPTCHA");
@@ -664,7 +626,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         localStorage.removeItem('figuro_remember_me');
       }
       
-      // Perform sign-in
+      // Perform sign-in with Supabase's built-in reCAPTCHA
       const signInParams = {
         email,
         password,
@@ -687,8 +649,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
             email, 
             error: error.message, 
             remember_me: rememberMe,
-            recaptcha_used: !!recaptchaToken,
-            recaptcha_validated: recaptchaValidationPassed
+            recaptcha_used: !!recaptchaToken
           },
           success: false
         });
@@ -708,8 +669,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           email, 
           user_id: data.user?.id, 
           remember_me: rememberMe,
-          recaptcha_used: !!recaptchaToken,
-          recaptcha_validated: recaptchaValidationPassed
+          recaptcha_used: !!recaptchaToken
         },
         success: true
       });
@@ -741,7 +701,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Password reset with improved reCAPTCHA handling
+  // Password reset with Supabase's built-in reCAPTCHA
   const resetPassword = async (email: string) => {
     try {
       if (!securityManager.validateEmail(email)) {
@@ -750,25 +710,18 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
 
       console.log("🔄 [ENHANCED-AUTH] Securely sending password reset email...");
       
-      // Try to execute reCAPTCHA (but don't fail if it doesn't work)
+      // Get reCAPTCHA token for Supabase auth
       let recaptchaToken: string | null = null;
       
       if (isRecaptchaReady()) {
         recaptchaToken = await executeRecaptcha("password_reset");
-        
-        if (recaptchaToken) {
-          const validation = await validateRecaptchaServerSide(recaptchaToken, "password_reset");
-          if (!validation.success) {
-            console.error("❌ [RECAPTCHA] Validation failed for password reset");
-          }
-        }
       }
       
       const redirectTo = `${window.location.origin}/studio`;
       
       const resetParams = {
         redirectTo: redirectTo,
-        ...(recaptchaToken && { captchaToken: recaptchaToken })
+        ...(recaptchaToken && { options: { captchaToken: recaptchaToken } })
       };
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, resetParams);
@@ -815,29 +768,20 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Resend verification email with improved reCAPTCHA handling
+  // Resend verification email with Supabase's built-in reCAPTCHA
   const resendVerificationEmail = async (email: string) => {
     try {
-      // Try to execute reCAPTCHA (but don't fail if it doesn't work)
+      // Get reCAPTCHA token for Supabase auth
       let recaptchaToken: string | null = null;
       
       if (isRecaptchaReady()) {
         recaptchaToken = await executeRecaptcha("email_verification");
-        
-        if (recaptchaToken) {
-          const validation = await validateRecaptchaServerSide(recaptchaToken, "email_verification");
-          if (!validation.success) {
-            console.error("❌ [RECAPTCHA] Validation failed for email verification");
-          }
-        }
       }
       
       const resendParams = {
         type: 'signup' as const,
         email,
-        options: {
-          ...(recaptchaToken && { captchaToken: recaptchaToken })
-        }
+        ...(recaptchaToken && { options: { captchaToken: recaptchaToken } })
       };
       
       const { error } = await supabase.auth.resend(resendParams);

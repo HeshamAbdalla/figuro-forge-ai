@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useEnhancedAuth } from "./EnhancedAuthProvider";
 import { cleanupAuthState, clearAuthRateLimits, isRateLimitError } from "@/utils/authUtils";
-import { AlertCircle, Mail, Eye, EyeOff, Loader2, CheckCircle, RefreshCw, KeyRound, Shield, AlertTriangle } from "lucide-react";
+import { AlertCircle, Mail, Eye, EyeOff, Loader2, CheckCircle, RefreshCw, KeyRound, Shield, AlertTriangle, Info } from "lucide-react";
 import { isEmailVerificationError } from "@/utils/authUtils";
 import { EmailVerificationHandler } from "./EmailVerificationHandler";
 import { ExistingAccountHandler } from "./ExistingAccountHandler";
@@ -340,25 +340,25 @@ export function AuthForm() {
               {recaptchaLoaded && !recaptchaError && domainConfigured && (
                 <div className="flex items-center justify-center gap-1.5 mt-1">
                   <Shield className="w-3.5 h-3.5 text-figuro-accent/80" />
-                  <span className="text-xs text-white/50">Protected by reCAPTCHA</span>
+                  <span className="text-xs text-white/50">Protected by Supabase + reCAPTCHA</span>
                 </div>
               )}
               
               {(!domainConfigured || recaptchaError) && (
                 <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-500/80" />
-                  <span className="text-xs text-yellow-400/70">
-                    {!domainConfigured ? 'reCAPTCHA domain configuration needed' : 'reCAPTCHA unavailable - continuing with basic security'}
+                  <Info className="w-3.5 h-3.5 text-blue-500/80" />
+                  <span className="text-xs text-blue-400/70">
+                    {!domainConfigured ? 'Using Supabase security (reCAPTCHA domain setup needed)' : 'Using Supabase security (reCAPTCHA not available)'}
                   </span>
                 </div>
               )}
             </CardHeader>
             <CardContent className="space-y-6">
               {!domainConfigured && (
-                <Alert className="bg-yellow-500/10 border-yellow-500/30 animate-scale-in">
-                  <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                <Alert className="bg-blue-500/10 border-blue-500/30 animate-scale-in">
+                  <Info className="h-4 w-4 text-blue-400" />
                   <AlertDescription className="text-white/90 text-sm">
-                    <strong>Domain Configuration Needed:</strong> To enable full reCAPTCHA protection, please add <strong>{getCurrentDomain()}</strong> to your Google reCAPTCHA console domains list.
+                    <strong>Optional:</strong> To enable full reCAPTCHA protection, add <strong>{getCurrentDomain()}</strong> to your Google reCAPTCHA console. Authentication still works securely through Supabase.
                   </AlertDescription>
                 </Alert>
               )}
@@ -607,25 +607,25 @@ export function AuthForm() {
               {recaptchaLoaded && !recaptchaError && domainConfigured && (
                 <div className="flex items-center justify-center gap-1.5 mt-1">
                   <Shield className="w-3.5 h-3.5 text-figuro-accent/80" />
-                  <span className="text-xs text-white/50">Protected by reCAPTCHA</span>
+                  <span className="text-xs text-white/50">Protected by Supabase + reCAPTCHA</span>
                 </div>
               )}
               
               {(!domainConfigured || recaptchaError) && (
                 <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-500/80" />
-                  <span className="text-xs text-yellow-400/70">
-                    {!domainConfigured ? 'reCAPTCHA domain configuration needed' : 'reCAPTCHA unavailable - continuing with basic security'}
+                  <Info className="w-3.5 h-3.5 text-blue-500/80" />
+                  <span className="text-xs text-blue-400/70">
+                    {!domainConfigured ? 'Using Supabase security (reCAPTCHA domain setup needed)' : 'Using Supabase security (reCAPTCHA not available)'}
                   </span>
                 </div>
               )}
             </CardHeader>
             <CardContent className="space-y-6">
               {!domainConfigured && (
-                <Alert className="bg-yellow-500/10 border-yellow-500/30 animate-scale-in">
-                  <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                <Alert className="bg-blue-500/10 border-blue-500/30 animate-scale-in">
+                  <Info className="h-4 w-4 text-blue-400" />
                   <AlertDescription className="text-white/90 text-sm">
-                    <strong>Domain Configuration Needed:</strong> To enable full reCAPTCHA protection, please add <strong>{getCurrentDomain()}</strong> to your Google reCAPTCHA console domains list.
+                    <strong>Optional:</strong> To enable full reCAPTCHA protection, add <strong>{getCurrentDomain()}</strong> to your Google reCAPTCHA console. Authentication still works securely through Supabase.
                   </AlertDescription>
                 </Alert>
               )}
@@ -762,7 +762,7 @@ export function AuthForm() {
                     <h3 className="text-sm font-medium text-white/90">Enhanced Security</h3>
                   </div>
                   <p className="text-xs text-white/70">
-                    Figuro uses reCAPTCHA to prevent fraud and abuse. Your data is securely processed in accordance with Google's Privacy Policy and Terms of Service.
+                    Figuro uses Supabase authentication with reCAPTCHA protection to prevent fraud and abuse. Your data is securely processed.
                   </p>
                 </div>
               )}
