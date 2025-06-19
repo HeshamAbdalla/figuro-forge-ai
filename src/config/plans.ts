@@ -1,3 +1,4 @@
+
 export interface PlanConfig {
   id: string;
   name: string;
@@ -65,8 +66,8 @@ export const PLANS: Record<string, PlanConfig> = {
       isUnlimited: false,
     },
     stripeData: {
-      priceId: 'price_starter',
-      productId: 'prod_starter',
+      priceId: 'price_1QnGxCFz9RxnLs0LABo9Nv96',
+      productId: 'prod_RODgDT7FiNtGAn',
     },
     order: 1,
   },
@@ -92,8 +93,8 @@ export const PLANS: Record<string, PlanConfig> = {
       isUnlimited: false,
     },
     stripeData: {
-      priceId: 'price_pro',
-      productId: 'prod_pro',
+      priceId: 'price_1QnGzNFz9RxnLs0LPZneLEEd',
+      productId: 'prod_RODiEOr9W2KcGo',
     },
     order: 2,
   },
@@ -119,8 +120,8 @@ export const PLANS: Record<string, PlanConfig> = {
       isUnlimited: true,
     },
     stripeData: {
-      priceId: 'price_unlimited',
-      productId: 'prod_unlimited',
+      priceId: 'price_1QnH0bFz9RxnLs0LQY4RdqvO',
+      productId: 'prod_RODj8Dy0iQSQWN',
     },
     order: 3,
   },

@@ -82,11 +82,23 @@ serve(async (req) => {
       });
     }
 
-    // Plan configurations
+    // Plan configurations with live Stripe price IDs
     const planConfigs = {
-      starter: { priceId: 'price_starter', amount: 1299, name: 'Starter Plan' },
-      pro: { priceId: 'price_pro', amount: 2999, name: 'Pro Plan' },
-      unlimited: { priceId: 'price_unlimited', amount: 5999, name: 'Unlimited Plan' }
+      starter: { 
+        priceId: 'price_1QnGxCFz9RxnLs0LABo9Nv96', 
+        amount: 1299, 
+        name: 'Starter Plan' 
+      },
+      pro: { 
+        priceId: 'price_1QnGzNFz9RxnLs0LPZneLEEd', 
+        amount: 2999, 
+        name: 'Pro Plan' 
+      },
+      unlimited: { 
+        priceId: 'price_1QnH0bFz9RxnLs0LQY4RdqvO', 
+        amount: 5999, 
+        name: 'Unlimited Plan' 
+      }
     };
 
     const planConfig = planConfigs[plan as keyof typeof planConfigs];
@@ -121,12 +133,7 @@ serve(async (req) => {
       metadata: metadata,
       line_items: [
         {
-          price_data: {
-            currency: "usd",
-            product_data: { name: planConfig.name },
-            unit_amount: planConfig.amount,
-            recurring: { interval: "month" },
-          },
+          price: planConfig.priceId, // Use live price ID directly
           quantity: 1,
         },
       ],
@@ -154,7 +161,8 @@ serve(async (req) => {
     logStep("Checkout session created", { 
       sessionId: session.id, 
       mode: mode,
-      plan: plan 
+      plan: plan,
+      priceId: planConfig.priceId
     });
 
     // Record the payment session in our database

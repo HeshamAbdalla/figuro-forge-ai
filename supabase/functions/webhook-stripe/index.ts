@@ -2,12 +2,19 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-// Plan configuration - matches frontend config
+// Plan configuration with live Stripe price IDs
 const PLANS = {
   free: { monthlyCredits: 3, order: 0 },
   starter: { monthlyCredits: 25, order: 1 },
   pro: { monthlyCredits: 120, order: 2 },
   unlimited: { monthlyCredits: 999999, order: 3 },
+};
+
+// Price ID to plan mapping with live Stripe price IDs
+const PRICE_TO_PLAN = {
+  'price_1QnGxCFz9RxnLs0LABo9Nv96': 'starter',
+  'price_1QnGzNFz9RxnLs0LPZneLEEd': 'pro', 
+  'price_1QnH0bFz9RxnLs0LQY4RdqvO': 'unlimited'
 };
 
 const logStep = (step: string, details?: any) => {
@@ -53,18 +60,31 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
     
-    // Helper function to determine plan from Stripe price
+    // Helper function to determine plan from Stripe price with live price IDs
     const determinePlanFromPrice = async (priceId: string): Promise<{ planType: string; planConfig: any }> => {
-      const price = await stripe.prices.retrieve(priceId);
-      const product = await stripe.products.retrieve(price.product as string);
-      const productName = product.name.toLowerCase();
+      // First check our direct mapping
+      if (PRICE_TO_PLAN[priceId]) {
+        const planType = PRICE_TO_PLAN[priceId];
+        return { planType, planConfig: PLANS[planType] || PLANS.free };
+      }
       
-      let planType = "free";
-      if (productName.includes("starter")) planType = "starter";
-      else if (productName.includes("pro")) planType = "pro";
-      else if (productName.includes("unlimited")) planType = "unlimited";
-      
-      return { planType, planConfig: PLANS[planType] || PLANS.free };
+      // Fallback to checking product name if price ID not found
+      try {
+        const price = await stripe.prices.retrieve(priceId);
+        const product = await stripe.products.retrieve(price.product as string);
+        const productName = product.name.toLowerCase();
+        
+        let planType = "free";
+        if (productName.includes("starter")) planType = "starter";
+        else if (productName.includes("pro")) planType = "pro";
+        else if (productName.includes("unlimited")) planType = "unlimited";
+        
+        logStep("Determined plan from product name", { priceId, productName, planType });
+        return { planType, planConfig: PLANS[planType] || PLANS.free };
+      } catch (error) {
+        logStep("Error determining plan from price", { priceId, error: error instanceof Error ? error.message : String(error) });
+        return { planType: "free", planConfig: PLANS.free };
+      }
     };
 
     // Enhanced plan switching logic with proportional credit preservation
@@ -239,7 +259,7 @@ serve(async (req) => {
         logStep("Checkout session completed", { sessionId: session.id });
         
         const userId = session.metadata?.userId;
-        const planType = session.metadata?.planType;
+        const planType = session.metadata?.plan;
         const commercialLicense = session.metadata?.commercialLicense === 'true';
         const additionalConversions = parseInt(session.metadata?.additionalConversions || '0', 10);
         
@@ -289,7 +309,7 @@ serve(async (req) => {
           return new Response("Error updating subscription", { status: 500 });
         }
         
-        logStep("Subscription created successfully", { userId, planType, credits: planConfig.monthlyCredits });
+        logStep("Subscription created successfully", { userId, planType, credits: planConfig.monthlyCredits, priceId });
         break;
       }
       
@@ -300,7 +320,7 @@ serve(async (req) => {
         const customerId = subscription.customer;
         const priceId = subscription.items.data[0].price.id;
         
-        // Determine new plan from price
+        // Determine new plan from price using live price IDs
         const { planType: newPlan } = await determinePlanFromPrice(priceId);
         
         // Find user by customer ID and get current plan
@@ -354,7 +374,7 @@ serve(async (req) => {
           }
         }
         
-        logStep("Subscription update processed", { userId: currentSub.user_id, newPlan, status: subscription.status });
+        logStep("Subscription update processed", { userId: currentSub.user_id, newPlan, status: subscription.status, priceId });
         break;
       }
       
