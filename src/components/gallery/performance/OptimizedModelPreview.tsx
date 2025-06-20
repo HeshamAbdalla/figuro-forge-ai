@@ -1,7 +1,7 @@
 
 import React, { useRef, useMemo, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Center, Environment } from "@react-three/drei";
+import { Center } from "@react-three/drei";
 import * as THREE from "three";
 import { ErrorBoundary } from "@/components/model-viewer/ErrorBoundary";
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
@@ -254,11 +254,17 @@ const OptimizedModelPreview: React.FC<OptimizedModelPreviewProps> = ({
           >
             <color attach="background" args={['#1a1a1a']} />
             
-            {/* Optimized lighting setup */}
+            {/* Simple lighting setup - no HDR environment */}
             <ambientLight intensity={0.4} />
             <directionalLight 
               position={[2, 2, 2]} 
               intensity={0.6}
+              castShadow={false}
+            />
+            <directionalLight 
+              position={[-2, -2, -2]} 
+              intensity={0.3}
+              color="#4f46e5"
               castShadow={false}
             />
             
@@ -267,12 +273,6 @@ const OptimizedModelPreview: React.FC<OptimizedModelPreviewProps> = ({
               modelId={modelId}
               isVisible={isIntersecting}
               onError={handleError}
-            />
-            
-            <Environment 
-              preset="city" 
-              resolution={64}
-              background={false}
             />
           </Canvas>
         </ErrorBoundary>

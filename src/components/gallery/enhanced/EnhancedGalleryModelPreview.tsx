@@ -1,7 +1,7 @@
 
 import React, { Suspense, useState, useEffect, useRef, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera, Environment } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
 import { motion } from "framer-motion";
 import * as THREE from "three";
 import { ErrorBoundary } from "@/components/model-viewer/ErrorBoundary";
@@ -14,7 +14,9 @@ import EnhancedGalleryErrorView from "./EnhancedGalleryErrorView";
 import EnhancedGalleryPlaceholder from "./EnhancedGalleryPlaceholder";
 
 interface EnhancedGalleryModelPreviewProps {
-  modelUrl: string;
+  model
+
+: string;
   fileName: string;
 }
 
@@ -310,7 +312,7 @@ const EnhancedGalleryModelPreview: React.FC<EnhancedGalleryModelPreviewProps> = 
             {/* Enhanced background with gradient */}
             <color attach="background" args={['#0f0f0f']} />
             
-            {/* Improved lighting setup */}
+            {/* Improved lighting setup - no HDR environment */}
             <ambientLight intensity={0.3} color="#ffffff" />
             <directionalLight 
               position={[3, 3, 3]} 
@@ -342,12 +344,6 @@ const EnhancedGalleryModelPreview: React.FC<EnhancedGalleryModelPreviewProps> = 
               enablePan={false}
               enableZoom={false}
               enableRotate={false}
-            />
-            
-            <Environment 
-              preset="sunset" 
-              resolution={64}
-              background={false}
             />
           </Canvas>
         </ErrorBoundary>

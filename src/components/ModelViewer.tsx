@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Canvas } from "@react-three/fiber";
 import { 
   OrbitControls, 
-  PerspectiveCamera, 
-  Environment,
+  PerspectiveCamera,
   Center,
   Html
 } from "@react-three/drei";
@@ -374,6 +373,7 @@ const ModelViewer = ({
           >
             <ambientLight intensity={0.4} />
             <directionalLight position={[2, 2, 2]} intensity={0.8} />
+            <directionalLight position={[-2, -2, -2]} intensity={0.3} color="#4f46e5" />
             
             <Suspense fallback={<LoadingSpinner />}>
               <Model url={displayModelUrl} onError={handleModelError} />
@@ -386,8 +386,6 @@ const ModelViewer = ({
               maxDistance={10}
               minDistance={2}
             />
-            
-            <Environment preset="studio" />
           </Canvas>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
