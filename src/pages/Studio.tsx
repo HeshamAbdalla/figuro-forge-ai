@@ -249,7 +249,7 @@ const Studio = () => {
     handleModelUpload: wrappedHandleModelUpload,
     handleSignOut: studioHandlers.handleSignOut,
     handleSignIn: studioHandlers.handleSignIn,
-    handleCloseGenerationModal: studioHandlers.handle CloseGenerationModal,
+    handleCloseGenerationModal: studioHandlers.handleCloseGenerationModal,
     setCustomModelUrl,
     onCameraImageCapture: handleCameraImageCapture
   }), [
