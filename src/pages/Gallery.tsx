@@ -5,10 +5,10 @@ import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
+import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
 import { usePublicFigurines } from "@/hooks/usePublicFigurines";
 import { Figurine } from "@/types/figurine";
@@ -23,7 +23,7 @@ interface FilterState {
   viewMode: "grid" | "list";
 }
 
-const Gallery = () => {
+const GalleryContent = () => {
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     search: "",
@@ -36,6 +36,13 @@ const Gallery = () => {
   const { user, isLoading: authLoading } = useEnhancedAuth();
   const { figurines, loading, refreshFigurines } = usePublicFigurines();
   const navigate = useNavigate();
+
+  console.log('🔍 [GALLERY] Gallery state:', {
+    user: !!user,
+    authLoading,
+    figurinesCount: figurines.length,
+    loading
+  });
 
   // Filter and sort figurines based on current filters
   const filteredFigurines = useMemo(() => {
@@ -80,7 +87,6 @@ const Gallery = () => {
         filtered.sort((a, b) => a.title.localeCompare(b.title));
         break;
       case "popular":
-        // For now, sort by creation date as a proxy for popularity
         filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
     }
@@ -90,10 +96,12 @@ const Gallery = () => {
 
   const handleCreateNew = () => {
     if (!user) {
+      console.log('📝 [GALLERY] User not authenticated, showing auth prompt');
       setAuthPromptOpen(true);
       return;
     }
     
+    console.log('📝 [GALLERY] Navigating to studio');
     navigate("/studio");
     toast({
       title: "Create New Model",
@@ -102,6 +110,7 @@ const Gallery = () => {
   };
 
   const handleRefresh = () => {
+    console.log('🔄 [GALLERY] Manual refresh triggered');
     refreshFigurines();
     toast({
       title: "Gallery Refreshed",
@@ -111,6 +120,7 @@ const Gallery = () => {
 
   const handleViewModel = (figurine: Figurine) => {
     if (!figurine.model_url) {
+      console.warn('⚠️ [GALLERY] No model URL for figurine:', figurine.id);
       toast({
         title: "No 3D Model Available",
         description: "This model doesn't have a 3D preview yet.",
@@ -118,7 +128,7 @@ const Gallery = () => {
       });
       return;
     }
-    // The FuturisticGalleryGrid component will handle the modal internally
+    console.log('👁️ [GALLERY] Viewing model:', figurine.id);
   };
 
   // If still loading authentication, show loading state
@@ -202,6 +212,15 @@ const Gallery = () => {
         onOpenChange={setAuthPromptOpen}
       />
     </div>
+  );
+};
+
+// Wrap the Gallery component with SecurityEnforcedRoute
+const Gallery = () => {
+  return (
+    <SecurityEnforcedRoute requireVerification={false}>
+      <GalleryContent />
+    </SecurityEnforcedRoute>
   );
 };
 

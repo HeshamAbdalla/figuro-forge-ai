@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Gallery from "./pages/Gallery";
 import About from "./pages/About";
@@ -43,88 +44,138 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: (failureCount, error) => {
+        // Don't retry on 4xx errors (client errors)
+        if (error && typeof error === 'object' && 'status' in error) {
+          const status = (error as any).status;
+          if (status >= 400 && status < 500) return false;
+        }
+        // Retry up to 2 times for other errors
+        return failureCount < 2;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+    mutations: {
       retry: 1,
     },
   },
 });
 
+// Enhanced error handler for global errors
+const handleGlobalError = (error: Error, errorInfo: any) => {
+  console.error('🚨 [APP] Global error caught:', {
+    message: error.message,
+    stack: error.stack,
+    errorInfo,
+    timestamp: new Date().toISOString(),
+    url: window.location.href,
+    userAgent: navigator.userAgent
+  });
+  
+  // You could send error reports to a service here
+  // errorReportingService.report(error, errorInfo);
+};
+
 function App() {
+  console.log('🚀 [APP] Application starting:', {
+    timestamp: new Date().toISOString(),
+    url: window.location.href
+  });
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <HelmetProvider>
-        <TooltipProvider>
-          <Toaster />
-          <ProductionMonitor 
-            enableErrorReporting={true}
-            enablePerformanceTracking={true}
-          />
-          <BrowserRouter>
-            <EnhancedAuthProvider>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/gallery" element={<Gallery />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/studio" element={
-                  <SecurityEnforcedRoute>
-                    <Studio />
-                  </SecurityEnforcedRoute>
-                } />
-                <Route path="/profile" element={
-                  <SecurityEnforcedRoute>
-                    <Profile />
-                  </SecurityEnforcedRoute>
-                } />
-                <Route path="/settings" element={
-                  <SecurityEnforcedRoute>
-                    <Settings />
-                  </SecurityEnforcedRoute>
-                } />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/subscription" element={
-                  <SecurityEnforcedRoute>
-                    <Subscription />
-                  </SecurityEnforcedRoute>
-                } />
-                <Route path="/checkout/return" element={<CheckoutReturn />} />
-                <Route path="/features" element={<Features />} />
-                <Route path="/solutions" element={<Solutions />} />
-                <Route path="/resources" element={<Resources />} />
-                <Route path="/careers" element={<Careers />} />
-                <Route path="/community" element={<Community />} />
-                <Route path="/docs" element={<Docs />} />
-                <Route path="/complete-profile" element={
-                  <SecurityEnforcedRoute>
-                    <CompleteProfile />
-                  </SecurityEnforcedRoute>
-                } />
-                <Route path="/profile/figurines" element={
-                  <SecurityEnforcedRoute>
-                    <ProfileFigurines />
-                  </SecurityEnforcedRoute>
-                } />
-                <Route path="/profile/pictures" element={
-                  <SecurityEnforcedRoute>
-                    <ProfilePictures />
-                  </SecurityEnforcedRoute>
-                } />
-                {/* Docs Routes */}
-                <Route path="/docs/introduction" element={<Introduction />} />
-                <Route path="/docs/creating-your-first-figurine" element={<CreatingYourFirstFigurine />} />
-                <Route path="/docs/understanding-art-styles" element={<UnderstandingArtStyles />} />
-                <Route path="/docs/prompt-engineering-tips" element={<PromptEngineeringTips />} />
-                <Route path="/docs/preparing-models-for-printing" element={<PreparingModelsForPrinting />} />
-                <Route path="/docs/combining-multiple-styles" element={<CombiningMultipleStyles />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </EnhancedAuthProvider>
-          </BrowserRouter>
-        </TooltipProvider>
-      </HelmetProvider>
-    </QueryClientProvider>
+    <ErrorBoundary onError={handleGlobalError}>
+      <QueryClientProvider client={queryClient}>
+        <HelmetProvider>
+          <TooltipProvider>
+            <Toaster />
+            <ProductionMonitor 
+              enableErrorReporting={true}
+              enablePerformanceTracking={true}
+            />
+            <BrowserRouter>
+              <EnhancedAuthProvider>
+                <ErrorBoundary>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/gallery" element={<Gallery />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/studio" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <Studio />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/profile" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <Profile />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/settings" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <Settings />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/subscription" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <Subscription />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/checkout/return" element={<CheckoutReturn />} />
+                    <Route path="/features" element={<Features />} />
+                    <Route path="/solutions" element={<Solutions />} />
+                    <Route path="/resources" element={<Resources />} />
+                    <Route path="/careers" element={<Careers />} />
+                    <Route path="/community" element={<Community />} />
+                    <Route path="/docs" element={<Docs />} />
+                    <Route path="/complete-profile" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <CompleteProfile />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/profile/figurines" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <ProfileFigurines />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/profile/pictures" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <ProfilePictures />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
+                    {/* Docs Routes */}
+                    <Route path="/docs/introduction" element={<Introduction />} />
+                    <Route path="/docs/creating-your-first-figurine" element={<CreatingYourFirstFigurine />} />
+                    <Route path="/docs/understanding-art-styles" element={<UnderstandingArtStyles />} />
+                    <Route path="/docs/prompt-engineering-tips" element={<PromptEngineeringTips />} />
+                    <Route path="/docs/preparing-models-for-printing" element={<PreparingModelsForPrinting />} />
+                    <Route path="/docs/combining-multiple-styles" element={<CombiningMultipleStyles />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </ErrorBoundary>
+              </EnhancedAuthProvider>
+            </BrowserRouter>
+          </TooltipProvider>
+        </HelmetProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
