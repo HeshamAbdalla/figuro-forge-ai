@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -40,9 +41,11 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
   showMetadata = false,
   autoOptimize = true
 }) => {
+  // ALL HOOKS MUST BE CALLED AT THE TOP - NO CONDITIONAL HOOKS
   const { toast } = useToast();
   const { canPerformAction } = useSubscription();
   const { showUpgradeModal } = useEnhancedUpgradeModal();
+  const isMobile = useIsMobile();
   
   const [imageError, setImageError] = useState<boolean>(false);
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
@@ -53,7 +56,6 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
   const [metadata, setMetadata] = useState<ImageMetadata>({});
   const [isDragging, setIsDragging] = useState<boolean>(false);
   
-  const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   
@@ -216,6 +218,22 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
     setIsDragging(false);
   }, []);
 
+  // Enhanced convert to 3D handler with proper upgrade modal integration
+  const handleConvertTo3D = useCallback(() => {
+    console.log('🔄 [ENHANCED-IMAGE-PREVIEW] Convert to 3D button pressed');
+    
+    // Check if user can perform model conversion BEFORE attempting conversion
+    if (!canPerformAction('model_conversion')) {
+      console.log('🚫 [ENHANCED-IMAGE-PREVIEW] Model conversion limit reached, showing upgrade modal');
+      showUpgradeModal('model_conversion');
+      return;
+    }
+    
+    // If user has available conversions, proceed with conversion
+    console.log('✅ [ENHANCED-IMAGE-PREVIEW] Model conversion allowed, proceeding...');
+    onConvertTo3D();
+  }, [canPerformAction, showUpgradeModal, onConvertTo3D]);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -281,6 +299,7 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
     handleReset();
   }, [optimizedImageUrl, handleReset]);
 
+  // NOW WE CAN SAFELY DO CONDITIONAL RENDERING AFTER ALL HOOKS
   // Early return for no image state
   if (!optimizedImageUrl && !isLoading) {
     return (
@@ -333,22 +352,6 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
       </motion.div>
     );
   }
-
-  // Enhanced convert to 3D handler with proper upgrade modal integration
-  const handleConvertTo3D = useCallback(() => {
-    console.log('🔄 [ENHANCED-IMAGE-PREVIEW] Convert to 3D button pressed');
-    
-    // Check if user can perform model conversion BEFORE attempting conversion
-    if (!canPerformAction('model_conversion')) {
-      console.log('🚫 [ENHANCED-IMAGE-PREVIEW] Model conversion limit reached, showing upgrade modal');
-      showUpgradeModal('model_conversion');
-      return;
-    }
-    
-    // If user has available conversions, proceed with conversion
-    console.log('✅ [ENHANCED-IMAGE-PREVIEW] Model conversion allowed, proceeding...');
-    onConvertTo3D();
-  }, [canPerformAction, showUpgradeModal, onConvertTo3D]);
 
   return (
     <motion.div
