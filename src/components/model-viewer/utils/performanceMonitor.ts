@@ -2,8 +2,6 @@
 /**
  * Performance monitoring for 3D rendering - Production Optimized
  */
-import { logger } from "@/utils/logLevelManager";
-
 export class PerformanceMonitor {
   private frameCount = 0;
   private lastTime = 0;
@@ -12,8 +10,6 @@ export class PerformanceMonitor {
   private memoryUsage = 0;
   private isMonitoring = false;
   private callbacks: Array<(stats: PerformanceStats) => void> = [];
-  private lastLogTime = 0;
-  private logInterval = 5000; // Log every 5 seconds instead of every frame
 
   constructor() {
     this.lastTime = performance.now();
@@ -23,13 +19,17 @@ export class PerformanceMonitor {
     this.isMonitoring = true;
     this.frameCount = 0;
     this.lastTime = performance.now();
-    this.lastLogTime = performance.now();
-    logger.debug('Performance monitoring started', 'performance');
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Performance monitoring started');
+    }
   }
 
   stop(): void {
     this.isMonitoring = false;
-    logger.debug('Performance monitoring stopped', 'performance');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Performance monitoring stopped');
+    }
   }
 
   update(): void {
@@ -59,26 +59,6 @@ export class PerformanceMonitor {
       };
 
       this.notifyCallbacks(stats);
-
-      // Throttled logging - only log performance issues or at intervals
-      const shouldLog = currentTime - this.lastLogTime > this.logInterval;
-      const hasPerformanceIssue = this.fps < 30 || this.memoryUsage > 100;
-      
-      if (shouldLog || hasPerformanceIssue) {
-        if (hasPerformanceIssue) {
-          logger.warn('Performance issue detected', 'performance', {
-            fps: this.fps.toFixed(1),
-            memory: this.memoryUsage.toFixed(1) + 'MB'
-          });
-        } else {
-          logger.debug('Performance stats', 'performance', {
-            fps: this.fps.toFixed(1),
-            memory: this.memoryUsage.toFixed(1) + 'MB',
-            renderTime: this.renderTime.toFixed(1) + 'ms'
-          });
-        }
-        this.lastLogTime = currentTime;
-      }
     }
   }
 
@@ -105,7 +85,10 @@ export class PerformanceMonitor {
       try {
         callback(stats);
       } catch (error) {
-        logger.error('Error in performance callback', 'performance', error);
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error in performance callback:', error);
+        }
       }
     });
   }
@@ -138,8 +121,6 @@ export class WebGLResourceTracker {
     materials: 0,
     programs: 0
   };
-  private lastLogTime = 0;
-  private logInterval = 10000; // Log every 10 seconds
 
   static getInstance(): WebGLResourceTracker {
     if (!this.instance) {
@@ -150,7 +131,6 @@ export class WebGLResourceTracker {
 
   trackTexture(): void {
     this.resources.textures++;
-    this.throttledLog();
   }
 
   releaseTexture(): void {
@@ -159,7 +139,6 @@ export class WebGLResourceTracker {
 
   trackGeometry(): void {
     this.resources.geometries++;
-    this.throttledLog();
   }
 
   releaseGeometry(): void {
@@ -168,7 +147,6 @@ export class WebGLResourceTracker {
 
   trackMaterial(): void {
     this.resources.materials++;
-    this.throttledLog();
   }
 
   releaseMaterial(): void {
@@ -177,32 +155,10 @@ export class WebGLResourceTracker {
 
   trackProgram(): void {
     this.resources.programs++;
-    this.throttledLog();
   }
 
   releaseProgram(): void {
     this.resources.programs = Math.max(0, this.resources.programs - 1);
-  }
-
-  private throttledLog(): void {
-    const now = performance.now();
-    const totalResources = this.getTotalResources();
-    
-    // Log if it's been a while or if resource count is high
-    if (now - this.lastLogTime > this.logInterval || totalResources > 100) {
-      if (totalResources > 100) {
-        logger.warn('High WebGL resource usage', 'webgl-tracker', {
-          total: totalResources,
-          breakdown: this.resources
-        });
-      } else {
-        logger.debug('WebGL resource usage', 'webgl-tracker', {
-          total: totalResources,
-          breakdown: this.resources
-        });
-      }
-      this.lastLogTime = now;
-    }
   }
 
   getResourceCount(): typeof this.resources {
@@ -214,7 +170,6 @@ export class WebGLResourceTracker {
   }
 
   reset(): void {
-    logger.debug('Resetting WebGL resources', 'webgl-tracker');
     this.resources = {
       textures: 0,
       geometries: 0,
@@ -224,10 +179,11 @@ export class WebGLResourceTracker {
   }
 
   logResources(): void {
-    logger.debug('WebGL Resources', 'webgl-tracker', {
-      resources: this.resources,
-      total: this.getTotalResources()
-    });
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('WebGL Resources:', this.resources);
+      console.log('Total Resources:', this.getTotalResources());
+    }
   }
 }
 

@@ -17,14 +17,9 @@ import UpgradeModal from "@/components/UpgradeModal";
 import { StudioErrorBoundary } from "@/components/studio/StudioErrorBoundary";
 import { useStudioState } from "@/components/studio/hooks/useStudioState";
 import { useStudioHandlers } from "@/components/studio/hooks/useStudioHandlers";
-import { ProductionMonitor } from "@/components/production/ProductionMonitor";
-import DevelopmentDebugPanel from "@/components/debug/DevelopmentDebugPanel";
-import { logger } from "@/utils/logLevelManager";
-import { useCallback, useMemo } from "react";
 
 const Studio = () => {
-  // Reduced logging - only log component mount, not every render
-  logger.debug('Studio component mounted', 'studio');
+  console.log('🎬 [STUDIO] Component rendering with security enforcement...');
 
   // Use EnhancedAuth for secure authentication
   const { user: authUser, isLoading: authLoading, session } = useEnhancedAuth();
@@ -88,10 +83,8 @@ const Studio = () => {
     celebrationPlan
   } = useEnhancedUpgradeModal();
 
-  // Memoize computed values to prevent unnecessary re-renders
-  const displayModelUrl = useMemo(() => {
-    return customModelUrl || textTo3DProgress.modelUrl || progress.modelUrl;
-  }, [customModelUrl, textTo3DProgress.modelUrl, progress.modelUrl]);
+  // Determine which model URL to display
+  const displayModelUrl = customModelUrl || textTo3DProgress.modelUrl || progress.modelUrl;
 
   // Add camera progress tracking
   const { cameraProgress, resetProgress: resetCameraProgress } = useCameraProgress(progress, displayModelUrl);
@@ -124,27 +117,27 @@ const Studio = () => {
     showUpgradeModal
   });
 
-  // Memoize wrapper functions to prevent re-creation on every render
-  const wrappedOnGenerate = useCallback(async (prompt: string, style: string) => {
+  // Create wrapper functions that match StudioLayout expectations
+  const wrappedOnGenerate = async (prompt: string, style: string) => {
     await onGenerate(prompt, style);
-  }, [onGenerate]);
+  };
 
-  const wrappedHandleTextTo3D = useCallback(async (prompt: string, artStyle: string, negativePrompt: string = "") => {
+  const wrappedHandleTextTo3D = async (prompt: string, artStyle: string, negativePrompt: string = "") => {
     await handleTextTo3D(prompt, artStyle, negativePrompt);
-  }, [handleTextTo3D]);
+  };
 
-  const wrappedHandleTextTo3DWithConfig = useCallback(async (config: any) => {
+  const wrappedHandleTextTo3DWithConfig = async (config: any) => {
     await handleTextTo3DWithConfig(config);
-  }, [handleTextTo3DWithConfig]);
+  };
 
-  const wrappedHandleModelUpload = useCallback(async (figurineId: string, file: File) => {
+  const wrappedHandleModelUpload = async (figurineId: string, file: File) => {
     handleModelUpload(file);
-  }, [handleModelUpload]);
+  };
 
   // Enhanced camera image capture with security validation
-  const handleCameraImageCapture = useCallback(async (imageBlob: Blob) => {
+  const handleCameraImageCapture = async (imageBlob: Blob) => {
     try {
-      logger.debug('Camera image captured, starting processing', 'camera');
+      console.log('📸 [CAMERA] Image captured, starting secure processing...');
       
       // Validate blob
       if (!imageBlob || imageBlob.size === 0) {
@@ -161,7 +154,7 @@ const Studio = () => {
         throw new Error('Captured data is not a valid image');
       }
       
-      logger.info('Image validation passed', 'camera', {
+      console.log('✅ [CAMERA] Image validation passed:', {
         size: imageBlob.size,
         type: imageBlob.type
       });
@@ -175,7 +168,7 @@ const Studio = () => {
       // Generate a filename for the captured image
       const fileName = `camera-capture-${Date.now()}.jpg`;
       
-      logger.debug('Starting 3D conversion for captured image', 'camera');
+      console.log('📸 [CAMERA] Starting secure 3D conversion for captured image...');
       
       // Enhanced configuration for camera captures
       const cameraConfig = {
@@ -195,10 +188,10 @@ const Studio = () => {
         false // shouldUpdateExisting: false to create new figurine records
       );
       
-      logger.info('3D conversion initiated successfully', 'camera');
+      console.log('✅ [CAMERA] Secure 3D conversion initiated successfully - will create new figurine');
       
     } catch (error) {
-      logger.error('Camera processing failed', 'camera', error);
+      console.error('❌ [CAMERA] Secure camera processing failed:', error);
       
       // Enhanced error handling for camera captures
       let errorMessage = 'Failed to process camera image';
@@ -218,6 +211,8 @@ const Studio = () => {
         }
       }
       
+      console.error('❌ [CAMERA] Error details:', errorMessage);
+      
       // Show user-friendly error message
       toast({
         title: "Camera Processing Failed",
@@ -228,30 +223,16 @@ const Studio = () => {
       // Update camera progress to show error state
       resetCameraProgress();
     }
-  }, [generate3DModel, resetCameraProgress, toast]);
+  };
 
-  // Memoize computed values
-  const shouldModelViewerLoad = useMemo(() => {
-    return !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
-  }, [isGenerating, generationModalOpen, isGeneratingTextTo3D, displayModelUrl]);
+  // Determine if ModelViewer should show loading
+  const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
-  logger.debug('Studio rendering with auth state', 'studio', { 
-    isAuthenticated, 
-    hasUser: !!authUser 
-  });
+  console.log('✅ [STUDIO] Rendering with secure auth state:', { isAuthenticated, hasUser: !!authUser });
 
   return (
     <SecurityEnforcedRoute requireVerification={true}>
       <StudioErrorBoundary>
-        {/* Production monitoring - only shows errors in production */}
-        <ProductionMonitor 
-          enableErrorReporting={true}
-          enablePerformanceTracking={false}
-        />
-        
-        {/* Development debug panel - only shows in development */}
-        <DevelopmentDebugPanel visible={process.env.NODE_ENV === 'development'} />
-        
         <div className="min-h-screen bg-figuro-dark">
           <Header />
           <div className="pt-20">

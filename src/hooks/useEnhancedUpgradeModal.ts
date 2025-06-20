@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useOptimizedAuth } from "@/components/auth/OptimizedAuthProvider";
+import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 
 export type UpgradeModalAction = "image_generation" | "model_conversion" | "model_remesh";
 
@@ -20,7 +20,7 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
   const [upgradeModalAction, setUpgradeModalAction] = useState<UpgradeModalAction | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationPlan, setCelebrationPlan] = useState("Premium");
-  const { user } = useOptimizedAuth();
+  const { user } = useEnhancedAuth();
 
   const showUpgradeModal = (action: UpgradeModalAction) => {
     // Only show upgrade modal if user is authenticated

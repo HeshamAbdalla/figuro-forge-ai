@@ -1,12 +1,11 @@
 
-import { useState, useCallback, memo } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import ExamplePrompts from "@/components/ExamplePrompts";
 import { Sparkles } from "lucide-react";
-import { logger } from "@/utils/logLevelManager";
 
 const ART_STYLES = [
   { id: "isometric", name: "Isometric Skeuomorphic" },
@@ -24,24 +23,21 @@ interface PromptFormProps {
   isGenerating: boolean;
 }
 
-const PromptForm = memo(({ onGenerate, isGenerating }: PromptFormProps) => {
+const PromptForm = ({ onGenerate, isGenerating }: PromptFormProps) => {
   const [prompt, setPrompt] = useState("");
-  const [style, setStyle] = useState("isometric");
+  const [style, setStyle] = useState("isometric"); // Isometric is already the default
 
-  logger.debug('PromptForm: Component rendered', 'prompt-form-perf');
-
-  const handleSubmit = useCallback((e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim()) return;
-    
-    logger.info('PromptForm: Generating figurine', 'prompt-form', { prompt, style });
     onGenerate(prompt, style);
-  }, [prompt, style, onGenerate]);
+  };
 
-  const handleExampleSelect = useCallback((examplePrompt: string) => {
-    logger.debug('PromptForm: Example prompt selected', 'prompt-form', { examplePrompt });
+  const handleExampleSelect = (examplePrompt: string) => {
     setPrompt(examplePrompt);
-  }, []);
+    // Optionally auto-submit the form with the example
+    // onGenerate(examplePrompt, style);
+  };
 
   return (
     <div>
@@ -112,8 +108,6 @@ const PromptForm = memo(({ onGenerate, isGenerating }: PromptFormProps) => {
       <ExamplePrompts onSelectPrompt={handleExampleSelect} />
     </div>
   );
-});
-
-PromptForm.displayName = 'PromptForm';
+};
 
 export default PromptForm;

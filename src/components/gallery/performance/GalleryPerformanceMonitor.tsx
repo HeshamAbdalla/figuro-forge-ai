@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { sharedResourcePool } from "./SharedResourcePool";
 import { webGLContextTracker } from "@/components/model-viewer/utils/resourceManager";
-import { logger } from "@/utils/logLevelManager";
 
 interface PerformanceStats {
   fps: number;
@@ -38,8 +37,6 @@ const GalleryPerformanceMonitor: React.FC<GalleryPerformanceMonitorProps> = ({
     // Only show in development
     if (!visible || process.env.NODE_ENV !== 'development') return;
 
-    logger.debug('Gallery performance monitor started', 'gallery-perf');
-
     const updateStats = () => {
       const now = performance.now();
       const deltaTime = now - lastFrameTime;
@@ -58,34 +55,22 @@ const GalleryPerformanceMonitor: React.FC<GalleryPerformanceMonitorProps> = ({
       // Get resource pool stats
       const resourcePoolStats = sharedResourcePool.getStats();
 
-      const newStats = {
+      setStats({
         fps: Math.round(fps * 10) / 10,
         memoryUsage: Math.round(memoryUsage * 10) / 10,
         activeContexts,
         resourcePoolStats,
         renderTime: Math.round(deltaTime * 10) / 10
-      };
+      });
 
-      setStats(newStats);
       setLastFrameTime(now);
       setFrameCount(prev => prev + 1);
-
-      // Throttled logging - only log performance issues
-      if (fps < 30 || memoryUsage > 200 || activeContexts > 10) {
-        logger.warn('Gallery performance issue', 'gallery-perf', {
-          fps: newStats.fps,
-          memory: newStats.memoryUsage + 'MB',
-          contexts: activeContexts,
-          resources: resourcePoolStats
-        });
-      }
     };
 
     const interval = setInterval(updateStats, 1000); // Update every second
 
     return () => {
       clearInterval(interval);
-      logger.debug('Gallery performance monitor stopped', 'gallery-perf');
     };
   }, [visible, lastFrameTime]);
 
