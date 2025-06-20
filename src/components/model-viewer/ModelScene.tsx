@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera, Environment } from "@react-three/drei";
 import { Suspense } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 import DummyBox from "./DummyBox";
@@ -193,6 +193,10 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
           dampingFactor={0.05}
           maxDistance={isPreview ? 50 : 100}
           minDistance={1}
+        />
+        <Environment 
+          preset="sunset" 
+          resolution={isPreview ? 64 : 256}
         />
       </Canvas>
       

@@ -1,7 +1,7 @@
 
 import React, { Suspense, useState, useEffect, useRef, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { ErrorBoundary } from "@/components/model-viewer/ErrorBoundary";
 import DummyBox from "@/components/model-viewer/DummyBox";
@@ -331,6 +331,7 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
               enableZoom={false}
               enableRotate={false}
             />
+            <Environment preset="sunset" />
           </Canvas>
         </ErrorBoundary>
       ) : (
