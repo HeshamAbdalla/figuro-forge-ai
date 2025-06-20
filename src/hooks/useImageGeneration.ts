@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
 import { saveFigurine, updateFigurineWithModelUrl } from "@/services/figurineService";
 import { generateImage } from "@/services/generationService";
 import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
@@ -36,6 +37,7 @@ export const useImageGeneration = () => {
   
   // Add subscription hook for usage management
   const { canPerformAction, consumeAction, getUpgradeRecommendation } = useSubscription();
+  const { showUpgradeModal } = useEnhancedUpgradeModal();
 
   // Update the ref when modelUrl changes
   useEffect(() => {
@@ -463,25 +465,18 @@ export const useImageGeneration = () => {
       throw new Error('Authentication required to generate figurines');
     }
 
-    // Check if user can perform image generation
+    // FIXED: Check if user can perform IMAGE GENERATION (not model conversion)
     if (!canPerformAction('image_generation')) {
-      console.log(`🚫 [GENERATION] Request ${requestId} blocked - usage limit reached`);
+      console.log(`🚫 [GENERATION] Request ${requestId} blocked - IMAGE GENERATION usage limit reached`);
       
-      const recommendation = getUpgradeRecommendation('image_generation');
-      
-      toast({
-        title: "Generation limit reached",
-        description: recommendation 
-          ? `You've reached your daily limit. Upgrade to ${recommendation.recommendedPlan} for more generations.`
-          : "You've reached your daily generation limit. Please upgrade your plan or wait until tomorrow.",
-        variant: "destructive",
-      });
+      // Show upgrade modal specifically for image generation limits
+      showUpgradeModal('image_generation');
       
       return { 
         success: false, 
         needsApiKey: false, 
         needsUpgrade: true,
-        error: "Generation limit reached" 
+        error: "You've reached your daily image generation limit. Please upgrade to continue." 
       };
     }
 
@@ -539,10 +534,10 @@ export const useImageGeneration = () => {
         console.log(`✅ [GENERATION] Request ${requestId} successfully generated image via ${result.method} method`);
       }
       
-      // Consume the usage credit after successful generation
+      // FIXED: Consume the IMAGE GENERATION usage credit after successful generation
       const consumeSuccess = await consumeAction('image_generation');
       if (!consumeSuccess) {
-        console.error(`❌ [GENERATION] Request ${requestId} failed to consume usage credit`);
+        console.error(`❌ [GENERATION] Request ${requestId} failed to consume IMAGE GENERATION usage credit`);
         // Continue with the generation since we already created the image
         toast({
           title: "Usage tracking error",
@@ -550,7 +545,7 @@ export const useImageGeneration = () => {
           variant: "default",
         });
       } else {
-        console.log(`✅ [GENERATION] Request ${requestId} successfully consumed usage credit`);
+        console.log(`✅ [GENERATION] Request ${requestId} successfully consumed IMAGE GENERATION usage credit`);
       }
       
       // Save the figurine to Supabase if we have an image
@@ -616,17 +611,12 @@ export const useImageGeneration = () => {
       return;
     }
 
-    // Check if user can perform model conversion
+    // FIXED: Check if user can perform MODEL CONVERSION (not image generation)
     if (!canPerformAction('model_conversion')) {
-      const recommendation = getUpgradeRecommendation('model_conversion');
+      console.log("🚫 [CONVERSION] Blocked - MODEL CONVERSION usage limit reached");
       
-      toast({
-        title: "Conversion limit reached",
-        description: recommendation 
-          ? `You've reached your monthly limit. Upgrade to ${recommendation.recommendedPlan} for more conversions.`
-          : "You've reached your monthly conversion limit. Please upgrade your plan or wait until next month.",
-        variant: "destructive",
-      });
+      // Show upgrade modal specifically for model conversion limits
+      showUpgradeModal('model_conversion');
       return;
     }
 
@@ -685,17 +675,17 @@ export const useImageGeneration = () => {
         throw new Error("No task ID returned from conversion service");
       }
       
-      // Consume the usage credit after successful conversion start
+      // FIXED: Consume the MODEL CONVERSION usage credit after successful conversion start
       const consumeSuccess = await consumeAction('model_conversion');
       if (!consumeSuccess) {
-        console.error('❌ [CONVERSION] Failed to consume model conversion credit');
+        console.error('❌ [CONVERSION] Failed to consume MODEL CONVERSION credit');
         toast({
           title: "Usage tracking error",
           description: "Conversion started but usage tracking failed. Please contact support if this persists.",
           variant: "default",
         });
       } else {
-        console.log('✅ [CONVERSION] Successfully consumed model conversion credit');
+        console.log('✅ [CONVERSION] Successfully consumed MODEL CONVERSION credit');
       }
       
       console.log("Conversion task started with ID:", data.taskId);

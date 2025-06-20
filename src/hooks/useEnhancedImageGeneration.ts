@@ -1,7 +1,7 @@
-
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { generateImage, cleanupImageUrl, validateImageForDisplay } from '@/services/generationService';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
 import { useEnhancedUpgradeModal } from '@/hooks/useEnhancedUpgradeModal';
 
 interface GenerationState {
@@ -38,6 +38,7 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
   });
 
   const { toast } = useToast();
+  const { canPerformAction, consumeAction } = useSubscription();
   const { showUpgradeModal } = useEnhancedUpgradeModal();
   
   // Use ref to track cleanup to prevent memory leaks
@@ -51,6 +52,21 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
       isRetry,
       timestamp: new Date().toISOString()
     });
+
+    // FIXED: Check if user can perform IMAGE GENERATION before starting
+    if (!canPerformAction('image_generation')) {
+      console.log('📈 [IMAGE-GENERATION-HOOK] IMAGE GENERATION limit reached, showing upgrade modal');
+      showUpgradeModal('image_generation');
+      
+      setState(prev => ({
+        ...prev,
+        isGenerating: false,
+        error: "You've reached your daily image generation limit. Please upgrade to continue.",
+        retryCount: isRetry ? prev.retryCount : prev.retryCount + 1
+      }));
+      
+      return;
+    }
 
     setState(prev => ({
       ...prev,
@@ -74,12 +90,6 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
       });
 
       if (result.error) {
-        // Handle specific error types
-        if (result.error.includes('limit reached') || result.error.includes('upgrade')) {
-          console.log('📈 [IMAGE-GENERATION-HOOK] Usage limit reached, showing upgrade modal');
-          showUpgradeModal('image_generation');
-        }
-
         setState(prev => ({
           ...prev,
           isGenerating: false,
@@ -115,6 +125,19 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
         });
 
         return;
+      }
+
+      // FIXED: Consume IMAGE GENERATION credit after successful generation
+      const consumeSuccess = await consumeAction('image_generation');
+      if (!consumeSuccess) {
+        console.error('❌ [IMAGE-GENERATION-HOOK] Failed to consume IMAGE GENERATION credit');
+        toast({
+          title: "Usage tracking error",
+          description: "Image generated but usage tracking failed. Please contact support if this persists.",
+          variant: "default",
+        });
+      } else {
+        console.log('✅ [IMAGE-GENERATION-HOOK] Successfully consumed IMAGE GENERATION credit');
       }
 
       // Clean up previous image URL to prevent memory leaks
@@ -156,7 +179,7 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
         variant: "destructive",
       });
     }
-  }, [toast, showUpgradeModal]);
+  }, [toast, showUpgradeModal, canPerformAction, consumeAction]);
 
   const generateImageWrapper = useCallback((prompt: string, style: string) => {
     return handleGeneration(prompt, style, false);
