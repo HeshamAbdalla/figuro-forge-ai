@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
-import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
+import { useOptimizedAuth } from "@/components/auth/OptimizedAuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
@@ -29,7 +30,7 @@ const UpgradeModal = ({
   actionType,
 }: UpgradeModalProps) => {
   const navigate = useNavigate();
-  const { user } = useEnhancedAuth();
+  const { user } = useOptimizedAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const getDefaultDescription = () => {
