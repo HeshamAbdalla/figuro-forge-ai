@@ -1,9 +1,8 @@
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { TextTo3DConfig } from "@/components/studio/types/textTo3DConfig";
-import type { TextTo3DModelInfo } from "@/utils/textTo3DModelUtils";
+import type { TextTo3DModelInfo } from "@/components/model-viewer/types/ModelViewerTypes";
 
 export interface TextTo3DResult {
   success: boolean;
