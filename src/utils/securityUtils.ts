@@ -35,7 +35,10 @@ export class SecurityManager {
       const data = await response.json();
       this.ipAddress = data.ip;
     } catch (error) {
-      console.log('IP detection skipped:', error instanceof Error ? error.message : 'Unknown');
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('IP detection skipped:', error instanceof Error ? error.message : 'Unknown');
+      }
     }
   }
 
@@ -56,7 +59,10 @@ export class SecurityManager {
             p_success: event.success ?? true
           });
         } catch (error) {
-          console.log('Security logging failed (non-blocking):', error);
+          // Only log in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Security logging failed (non-blocking):', error);
+          }
         }
       }, 0);
     } catch (error) {
@@ -67,8 +73,6 @@ export class SecurityManager {
   // Simplified rate limit check
   async checkRateLimit(endpoint: string, limit: number = 100, windowMinutes: number = 60): Promise<boolean> {
     try {
-      console.log(`🔍 [SECURITY] Quick rate limit check for ${endpoint}...`);
-      
       const { data: { user } } = await supabase.auth.getUser();
       
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -86,15 +90,24 @@ export class SecurityManager {
       const { data, error } = await Promise.race([checkPromise, timeoutPromise]);
 
       if (error) {
-        console.log('⚠️ [SECURITY] Rate limit check failed, allowing:', error.message);
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('⚠️ [SECURITY] Rate limit check failed, allowing:', error.message);
+        }
         return true; // Fail open
       }
 
       const canProceed = data === true;
-      console.log(`${canProceed ? '✅' : '❌'} [SECURITY] Rate limit result:`, canProceed);
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`${canProceed ? '✅' : '❌'} [SECURITY] Rate limit result:`, canProceed);
+      }
       return canProceed;
     } catch (error) {
-      console.log('⚠️ [SECURITY] Rate limit error, allowing:', error instanceof Error ? error.message : 'Unknown');
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⚠️ [SECURITY] Rate limit error, allowing:', error instanceof Error ? error.message : 'Unknown');
+      }
       return true; // Always fail open
     }
   }

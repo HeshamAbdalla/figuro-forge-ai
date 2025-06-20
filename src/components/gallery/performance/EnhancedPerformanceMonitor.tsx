@@ -56,9 +56,9 @@ const EnhancedPerformanceMonitor: React.FC<EnhancedPerformanceMonitorProps> = ({
   const lastTimeRef = useRef(performance.now());
   const fpsHistoryRef = useRef<number[]>([]);
 
-  // Performance monitoring loop
+  // Performance monitoring loop (development only)
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || process.env.NODE_ENV !== 'development') return;
 
     const updateMetrics = () => {
       const now = performance.now();
@@ -151,7 +151,8 @@ const EnhancedPerformanceMonitor: React.FC<EnhancedPerformanceMonitorProps> = ({
     return 'text-red-400';
   };
 
-  if (!visible) return null;
+  // Only show in development
+  if (!visible || process.env.NODE_ENV !== 'development') return null;
 
   return (
     <div className={getPositionClasses()}>
@@ -160,7 +161,7 @@ const EnhancedPerformanceMonitor: React.FC<EnhancedPerformanceMonitorProps> = ({
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Activity size={16} className="text-blue-400" />
-              Performance Monitor
+              Performance Monitor (Dev)
             </CardTitle>
             <div className="flex items-center gap-1">
               {alerts.length > 0 && (

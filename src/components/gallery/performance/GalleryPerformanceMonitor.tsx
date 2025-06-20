@@ -34,7 +34,8 @@ const GalleryPerformanceMonitor: React.FC<GalleryPerformanceMonitorProps> = ({
   const [frameCount, setFrameCount] = useState(0);
 
   useEffect(() => {
-    if (!visible) return;
+    // Only show in development
+    if (!visible || process.env.NODE_ENV !== 'development') return;
 
     const updateStats = () => {
       const now = performance.now();
@@ -73,6 +74,7 @@ const GalleryPerformanceMonitor: React.FC<GalleryPerformanceMonitorProps> = ({
     };
   }, [visible, lastFrameTime]);
 
+  // Only show in development
   if (!visible || process.env.NODE_ENV !== 'development') {
     return null;
   }
@@ -92,7 +94,7 @@ const GalleryPerformanceMonitor: React.FC<GalleryPerformanceMonitorProps> = ({
   return (
     <div className="fixed top-4 right-4 z-50 bg-black/90 text-white p-3 rounded-lg font-mono text-xs">
       <div className="space-y-1">
-        <div className="text-white/60 font-bold">Gallery Performance</div>
+        <div className="text-white/60 font-bold">Gallery Performance (Dev)</div>
         
         <div className={`${getPerformanceColor(stats.fps)}`}>
           FPS: {stats.fps}

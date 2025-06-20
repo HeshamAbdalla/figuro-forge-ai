@@ -25,7 +25,10 @@ export class StudioErrorBoundary extends React.Component<StudioErrorBoundaryProp
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error('🚨 [STUDIO-ERROR-BOUNDARY] Caught error:', error, errorInfo);
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('🚨 [STUDIO-ERROR-BOUNDARY] Caught error:', error, errorInfo);
+    }
   }
 
   handleRefresh = () => {

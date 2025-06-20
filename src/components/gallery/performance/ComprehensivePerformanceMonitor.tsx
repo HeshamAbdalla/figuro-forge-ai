@@ -74,7 +74,8 @@ export const ComprehensivePerformanceMonitor: React.FC<ComprehensivePerformanceM
   const renderTimesRef = useRef<number[]>([]);
 
   useEffect(() => {
-    if (!visible) return;
+    // Only show in development
+    if (!visible || process.env.NODE_ENV !== 'development') return;
 
     // Initialize WebGL capabilities detection
     const detectWebGLCapabilities = () => {
@@ -169,6 +170,7 @@ export const ComprehensivePerformanceMonitor: React.FC<ComprehensivePerformanceM
     };
   }, [visible, updateInterval]);
 
+  // Only show in development
   if (!visible || process.env.NODE_ENV !== 'development') {
     return null;
   }
@@ -206,7 +208,7 @@ export const ComprehensivePerformanceMonitor: React.FC<ComprehensivePerformanceM
     <div className={getPositionStyles()}>
       <div className="space-y-2 min-w-64">
         <div className="text-white/80 font-bold border-b border-white/20 pb-1">
-          Performance Monitor
+          Performance Monitor (Dev)
         </div>
         
         {/* Rendering Performance */}

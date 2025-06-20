@@ -53,13 +53,13 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
     }
   }));
 
-  // Initialize performance monitoring
+  // Initialize performance monitoring (development only)
   useEffect(() => {
-    if (enablePerformanceMonitoring) {
+    if (enablePerformanceMonitoring && process.env.NODE_ENV === 'development') {
       const handlePerformanceUpdate = (stats: PerformanceStats) => {
         setPerformanceStats(stats);
         
-        // Log performance warnings
+        // Log performance warnings in development only
         if (stats.fps < 30) {
           console.warn(`Low FPS detected: ${stats.fps.toFixed(1)}`);
         }
@@ -83,9 +83,10 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
   
   // Stabilize the source to prevent rapid changes
   useEffect(() => {
-    // Only update if there's been a significant change in modelUrl
     if (modelUrl !== currentSourceRef.current) {
-      console.log("ModelScene: URL source changed to", modelUrl);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("ModelScene: URL source changed to", modelUrl);
+      }
       
       const current = currentSourceRef.current;
       currentSourceRef.current = modelUrl;
@@ -106,7 +107,9 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
   // Separate effect for blob changes
   useEffect(() => {
     if (modelBlob && modelBlob !== currentSourceRef.current) {
-      console.log("ModelScene: Blob source changed");
+      if (process.env.NODE_ENV === 'development') {
+        console.log("ModelScene: Blob source changed");
+      }
       
       setLoadKey(`load-${Date.now()}`);
       currentSourceRef.current = modelBlob;
@@ -121,7 +124,9 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
   }, [modelBlob]);
 
   const handleModelError = (error: any) => {
-    console.error("ModelScene: Error in 3D model:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("ModelScene: Error in 3D model:", error);
+    }
     onModelError(error);
   };
 
@@ -200,7 +205,7 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
         />
       </Canvas>
       
-      {/* Performance Stats Display (Development Mode) */}
+      {/* Performance Stats Display (Development Mode Only) */}
       {enablePerformanceMonitoring && performanceStats && process.env.NODE_ENV === 'development' && (
         <div className="absolute top-2 left-2 bg-black/80 text-white text-xs p-2 rounded font-mono">
           <div>FPS: {performanceStats.fps.toFixed(1)}</div>

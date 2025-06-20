@@ -70,11 +70,11 @@ const ModelContent = ({
   // Check URL validity when component mounts or URL changes
   useEffect(() => {
     const checkUrl = async () => {
-      console.log(`ModelContent: Checking URL validity for ${cleanUrl}`);
-      
       // First check if URL is obviously expired
       if (isUrlExpiredOrInvalid(cleanUrl)) {
-        console.warn(`Model URL appears to be expired: ${cleanUrl}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`Model URL appears to be expired: ${cleanUrl}`);
+        }
         setUrlValidated(false);
         onModelError(new Error('Model URL has expired'));
         return;
@@ -82,7 +82,6 @@ const ModelContent = ({
 
       // For preview mode, we'll assume URLs are valid to avoid CORS issues
       // The actual loading will handle any accessibility problems
-      console.log(`ModelContent: URL validated for ${cleanUrl}`);
       setUrlValidated(true);
     };
 
@@ -97,7 +96,9 @@ const ModelContent = ({
     modelId: modelId,
     priority: 1, // Lower priority for previews
     onError: (err) => {
-      console.error(`Error loading model ${cleanUrl}:`, err);
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Error loading model ${cleanUrl}:`, err);
+      }
       onModelError(err);
     }
   });
@@ -105,8 +106,6 @@ const ModelContent = ({
   // Apply preview simplification to the loaded model
   useEffect(() => {
     if (model) {
-      console.log(`ModelContent: Applying preview simplification for: ${cleanUrl}`);
-      
       // Dispose previous processed model
       if (processedModelRef.current && processedModelRef.current !== model) {
         disposeModel(processedModelRef.current);
@@ -129,27 +128,22 @@ const ModelContent = ({
   
   // Show loading while validating URL
   if (urlValidated === null) {
-    console.log(`ModelContent: Validating URL for ${cleanUrl}`);
     return <LoadingSpinner />;
   }
   
   // Show error state if URL is invalid/expired
   if (urlValidated === false) {
-    console.log(`ModelContent: URL invalid for ${cleanUrl}`);
     return <DummyBox />;
   }
   
   if (loading) {
-    console.log(`ModelContent: Loading model for ${cleanUrl}`);
     return <LoadingSpinner />;
   }
   
   if (error || !processedModelRef.current) {
-    console.error(`ModelContent: Failed to load model: ${cleanUrl}`, error);
     return <DummyBox />;
   }
   
-  console.log(`ModelContent: Rendering model for ${cleanUrl}`);
   return (
     <primitive object={processedModelRef.current} scale={1.5} />
   );
@@ -197,7 +191,9 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
   
   // Handle errors and provide meaningful feedback
   const handleError = (error: any) => {
-    console.error(`ModelPreview error for ${fileName}:`, error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`ModelPreview error for ${fileName}:`, error);
+    }
     
     let message = "Model failed to load";
     if (error.message) {
@@ -221,7 +217,9 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
 
   // Handle WebGL context loss
   const handleContextLoss = () => {
-    console.warn(`WebGL context lost for model preview: ${fileName}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`WebGL context lost for model preview: ${fileName}`);
+    }
     setContextLost(true);
     setHasError(true);
     setErrorMessage("WebGL context lost - too many 3D models");
@@ -229,22 +227,20 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
 
   // Reset error state when URL changes
   useEffect(() => {
-    console.log(`ModelPreview: URL changed for ${fileName}, resetting error state`);
     setHasError(false);
     setErrorMessage("");
     setContextLost(false);
   }, [cleanModelUrl, fileName]);
 
-  // Monitor WebGL context usage
+  // Monitor WebGL context usage (development only)
   useEffect(() => {
-    if (isIntersecting && webGLContextTracker.isNearingLimit()) {
+    if (isIntersecting && webGLContextTracker.isNearingLimit() && process.env.NODE_ENV === 'development') {
       console.warn(`WebGL context limit approaching. Active contexts: ${webGLContextTracker.getActiveContextCount()}`);
     }
   }, [isIntersecting]);
 
   // If there's an error, show the placeholder with error info
   if (hasError) {
-    console.log(`ModelPreview: Showing error state for ${fileName}: ${errorMessage}`);
     return (
       <div className="w-full h-full">
         <ModelPlaceholder fileName={`${fileName} (${errorMessage})`} />
@@ -254,21 +250,12 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
 
   // Don't render anything if context is lost
   if (contextLost) {
-    console.log(`ModelPreview: Context lost for ${fileName}`);
     return (
       <div className="w-full h-full">
         <ModelPlaceholder fileName={`${fileName} (WebGL limit reached)`} />
       </div>
     );
   }
-
-  console.log(`ModelPreview: Rendering for ${fileName}`, {
-    isIntersecting,
-    wasEverVisible,
-    hasError,
-    contextLost,
-    cleanModelUrl
-  });
 
   return (
     <div className="w-full h-full" ref={targetRef as React.RefObject<HTMLDivElement>}>
@@ -291,8 +278,6 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
             frameloop="demand"
             onContextMenu={(e) => e.preventDefault()}
             onCreated={({ gl }) => {
-              console.log(`Canvas created for ${fileName}`);
-              
               // Register context creation
               webGLContextTracker.registerContext();
               
@@ -304,7 +289,9 @@ const ModelPreview: React.FC<ModelPreviewProps> = ({ modelUrl, fileName }) => {
               
               // Handle context restore
               gl.domElement.addEventListener('webglcontextrestored', () => {
-                console.log(`WebGL context restored for: ${fileName}`);
+                if (process.env.NODE_ENV === 'development') {
+                  console.log(`WebGL context restored for: ${fileName}`);
+                }
                 setContextLost(false);
                 setHasError(false);
               });

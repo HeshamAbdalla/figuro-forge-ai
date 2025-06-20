@@ -42,8 +42,6 @@ const OptimizedModelContent: React.FC<OptimizedModelContentProps> = ({
 
     const loadModel = async () => {
       try {
-        console.log(`Loading model with intelligent cache: ${modelId}`);
-        
         // Use intelligent cache with high priority for visible models
         const loadedModel = await intelligentModelCache.getModel(modelUrl, 1.0);
         
@@ -51,10 +49,10 @@ const OptimizedModelContent: React.FC<OptimizedModelContentProps> = ({
         
         setModel(loadedModel);
         setLoading(false);
-        
-        console.log(`Model loaded successfully: ${modelId}`);
       } catch (err) {
-        console.error(`Failed to load model ${modelId}:`, err);
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`Failed to load model ${modelId}:`, err);
+        }
         if (isMounted) {
           setError(err);
           setLoading(false);
@@ -73,11 +71,12 @@ const OptimizedModelContent: React.FC<OptimizedModelContentProps> = ({
   // Create LOD system when model loads
   useEffect(() => {
     if (model && !lodRef.current) {
-      console.log(`Creating LOD system for ${modelId}`);
       try {
         lodRef.current = AdvancedLODSystem.createLODFromModel(model, modelId);
       } catch (error) {
-        console.warn(`Failed to create LOD for ${modelId}, using original model:`, error);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`Failed to create LOD for ${modelId}, using original model:`, error);
+        }
         lodRef.current = null;
       }
     }
@@ -109,7 +108,9 @@ const OptimizedModelContent: React.FC<OptimizedModelContentProps> = ({
     return () => {
       if (lodRef.current) {
         lodRef.current.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
+          if (chil
+
+instanceof THREE.Mesh) {
             child.geometry?.dispose();
             if (Array.isArray(child.material)) {
               child.material.forEach(mat => mat.dispose());
@@ -185,7 +186,9 @@ const OptimizedModelPreview: React.FC<OptimizedModelPreviewProps> = ({
   }, [modelUrl, fileName]);
 
   const handleError = (error: any) => {
-    console.error(`OptimizedModelPreview error for ${fileName}:`, error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`OptimizedModelPreview error for ${fileName}:`, error);
+    }
     setHasError(true);
   };
 
@@ -194,9 +197,9 @@ const OptimizedModelPreview: React.FC<OptimizedModelPreviewProps> = ({
     setHasError(false);
   }, [modelUrl]);
 
-  // Preload model when it comes into view
+  // Preload model when it comes into view (development only)
   useEffect(() => {
-    if (isIntersecting && !hasError) {
+    if (isIntersecting && !hasError && process.env.NODE_ENV === 'development') {
       // Start preloading with medium priority
       intelligentModelCache.getModel(modelUrl, 0.7).catch(() => {
         // Ignore preload errors - they'll be handled by the actual render
@@ -243,13 +246,15 @@ const OptimizedModelPreview: React.FC<OptimizedModelPreviewProps> = ({
               gl.toneMapping = THREE.ACESFilmicToneMapping;
               gl.toneMappingExposure = 1.0;
               
-              // Set up automatic garbage collection
-              gl.setAnimationLoop(() => {
-                // Trigger cleanup periodically
-                if (Math.random() < 0.01) { // 1% chance per frame
-                  gl.renderLists.dispose();
-                }
-              });
+              // Set up automatic garbage collection (production safe)
+              if (process.env.NODE_ENV === 'development') {
+                gl.setAnimationLoop(() => {
+                  // Trigger cleanup periodically
+                  if (Math.random() < 0.01) { // 1% chance per frame
+                    gl.renderLists.dispose();
+                  }
+                });
+              }
             }}
           >
             <color attach="background" args={['#1a1a1a']} />

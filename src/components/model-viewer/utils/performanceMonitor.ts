@@ -1,6 +1,6 @@
 
 /**
- * Performance monitoring for 3D rendering
+ * Performance monitoring for 3D rendering - Production Optimized
  */
 export class PerformanceMonitor {
   private frameCount = 0;
@@ -19,12 +19,17 @@ export class PerformanceMonitor {
     this.isMonitoring = true;
     this.frameCount = 0;
     this.lastTime = performance.now();
-    console.log('Performance monitoring started');
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Performance monitoring started');
+    }
   }
 
   stop(): void {
     this.isMonitoring = false;
-    console.log('Performance monitoring stopped');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Performance monitoring stopped');
+    }
   }
 
   update(): void {
@@ -80,7 +85,10 @@ export class PerformanceMonitor {
       try {
         callback(stats);
       } catch (error) {
-        console.error('Error in performance callback:', error);
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error in performance callback:', error);
+        }
       }
     });
   }
@@ -103,7 +111,7 @@ export interface PerformanceStats {
 }
 
 /**
- * WebGL resource tracker
+ * WebGL resource tracker - Production Optimized
  */
 export class WebGLResourceTracker {
   private static instance: WebGLResourceTracker | null = null;
@@ -171,8 +179,11 @@ export class WebGLResourceTracker {
   }
 
   logResources(): void {
-    console.log('WebGL Resources:', this.resources);
-    console.log('Total Resources:', this.getTotalResources());
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('WebGL Resources:', this.resources);
+      console.log('Total Resources:', this.getTotalResources());
+    }
   }
 }
 
