@@ -44,43 +44,43 @@ export const ProductionMonitor: React.FC<ProductionMonitorProps> = ({
           toast.warning('Too many 3D models loaded. Some models may not display properly.');
         }
       }, 30000); // Check every 30 seconds
-    }
 
-    // Global error handling for unhandled errors
-    if (enableErrorReporting) {
-      const handleUnhandledError = (event: ErrorEvent) => {
-        // Only show user-friendly messages for critical errors
-        if (event.error?.message?.includes('WebGL') || 
-            event.error?.message?.includes('3D') ||
-            event.error?.message?.includes('model')) {
-          toast.error('Unable to display 3D content. Please refresh the page or try a different browser.');
-        }
-      };
-
-      const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-        // Handle critical promise rejections
-        if (event.reason?.message?.includes('network') ||
-            event.reason?.message?.includes('fetch')) {
-          toast.error('Network error occurred. Please check your connection and try again.');
-        }
-      };
-
-      window.addEventListener('error', handleUnhandledError);
-      window.addEventListener('unhandledrejection', handleUnhandledRejection);
-
-      return () => {
-        window.removeEventListener('error', handleUnhandledError);
-        window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-        
-        if (enablePerformanceTracking) {
-          globalPerformanceMonitor.removeCallback(handleCriticalPerformance);
-          globalPerformanceMonitor.stop();
-          
-          if (performanceCheckInterval) {
-            clearInterval(performanceCheckInterval);
+      // Global error handling for unhandled errors
+      if (enableErrorReporting) {
+        const handleUnhandledError = (event: ErrorEvent) => {
+          // Only show user-friendly messages for critical errors
+          if (event.error?.message?.includes('WebGL') || 
+              event.error?.message?.includes('3D') ||
+              event.error?.message?.includes('model')) {
+            toast.error('Unable to display 3D content. Please refresh the page or try a different browser.');
           }
-        }
-      };
+        };
+
+        const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+          // Handle critical promise rejections
+          if (event.reason?.message?.includes('network') ||
+              event.reason?.message?.includes('fetch')) {
+            toast.error('Network error occurred. Please check your connection and try again.');
+          }
+        };
+
+        window.addEventListener('error', handleUnhandledError);
+        window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+        return () => {
+          window.removeEventListener('error', handleUnhandledError);
+          window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+          
+          if (enablePerformanceTracking) {
+            globalPerformanceMonitor.removeCallback(handleCriticalPerformance);
+            globalPerformanceMonitor.stop();
+            
+            if (performanceCheckInterval) {
+              clearInterval(performanceCheckInterval);
+            }
+          }
+        };
+      }
     }
   }, [enableErrorReporting, enablePerformanceTracking]);
 

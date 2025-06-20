@@ -108,9 +108,7 @@ const OptimizedModelContent: React.FC<OptimizedModelContentProps> = ({
     return () => {
       if (lodRef.current) {
         lodRef.current.traverse((child) => {
-          if (chil
-
-instanceof THREE.Mesh) {
+          if (child instanceof THREE.Mesh) {
             child.geometry?.dispose();
             if (Array.isArray(child.material)) {
               child.material.forEach(mat => mat.dispose());
