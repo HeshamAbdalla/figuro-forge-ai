@@ -76,6 +76,13 @@ export const useGallery3DGeneration = () => {
       const result = await generateModelFromImage(imageUrl, filename, imageToThreeDConfig);
       
       if (!result.success) {
+        // Handle subscription-related errors specifically
+        if (result.error?.includes('monthly limit') || result.error?.includes('conversion limit')) {
+          console.log('❌ [GALLERY-3D] Subscription limit reached:', result.error);
+          // The upgrade modal is already shown by useImageTo3D, so we just need to throw the error
+          throw new Error(result.error);
+        }
+        
         throw new Error(result.error || 'Failed to generate 3D model');
       }
 
@@ -142,18 +149,21 @@ export const useGallery3DGeneration = () => {
       if (error instanceof Error) {
         if (error.message.includes('authentication') || error.message.includes('JWT')) {
           errorMessage = "Authentication expired. Please refresh the page and try again.";
-        } else if (error.message.includes('limit reached')) {
-          errorMessage = "You have reached your conversion limit. Please upgrade your plan to continue.";
+        } else if (error.message.includes('monthly limit') || error.message.includes('conversion limit')) {
+          errorMessage = error.message; // Use the specific subscription error message
         } else {
           errorMessage = error.message;
         }
       }
       
-      toast({
-        title: "3D Generation Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      // Only show toast for non-subscription errors (subscription errors show upgrade modal)
+      if (!errorMessage.includes('monthly limit') && !errorMessage.includes('conversion limit')) {
+        toast({
+          title: "3D Generation Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
       
       throw error;
     }

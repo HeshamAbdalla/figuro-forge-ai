@@ -1,7 +1,8 @@
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
 
 export interface ImageTo3DResult {
   success: boolean;
@@ -39,6 +40,10 @@ export const useImageTo3D = () => {
     downloadStatus: 'pending'
   });
   const { toast } = useToast();
+  
+  // Add subscription management and upgrade modal hooks
+  const { canPerformAction, consumeAction } = useSubscription();
+  const { showUpgradeModal } = useEnhancedUpgradeModal();
 
   // Enhanced authentication helper with better session management
   const ensureValidSession = async () => {
@@ -234,6 +239,19 @@ export const useImageTo3D = () => {
   ): Promise<ImageTo3DResult> => {
     console.log("🔄 [IMAGE-TO-3D] Starting image to 3D generation with config:", config);
     
+    // 1. Pre-generation validation: Check if user can perform the action
+    if (!canPerformAction('model_conversion')) {
+      console.log("❌ [IMAGE-TO-3D] User has reached model conversion limit");
+      
+      // Show upgrade modal for model conversion limits
+      showUpgradeModal('model_conversion');
+      
+      return {
+        success: false,
+        error: "You've reached your monthly limit for 3D model conversions. Please upgrade to continue."
+      };
+    }
+    
     // Validate input before proceeding
     const validationError = validateImageTo3DInput(imageUrl, config);
     if (validationError) {
@@ -348,6 +366,15 @@ export const useImageTo3D = () => {
         throw new Error('No task ID received from generation service');
       }
       
+      // 2. Post-generation consumption: Consume the action after successful generation start
+      const consumptionResult = await consumeAction('model_conversion');
+      if (!consumptionResult) {
+        console.warn("⚠️ [IMAGE-TO-3D] Failed to consume action, but generation already started");
+        // Don't fail the generation, just log the warning
+      } else {
+        console.log("✅ [IMAGE-TO-3D] Successfully consumed model conversion credit");
+      }
+      
       setCurrentTaskId(taskId);
       setProgress({
         status: 'processing',
@@ -390,7 +417,7 @@ export const useImageTo3D = () => {
           errorMessage = "Authentication expired. Please refresh the page and try again.";
         } else if (error.message.includes('Invalid user session')) {
           errorMessage = "Invalid user session. Please sign out and sign in again.";
-        } else if (error.message.includes('limit reached')) {
+        } else if (error.message.includes('limit reached') || error.message.includes('monthly limit')) {
           errorMessage = "You have reached your conversion limit. Please upgrade your plan to continue.";
         } else {
           errorMessage = error.message;
