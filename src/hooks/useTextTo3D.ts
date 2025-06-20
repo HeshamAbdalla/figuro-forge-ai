@@ -1,7 +1,8 @@
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
 import type { TextTo3DConfig } from "@/components/studio/types/textTo3DConfig";
 import type { TextTo3DModelInfo } from "@/components/model-viewer/types/ModelViewerTypes";
 
@@ -32,6 +33,10 @@ export const useTextTo3D = () => {
     downloadStatus: 'pending'
   });
   const { toast } = useToast();
+  
+  // Add subscription management and upgrade modal hooks
+  const { canPerformAction, consumeAction } = useSubscription();
+  const { showUpgradeModal } = useEnhancedUpgradeModal();
 
   // Enhanced authentication helper with better session management
   const ensureValidSession = async () => {
@@ -261,9 +266,22 @@ export const useTextTo3D = () => {
     });
   };
 
-  // Enhanced generation function with improved request handling
+  // Enhanced generation function with usage limits and consumption tracking
   const generateModelWithConfig = async (config: TextTo3DConfig): Promise<TextTo3DResult> => {
     console.log("🔄 [TEXT-TO-3D] Starting text to 3D generation with config:", config);
+    
+    // 1. Pre-generation validation: Check if user can perform the action
+    if (!canPerformAction('model_conversion')) {
+      console.log("❌ [TEXT-TO-3D] User has reached model conversion limit");
+      
+      // Show upgrade modal for model conversion limits
+      showUpgradeModal('model_conversion');
+      
+      return {
+        success: false,
+        error: "You've reached your monthly limit for 3D model conversions. Please upgrade to continue."
+      };
+    }
     
     // Validate input before proceeding
     const validationError = validateTextTo3DInput(config);
@@ -327,7 +345,6 @@ export const useTextTo3D = () => {
       }
 
       console.log("📤 [TEXT-TO-3D] Sending validated request body:", requestBody);
-      console.log("📤 [TEXT-TO-3D] Request body JSON:", JSON.stringify(requestBody));
       
       // Call the edge function using Supabase client (no manual headers)
       const { data, error } = await supabase.functions.invoke('text-to-3d', {
@@ -360,6 +377,15 @@ export const useTextTo3D = () => {
       const taskId = data.taskId;
       if (!taskId) {
         throw new Error('No task ID received from generation service');
+      }
+      
+      // 2. Post-generation consumption: Consume the action after successful generation start
+      const consumptionResult = await consumeAction('model_conversion');
+      if (!consumptionResult) {
+        console.warn("⚠️ [TEXT-TO-3D] Failed to consume action, but generation already started");
+        // Don't fail the generation, just log the warning
+      } else {
+        console.log("✅ [TEXT-TO-3D] Successfully consumed model conversion credit");
       }
       
       setCurrentTaskId(taskId);
