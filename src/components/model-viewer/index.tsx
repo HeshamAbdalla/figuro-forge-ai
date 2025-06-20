@@ -1,6 +1,7 @@
 
 import React from "react";
 import EnhancedModelViewer from "./EnhancedModelViewer";
+import { convertLegacyToModelInfo } from "@/utils/modelTypeDetection";
 
 interface ModelViewerProps {
   modelUrl: string | null;
@@ -14,8 +15,20 @@ interface ModelViewerProps {
   className?: string;
 }
 
-const ModelViewer: React.FC<ModelViewerProps> = (props) => {
-  return <EnhancedModelViewer {...props} />;
+const ModelViewer: React.FC<ModelViewerProps> = ({
+  modelUrl,
+  autoRotate,
+  ...restProps
+}) => {
+  // Convert legacy props to new ModelInfo format
+  const modelInfo = convertLegacyToModelInfo(modelUrl, { autoRotate });
+  
+  return (
+    <EnhancedModelViewer 
+      modelInfo={modelInfo}
+      {...restProps}
+    />
+  );
 };
 
 export default ModelViewer;
