@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -98,6 +99,26 @@ export const useTextTo3D = () => {
     }
     
     return null;
+  };
+
+  // Helper function to normalize status values to match the expected union type
+  const normalizeStatus = (status: string): 'processing' | 'completed' | 'failed' | 'SUCCEEDED' => {
+    const statusLower = status.toLowerCase();
+    
+    if (statusLower === 'succeeded' || statusLower === 'completed') {
+      return 'SUCCEEDED';
+    }
+    
+    if (statusLower === 'failed' || statusLower === 'error') {
+      return 'failed';
+    }
+    
+    if (statusLower === 'processing' || statusLower === 'pending' || statusLower === 'in_progress') {
+      return 'processing';
+    }
+    
+    // Default fallback
+    return 'processing';
   };
 
   // Enhanced status checking with better error handling and timeout management
@@ -408,11 +429,12 @@ export const useTextTo3D = () => {
     }
     
     return {
+      type: 'text-to-3d',
       taskId: currentTaskId,
       modelUrl: progress.modelUrl,
       localModelUrl: progress.localModelUrl,
       thumbnailUrl: progress.thumbnailUrl,
-      status: progress.status,
+      status: normalizeStatus(progress.status),
       downloadStatus: progress.downloadStatus
     };
   }, [currentTaskId, progress]);
