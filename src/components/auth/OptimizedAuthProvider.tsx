@@ -20,7 +20,7 @@ interface OptimizedAuthContextType {
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<{ error: any }>;
-  resetPassword: () => Promise<{ error: any }>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
   refreshAuth: () => Promise<void>;
   securityScore: number;
 }

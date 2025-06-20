@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
-import { EnhancedModelViewer } from "@/components/model-viewer/EnhancedModelViewer";
+import EnhancedModelViewer from "@/components/model-viewer/EnhancedModelViewer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -131,7 +131,9 @@ const FigurineDetails = () => {
       <Header />
       <div className="pt-20 p-6">
         <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid m
+
+          -cols-2 gap-8">
             {/* Model Viewer */}
             <div className="space-y-4">
               <Card className="bg-white/5 border-white/10">
@@ -140,6 +142,7 @@ const FigurineDetails = () => {
                     {figurine.model_url ? (
                       <EnhancedModelViewer
                         modelUrl={figurine.model_url}
+                        isLoading={false}
                         className="w-full h-full"
                       />
                     ) : (
@@ -187,16 +190,14 @@ const FigurineDetails = () => {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {figurine.art_style && (
+                {figurine.style && (
                   <Badge variant="secondary" className="bg-figuro-accent/20 text-figuro-accent">
-                    {figurine.art_style}
+                    {figurine.style}
                   </Badge>
                 )}
-                {figurine.status && (
-                  <Badge variant="outline" className="border-white/20 text-white/70">
-                    {figurine.status}
-                  </Badge>
-                )}
+                <Badge variant="outline" className="border-white/20 text-white/70">
+                  3D Model
+                </Badge>
               </div>
 
               <Card className="bg-white/5 border-white/10">
