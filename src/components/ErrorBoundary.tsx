@@ -1,4 +1,3 @@
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertTriangle, Home, Bug } from 'lucide-react';
@@ -46,7 +45,6 @@ class ErrorBoundary extends Component<Props, State> {
       errorId: this.state.errorId,
       error: error.message,
       componentStack: errorInfo.componentStack,
-      errorBoundary: errorInfo.errorBoundary,
       timestamp: new Date().toISOString()  
     });
 
