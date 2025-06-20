@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,8 @@ import { Download, Share2, Image, Wand2, ZoomIn, ZoomOut, RotateCw, Maximize2, I
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
 import { cn } from "@/lib/utils";
 
 interface EnhancedImagePreviewProps {
@@ -40,6 +41,9 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
   autoOptimize = true
 }) => {
   const { toast } = useToast();
+  const { canPerformAction } = useSubscription();
+  const { showUpgradeModal } = useEnhancedUpgradeModal();
+  
   const [imageError, setImageError] = useState<boolean>(false);
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [zoom, setZoom] = useState<number>(1);
@@ -329,6 +333,22 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
       </motion.div>
     );
   }
+
+  // Enhanced convert to 3D handler with upgrade modal check
+  const handleConvertTo3D = useCallback(() => {
+    console.log('🔄 [ENHANCED-IMAGE-PREVIEW] Convert to 3D button pressed');
+    
+    // Check if user can perform model conversion
+    if (!canPerformAction('model_conversion')) {
+      console.log('🚫 [ENHANCED-IMAGE-PREVIEW] Model conversion limit reached, showing upgrade modal');
+      showUpgradeModal('model_conversion');
+      return;
+    }
+    
+    // If user has credits, proceed with conversion
+    console.log('✅ [ENHANCED-IMAGE-PREVIEW] Model conversion allowed, proceeding...');
+    onConvertTo3D();
+  }, [canPerformAction, showUpgradeModal, onConvertTo3D]);
 
   return (
     <motion.div
@@ -654,7 +674,7 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
                 isMobile ? 'h-10' : 'h-12',
                 isConverting && "animate-pulse"
               )}
-              onClick={onConvertTo3D}
+              onClick={handleConvertTo3D}
               disabled={!optimizedImageUrl || isConverting || isLoading || imageError}
             >
               {isConverting ? (
