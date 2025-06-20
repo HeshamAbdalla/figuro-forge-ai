@@ -1,4 +1,3 @@
-
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
@@ -35,7 +34,7 @@ const OptimizedStudio = () => {
     }
   }, []);
 
-  // Use optim
+  // Use the correct auth hook that matches the provider
   const { user: authUser, isLoading: authLoading, session } = useOptimizedAuth();
   const { subscription, canPerformAction } = useOptimizedSubscription();
   const isAuthenticated = useMemo(() => !!session?.user, [session?.user]);
