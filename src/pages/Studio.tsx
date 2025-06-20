@@ -1,5 +1,6 @@
 
 import { useMemo, useCallback } from "react";
+import { AnimatePresence } from "framer-motion";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
