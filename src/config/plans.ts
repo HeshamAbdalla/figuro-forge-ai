@@ -66,8 +66,8 @@ export const PLANS: Record<string, PlanConfig> = {
       isUnlimited: false,
     },
     stripeData: {
-      priceId: 'price_1QnGxCFz9RxnLs0LABo9Nv96',
-      productId: 'prod_RODgDT7FiNtGAn',
+      priceId: 'price_1Rbr6lFmCMNpEEFymmxtu4yM',
+      productId: 'prod_SWuwdrjiDIqRy5',
     },
     order: 1,
   },
@@ -93,8 +93,8 @@ export const PLANS: Record<string, PlanConfig> = {
       isUnlimited: false,
     },
     stripeData: {
-      priceId: 'price_1QnGzNFz9RxnLs0LPZneLEEd',
-      productId: 'prod_RODiEOr9W2KcGo',
+      priceId: 'price_1Rbr6rFmCMNpEEFyJpgHJmxA',
+      productId: 'prod_SWuwOy4gzY91yc',
     },
     order: 2,
   },
@@ -120,8 +120,8 @@ export const PLANS: Record<string, PlanConfig> = {
       isUnlimited: true,
     },
     stripeData: {
-      priceId: 'price_1QnH0bFz9RxnLs0LQY4RdqvO',
-      productId: 'prod_RODj8Dy0iQSQWN',
+      priceId: 'price_1Rbr6tFmCMNpEEFyKZelRoWe',
+      productId: 'prod_SWuwLsSvFA8tsp',
     },
     order: 3,
   },
