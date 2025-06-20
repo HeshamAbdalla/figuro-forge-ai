@@ -14,7 +14,7 @@ interface SEOProps {
 const SEO: React.FC<SEOProps> = ({
   title = 'Figuro.AI - Design AI-powered Figurines, Download in 3D',
   description = 'Create custom 3D figurines from text prompts using AI. Select art styles, generate images, and download 3D models ready for printing.',
-  canonicalUrl = window.location.href,
+  canonicalUrl,
   ogImage = 'https://lovable.dev/opengraph-image-p98pqg.png',
   ogType = 'website',
   keywords = ['AI figurines', '3D models', 'custom figurines', 'AI design', '3D printing'],
@@ -22,6 +22,7 @@ const SEO: React.FC<SEOProps> = ({
   const siteName = 'Figuro.AI';
   const defaultTitle = 'Figuro.AI - Design AI-powered Figurines, Download in 3D';
   const fullTitle = title !== defaultTitle ? `${title} | ${siteName}` : title;
+  const currentUrl = canonicalUrl || (typeof window !== 'undefined' ? window.location.href : '');
   
   return (
     <Helmet>
@@ -31,14 +32,14 @@ const SEO: React.FC<SEOProps> = ({
       <meta name="keywords" content={keywords.join(', ')} />
       
       {/* Canonical URL */}
-      <link rel="canonical" href={canonicalUrl} />
+      {currentUrl && <link rel="canonical" href={currentUrl} />}
       
       {/* Open Graph Tags */}
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:type" content={ogType} />
       <meta property="og:image" content={ogImage} />
-      <meta property="og:url" content={canonicalUrl} />
+      {currentUrl && <meta property="og:url" content={currentUrl} />}
       <meta property="og:site_name" content={siteName} />
       
       {/* Twitter Card Tags */}
