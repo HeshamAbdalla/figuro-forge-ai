@@ -16,7 +16,7 @@ import Docs from "./pages/Docs";
 import Solutions from "./pages/Solutions";
 import Settings from "./pages/Settings";
 import ProfilePictures from "./pages/ProfilePictures";
-import PersonalFigurines from "./pages/PersonalFigurines";
+import ProfileFigurines from "./pages/ProfileFigurines";
 import "./App.css";
 
 const queryClient = new QueryClient({
@@ -42,7 +42,7 @@ function App() {
                 <Route path="/studio" element={<OptimizedStudio />} />
                 <Route path="/gallery" element={<Gallery />} />
                 <Route path="/profile" element={<Profile />} />
-                <Route path="/profile/figurines" element={<PersonalFigurines />} />
+                <Route path="/profile/figurines" element={<ProfileFigurines />} />
                 <Route path="/profile/pictures" element={<ProfilePictures />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/docs" element={<Docs />} />
