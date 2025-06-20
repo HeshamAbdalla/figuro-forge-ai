@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -239,7 +240,9 @@ export const useImageTo3D = () => {
   ): Promise<ImageTo3DResult> => {
     console.log("🔄 [IMAGE-TO-3D] Starting image to 3D generation with config:", config);
     
-    // 1. Pre-generation validation: Check if user can perform the action
+    // 1. CRITICAL: Pre-validation and credit consumption BEFORE any expensive operations
+    console.log("🔍 [IMAGE-TO-3D] Checking subscription limits before generation...");
+    
     if (!canPerformAction('model_conversion')) {
       console.log("❌ [IMAGE-TO-3D] User has reached model conversion limit");
       
@@ -251,6 +254,23 @@ export const useImageTo3D = () => {
         error: "You've reached your monthly limit for 3D model conversions. Please upgrade to continue."
       };
     }
+
+    // 2. CRITICAL: Consume the credit BEFORE making the API call
+    console.log("💳 [IMAGE-TO-3D] Consuming model conversion credit before API call...");
+    const consumptionResult = await consumeAction('model_conversion');
+    if (!consumptionResult) {
+      console.error("❌ [IMAGE-TO-3D] Failed to consume model conversion credit");
+      
+      // Show upgrade modal since consumption failed (likely due to insufficient credits)
+      showUpgradeModal('model_conversion');
+      
+      return {
+        success: false,
+        error: "Unable to process your request. You may have reached your conversion limit. Please upgrade to continue."
+      };
+    }
+    
+    console.log("✅ [IMAGE-TO-3D] Successfully consumed model conversion credit, proceeding with generation...");
     
     // Validate input before proceeding
     const validationError = validateImageTo3DInput(imageUrl, config);
@@ -331,7 +351,7 @@ export const useImageTo3D = () => {
         console.log('📤 [IMAGE-TO-3D] Using image URL');
       }
 
-      console.log("📤 [IMAGE-TO-3D] Sending validated request");
+      console.log("📤 [IMAGE-TO-3D] Sending validated request (credit already consumed)");
       
       // Call the convert-to-3d edge function
       const { data, error } = await supabase.functions.invoke('convert-to-3d', {
@@ -348,8 +368,6 @@ export const useImageTo3D = () => {
           throw new Error('Authentication expired. Please refresh the page and try again.');
         } else if (error.message?.includes('Invalid user session')) {
           throw new Error('Invalid user session. Please sign out and sign in again.');
-        } else if (error.message?.includes('limit reached')) {
-          throw new Error('You have reached your 3D conversion limit. Please upgrade your plan to continue.');
         }
         
         throw new Error(error.message || 'Failed to generate 3D model');
@@ -364,15 +382,6 @@ export const useImageTo3D = () => {
       const taskId = data.taskId;
       if (!taskId) {
         throw new Error('No task ID received from generation service');
-      }
-      
-      // 2. Post-generation consumption: Consume the action after successful generation start
-      const consumptionResult = await consumeAction('model_conversion');
-      if (!consumptionResult) {
-        console.warn("⚠️ [IMAGE-TO-3D] Failed to consume action, but generation already started");
-        // Don't fail the generation, just log the warning
-      } else {
-        console.log("✅ [IMAGE-TO-3D] Successfully consumed model conversion credit");
       }
       
       setCurrentTaskId(taskId);
@@ -417,8 +426,6 @@ export const useImageTo3D = () => {
           errorMessage = "Authentication expired. Please refresh the page and try again.";
         } else if (error.message.includes('Invalid user session')) {
           errorMessage = "Invalid user session. Please sign out and sign in again.";
-        } else if (error.message.includes('limit reached') || error.message.includes('monthly limit')) {
-          errorMessage = "You have reached your conversion limit. Please upgrade your plan to continue.";
         } else {
           errorMessage = error.message;
         }
