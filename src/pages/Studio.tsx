@@ -300,22 +300,24 @@ const Studio = () => {
             <StudioLayout {...studioLayoutProps} />
           </div>
           
-          {/* Enhanced Upgrade Modal */}
-          {isUpgradeModalOpen && upgradeModalAction && (
-            <StudioErrorBoundary>
-              <EnhancedUpgradeModal
-                isOpen={isUpgradeModalOpen}
-                onOpenChange={hideUpgradeModal}
-                actionType={upgradeModalAction}
-                title="Upgrade Required"
-                description={
-                  upgradeModalAction === "image_generation"
-                    ? "You've reached your daily image generation limit."
-                    : "You've reached your monthly 3D conversion limit."
-                }
-              />
-            </StudioErrorBoundary>
-          )}
+          {/* Enhanced Upgrade Modal - Ensure it's properly rendered */}
+          <AnimatePresence>
+            {isUpgradeModalOpen && upgradeModalAction && (
+              <StudioErrorBoundary>
+                <EnhancedUpgradeModal
+                  isOpen={isUpgradeModalOpen}
+                  onOpenChange={hideUpgradeModal}
+                  actionType={upgradeModalAction}
+                  title="Upgrade Required"
+                  description={
+                    upgradeModalAction === "image_generation"
+                      ? "You've reached your daily image generation limit."
+                      : "You've reached your monthly 3D conversion limit. Upgrade to continue creating 3D models."
+                  }
+                />
+              </StudioErrorBoundary>
+            )}
+          </AnimatePresence>
 
           {/* Upgrade Celebration */}
           <UpgradeCelebration

@@ -334,18 +334,18 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
     );
   }
 
-  // Enhanced convert to 3D handler with upgrade modal check
+  // Enhanced convert to 3D handler with proper upgrade modal integration
   const handleConvertTo3D = useCallback(() => {
     console.log('🔄 [ENHANCED-IMAGE-PREVIEW] Convert to 3D button pressed');
     
-    // Check if user can perform model conversion
+    // Check if user can perform model conversion BEFORE attempting conversion
     if (!canPerformAction('model_conversion')) {
       console.log('🚫 [ENHANCED-IMAGE-PREVIEW] Model conversion limit reached, showing upgrade modal');
       showUpgradeModal('model_conversion');
       return;
     }
     
-    // If user has credits, proceed with conversion
+    // If user has available conversions, proceed with conversion
     console.log('✅ [ENHANCED-IMAGE-PREVIEW] Model conversion allowed, proceeding...');
     onConvertTo3D();
   }, [canPerformAction, showUpgradeModal, onConvertTo3D]);
@@ -657,7 +657,7 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
         )}
       </div>
       
-      {/* Enhanced Action Footer */}
+      {/* Enhanced Action Footer with better upgrade integration */}
       <div className="p-3 sm:p-4 border-t border-white/10">
         <motion.div
           initial={{ y: 20, opacity: 0 }}

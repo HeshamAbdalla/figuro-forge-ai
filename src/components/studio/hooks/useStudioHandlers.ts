@@ -89,7 +89,8 @@ export const useStudioHandlers = ({
             variant: "destructive",
           });
           return;
-        } else if (error.message.includes('limit reached') || error.message.includes('conversion limit')) {
+        } else if (error.message.includes('limit reached') || error.message.includes('conversion limit') || error.message.includes('Insufficient credits')) {
+          console.log('🚫 [STUDIO-HANDLERS] 3D conversion limit reached, showing upgrade modal');
           if (showUpgradeModal) {
             showUpgradeModal("model_conversion");
           }
@@ -130,7 +131,8 @@ export const useStudioHandlers = ({
             variant: "destructive",
           });
           return;
-        } else if (error.message.includes('limit reached') || error.message.includes('conversion limit')) {
+        } else if (error.message.includes('limit reached') || error.message.includes('conversion limit') || error.message.includes('Insufficient credits')) {
+          console.log('🚫 [STUDIO-HANDLERS] 3D conversion limit reached, showing upgrade modal');
           if (showUpgradeModal) {
             showUpgradeModal("model_conversion");
           }
