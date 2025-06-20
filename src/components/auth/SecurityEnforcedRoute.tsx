@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { useEnhancedAuth } from './EnhancedAuthProvider';
+import { useOptimizedAuth } from './OptimizedAuthProvider';
 import { EmailVerificationEnforcer } from '@/utils/emailVerificationEnforcer';
 import { initializeRecaptcha, isRecaptchaReady } from '@/utils/recaptchaUtils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -18,7 +18,7 @@ export const SecurityEnforcedRoute = ({
   children, 
   requireVerification = true 
 }: SecurityEnforcedRouteProps) => {
-  const { user, session, isLoading } = useEnhancedAuth();
+  const { user, session, isLoading } = useOptimizedAuth();
   const [verificationStatus, setVerificationStatus] = useState<{
     isChecking: boolean;
     isAllowed: boolean;
