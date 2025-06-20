@@ -232,7 +232,7 @@ export const useImageTo3D = () => {
     }
   }, [toast]);
 
-  // Enhanced generation function with improved request handling
+  // Fixed generation function with proper model conversion limit handling
   const generateModelFromImage = async (
     imageUrl: string,
     filename: string,
@@ -240,13 +240,13 @@ export const useImageTo3D = () => {
   ): Promise<ImageTo3DResult> => {
     console.log("🔄 [IMAGE-TO-3D] Starting image to 3D generation with config:", config);
     
-    // 1. CRITICAL: Pre-validation and credit consumption BEFORE any expensive operations
-    console.log("🔍 [IMAGE-TO-3D] Checking subscription limits before generation...");
+    // IMPORTANT: This function should ONLY check MODEL CONVERSION limits, not image generation limits
+    console.log("🔍 [IMAGE-TO-3D] Checking MODEL CONVERSION limits specifically...");
     
     if (!canPerformAction('model_conversion')) {
-      console.log("❌ [IMAGE-TO-3D] User has reached model conversion limit");
+      console.log("❌ [IMAGE-TO-3D] User has reached MODEL CONVERSION limit");
       
-      // Show upgrade modal for model conversion limits
+      // Show upgrade modal specifically for model conversion limits
       showUpgradeModal('model_conversion');
       
       return {
@@ -254,25 +254,8 @@ export const useImageTo3D = () => {
         error: "You've reached your monthly limit for 3D model conversions. Please upgrade to continue."
       };
     }
-
-    // 2. CRITICAL: Consume the credit BEFORE making the API call
-    console.log("💳 [IMAGE-TO-3D] Consuming model conversion credit before API call...");
-    const consumptionResult = await consumeAction('model_conversion');
-    if (!consumptionResult) {
-      console.error("❌ [IMAGE-TO-3D] Failed to consume model conversion credit");
-      
-      // Show upgrade modal since consumption failed (likely due to insufficient credits)
-      showUpgradeModal('model_conversion');
-      
-      return {
-        success: false,
-        error: "Unable to process your request. You may have reached your conversion limit. Please upgrade to continue."
-      };
-    }
     
-    console.log("✅ [IMAGE-TO-3D] Successfully consumed model conversion credit, proceeding with generation...");
-    
-    // Validate input before proceeding
+    // Validate input before proceeding with any expensive operations
     const validationError = validateImageTo3DInput(imageUrl, config);
     if (validationError) {
       toast({
@@ -351,7 +334,7 @@ export const useImageTo3D = () => {
         console.log('📤 [IMAGE-TO-3D] Using image URL');
       }
 
-      console.log("📤 [IMAGE-TO-3D] Sending validated request (credit already consumed)");
+      console.log("📤 [IMAGE-TO-3D] Sending generation request...");
       
       // Call the convert-to-3d edge function
       const { data, error } = await supabase.functions.invoke('convert-to-3d', {
@@ -382,6 +365,16 @@ export const useImageTo3D = () => {
       const taskId = data.taskId;
       if (!taskId) {
         throw new Error('No task ID received from generation service');
+      }
+      
+      // ONLY consume model conversion credit AFTER successful API response
+      console.log("💳 [IMAGE-TO-3D] Consuming model conversion credit after successful start...");
+      const consumptionResult = await consumeAction('model_conversion');
+      if (!consumptionResult) {
+        console.warn("⚠️ [IMAGE-TO-3D] Failed to consume model conversion credit, but generation already started");
+        // Don't fail the generation since it already started successfully
+      } else {
+        console.log("✅ [IMAGE-TO-3D] Successfully consumed model conversion credit");
       }
       
       setCurrentTaskId(taskId);
