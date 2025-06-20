@@ -107,7 +107,7 @@ const Studio = () => {
 
   // Memoize wrapper functions that match StudioLayout expectations
   const wrappedOnGenerate = useCallback(async (prompt: string, style: string) => {
-    return await studioHandlers.onGenerate(prompt, style);
+    await studioHandlers.onGenerate(prompt, style);
   }, [studioHandlers.onGenerate]);
 
   const wrappedHandleTextTo3D = useCallback(async (prompt: string, artStyle: string, negativePrompt: string = "") => {
