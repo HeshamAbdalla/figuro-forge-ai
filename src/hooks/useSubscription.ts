@@ -236,13 +236,48 @@ export const useSubscription = () => {
   };
 
   const canPerformAction = (actionType: 'image_generation' | 'model_conversion' | 'model_remesh'): boolean => {
-    if (!subscription || !planLimits) return false;
+    if (!subscription || !planLimits) {
+      console.log('🚫 [useSubscription] No subscription or plan limits data available');
+      return false;
+    }
     
-    if (planLimits.is_unlimited) return true;
+    console.log('🔍 [useSubscription] Checking action permission:', {
+      actionType,
+      planType: subscription.plan_type,
+      isUnlimited: planLimits.is_unlimited,
+      totalCredits: (subscription.credits_remaining || 0) + (subscription.bonus_credits || 0),
+      imageGenerationsLimit: planLimits.image_generations_limit,
+      modelConversionsLimit: planLimits.model_conversions_limit,
+      generationCountThisMonth: subscription.generation_count_this_month,
+      convertedCountThisMonth: subscription.converted_3d_this_month
+    });
+    
+    if (planLimits.is_unlimited) {
+      console.log('✅ [useSubscription] Unlimited plan - action allowed');
+      return true;
+    }
 
-    // Check if user has any credits available (regular + bonus)
-    const totalCredits = (subscription.credits_remaining || 0) + (subscription.bonus_credits || 0);
-    return totalCredits > 0;
+    // For free and paid plans with limits, check specific action limits
+    switch (actionType) {
+      case 'image_generation':
+        // Check if user has reached monthly image generation limit
+        const imageGenerationsUsed = subscription.generation_count_this_month || 0;
+        const canGenerateImages = imageGenerationsUsed < planLimits.image_generations_limit;
+        console.log(`🎨 [useSubscription] Image generation check: ${imageGenerationsUsed}/${planLimits.image_generations_limit} - ${canGenerateImages ? 'ALLOWED' : 'BLOCKED'}`);
+        return canGenerateImages;
+        
+      case 'model_conversion':
+      case 'model_remesh':
+        // Check if user has reached monthly model conversion limit
+        const modelConversionsUsed = subscription.converted_3d_this_month || 0;
+        const canConvertModels = modelConversionsUsed < planLimits.model_conversions_limit;
+        console.log(`🔄 [useSubscription] Model conversion check: ${modelConversionsUsed}/${planLimits.model_conversions_limit} - ${canConvertModels ? 'ALLOWED' : 'BLOCKED'}`);
+        return canConvertModels;
+        
+      default:
+        console.log('❓ [useSubscription] Unknown action type, defaulting to blocked');
+        return false;
+    }
   };
 
   const consumeAction = async (actionType: 'image_generation' | 'model_conversion' | 'model_remesh'): Promise<boolean> => {
