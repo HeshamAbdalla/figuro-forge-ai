@@ -28,25 +28,19 @@ const PromptForm = memo(({ onGenerate, isGenerating }: PromptFormProps) => {
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState("isometric");
 
+  logger.debug('PromptForm: Component rendered', 'prompt-form-perf');
+
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim()) return;
     
-    logger.info('Generating figurine', 'prompt-form', { prompt, style });
+    logger.info('PromptForm: Generating figurine', 'prompt-form', { prompt, style });
     onGenerate(prompt, style);
   }, [prompt, style, onGenerate]);
 
   const handleExampleSelect = useCallback((examplePrompt: string) => {
-    logger.debug('Example prompt selected', 'prompt-form', { examplePrompt });
+    logger.debug('PromptForm: Example prompt selected', 'prompt-form', { examplePrompt });
     setPrompt(examplePrompt);
-  }, []);
-
-  const handlePromptChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setPrompt(e.target.value);
-  }, []);
-
-  const handleStyleChange = useCallback((value: string) => {
-    setStyle(value);
   }, []);
 
   return (
@@ -70,7 +64,7 @@ const PromptForm = memo(({ onGenerate, isGenerating }: PromptFormProps) => {
                 placeholder="e.g. Cyberpunk cat with laser sword"
                 className="bg-white/10 border-white/20 text-white focus:border-figuro-accent pl-4 pr-10 py-6"
                 value={prompt}
-                onChange={handlePromptChange}
+                onChange={(e) => setPrompt(e.target.value)}
               />
               <Sparkles className="absolute right-3 top-3 text-figuro-accent/70" size={16} />
             </div>
@@ -84,7 +78,7 @@ const PromptForm = memo(({ onGenerate, isGenerating }: PromptFormProps) => {
               <span>Art Style</span>
               <span className="h-px flex-grow bg-white/10"></span>
             </label>
-            <Select value={style} onValueChange={handleStyleChange}>
+            <Select value={style} onValueChange={setStyle}>
               <SelectTrigger className="bg-white/10 border-white/20 text-white">
                 <SelectValue placeholder="Select style" />
               </SelectTrigger>
