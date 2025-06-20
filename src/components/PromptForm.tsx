@@ -1,11 +1,12 @@
 
-import { useState } from "react";
+import { useState, useCallback, memo } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import ExamplePrompts from "@/components/ExamplePrompts";
 import { Sparkles } from "lucide-react";
+import { logger } from "@/utils/logLevelManager";
 
 const ART_STYLES = [
   { id: "isometric", name: "Isometric Skeuomorphic" },
@@ -23,21 +24,30 @@ interface PromptFormProps {
   isGenerating: boolean;
 }
 
-const PromptForm = ({ onGenerate, isGenerating }: PromptFormProps) => {
+const PromptForm = memo(({ onGenerate, isGenerating }: PromptFormProps) => {
   const [prompt, setPrompt] = useState("");
-  const [style, setStyle] = useState("isometric"); // Isometric is already the default
+  const [style, setStyle] = useState("isometric");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim()) return;
+    
+    logger.info('Generating figurine', 'prompt-form', { prompt, style });
     onGenerate(prompt, style);
-  };
+  }, [prompt, style, onGenerate]);
 
-  const handleExampleSelect = (examplePrompt: string) => {
+  const handleExampleSelect = useCallback((examplePrompt: string) => {
+    logger.debug('Example prompt selected', 'prompt-form', { examplePrompt });
     setPrompt(examplePrompt);
-    // Optionally auto-submit the form with the example
-    // onGenerate(examplePrompt, style);
-  };
+  }, []);
+
+  const handlePromptChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPrompt(e.target.value);
+  }, []);
+
+  const handleStyleChange = useCallback((value: string) => {
+    setStyle(value);
+  }, []);
 
   return (
     <div>
@@ -60,7 +70,7 @@ const PromptForm = ({ onGenerate, isGenerating }: PromptFormProps) => {
                 placeholder="e.g. Cyberpunk cat with laser sword"
                 className="bg-white/10 border-white/20 text-white focus:border-figuro-accent pl-4 pr-10 py-6"
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={handlePromptChange}
               />
               <Sparkles className="absolute right-3 top-3 text-figuro-accent/70" size={16} />
             </div>
@@ -74,7 +84,7 @@ const PromptForm = ({ onGenerate, isGenerating }: PromptFormProps) => {
               <span>Art Style</span>
               <span className="h-px flex-grow bg-white/10"></span>
             </label>
-            <Select value={style} onValueChange={setStyle}>
+            <Select value={style} onValueChange={handleStyleChange}>
               <SelectTrigger className="bg-white/10 border-white/20 text-white">
                 <SelectValue placeholder="Select style" />
               </SelectTrigger>
@@ -108,6 +118,8 @@ const PromptForm = ({ onGenerate, isGenerating }: PromptFormProps) => {
       <ExamplePrompts onSelectPrompt={handleExampleSelect} />
     </div>
   );
-};
+});
+
+PromptForm.displayName = 'PromptForm';
 
 export default PromptForm;
