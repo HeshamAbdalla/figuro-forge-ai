@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { useToast } from '@/hooks/use-toast';
-import { loadTextTo3DModelWithFallback, validateTextTo3DModelInfo, type TextTo3DModelInfo } from '@/utils/textTo3DModelUtils';
+import { loadTextTo3DModelWithFallback, validateTextTo3DModelInfo } from '@/utils/textTo3DModelUtils';
+import { TextTo3DModelInfo } from '@/components/model-viewer/types/ModelViewerTypes';
 import { disposeModel } from '@/components/model-viewer/utils/modelUtils';
 
 interface UseTextTo3DModelLoaderProps {

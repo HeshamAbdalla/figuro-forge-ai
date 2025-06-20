@@ -1,15 +1,7 @@
 
 import { prioritizeUrls, validateModelUrl } from './urlValidationUtils';
 import { tryLoadWithCorsProxies } from './corsProxy';
-
-export interface TextTo3DModelInfo {
-  taskId: string;
-  modelUrl: string;
-  localModelUrl?: string;
-  thumbnailUrl?: string;
-  status: string;
-  downloadStatus?: string;
-}
+import { TextTo3DModelInfo } from '@/components/model-viewer/types/ModelViewerTypes';
 
 export const resolveTextTo3DModelUrl = async (
   modelInfo: TextTo3DModelInfo

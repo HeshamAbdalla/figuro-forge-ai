@@ -19,12 +19,14 @@ export interface TextTo3DModelInfo extends BaseModelInfo {
   type: 'text-to-3d';
   taskId: string;
   modelUrl: string;
+  localModelUrl?: string;
   thumbnailUrl?: string;
   prompt?: string;
   artStyle?: string;
   negativePrompt?: string;
   progress?: number;
-  status?: 'processing' | 'completed' | 'failed';
+  status: 'processing' | 'completed' | 'failed' | 'SUCCEEDED';
+  downloadStatus?: string;
   metadata?: {
     polycount?: number;
     fileSize?: number;
