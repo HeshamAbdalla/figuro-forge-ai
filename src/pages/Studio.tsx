@@ -1,9 +1,9 @@
 
+import { useMemo, useCallback } from "react";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
 import { useTabNavigation } from "@/hooks/useTabNavigation";
-import { useUpgradeModal } from "@/hooks/useUpgradeModal";
 import { useCameraProgress } from "@/hooks/useCameraProgress";
 import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +13,6 @@ import EnhancedUpgradeModal from "@/components/upgrade/EnhancedUpgradeModal";
 import UpgradeCelebration from "@/components/upgrade/UpgradeCelebration";
 import Header from "@/components/Header";
 import StudioLayout from "@/components/studio/StudioLayout";
-import UpgradeModal from "@/components/UpgradeModal";
 import { StudioErrorBoundary } from "@/components/studio/StudioErrorBoundary";
 import { useStudioState } from "@/components/studio/hooks/useStudioState";
 import { useStudioHandlers } from "@/components/studio/hooks/useStudioHandlers";
@@ -89,19 +88,8 @@ const Studio = () => {
   // Add camera progress tracking
   const { cameraProgress, resetProgress: resetCameraProgress } = useCameraProgress(progress, displayModelUrl);
 
-  const {
-    onGenerate,
-    handleOpenConfigModal,
-    handleQuickConvert,
-    handleGenerate3DWithConfig,
-    handleTextTo3D,
-    handleOpenTextTo3DConfigModal,
-    handleTextTo3DWithConfig,
-    handleModelUpload,
-    handleSignOut,
-    handleSignIn,
-    handleCloseGenerationModal
-  } = useStudioHandlers({
+  // Memoize studio handlers to prevent recreation on every render
+  const studioHandlers = useStudioHandlers({
     generatedImage,
     setCustomModelUrl,
     setCustomModelFile,
@@ -117,25 +105,25 @@ const Studio = () => {
     showUpgradeModal
   });
 
-  // Create wrapper functions that match StudioLayout expectations
-  const wrappedOnGenerate = async (prompt: string, style: string) => {
-    await onGenerate(prompt, style);
-  };
+  // Memoize wrapper functions that match StudioLayout expectations
+  const wrappedOnGenerate = useCallback(async (prompt: string, style: string) => {
+    return await studioHandlers.onGenerate(prompt, style);
+  }, [studioHandlers.onGenerate]);
 
-  const wrappedHandleTextTo3D = async (prompt: string, artStyle: string, negativePrompt: string = "") => {
-    await handleTextTo3D(prompt, artStyle, negativePrompt);
-  };
+  const wrappedHandleTextTo3D = useCallback(async (prompt: string, artStyle: string, negativePrompt: string = "") => {
+    return await studioHandlers.handleTextTo3D(prompt, artStyle, negativePrompt);
+  }, [studioHandlers.handleTextTo3D]);
 
-  const wrappedHandleTextTo3DWithConfig = async (config: any) => {
-    await handleTextTo3DWithConfig(config);
-  };
+  const wrappedHandleTextTo3DWithConfig = useCallback(async (config: any) => {
+    return await studioHandlers.handleTextTo3DWithConfig(config);
+  }, [studioHandlers.handleTextTo3DWithConfig]);
 
-  const wrappedHandleModelUpload = async (figurineId: string, file: File) => {
-    handleModelUpload(file);
-  };
+  const wrappedHandleModelUpload = useCallback(async (figurineId: string, file: File) => {
+    studioHandlers.handleModelUpload(file);
+  }, [studioHandlers.handleModelUpload]);
 
   // Enhanced camera image capture with security validation
-  const handleCameraImageCapture = async (imageBlob: Blob) => {
+  const handleCameraImageCapture = useCallback(async (imageBlob: Blob) => {
     try {
       console.log('📸 [CAMERA] Image captured, starting secure processing...');
       
@@ -223,10 +211,83 @@ const Studio = () => {
       // Update camera progress to show error state
       resetCameraProgress();
     }
-  };
+  }, [generate3DModel, resetCameraProgress, toast]);
 
   // Determine if ModelViewer should show loading
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
+
+  // Memoize the StudioLayout props to prevent unnecessary re-renders
+  const studioLayoutProps = useMemo(() => ({
+    activeTab,
+    setActiveTab,
+    authUser,
+    generatedImage,
+    isGeneratingImage,
+    isGenerating,
+    isGeneratingTextTo3D,
+    currentTaskId,
+    progress,
+    textTo3DProgress,
+    displayModelUrl,
+    shouldModelViewerLoad,
+    uploadModalOpen,
+    setUploadModalOpen,
+    configModalOpen,
+    setConfigModalOpen,
+    textTo3DConfigModalOpen,
+    setTextTo3DConfigModalOpen,
+    textTo3DConfigPrompt,
+    generationModalOpen,
+    setGenerationModalOpen,
+    onGenerate: wrappedOnGenerate,
+    handleOpenConfigModal: studioHandlers.handleOpenConfigModal,
+    handleGenerate3DWithConfig: studioHandlers.handleGenerate3DWithConfig,
+    handleQuickConvert: studioHandlers.handleQuickConvert,
+    handleTextTo3D: wrappedHandleTextTo3D,
+    handleOpenTextTo3DConfigModal: studioHandlers.handleOpenTextTo3DConfigModal,
+    handleTextTo3DWithConfig: wrappedHandleTextTo3DWithConfig,
+    handleModelUpload: wrappedHandleModelUpload,
+    handleSignOut: studioHandlers.handleSignOut,
+    handleSignIn: studioHandlers.handleSignIn,
+    handleCloseGenerationModal: studioHandlers.handle CloseGenerationModal,
+    setCustomModelUrl,
+    onCameraImageCapture: handleCameraImageCapture
+  }), [
+    activeTab,
+    setActiveTab,
+    authUser,
+    generatedImage,
+    isGeneratingImage,
+    isGenerating,
+    isGeneratingTextTo3D,
+    currentTaskId,
+    progress,
+    textTo3DProgress,
+    displayModelUrl,
+    shouldModelViewerLoad,
+    uploadModalOpen,
+    setUploadModalOpen,
+    configModalOpen,
+    setConfigModalOpen,
+    textTo3DConfigModalOpen,
+    setTextTo3DConfigModalOpen,
+    textTo3DConfigPrompt,
+    generationModalOpen,
+    setGenerationModalOpen,
+    wrappedOnGenerate,
+    studioHandlers.handleOpenConfigModal,
+    studioHandlers.handleGenerate3DWithConfig,
+    studioHandlers.handleQuickConvert,
+    wrappedHandleTextTo3D,
+    studioHandlers.handleOpenTextTo3DConfigModal,
+    wrappedHandleTextTo3DWithConfig,
+    wrappedHandleModelUpload,
+    studioHandlers.handleSignOut,
+    studioHandlers.handleSignIn,
+    studioHandlers.handleCloseGenerationModal,
+    setCustomModelUrl,
+    handleCameraImageCapture
+  ]);
 
   console.log('✅ [STUDIO] Rendering with secure auth state:', { isAuthenticated, hasUser: !!authUser });
 
@@ -236,42 +297,7 @@ const Studio = () => {
         <div className="min-h-screen bg-figuro-dark">
           <Header />
           <div className="pt-20">
-            <StudioLayout
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              authUser={authUser}
-              generatedImage={generatedImage}
-              isGeneratingImage={isGeneratingImage}
-              isGenerating={isGenerating}
-              isGeneratingTextTo3D={isGeneratingTextTo3D}
-              currentTaskId={currentTaskId}
-              progress={progress}
-              textTo3DProgress={textTo3DProgress}
-              displayModelUrl={displayModelUrl}
-              shouldModelViewerLoad={shouldModelViewerLoad}
-              uploadModalOpen={uploadModalOpen}
-              setUploadModalOpen={setUploadModalOpen}
-              configModalOpen={configModalOpen}
-              setConfigModalOpen={setConfigModalOpen}
-              textTo3DConfigModalOpen={textTo3DConfigModalOpen}
-              setTextTo3DConfigModalOpen={setTextTo3DConfigModalOpen}
-              textTo3DConfigPrompt={textTo3DConfigPrompt}
-              generationModalOpen={generationModalOpen}
-              setGenerationModalOpen={setGenerationModalOpen}
-              onGenerate={wrappedOnGenerate}
-              handleOpenConfigModal={handleOpenConfigModal}
-              handleGenerate3DWithConfig={handleGenerate3DWithConfig}
-              handleQuickConvert={handleQuickConvert}
-              handleTextTo3D={wrappedHandleTextTo3D}
-              handleOpenTextTo3DConfigModal={handleOpenTextTo3DConfigModal}
-              handleTextTo3DWithConfig={wrappedHandleTextTo3DWithConfig}
-              handleModelUpload={wrappedHandleModelUpload}
-              handleSignOut={handleSignOut}
-              handleSignIn={handleSignIn}
-              handleCloseGenerationModal={handleCloseGenerationModal}
-              setCustomModelUrl={setCustomModelUrl}
-              onCameraImageCapture={handleCameraImageCapture}
-            />
+            <StudioLayout {...studioLayoutProps} />
           </div>
           
           {/* Enhanced Upgrade Modal */}

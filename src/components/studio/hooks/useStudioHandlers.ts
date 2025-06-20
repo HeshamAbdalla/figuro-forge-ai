@@ -1,4 +1,5 @@
 
+import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +41,8 @@ export const useStudioHandlers = ({
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const onGenerate = async (prompt: string, style: string, apiKey?: string) => {
+  // Memoize stable handlers
+  const onGenerate = useCallback(async (prompt: string, style: string, apiKey?: string) => {
     const result = await handleGenerate(prompt, style, apiKey);
     
     // Handle upgrade needed scenario
@@ -49,9 +51,9 @@ export const useStudioHandlers = ({
     }
     
     return result;
-  };
+  }, [handleGenerate, showUpgradeModal]);
 
-  const handleOpenConfigModal = () => {
+  const handleOpenConfigModal = useCallback(() => {
     if (!generatedImage) {
       toast({
         title: "No image available",
@@ -61,9 +63,9 @@ export const useStudioHandlers = ({
       return;
     }
     setConfigModalOpen(true);
-  };
+  }, [generatedImage, setConfigModalOpen, toast]);
 
-  const handleQuickConvert = async () => {
+  const handleQuickConvert = useCallback(async () => {
     if (!generatedImage) {
       toast({
         title: "No image available",
@@ -101,9 +103,9 @@ export const useStudioHandlers = ({
         variant: "destructive",
       });
     }
-  };
+  }, [generatedImage, generate3DModel, showUpgradeModal, toast]);
 
-  const handleGenerate3DWithConfig = async (config: any) => {
+  const handleGenerate3DWithConfig = useCallback(async (config: any) => {
     if (!generatedImage) {
       toast({
         title: "No image available",
@@ -142,10 +144,10 @@ export const useStudioHandlers = ({
         variant: "destructive",
       });
     }
-  };
+  }, [generatedImage, generate3DModel, setConfigModalOpen, showUpgradeModal, toast]);
 
   // Enhanced Text to 3D handling with improved error management and input validation
-  const handleTextTo3D = async (prompt: string, artStyle: string, negativePrompt: string = "") => {
+  const handleTextTo3D = useCallback(async (prompt: string, artStyle: string, negativePrompt: string = "") => {
     console.log('🔄 [HANDLER] Starting text to 3D generation:', { prompt, artStyle, negativePrompt });
     
     // Input validation
@@ -214,9 +216,9 @@ export const useStudioHandlers = ({
         variant: "destructive",
       });
     }
-  };
+  }, [generateTextTo3DModel, showUpgradeModal, toast]);
 
-  const handleOpenTextTo3DConfigModal = (prompt: string) => {
+  const handleOpenTextTo3DConfigModal = useCallback((prompt: string) => {
     console.log('🔧 [HANDLER] Opening config modal with prompt:', prompt);
     
     // Validate prompt before opening modal
@@ -231,9 +233,9 @@ export const useStudioHandlers = ({
     
     setTextTo3DConfigPrompt(prompt.trim());
     setTextTo3DConfigModalOpen(true);
-  };
+  }, [setTextTo3DConfigPrompt, setTextTo3DConfigModalOpen, toast]);
 
-  const handleTextTo3DWithConfig = async (config: TextTo3DConfig) => {
+  const handleTextTo3DWithConfig = useCallback(async (config: TextTo3DConfig) => {
     console.log('🔄 [HANDLER] Starting text to 3D with config:', config);
     
     // Enhanced input validation
@@ -304,29 +306,30 @@ export const useStudioHandlers = ({
         variant: "destructive",
       });
     }
-  };
+  }, [generateTextTo3DModelWithConfig, setTextTo3DConfigModalOpen, showUpgradeModal, toast]);
 
-  const handleModelUpload = (file: File) => {
+  const handleModelUpload = useCallback((file: File) => {
     const modelUrl = URL.createObjectURL(file);
     setCustomModelUrl(modelUrl);
     setCustomModelFile(file);
     resetProgress();
-  };
+  }, [setCustomModelUrl, setCustomModelFile, resetProgress]);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     await supabase.auth.signOut();
     navigate("/");
-  };
+  }, [navigate]);
 
-  const handleSignIn = () => {
+  const handleSignIn = useCallback(() => {
     navigate("/auth");
-  };
+  }, [navigate]);
 
-  const handleCloseGenerationModal = () => {
+  const handleCloseGenerationModal = useCallback(() => {
     setGenerationModalOpen(false);
-  };
+  }, [setGenerationModalOpen]);
 
-  return {
+  // Memoize the return object to prevent unnecessary re-renders
+  return useMemo(() => ({
     onGenerate,
     handleOpenConfigModal,
     handleQuickConvert,
@@ -338,5 +341,17 @@ export const useStudioHandlers = ({
     handleSignOut,
     handleSignIn,
     handleCloseGenerationModal
-  };
+  }), [
+    onGenerate,
+    handleOpenConfigModal,
+    handleQuickConvert,
+    handleGenerate3DWithConfig,
+    handleTextTo3D,
+    handleOpenTextTo3DConfigModal,
+    handleTextTo3DWithConfig,
+    handleModelUpload,
+    handleSignOut,
+    handleSignIn,
+    handleCloseGenerationModal
+  ]);
 };

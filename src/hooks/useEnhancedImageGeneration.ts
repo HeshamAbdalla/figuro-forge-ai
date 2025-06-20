@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { generateImage, cleanupImageUrl, validateImageForDisplay } from '@/services/generationService';
 import { useToast } from '@/hooks/use-toast';
 import { useEnhancedUpgradeModal } from '@/hooks/useEnhancedUpgradeModal';
@@ -43,19 +43,20 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
   // Use ref to track cleanup to prevent memory leaks
   const cleanupRef = useRef<string | null>(null);
 
+  // Memoize stable handlers to prevent unnecessary re-renders
   const handleGeneration = useCallback(async (prompt: string, style: string, isRetry = false) => {
     console.log(`🎨 [IMAGE-GENERATION-HOOK] ${isRetry ? 'Retrying' : 'Starting'} generation:`, {
       prompt: prompt.substring(0, 50) + '...',
       style,
       isRetry,
-      retryCount: state.retryCount
+      timestamp: new Date().toISOString()
     });
 
     setState(prev => ({
       ...prev,
       isGenerating: true,
       error: null,
-      ...(isRetry ? {} : { retryCount: 0 }),
+      ...(isRetry ? { retryCount: prev.retryCount + 1 } : { retryCount: 0 }),
       lastPrompt: prompt,
       lastStyle: style,
     }));
@@ -83,7 +84,7 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
           ...prev,
           isGenerating: false,
           error: result.error || 'Generation failed',
-          retryCount: prev.retryCount + (isRetry ? 1 : 0)
+          retryCount: isRetry ? prev.retryCount : prev.retryCount + 1
         }));
 
         toast({
@@ -104,7 +105,7 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
           ...prev,
           isGenerating: false,
           error: errorMsg,
-          retryCount: prev.retryCount + (isRetry ? 1 : 0)
+          retryCount: isRetry ? prev.retryCount : prev.retryCount + 1
         }));
 
         toast({
@@ -146,7 +147,7 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
         ...prev,
         isGenerating: false,
         error: errorMessage,
-        retryCount: prev.retryCount + (isRetry ? 1 : 0)
+        retryCount: isRetry ? prev.retryCount : prev.retryCount + 1
       }));
 
       toast({
@@ -155,13 +156,13 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
         variant: "destructive",
       });
     }
-  }, [toast, showUpgradeModal, state.retryCount]);
+  }, [toast, showUpgradeModal]);
 
-  const generateImageWrapper = useCallback(async (prompt: string, style: string) => {
-    await handleGeneration(prompt, style, false);
+  const generateImageWrapper = useCallback((prompt: string, style: string) => {
+    return handleGeneration(prompt, style, false);
   }, [handleGeneration]);
 
-  const retryGeneration = useCallback(async () => {
+  const retryGeneration = useCallback(() => {
     if (!state.lastPrompt || !state.lastStyle) {
       console.warn('⚠️ [IMAGE-GENERATION-HOOK] No previous generation to retry');
       toast({
@@ -169,11 +170,11 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
         description: "No previous generation found to retry.",
         variant: "destructive",
       });
-      return;
+      return Promise.resolve();
     }
 
     console.log('🔄 [IMAGE-GENERATION-HOOK] Retrying previous generation');
-    await handleGeneration(state.lastPrompt, state.lastStyle, true);
+    return handleGeneration(state.lastPrompt, state.lastStyle, true);
   }, [state.lastPrompt, state.lastStyle, handleGeneration, toast]);
 
   const clearImage = useCallback(() => {
@@ -202,7 +203,8 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
     }));
   }, []);
 
-  return {
+  // Memoize the return object to prevent unnecessary re-renders
+  return useMemo(() => ({
     isGenerating: state.isGenerating,
     generatedImage: state.generatedImage,
     generatedBlob: state.generatedBlob,
@@ -212,5 +214,15 @@ export const useEnhancedImageGeneration = (): UseEnhancedImageGenerationReturn =
     retryGeneration,
     clearImage,
     clearError,
-  };
+  }), [
+    state.isGenerating,
+    state.generatedImage,
+    state.generatedBlob,
+    state.error,
+    state.retryCount,
+    generateImageWrapper,
+    retryGeneration,
+    clearImage,
+    clearError,
+  ]);
 };
