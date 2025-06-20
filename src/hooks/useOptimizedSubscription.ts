@@ -7,10 +7,31 @@ import { logger } from '@/utils/logLevelManager';
 interface OptimizedSubscription {
   id: string;
   plan: string;
-  status: string;
+  status: string;  
   current_period_end: string;
   credits_remaining?: number;
   monthly_limit?: number;
+  // Database fields
+  user_id: string;
+  plan_type: string;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  stripe_price_id?: string;
+  commercial_license?: boolean;
+  additional_conversions?: number;
+  bonus_credits?: number;
+  valid_until?: string;
+  created_at?: string;
+  updated_at?: string;
+  renewed_at?: string;
+  expires_at?: string;
+  generation_count_today?: number;
+  last_generated_at?: string;
+  converted_3d_this_month?: number;
+  generation_count_this_month?: number;
+  daily_reset_date?: string;
+  monthly_reset_date?: string;
+  is_active?: boolean;
 }
 
 export const useOptimizedSubscription = () => {
@@ -36,9 +57,15 @@ export const useOptimizedSubscription = () => {
 
       if (error && error.code !== 'PGRST116') {
         logger.error('OptimizedSubscription: Error fetching subscription', 'subscription-perf', error);
-      } else {
-        setSubscription(data);
-        logger.debug('OptimizedSubscription: Subscription data loaded', 'subscription-perf', { plan: data?.plan });
+      } else if (data) {
+        // Map database fields to expected interface
+        const mappedSubscription: OptimizedSubscription = {
+          ...data,
+          plan: data.plan_type || 'free',
+          current_period_end: data.valid_until || data.expires_at || '',
+        };
+        setSubscription(mappedSubscription);
+        logger.debug('OptimizedSubscription: Subscription data loaded', 'subscription-perf', { plan: mappedSubscription.plan });
       }
     } catch (error) {
       logger.error('OptimizedSubscription: Exception fetching subscription', 'subscription-perf', error);

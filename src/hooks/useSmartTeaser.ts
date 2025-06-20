@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSubscription } from '@/hooks/useSubscription';
+import { useOptimizedSubscription } from '@/hooks/useOptimizedSubscription';
 
 interface TeaserState {
   showTeaser: boolean;
@@ -13,7 +13,7 @@ const TEASER_COOLDOWN = 5 * 60 * 1000; // 5 minutes
 const STORAGE_KEY = 'figuro_teaser_state';
 
 export const useSmartTeaser = () => {
-  const { subscription, getRemainingUsage, canPerformAction } = useSubscription();
+  const { subscription, canPerformAction } = useOptimizedSubscription();
   const [teaserState, setTeaserState] = useState<TeaserState>({
     showTeaser: false,
     teaserType: null,
@@ -48,6 +48,27 @@ export const useSmartTeaser = () => {
       console.error('Failed to persist teaser state:', error);
     }
   }, []);
+
+  // Mock getRemainingUsage function for compatibility
+  const getRemainingUsage = useCallback((actionType: 'image_generation' | 'model_conversion') => {
+    if (!subscription) return null;
+
+    if (actionType === 'image_generation') {
+      return {
+        remaining: Math.max(0, (subscription.monthly_limit || 0) - (subscription.generation_count_this_month || 0)),
+        used: subscription.generation_count_this_month || 0,
+        limit: subscription.monthly_limit || 0
+      };
+    } else if (actionType === 'model_conversion') {
+      return {
+        remaining: Math.max(0, (subscription.monthly_limit || 0) - (subscription.converted_3d_this_month || 0)),
+        used: subscription.converted_3d_this_month || 0,
+        limit: subscription.monthly_limit || 0
+      };
+    }
+
+    return null;
+  }, [subscription]);
 
   // Check if we should show a teaser based on usage
   const checkTeaserTrigger = useCallback((actionType: 'image_generation' | 'model_conversion') => {
@@ -142,6 +163,7 @@ export const useSmartTeaser = () => {
     hideTeaser,
     checkTeaserTrigger,
     getUsageProgress,
-    getUrgencyLevel
+    getUrgencyLevel,
+    getRemainingUsage
   };
 };
