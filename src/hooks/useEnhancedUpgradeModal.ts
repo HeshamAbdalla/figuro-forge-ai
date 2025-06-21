@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 
 export type UpgradeModalAction = "image_generation" | "model_conversion" | "model_remesh";
@@ -22,6 +22,16 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
   const [celebrationPlan, setCelebrationPlan] = useState("Premium");
   const { user } = useEnhancedAuth();
 
+  // Enhanced debugging for state changes
+  useEffect(() => {
+    console.log('🪄 [UPGRADE-MODAL-HOOK] MODAL STATE CHANGED', {
+      isUpgradeModalOpen,
+      upgradeModalAction,
+      user: !!user,
+      timestamp: new Date().toISOString()
+    });
+  }, [isUpgradeModalOpen, upgradeModalAction, user]);
+
   const showUpgradeModal = (action: UpgradeModalAction) => {
     console.log('🔥 [UPGRADE-MODAL-HOOK] ===== SHOWING UPGRADE MODAL =====');
     console.log('🔄 [UPGRADE-MODAL-HOOK] Showing upgrade modal:', {
@@ -36,18 +46,16 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
     if (user) {
       console.log('✅ [UPGRADE-MODAL-HOOK] User authenticated, updating modal state...');
       
-      // Set the action first, then open the modal
-      setUpgradeModalAction(action);
-      setIsUpgradeModalOpen(true);
+      // Force state updates with functional updates to ensure reliability
+      setUpgradeModalAction((prev) => {
+        console.log('🔄 [UPGRADE-MODAL-HOOK] Action state change:', prev, '->', action);
+        return action;
+      });
       
-      // Add a small delay to ensure state updates are processed
-      setTimeout(() => {
-        console.log('🔍 [UPGRADE-MODAL-HOOK] Modal state after update:', {
-          isUpgradeModalOpen: true,
-          upgradeModalAction: action,
-          timestamp: new Date().toISOString()
-        });
-      }, 100);
+      setIsUpgradeModalOpen((prev) => {
+        console.log('🔄 [UPGRADE-MODAL-HOOK] Modal open state change:', prev, '->', true);
+        return true;
+      });
       
       // Log upgrade modal trigger for analytics
       console.log('📊 [UPGRADE-MODAL-HOOK] User hit limit:', {
@@ -64,7 +72,10 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
   const hideUpgradeModal = () => {
     console.log('❌ [UPGRADE-MODAL-HOOK] Hiding upgrade modal');
     setIsUpgradeModalOpen(false);
-    setUpgradeModalAction(null);
+    // Small delay to prevent race conditions
+    setTimeout(() => {
+      setUpgradeModalAction(null);
+    }, 100);
   };
 
   const triggerCelebration = (planName: string = "Premium") => {

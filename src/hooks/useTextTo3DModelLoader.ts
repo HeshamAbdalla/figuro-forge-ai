@@ -1,178 +1,153 @@
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
-import { useToast } from '@/hooks/use-toast';
-import { loadTextTo3DModelWithFallback, validateTextTo3DModelInfo } from '@/utils/textTo3DModelUtils';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { TextTo3DModelInfo } from '@/components/model-viewer/types/ModelViewerTypes';
-import { disposeModel } from '@/components/model-viewer/utils/modelUtils';
 
-interface UseTextTo3DModelLoaderProps {
-  modelInfo: TextTo3DModelInfo | null;
-  onError?: (error: any) => void;
-  autoLoad?: boolean;
-}
-
-interface UseTextTo3DModelLoaderResult {
-  loading: boolean;
+interface UseTextTo3DModelLoaderReturn {
   model: THREE.Group | null;
+  loading: boolean;
   error: string | null;
-  loadModel: () => Promise<void>;
-  clearModel: () => void;
   progress: number;
+  loadModel: () => Promise<void>;
+  downloadStatus: string | null;
 }
 
-export const useTextTo3DModelLoader = ({
-  modelInfo,
-  onError,
-  autoLoad = true
-}: UseTextTo3DModelLoaderProps): UseTextTo3DModelLoaderResult => {
-  const [loading, setLoading] = useState(false);
+export const useTextTo3DModelLoader = (
+  modelInfo: TextTo3DModelInfo
+): UseTextTo3DModelLoaderReturn => {
   const [model, setModel] = useState<THREE.Group | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
-  const { toast } = useToast();
-  
-  // Refs to track resources and prevent memory leaks
-  const isLoadingRef = useRef<boolean>(false);
-  const controllerRef = useRef<AbortController | null>(null);
-  const previousModelRef = useRef<THREE.Group | null>(null);
-  const modelInfoRef = useRef<TextTo3DModelInfo | null>(null);
-  
-  // Clear previous model and resources
-  const clearModel = useCallback(() => {
-    if (previousModelRef.current) {
-      console.log('🗑️ [TEXT-TO-3D-LOADER] Disposing previous model');
-      disposeModel(previousModelRef.current);
-      previousModelRef.current = null;
-    }
-    
-    if (controllerRef.current) {
-      controllerRef.current.abort();
-      controllerRef.current = null;
-    }
-    
-    setModel(null);
-    setError(null);
-    setProgress(0);
-    setLoading(false);
-    isLoadingRef.current = false;
-  }, []);
-  
-  // Load model function
-  const loadModel = useCallback(async (): Promise<void> => {
-    if (!modelInfo || isLoadingRef.current) {
+  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
+
+  const loadModel = useCallback(async () => {
+    if (!modelInfo.modelUrl) {
+      console.warn('⚠️ [TEXT-3D-LOADER] No model URL provided');
       return;
     }
-    
-    console.log('🔄 [TEXT-TO-3D-LOADER] Starting model load for task:', modelInfo.taskId);
-    
-    // Validate model info
-    const validationError = validateTextTo3DModelInfo(modelInfo);
-    if (validationError) {
-      console.error('❌ [TEXT-TO-3D-LOADER] Validation failed:', validationError);
-      setError(validationError);
-      if (onError) {
-        onError(new Error(validationError));
-      }
-      return;
-    }
-    
-    // Check if we're trying to load the same model
-    if (modelInfoRef.current?.taskId === modelInfo.taskId && 
-        modelInfoRef.current?.modelUrl === modelInfo.modelUrl &&
-        model) {
-      console.log('✅ [TEXT-TO-3D-LOADER] Same model already loaded, skipping');
-      return;
-    }
-    
-    // Clear previous resources
-    clearModel();
-    
-    // Set loading state
+
+    console.log('🔄 [TEXT-3D-LOADER] Loading text-to-3D model:', {
+      taskId: modelInfo.taskId,
+      modelUrl: modelInfo.modelUrl,
+      status: modelInfo.status
+    });
+
     setLoading(true);
     setError(null);
     setProgress(0);
-    isLoadingRef.current = true;
-    modelInfoRef.current = modelInfo;
-    
-    // Create abort controller
-    controllerRef.current = new AbortController();
-    
+    setDownloadStatus('Downloading model...');
+
     try {
-      const loadedModel = await loadTextTo3DModelWithFallback(
-        modelInfo,
-        (progressEvent) => {
-          if (progressEvent.lengthComputable) {
-            const percent = (progressEvent.loaded / progressEvent.total) * 100;
-            setProgress(percent);
-            
-            if (percent % 25 === 0) {
-              console.log(`📊 [TEXT-TO-3D-LOADER] Loading progress: ${percent.toFixed(0)}%`);
+      const loader = new GLTFLoader();
+      
+      // Use local model URL if available, otherwise use remote URL
+      const urlToLoad = modelInfo.localModelUrl || modelInfo.modelUrl;
+      
+      const gltf = await new Promise<any>((resolve, reject) => {
+        loader.load(
+          urlToLoad,
+          (gltf) => {
+            console.log('✅ [TEXT-3D-LOADER] Model loaded successfully');
+            resolve(gltf);
+          },
+          (progressEvent) => {
+            if (progressEvent.lengthComputable) {
+              const progressPercent = (progressEvent.loaded / progressEvent.total) * 100;
+              setProgress(progressPercent);
+              setDownloadStatus(`Downloading... ${Math.round(progressPercent)}%`);
+            }
+          },
+          (error) => {
+            console.error('❌ [TEXT-3D-LOADER] Failed to load model:', error);
+            reject(error);
+          }
+        );
+      });
+
+      // Enhanced model processing for text-to-3D models
+      const processedModel = gltf.scene.clone();
+      
+      // Apply text-to-3D specific optimizations
+      processedModel.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          // Enhance materials for better visual quality
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach((mat) => {
+                if (mat instanceof THREE.MeshStandardMaterial) {
+                  mat.envMapIntensity = 0.5;
+                  mat.roughness = Math.min(mat.roughness + 0.1, 1.0);
+                }
+              });
+            } else if (child.material instanceof THREE.MeshStandardMaterial) {
+              child.material.envMapIntensity = 0.5;
+              child.material.roughness = Math.min(child.material.roughness + 0.1, 1.0);
             }
           }
+          
+          // Enable shadow casting for text-to-3D models
+          child.castShadow = true;
+          child.receiveShadow = true;
         }
-      );
+      });
+
+      // Center and scale the model based on text-to-3D metadata
+      const box = new THREE.Box3().setFromObject(processedModel);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
       
-      if (controllerRef.current?.signal.aborted) {
-        console.log('⚠️ [TEXT-TO-3D-LOADER] Load operation was aborted');
-        return;
+      // Apply scaling based on metadata if available
+      let targetScale = 1;
+      if (modelInfo.metadata?.dimensions) {
+        const maxDimension = Math.max(
+          modelInfo.metadata.dimensions.width,
+          modelInfo.metadata.dimensions.height,
+          modelInfo.metadata.dimensions.depth
+        );
+        targetScale = 2 / maxDimension; // Scale to fit in a 2-unit cube
+      } else {
+        const maxSize = Math.max(size.x, size.y, size.z);
+        targetScale = 2 / maxSize;
       }
       
-      // Store reference for cleanup
-      previousModelRef.current = loadedModel;
-      setModel(loadedModel);
+      processedModel.scale.setScalar(targetScale);
+      processedModel.position.sub(center.multiplyScalar(targetScale));
+
+      setModel(processedModel);
+      setDownloadStatus('Model ready');
       setProgress(100);
-      setLoading(false);
-      isLoadingRef.current = false;
       
-      console.log('✅ [TEXT-TO-3D-LOADER] Model loaded successfully for task:', modelInfo.taskId);
+      console.log('✅ [TEXT-3D-LOADER] Text-to-3D model processing complete:', {
+        taskId: modelInfo.taskId,
+        polycount: modelInfo.metadata?.polycount,
+        fileSize: modelInfo.metadata?.fileSize,
+        dimensions: modelInfo.metadata?.dimensions
+      });
       
     } catch (loadError) {
-      if (controllerRef.current?.signal.aborted) {
-        console.log('⚠️ [TEXT-TO-3D-LOADER] Error ignored due to abort');
-        return;
-      }
-      
-      console.error('❌ [TEXT-TO-3D-LOADER] Failed to load model:', loadError);
-      
-      const errorMessage = loadError instanceof Error ? loadError.message : 'Failed to load 3D model';
-      setError(errorMessage);
+      console.error('❌ [TEXT-3D-LOADER] Model loading failed:', loadError);
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load model');
+      setDownloadStatus('Download failed');
+    } finally {
       setLoading(false);
-      setProgress(0);
-      isLoadingRef.current = false;
-      
-      if (onError) {
-        onError(loadError);
-      }
-      
-      toast({
-        title: "Model Loading Failed",
-        description: errorMessage,
-        variant: "destructive"
-      });
     }
-  }, [modelInfo, onError, toast, clearModel, model]);
-  
-  // Auto-load effect
+  }, [modelInfo]);
+
+  // Auto-load when model info changes and status is completed
   useEffect(() => {
-    if (autoLoad && modelInfo && !model && !loading) {
+    if (modelInfo.status === 'SUCCEEDED' && modelInfo.modelUrl && !model) {
       loadModel();
     }
-  }, [autoLoad, modelInfo, loadModel, model, loading]);
-  
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      clearModel();
-    };
-  }, [clearModel]);
-  
+  }, [modelInfo.status, modelInfo.modelUrl, model, loadModel]);
+
   return {
-    loading,
     model,
+    loading,
     error,
+    progress,
     loadModel,
-    clearModel,
-    progress
+    downloadStatus
   };
 };

@@ -43,6 +43,22 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
   const { user } = useEnhancedAuth();
   const [isLoading, setIsLoading] = useState(false);
 
+  // Enhanced validation and fallback logic
+  if (!actionType) {
+    console.warn('❌ [ENHANCED-UPGRADE-MODAL] Modal rendered but actionType is missing');
+    return null;
+  }
+
+  if (!onOpenChange) {
+    console.error('❌ [ENHANCED-UPGRADE-MODAL] Modal rendered but onOpenChange callback is missing');
+    return null;
+  }
+
+  // Log when modal should be visible but isOpen is false
+  if (!isOpen && actionType) {
+    console.warn('❌ [ENHANCED-UPGRADE-MODAL] Modal rendered but isOpen=false with actionType:', actionType);
+  }
+
   const getActionContent = () => {
     switch (actionType) {
       case "image_generation":
@@ -94,6 +110,7 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
           badge: "Pro Feature"
         };
       default:
+        console.warn('⚠️ [ENHANCED-UPGRADE-MODAL] Unknown actionType:', actionType);
         return {
           icon: <Sparkles className="w-8 h-8 text-figuro-accent" />,
           title: "Upgrade Your Experience",
@@ -120,25 +137,38 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
     
     setIsLoading(true);
     console.log('🔄 [ENHANCED-UPGRADE-MODAL] Closing modal and navigating to pricing');
+    
+    // Analytics logging
+    console.log('📊 [ENHANCED-UPGRADE-MODAL] Upgrade initiated:', {
+      userId: user.id,
+      actionType,
+      userEmail: user.email,
+      timestamp: new Date().toISOString()
+    });
+    
     onOpenChange(false);
     navigate("/pricing");
   };
 
-  console.log('🎯 [ENHANCED-UPGRADE-MODAL] About to render Dialog with isOpen:', isOpen);
-
-  // Move console.log outside of JSX
-  const dialogContentRenderLog = () => {
-    console.log('🎯 [ENHANCED-UPGRADE-MODAL] DialogContent rendering!');
+  const handleOpenChange = (open: boolean) => {
+    console.log('💥 [ENHANCED-UPGRADE-MODAL] Dialog open state changed:', {
+      open,
+      actionType,
+      user: !!user,
+      timestamp: new Date().toISOString()
+    });
+    onOpenChange(open);
   };
 
-  // Call the logging function before render
-  if (isOpen) {
-    dialogContentRenderLog();
-  }
+  console.log('🎯 [ENHANCED-UPGRADE-MODAL] About to render Dialog with isOpen:', isOpen);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-figuro-dark border-figuro-accent/30 p-0 overflow-hidden">
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent 
+        className="max-w-md bg-figuro-dark border-figuro-accent/30 p-0 overflow-hidden"
+        aria-labelledby="upgrade-modal-title"
+        aria-describedby="upgrade-modal-description"
+      >
         <div className="relative">
           {/* Background gradient */}
           <div className="absolute inset-0 bg-gradient-to-br from-figuro-accent/10 via-purple-500/5 to-blue-500/10" />
@@ -197,7 +227,10 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <DialogTitle className="text-2xl font-bold text-white">
+                <DialogTitle 
+                  id="upgrade-modal-title"
+                  className="text-2xl font-bold text-white"
+                >
                   {content.title}
                 </DialogTitle>
                 <p className="text-figuro-accent font-medium mt-1">
@@ -210,7 +243,10 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
               >
-                <DialogDescription className="text-white/80 leading-relaxed">
+                <DialogDescription 
+                  id="upgrade-modal-description"
+                  className="text-white/80 leading-relaxed"
+                >
                   {content.description}
                 </DialogDescription>
               </motion.div>
@@ -222,10 +258,13 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
               className="mt-6 space-y-3"
+              role="list"
+              aria-label="Upgrade benefits"
             >
               {content.benefits.map((benefit, index) => (
                 <motion.div
                   key={benefit}
+                  role="listitem"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 + index * 0.1 }}
@@ -250,6 +289,7 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
                   onClick={handleUpgrade} 
                   className="w-full bg-figuro-accent hover:bg-figuro-accent/90 text-white font-semibold py-3 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-figuro-accent/25 group"
                   disabled={isLoading}
+                  aria-label={`${content.cta} - Navigate to pricing page`}
                 >
                   {isLoading ? "Redirecting..." : content.cta}
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -266,6 +306,7 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
                   variant="ghost" 
                   onClick={() => onOpenChange(false)}
                   className="w-full text-white/60 hover:text-white/80 py-2"
+                  aria-label="Close upgrade modal"
                 >
                   Maybe Later
                 </Button>

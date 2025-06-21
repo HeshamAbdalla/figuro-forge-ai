@@ -348,14 +348,18 @@ const Studio = () => {
             <StudioLayout {...studioLayoutProps} />
           </div>
           
-          {/* Enhanced Upgrade Modal - Ensure it's properly rendered with more debugging */}
-          <AnimatePresence>
-            {isUpgradeModalOpen && upgradeModalAction && (
-              <StudioErrorBoundary>
+          {/* Enhanced Upgrade Modal with key-based re-rendering and better fallback */}
+          <AnimatePresence mode="wait">
+            {(isUpgradeModalOpen || upgradeModalAction) && (
+              <StudioErrorBoundary key={`upgrade-modal-${upgradeModalAction}`}>
                 <EnhancedUpgradeModal
+                  key={upgradeModalAction} // Force re-mount on action change
                   isOpen={isUpgradeModalOpen}
-                  onOpenChange={hideUpgradeModal}
-                  actionType={upgradeModalAction}
+                  onOpenChange={(open) => {
+                    console.log('💥 [STUDIO] Modal open state changed:', open);
+                    if (!open) hideUpgradeModal();
+                  }}
+                  actionType={upgradeModalAction!}
                   title="Upgrade Required"
                   description={
                     upgradeModalAction === "image_generation"
@@ -366,6 +370,13 @@ const Studio = () => {
               </StudioErrorBoundary>
             )}
           </AnimatePresence>
+
+          {/* Fallback debug div - remove in production */}
+          {process.env.NODE_ENV === 'development' && upgradeModalAction && !isUpgradeModalOpen && (
+            <div className="fixed bottom-4 left-4 bg-red-500 text-white p-2 text-xs rounded z-50">
+              Debug: Action set ({upgradeModalAction}) but modal not open
+            </div>
+          )}
 
           {/* Upgrade Celebration */}
           <UpgradeCelebration
