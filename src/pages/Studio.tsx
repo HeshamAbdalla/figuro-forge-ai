@@ -98,24 +98,8 @@ const Studio = () => {
   // Add camera progress tracking
   const { cameraProgress, resetProgress: resetCameraProgress } = useCameraProgress(progress, displayModelUrl);
 
-  // Memoize studio handlers to prevent recreation on every render - FIX FOR RENDER LOOP
-  const studioHandlers = useMemo(() => {
-    return useStudioHandlers({
-      generatedImage,
-      setCustomModelUrl,
-      setCustomModelFile,
-      setConfigModalOpen,
-      setTextTo3DConfigModalOpen,
-      setGenerationModalOpen,
-      setTextTo3DConfigPrompt,
-      handleGenerate,
-      generate3DModel,
-      generateTextTo3DModel,
-      generateTextTo3DModelWithConfig,
-      resetProgress,
-      showUpgradeModal
-    });
-  }, [
+  // Call useStudioHandlers directly at the top level - FIX FOR HOOKS RULE VIOLATION
+  const studioHandlers = useStudioHandlers({
     generatedImage,
     setCustomModelUrl,
     setCustomModelFile,
@@ -129,7 +113,7 @@ const Studio = () => {
     generateTextTo3DModelWithConfig,
     resetProgress,
     showUpgradeModal
-  ]);
+  });
 
   // Memoize wrapper functions that match StudioLayout expectations
   const wrappedOnGenerate = useCallback(async (prompt: string, style: string) => {
