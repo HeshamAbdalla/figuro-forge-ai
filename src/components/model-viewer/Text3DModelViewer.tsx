@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, ContactShadows, Html } from '@react-three/drei';
@@ -78,18 +77,14 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
   const [showModelInfo, setShowModelInfo] = useState(false);
   const { toast } = useToast();
 
-  // Use specialized text-to-3D loader
+  // Use specialized text-to-3D loader - FIXED: Pass modelInfo directly instead of wrapping it
   const {
     loading: textTo3DLoading,
     model: textTo3DModel,
     error: textTo3DError,
     loadModel: loadTextTo3DModel,
     progress: textTo3DProgress
-  } = useTextTo3DModelLoader({
-    modelInfo,
-    onError: onModelError,
-    autoLoad: true
-  });
+  } = useTextTo3DModelLoader(modelInfo);
 
   const {
     autoRotate,
