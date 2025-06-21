@@ -126,10 +126,19 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
 
   console.log('🎯 [ENHANCED-UPGRADE-MODAL] About to render Dialog with isOpen:', isOpen);
 
+  // Move console.log outside of JSX
+  const dialogContentRenderLog = () => {
+    console.log('🎯 [ENHANCED-UPGRADE-MODAL] DialogContent rendering!');
+  };
+
+  // Call the logging function before render
+  if (isOpen) {
+    dialogContentRenderLog();
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md bg-figuro-dark border-figuro-accent/30 p-0 overflow-hidden">
-        {console.log('🎯 [ENHANCED-UPGRADE-MODAL] DialogContent rendering!')}
         <div className="relative">
           {/* Background gradient */}
           <div className="absolute inset-0 bg-gradient-to-br from-figuro-accent/10 via-purple-500/5 to-blue-500/10" />

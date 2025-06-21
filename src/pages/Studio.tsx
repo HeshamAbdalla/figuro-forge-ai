@@ -325,6 +325,20 @@ const Studio = () => {
     shouldRender: !!(isUpgradeModalOpen && upgradeModalAction)
   });
 
+  // Move console.log outside of JSX
+  const upgradeModalRenderLog = () => {
+    console.log('🎯 [STUDIO] ===== RENDERING UPGRADE MODAL =====', { 
+      isUpgradeModalOpen, 
+      upgradeModalAction,
+      timestamp: new Date().toISOString()
+    });
+  };
+
+  // Call the logging function when modal is about to render
+  if (isUpgradeModalOpen && upgradeModalAction) {
+    upgradeModalRenderLog();
+  }
+
   return (
     <SecurityEnforcedRoute requireVerification={true}>
       <StudioErrorBoundary>
@@ -338,11 +352,6 @@ const Studio = () => {
           <AnimatePresence>
             {isUpgradeModalOpen && upgradeModalAction && (
               <StudioErrorBoundary>
-                {console.log('🎯 [STUDIO] ===== RENDERING UPGRADE MODAL =====', { 
-                  isUpgradeModalOpen, 
-                  upgradeModalAction,
-                  timestamp: new Date().toISOString()
-                })}
                 <EnhancedUpgradeModal
                   isOpen={isUpgradeModalOpen}
                   onOpenChange={hideUpgradeModal}
