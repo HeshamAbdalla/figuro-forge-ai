@@ -218,15 +218,19 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
     setIsDragging(false);
   }, []);
 
-  // Enhanced convert to 3D handler with detailed debugging
+  // Enhanced convert to 3D handler with comprehensive debugging
   const handleConvertTo3D = useCallback(() => {
-    console.log('🔄 [ENHANCED-IMAGE-PREVIEW] Convert to 3D button pressed');
+    console.log('🔥 [ENHANCED-IMAGE-PREVIEW] ===== Convert to 3D Button Clicked =====');
+    console.log('🔍 [ENHANCED-IMAGE-PREVIEW] Button click detected at:', new Date().toISOString());
     console.log('📊 [ENHANCED-IMAGE-PREVIEW] Current subscription state:', {
       subscription,
+      hasSubscription: !!subscription,
       canPerform: canPerformAction('model_conversion'),
       totalCredits: subscription ? (subscription.credits_remaining + subscription.bonus_credits) : 0,
       planType: subscription?.plan_type,
-      conversionsThisMonth: subscription?.converted_3d_this_month
+      conversionsThisMonth: subscription?.converted_3d_this_month,
+      creditsRemaining: subscription?.credits_remaining,
+      bonusCredits: subscription?.bonus_credits
     });
     
     // Check if user can perform model conversion BEFORE attempting conversion
@@ -234,8 +238,10 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
     console.log('🔍 [ENHANCED-IMAGE-PREVIEW] Can perform model conversion:', canConvert);
     
     if (!canConvert) {
+      console.log('🚫 [ENHANCED-IMAGE-PREVIEW] ===== SHOULD SHOW UPGRADE MODAL =====');
       console.log('🚫 [ENHANCED-IMAGE-PREVIEW] Model conversion limit reached, showing upgrade modal');
-      console.log('🔧 [ENHANCED-IMAGE-PREVIEW] Calling showUpgradeModal with model_conversion');
+      console.log('🔧 [ENHANCED-IMAGE-PREVIEW] showUpgradeModal function:', showUpgradeModal);
+      console.log('🔧 [ENHANCED-IMAGE-PREVIEW] About to call showUpgradeModal with model_conversion');
       
       try {
         showUpgradeModal('model_conversion');
@@ -247,9 +253,28 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
     }
     
     // If user has available conversions, proceed with conversion
-    console.log('✅ [ENHANCED-IMAGE-PREVIEW] Model conversion allowed, proceeding...');
+    console.log('✅ [ENHANCED-IMAGE-PREVIEW] Model conversion allowed, proceeding with onConvertTo3D...');
     onConvertTo3D();
   }, [canPerformAction, showUpgradeModal, onConvertTo3D, subscription]);
+
+  // Add debugging for subscription changes
+  useEffect(() => {
+    console.log('📊 [ENHANCED-IMAGE-PREVIEW] Subscription changed:', {
+      hasSubscription: !!subscription,
+      planType: subscription?.plan_type,
+      creditsRemaining: subscription?.credits_remaining,
+      bonusCredits: subscription?.bonus_credits,
+      conversionsThisMonth: subscription?.converted_3d_this_month
+    });
+  }, [subscription]);
+
+  // Add debugging for showUpgradeModal function changes
+  useEffect(() => {
+    console.log('🔧 [ENHANCED-IMAGE-PREVIEW] showUpgradeModal function changed:', {
+      hasFunction: !!showUpgradeModal,
+      functionType: typeof showUpgradeModal
+    });
+  }, [showUpgradeModal]);
 
   // Keyboard navigation
   useEffect(() => {
