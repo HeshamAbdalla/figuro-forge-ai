@@ -98,8 +98,24 @@ const Studio = () => {
   // Add camera progress tracking
   const { cameraProgress, resetProgress: resetCameraProgress } = useCameraProgress(progress, displayModelUrl);
 
-  // Memoize studio handlers to prevent recreation on every render
-  const studioHandlers = useStudioHandlers({
+  // Memoize studio handlers to prevent recreation on every render - FIX FOR RENDER LOOP
+  const studioHandlers = useMemo(() => {
+    return useStudioHandlers({
+      generatedImage,
+      setCustomModelUrl,
+      setCustomModelFile,
+      setConfigModalOpen,
+      setTextTo3DConfigModalOpen,
+      setGenerationModalOpen,
+      setTextTo3DConfigPrompt,
+      handleGenerate,
+      generate3DModel,
+      generateTextTo3DModel,
+      generateTextTo3DModelWithConfig,
+      resetProgress,
+      showUpgradeModal
+    });
+  }, [
     generatedImage,
     setCustomModelUrl,
     setCustomModelFile,
@@ -113,7 +129,7 @@ const Studio = () => {
     generateTextTo3DModelWithConfig,
     resetProgress,
     showUpgradeModal
-  });
+  ]);
 
   // Memoize wrapper functions that match StudioLayout expectations
   const wrappedOnGenerate = useCallback(async (prompt: string, style: string) => {
@@ -226,7 +242,7 @@ const Studio = () => {
   // Determine if ModelViewer should show loading
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
-  // Memoize the StudioLayout props to prevent unnecessary re-renders
+  // Memoize the StudioLayout props to prevent unnecessary re-renders - FIXED DEPENDENCY ARRAY
   const studioLayoutProps = useMemo(() => ({
     activeTab,
     setActiveTab,
@@ -285,18 +301,19 @@ const Studio = () => {
     generationModalOpen,
     setGenerationModalOpen,
     wrappedOnGenerate,
+    wrappedHandleTextTo3D,
+    wrappedHandleTextTo3DWithConfig,
+    wrappedHandleModelUpload,
+    setCustomModelUrl,
+    handleCameraImageCapture,
+    // Fixed: Use individual handler functions instead of the entire studioHandlers object
     studioHandlers.handleOpenConfigModal,
     studioHandlers.handleGenerate3DWithConfig,
     studioHandlers.handleQuickConvert,
-    wrappedHandleTextTo3D,
     studioHandlers.handleOpenTextTo3DConfigModal,
-    wrappedHandleTextTo3DWithConfig,
-    wrappedHandleModelUpload,
     studioHandlers.handleSignOut,
     studioHandlers.handleSignIn,
-    studioHandlers.handleCloseGenerationModal,
-    setCustomModelUrl,
-    handleCameraImageCapture
+    studioHandlers.handleCloseGenerationModal
   ]);
 
   console.log('✅ [STUDIO] Rendering with secure auth state:', { isAuthenticated, hasUser: !!authUser });
