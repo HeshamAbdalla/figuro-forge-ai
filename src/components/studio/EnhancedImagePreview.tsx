@@ -43,7 +43,7 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
 }) => {
   // ALL HOOKS MUST BE CALLED AT THE TOP - NO CONDITIONAL HOOKS
   const { toast } = useToast();
-  const { canPerformAction } = useSubscription();
+  const { canPerformAction, subscription } = useSubscription();
   const { showUpgradeModal } = useEnhancedUpgradeModal();
   const isMobile = useIsMobile();
   
@@ -218,21 +218,38 @@ const EnhancedImagePreview: React.FC<EnhancedImagePreviewProps> = ({
     setIsDragging(false);
   }, []);
 
-  // Enhanced convert to 3D handler with proper upgrade modal integration
+  // Enhanced convert to 3D handler with detailed debugging
   const handleConvertTo3D = useCallback(() => {
     console.log('🔄 [ENHANCED-IMAGE-PREVIEW] Convert to 3D button pressed');
+    console.log('📊 [ENHANCED-IMAGE-PREVIEW] Current subscription state:', {
+      subscription,
+      canPerform: canPerformAction('model_conversion'),
+      totalCredits: subscription ? (subscription.credits_remaining + subscription.bonus_credits) : 0,
+      planType: subscription?.plan_type,
+      conversionsThisMonth: subscription?.converted_3d_this_month
+    });
     
     // Check if user can perform model conversion BEFORE attempting conversion
-    if (!canPerformAction('model_conversion')) {
+    const canConvert = canPerformAction('model_conversion');
+    console.log('🔍 [ENHANCED-IMAGE-PREVIEW] Can perform model conversion:', canConvert);
+    
+    if (!canConvert) {
       console.log('🚫 [ENHANCED-IMAGE-PREVIEW] Model conversion limit reached, showing upgrade modal');
-      showUpgradeModal('model_conversion');
+      console.log('🔧 [ENHANCED-IMAGE-PREVIEW] Calling showUpgradeModal with model_conversion');
+      
+      try {
+        showUpgradeModal('model_conversion');
+        console.log('✅ [ENHANCED-IMAGE-PREVIEW] showUpgradeModal called successfully');
+      } catch (error) {
+        console.error('❌ [ENHANCED-IMAGE-PREVIEW] Error calling showUpgradeModal:', error);
+      }
       return;
     }
     
     // If user has available conversions, proceed with conversion
     console.log('✅ [ENHANCED-IMAGE-PREVIEW] Model conversion allowed, proceeding...');
     onConvertTo3D();
-  }, [canPerformAction, showUpgradeModal, onConvertTo3D]);
+  }, [canPerformAction, showUpgradeModal, onConvertTo3D, subscription]);
 
   // Keyboard navigation
   useEffect(() => {

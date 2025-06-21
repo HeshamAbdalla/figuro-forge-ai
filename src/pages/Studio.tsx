@@ -1,5 +1,5 @@
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
@@ -71,7 +71,7 @@ const Studio = () => {
     tabs: ['image-to-3d', 'camera', 'text-to-3d', 'web-icons', 'gallery']
   });
 
-  // Use enhanced upgrade modal functionality
+  // Use enhanced upgrade modal functionality with debugging
   const {
     isUpgradeModalOpen,
     upgradeModalAction,
@@ -82,6 +82,15 @@ const Studio = () => {
     hideCelebration,
     celebrationPlan
   } = useEnhancedUpgradeModal();
+
+  // Debug upgrade modal state changes
+  useEffect(() => {
+    console.log('🔧 [STUDIO] Upgrade modal state changed:', {
+      isUpgradeModalOpen,
+      upgradeModalAction,
+      timestamp: new Date().toISOString()
+    });
+  }, [isUpgradeModalOpen, upgradeModalAction]);
 
   // Determine which model URL to display
   const displayModelUrl = customModelUrl || textTo3DProgress.modelUrl || progress.modelUrl;
@@ -291,6 +300,11 @@ const Studio = () => {
   ]);
 
   console.log('✅ [STUDIO] Rendering with secure auth state:', { isAuthenticated, hasUser: !!authUser });
+  console.log('🔧 [STUDIO] About to render upgrade modal with state:', {
+    isUpgradeModalOpen,
+    upgradeModalAction,
+    hasAction: !!upgradeModalAction
+  });
 
   return (
     <SecurityEnforcedRoute requireVerification={true}>
