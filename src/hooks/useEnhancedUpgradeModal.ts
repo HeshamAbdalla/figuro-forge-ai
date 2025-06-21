@@ -23,16 +23,31 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
   const { user } = useEnhancedAuth();
 
   const showUpgradeModal = (action: UpgradeModalAction) => {
+    console.log('🔥 [UPGRADE-MODAL-HOOK] ===== SHOWING UPGRADE MODAL =====');
     console.log('🔄 [UPGRADE-MODAL-HOOK] Showing upgrade modal:', {
       action,
       user: !!user,
+      currentModalOpen: isUpgradeModalOpen,
+      currentAction: upgradeModalAction,
       timestamp: new Date().toISOString()
     });
 
     // Only show upgrade modal if user is authenticated
     if (user) {
+      console.log('✅ [UPGRADE-MODAL-HOOK] User authenticated, updating modal state...');
+      
+      // Set the action first, then open the modal
       setUpgradeModalAction(action);
       setIsUpgradeModalOpen(true);
+      
+      // Add a small delay to ensure state updates are processed
+      setTimeout(() => {
+        console.log('🔍 [UPGRADE-MODAL-HOOK] Modal state after update:', {
+          isUpgradeModalOpen: true,
+          upgradeModalAction: action,
+          timestamp: new Date().toISOString()
+        });
+      }, 100);
       
       // Log upgrade modal trigger for analytics
       console.log('📊 [UPGRADE-MODAL-HOOK] User hit limit:', {

@@ -31,6 +31,14 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
   description,
   actionType,
 }) => {
+  console.log('🎯 [ENHANCED-UPGRADE-MODAL] Component rendering with props:', {
+    isOpen,
+    actionType,
+    title,
+    hasOnOpenChange: !!onOpenChange,
+    timestamp: new Date().toISOString()
+  });
+
   const navigate = useNavigate();
   const { user } = useEnhancedAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -101,20 +109,27 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
   const content = getActionContent();
 
   const handleUpgrade = async () => {
+    console.log('⬆️ [ENHANCED-UPGRADE-MODAL] Upgrade button clicked');
+    
     if (!user) {
+      console.log('🔄 [ENHANCED-UPGRADE-MODAL] No user, redirecting to auth');
       onOpenChange(false);
       navigate("/auth");
       return;
     }
     
     setIsLoading(true);
+    console.log('🔄 [ENHANCED-UPGRADE-MODAL] Closing modal and navigating to pricing');
     onOpenChange(false);
     navigate("/pricing");
   };
 
+  console.log('🎯 [ENHANCED-UPGRADE-MODAL] About to render Dialog with isOpen:', isOpen);
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md bg-figuro-dark border-figuro-accent/30 p-0 overflow-hidden">
+        {console.log('🎯 [ENHANCED-UPGRADE-MODAL] DialogContent rendering!')}
         <div className="relative">
           {/* Background gradient */}
           <div className="absolute inset-0 bg-gradient-to-br from-figuro-accent/10 via-purple-500/5 to-blue-500/10" />

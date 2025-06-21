@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
@@ -83,14 +82,32 @@ const Studio = () => {
     celebrationPlan
   } = useEnhancedUpgradeModal();
 
-  // Debug upgrade modal state changes
+  // Debug upgrade modal state changes with more detail
   useEffect(() => {
+    console.log('🔧 [STUDIO] ===== UPGRADE MODAL STATE CHANGED =====');
     console.log('🔧 [STUDIO] Upgrade modal state changed:', {
       isUpgradeModalOpen,
       upgradeModalAction,
+      shouldRenderModal: isUpgradeModalOpen && upgradeModalAction,
       timestamp: new Date().toISOString()
     });
+    
+    if (isUpgradeModalOpen && upgradeModalAction) {
+      console.log('✅ [STUDIO] Modal should be visible now!');
+    } else if (isUpgradeModalOpen && !upgradeModalAction) {
+      console.log('⚠️ [STUDIO] Modal open but no action set');
+    } else if (!isUpgradeModalOpen && upgradeModalAction) {
+      console.log('⚠️ [STUDIO] Action set but modal not open');
+    }
   }, [isUpgradeModalOpen, upgradeModalAction]);
+
+  // Add debugging for showUpgradeModal function changes
+  useEffect(() => {
+    console.log('🔧 [STUDIO] showUpgradeModal function changed:', {
+      hasFunction: !!showUpgradeModal,
+      functionType: typeof showUpgradeModal
+    });
+  }, [showUpgradeModal]);
 
   // Determine which model URL to display
   const displayModelUrl = customModelUrl || textTo3DProgress.modelUrl || progress.modelUrl;
@@ -304,7 +321,8 @@ const Studio = () => {
   console.log('🔧 [STUDIO] About to render upgrade modal with state:', {
     isUpgradeModalOpen,
     upgradeModalAction,
-    hasAction: !!upgradeModalAction
+    hasAction: !!upgradeModalAction,
+    shouldRender: !!(isUpgradeModalOpen && upgradeModalAction)
   });
 
   return (
@@ -316,10 +334,15 @@ const Studio = () => {
             <StudioLayout {...studioLayoutProps} />
           </div>
           
-          {/* Enhanced Upgrade Modal - Ensure it's properly rendered */}
+          {/* Enhanced Upgrade Modal - Ensure it's properly rendered with more debugging */}
           <AnimatePresence>
             {isUpgradeModalOpen && upgradeModalAction && (
               <StudioErrorBoundary>
+                {console.log('🎯 [STUDIO] ===== RENDERING UPGRADE MODAL =====', { 
+                  isUpgradeModalOpen, 
+                  upgradeModalAction,
+                  timestamp: new Date().toISOString()
+                })}
                 <EnhancedUpgradeModal
                   isOpen={isUpgradeModalOpen}
                   onOpenChange={hideUpgradeModal}
