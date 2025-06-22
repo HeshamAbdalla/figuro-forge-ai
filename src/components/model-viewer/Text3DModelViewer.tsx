@@ -149,7 +149,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
   useEffect(() => {
     return () => {
       if (customModelBlob) {
-        URL.revokeObjectURL(customModelBlob);
+        URL.revokeObjectURL(URL.createObjectURL(customModelBlob));
       }
     };
   }, [customModelBlob]);
@@ -353,7 +353,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
           ) : (
             <EnhancedModelScene
               modelUrl={customModelBlob ? null : displayModelUrl}
-              modelBlob={customModelBlob ? URL.createObjectURL(customModelBlob) : null}
+              modelBlob={customModelBlob}
               autoRotate={autoRotate}
               showWireframe={false}
               onModelError={handleModelLoadError}
