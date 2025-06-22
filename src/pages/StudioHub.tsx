@@ -112,7 +112,7 @@ const StudioHub = () => {
                       transition={{ duration: 0.6, delay: index * 0.1 }}
                     >
                       <Card 
-                        className="glass-panel hover:bg-white/15 hover:border-figuro-accent/30 hover:shadow-glow-sm transition-all duration-500 cursor-pointer group h-full backdrop-blur-xl bg-white/10 border-white/20"
+                        className="backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/15 hover:border-figuro-accent/30 transition-all duration-500 cursor-pointer group h-full shadow-lg hover:shadow-2xl hover:shadow-figuro-accent/20"
                         onClick={() => handleNavigate(method.path)}
                       >
                         <CardHeader className="relative">
@@ -131,7 +131,7 @@ const StudioHub = () => {
                               </span>
                             )}
                           </div>
-                          <CardTitle className="text-white group-hover:text-figuro-accent transition-colors text-gradient">
+                          <CardTitle className="text-white group-hover:text-figuro-accent transition-colors">
                             {method.title}
                           </CardTitle>
                           <CardDescription className="text-white/70">
@@ -140,7 +140,7 @@ const StudioHub = () => {
                         </CardHeader>
                         <CardContent>
                           <Button 
-                            className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-figuro-accent/20 hover:border-figuro-accent/50 hover:shadow-glow-sm group-hover:scale-105 transition-all duration-300"
+                            className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-figuro-accent/20 hover:border-figuro-accent/50 hover:shadow-lg hover:shadow-figuro-accent/20 group-hover:scale-105 transition-all duration-300"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleNavigate(method.path);
@@ -167,7 +167,7 @@ const StudioHub = () => {
                   <Button
                     onClick={() => navigate('/gallery')}
                     variant="outline"
-                    className="glass-panel bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 hover:border-figuro-accent/50 hover:shadow-glow-sm transition-all duration-300"
+                    className="backdrop-blur-xl bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-figuro-accent/50 hover:shadow-lg hover:shadow-figuro-accent/20 transition-all duration-300"
                   >
                     <Images className="w-4 h-4 mr-2" />
                     Browse Public Gallery
@@ -175,7 +175,7 @@ const StudioHub = () => {
                   <Button
                     onClick={() => navigate('/profile/figurines')}
                     variant="outline"
-                    className="glass-panel bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 hover:border-figuro-accent/50 hover:shadow-glow-sm transition-all duration-300"
+                    className="backdrop-blur-xl bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-figuro-accent/50 hover:shadow-lg hover:shadow-figuro-accent/20 transition-all duration-300"
                   >
                     <Zap className="w-4 h-4 mr-2" />
                     My Creations
