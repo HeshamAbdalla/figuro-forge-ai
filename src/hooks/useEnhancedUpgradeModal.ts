@@ -2,7 +2,14 @@
 import { useState, useEffect } from "react";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 
+// Type-safe upgrade modal action enum - standardized across the application
 export type UpgradeModalAction = "image_generation" | "model_conversion" | "model_remesh";
+
+// Validation function to ensure only valid enum values are used
+const isValidUpgradeAction = (action: string): action is UpgradeModalAction => {
+  const validActions: UpgradeModalAction[] = ["image_generation", "model_conversion", "model_remesh"];
+  return validActions.includes(action as UpgradeModalAction);
+};
 
 interface UseEnhancedUpgradeModalReturn {
   isUpgradeModalOpen: boolean;
@@ -34,6 +41,14 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
 
   const showUpgradeModal = (action: UpgradeModalAction) => {
     console.log('🔥 [UPGRADE-MODAL-HOOK] ===== SHOWING UPGRADE MODAL =====');
+    
+    // Type-safe validation of the action parameter
+    if (!isValidUpgradeAction(action)) {
+      console.error('❌ [UPGRADE-MODAL-HOOK] Invalid upgrade action provided:', action);
+      console.error('✅ [UPGRADE-MODAL-HOOK] Valid actions are:', ["image_generation", "model_conversion", "model_remesh"]);
+      return; // Early exit on invalid action
+    }
+    
     console.log('🔄 [UPGRADE-MODAL-HOOK] Showing upgrade modal:', {
       action,
       user: !!user,
@@ -105,3 +120,6 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
     celebrationPlan,
   };
 };
+
+// Export the validation function for use in other components
+export { isValidUpgradeAction };

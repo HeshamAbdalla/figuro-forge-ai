@@ -7,7 +7,8 @@ import {
   isLegacyProps, 
   isEnhancedProps, 
   isTextTo3DModelInfo,
-  UrlModelInfo 
+  UrlModelInfo,
+  TextTo3DModelInfo
 } from "./types/ModelViewerTypes";
 
 const EnhancedModelViewer: React.FC<ModelViewerProps> = (props) => {
@@ -18,21 +19,26 @@ const EnhancedModelViewer: React.FC<ModelViewerProps> = (props) => {
   });
 
   // Handle legacy props for backward compatibility
+  // Legacy: { modelUrl: string, autoRotate?: boolean, ...otherProps }
   if (isLegacyProps(props)) {
     const { modelUrl, autoRotate, ...restProps } = props;
     
-    console.log('📦 [ENHANCED-MODEL-VIEWER] Using legacy props mode:', { modelUrl: !!modelUrl, autoRotate });
+    console.log('📦 [ENHANCED-MODEL-VIEWER] Using legacy props mode:', { 
+      modelUrl: !!modelUrl, 
+      autoRotate 
+    });
     
-    // Skip rendering if no model URL
+    // Skip rendering if no model URL in legacy mode
     if (!modelUrl) {
       console.warn('⚠️ [ENHANCED-MODEL-VIEWER] No model URL provided in legacy mode');
       return null;
     }
     
-    // Convert legacy props to new format
+    // Convert legacy props to new UrlModelInfo format for consistent handling
     const urlModelInfo: UrlModelInfo = {
       type: 'url',
       modelUrl,
+      fileName: `model-${Date.now()}.glb`, // Generate a default filename
       autoRotate: autoRotate ?? true
     };
     
@@ -45,7 +51,8 @@ const EnhancedModelViewer: React.FC<ModelViewerProps> = (props) => {
   }
   
   // Handle enhanced props with discriminated unions
-  if (isEnhancedProps(props))  {
+  // Enhanced: { modelInfo: ModelInfo, ...otherProps }
+  if (isEnhancedProps(props)) {
     const { modelInfo, ...restProps } = props;
     
     console.log('🎯 [ENHANCED-MODEL-VIEWER] Using enhanced props mode:', {
@@ -54,42 +61,48 @@ const EnhancedModelViewer: React.FC<ModelViewerProps> = (props) => {
       isTextTo3D: isTextTo3DModelInfo(modelInfo)
     });
     
-    // Skip rendering if no model info
+    // Skip rendering if no model info in enhanced mode
     if (!modelInfo) {
       console.warn('⚠️ [ENHANCED-MODEL-VIEWER] No model info provided in enhanced mode');
       return null;
     }
     
-    // Use discriminated union to render appropriate viewer
+    // Use discriminated union to render appropriate viewer based on model type
     if (isTextTo3DModelInfo(modelInfo)) {
-      console.log('🎨 [ENHANCED-MODEL-VIEWER] Rendering Text3DModelViewer for:', {
+      console.log('🎨 [ENHANCED-MODEL-VIEWER] Rendering Text3DModelViewer for text-to-3D:', {
         taskId: modelInfo.taskId,
         status: modelInfo.status,
-        hasModelUrl: !!modelInfo.modelUrl
+        hasModelUrl: !!modelInfo.modelUrl,
+        hasPrompt: !!modelInfo.prompt
       });
       
+      // Ensure Text3DModelViewer gets properly typed TextTo3DModelInfo
       return (
         <Text3DModelViewer
-          modelInfo={modelInfo}
+          modelInfo={modelInfo as TextTo3DModelInfo}
           {...restProps}
         />
       );
     } else {
-      console.log('🌐 [ENHANCED-MODEL-VIEWER] Rendering GenericModelViewer for URL-based model');
+      console.log('🌐 [ENHANCED-MODEL-VIEWER] Rendering GenericModelViewer for URL-based model:', {
+        modelUrl: modelInfo.modelUrl,
+        fileName: (modelInfo as UrlModelInfo).fileName
+      });
       
+      // Ensure GenericModelViewer gets properly typed UrlModelInfo
       return (
         <GenericModelViewer
-          modelInfo={modelInfo}
+          modelInfo={modelInfo as UrlModelInfo}
           {...restProps}
         />
       );
     }
   }
   
-  // Fallback - should not happen with proper TypeScript usage
+  // Fallback error state - should not happen with proper TypeScript usage
   console.error('❌ [ENHANCED-MODEL-VIEWER] Invalid props provided, unable to determine viewer type');
   
-  // Enhanced error state with better UX
+  // Enhanced error state with better UX and debugging info
   return (
     <div className="w-full h-64 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
       <div className="text-center p-6">
@@ -98,9 +111,9 @@ const EnhancedModelViewer: React.FC<ModelViewerProps> = (props) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Model Viewer Error</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Model Viewer Configuration Error</h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Unable to display 3D model due to configuration issues
+          Unable to display 3D model due to invalid props configuration
         </p>
         {process.env.NODE_ENV === 'development' && (
           <details className="text-left">

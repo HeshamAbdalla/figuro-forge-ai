@@ -22,16 +22,43 @@ export const useTextTo3DModelLoader = (
   const [progress, setProgress] = useState(0);
   const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
 
+  // Validate modelInfo structure and provide defaults
+  const validateModelInfo = useCallback((info: TextTo3DModelInfo): boolean => {
+    if (!info) {
+      console.error('❌ [TEXT-3D-LOADER] No modelInfo provided');
+      return false;
+    }
+    
+    if (!info.taskId) {
+      console.warn('⚠️ [TEXT-3D-LOADER] Missing taskId in modelInfo');
+    }
+    
+    if (!info.modelUrl) {
+      console.warn('⚠️ [TEXT-3D-LOADER] Missing modelUrl in modelInfo');
+      return false;
+    }
+    
+    // Validate status format - normalize to standardized values
+    const validStatuses = ['processing', 'completed', 'failed', 'SUCCEEDED'];
+    if (!validStatuses.includes(info.status)) {
+      console.warn('⚠️ [TEXT-3D-LOADER] Invalid status in modelInfo:', info.status);
+    }
+    
+    return true;
+  }, []);
+
   const loadModel = useCallback(async () => {
-    if (!modelInfo.modelUrl) {
-      console.warn('⚠️ [TEXT-3D-LOADER] No model URL provided');
+    // Early validation of modelInfo structure
+    if (!validateModelInfo(modelInfo)) {
+      setError('Invalid model information provided');
       return;
     }
 
     console.log('🔄 [TEXT-3D-LOADER] Loading text-to-3D model:', {
       taskId: modelInfo.taskId,
-      modelUrl: modelInfo.modelUrl,
-      status: modelInfo.status
+      modelUrl: !!modelInfo.modelUrl,
+      status: modelInfo.status,
+      hasLocalUrl: !!modelInfo.localModelUrl
     });
 
     setLoading(true);
@@ -42,8 +69,14 @@ export const useTextTo3DModelLoader = (
     try {
       const loader = new GLTFLoader();
       
-      // Use local model URL if available, otherwise use remote URL
+      // Prioritize local model URL for better performance, fallback to remote URL
       const urlToLoad = modelInfo.localModelUrl || modelInfo.modelUrl;
+      
+      if (!urlToLoad) {
+        throw new Error('No valid model URL available');
+      }
+      
+      console.log('📥 [TEXT-3D-LOADER] Loading from URL:', urlToLoad.substring(0, 50) + '...');
       
       const gltf = await new Promise<any>((resolve, reject) => {
         loader.load(
@@ -57,6 +90,11 @@ export const useTextTo3DModelLoader = (
               const progressPercent = (progressEvent.loaded / progressEvent.total) * 100;
               setProgress(progressPercent);
               setDownloadStatus(`Downloading... ${Math.round(progressPercent)}%`);
+              
+              console.log('📊 [TEXT-3D-LOADER] Download progress:', Math.round(progressPercent) + '%');
+            } else {
+              // For non-computable progress, show indeterminate progress
+              setDownloadStatus('Downloading...');
             }
           },
           (error) => {
@@ -66,52 +104,68 @@ export const useTextTo3DModelLoader = (
         );
       });
 
-      // Enhanced model processing for text-to-3D models
+      // Enhanced model processing specifically for text-to-3D models
       const processedModel = gltf.scene.clone();
       
-      // Apply text-to-3D specific optimizations
+      // Apply text-to-3D specific optimizations and enhancements
       processedModel.traverse((child) => {
         if (child instanceof THREE.Mesh) {
-          // Enhance materials for better visual quality
+          // Enhance materials for better visual quality in text-to-3D models
           if (child.material) {
             if (Array.isArray(child.material)) {
               child.material.forEach((mat) => {
                 if (mat instanceof THREE.MeshStandardMaterial) {
+                  // Optimize material properties for text-to-3D models
                   mat.envMapIntensity = 0.5;
                   mat.roughness = Math.min(mat.roughness + 0.1, 1.0);
+                  mat.metalness = Math.max(mat.metalness - 0.1, 0.0);
                 }
               });
             } else if (child.material instanceof THREE.MeshStandardMaterial) {
               child.material.envMapIntensity = 0.5;
               child.material.roughness = Math.min(child.material.roughness + 0.1, 1.0);
+              child.material.metalness = Math.max(child.material.metalness - 0.1, 0.0);
             }
           }
           
-          // Enable shadow casting for text-to-3D models
+          // Enable shadow casting for text-to-3D models for better visual integration
           child.castShadow = true;
           child.receiveShadow = true;
         }
       });
 
-      // Center and scale the model based on text-to-3D metadata
+      // Center and scale the model based on available metadata or computed bounds
       const box = new THREE.Box3().setFromObject(processedModel);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       
-      // Apply scaling based on metadata if available
+      // Apply intelligent scaling based on metadata if available
       let targetScale = 1;
       if (modelInfo.metadata?.dimensions) {
+        // Use metadata dimensions for precise scaling
         const maxDimension = Math.max(
           modelInfo.metadata.dimensions.width,
           modelInfo.metadata.dimensions.height,
           modelInfo.metadata.dimensions.depth
         );
         targetScale = 2 / maxDimension; // Scale to fit in a 2-unit cube
+        
+        console.log('🎯 [TEXT-3D-LOADER] Using metadata dimensions for scaling:', {
+          dimensions: modelInfo.metadata.dimensions,
+          targetScale
+        });
       } else {
+        // Fallback to computed bounding box scaling
         const maxSize = Math.max(size.x, size.y, size.z);
-        targetScale = 2 / maxSize;
+        targetScale = maxSize > 0 ? 2 / maxSize : 1;
+        
+        console.log('🎯 [TEXT-3D-LOADER] Using computed dimensions for scaling:', {
+          computedSize: { x: size.x, y: size.y, z: size.z },
+          targetScale
+        });
       }
       
+      // Apply transformations
       processedModel.scale.setScalar(targetScale);
       processedModel.position.sub(center.multiplyScalar(targetScale));
 
@@ -121,26 +175,57 @@ export const useTextTo3DModelLoader = (
       
       console.log('✅ [TEXT-3D-LOADER] Text-to-3D model processing complete:', {
         taskId: modelInfo.taskId,
-        polycount: modelInfo.metadata?.polycount,
-        fileSize: modelInfo.metadata?.fileSize,
-        dimensions: modelInfo.metadata?.dimensions
+        polycount: modelInfo.metadata?.polycount || 'unknown',
+        fileSize: modelInfo.metadata?.fileSize || 'unknown',
+        dimensions: modelInfo.metadata?.dimensions || 'computed from bounds',
+        finalScale: targetScale
       });
       
     } catch (loadError) {
       console.error('❌ [TEXT-3D-LOADER] Model loading failed:', loadError);
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load model');
+      
+      // Enhanced error handling with specific error messages
+      let errorMessage = 'Failed to load 3D model';
+      if (loadError instanceof Error) {
+        if (loadError.message.includes('404')) {
+          errorMessage = 'Model file not found - it may still be processing';
+        } else if (loadError.message.includes('network')) {
+          errorMessage = 'Network error while downloading model';
+        } else if (loadError.message.includes('CORS')) {
+          errorMessage = 'Access denied - model URL may be invalid';
+        } else if (loadError.message.includes('No valid model URL')) {
+          errorMessage = 'No model URL available for download';
+        } else {
+          errorMessage = loadError.message;
+        }
+      }
+      
+      setError(errorMessage);
       setDownloadStatus('Download failed');
     } finally {
       setLoading(false);
     }
-  }, [modelInfo]);
+  }, [modelInfo, validateModelInfo]);
 
-  // Auto-load when model info changes and status is completed
+  // Auto-load when model info changes and status indicates completion
   useEffect(() => {
-    if (modelInfo.status === 'SUCCEEDED' && modelInfo.modelUrl && !model) {
+    // Only attempt to load if model has a successful status and URL
+    const shouldAutoLoad = (
+      modelInfo?.status === 'SUCCEEDED' || 
+      modelInfo?.status === 'completed'
+    ) && modelInfo?.modelUrl && !model && !loading;
+    
+    if (shouldAutoLoad) {
+      console.log('🔄 [TEXT-3D-LOADER] Auto-loading model due to status change:', {
+        status: modelInfo.status,
+        hasUrl: !!modelInfo.modelUrl,
+        hasModel: !!model,
+        isLoading: loading
+      });
+      
       loadModel();
     }
-  }, [modelInfo.status, modelInfo.modelUrl, model, loadModel]);
+  }, [modelInfo?.status, modelInfo?.modelUrl, model, loading, loadModel]);
 
   return {
     model,

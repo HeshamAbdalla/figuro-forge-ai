@@ -1,4 +1,3 @@
-
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ import EnhancedCameraWorkflow from "@/components/studio/camera/EnhancedCameraWor
 import { useFigurines } from "@/components/figurine/useFigurines";
 import { useWebIconsGeneration } from "@/hooks/useWebIconsGeneration";
 import type { TabKey } from "@/hooks/useTabNavigation";
+import { TextTo3DModelInfo, UrlModelInfo } from "@/components/model-viewer/types/ModelViewerTypes";
 
 interface StudioTabContentProps {
   activeTab: TabKey;
@@ -88,6 +88,61 @@ const StudioTabContent = ({
   const promptFormRef = useRef<{ focusInput: () => void } | null>(null);
   const textTo3DFormRef = useRef<{ focusInput: () => void } | null>(null);
   const webIconsFormRef = useRef<{ focusInput: () => void } | null>(null);
+
+  // Helper function to create properly typed modelInfo objects
+  const createModelInfo = (activeTab: TabKey) => {
+    // For text-to-3d tab, prioritize TextTo3DModelInfo if we have text-to-3D specific data
+    if (activeTab === 'text-to-3d' && (currentTaskId || textTo3DProgress.taskId)) {
+      const textTo3DModelInfo: TextTo3DModelInfo = {
+        type: 'text-to-3d',
+        taskId: currentTaskId || textTo3DProgress.taskId || 'unknown',
+        modelUrl: textTo3DProgress.localModelUrl || textTo3DProgress.modelUrl || displayModelUrl || '',
+        localModelUrl: textTo3DProgress.localModelUrl,
+        thumbnailUrl: textTo3DProgress.thumbnailUrl,
+        progress: textTo3DProgress.progress,
+        status: textTo3DProgress.status === 'SUCCEEDED' ? 'SUCCEEDED' : 
+                textTo3DProgress.status === 'completed' ? 'completed' : 
+                textTo3DProgress.status === 'failed' ? 'failed' : 'processing',
+        downloadStatus: textTo3DProgress.downloadStatus,
+        // Add metadata if available
+        metadata: {
+          polycount: undefined, // Will be populated by the loader
+          fileSize: undefined,
+          dimensions: undefined
+        }
+      };
+      
+      console.log('🎨 [STUDIO-TAB-CONTENT] Created TextTo3DModelInfo:', {
+        taskId: textTo3DModelInfo.taskId,
+        hasModelUrl: !!textTo3DModelInfo.modelUrl,
+        status: textTo3DModelInfo.status
+      });
+      
+      return textTo3DModelInfo;
+    }
+    
+    // For other tabs or fallback, use UrlModelInfo if we have a displayModelUrl
+    if (displayModelUrl) {
+      const urlModelInfo: UrlModelInfo = {
+        type: 'url',
+        modelUrl: displayModelUrl,
+        fileName: progress.fileName || `${activeTab}-model.glb`,
+        autoRotate: true
+      };
+      
+      console.log('🌐 [STUDIO-TAB-CONTENT] Created UrlModelInfo:', {
+        modelUrl: !!urlModelInfo.modelUrl,
+        fileName: urlModelInfo.fileName,
+        tab: activeTab
+      });
+      
+      return urlModelInfo;
+    }
+    
+    // No valid model data available
+    console.log('⚠️ [STUDIO-TAB-CONTENT] No valid model data for tab:', activeTab);
+    return null;
+  };
 
   const handleIconGeneration = async (prompt: string, options: { category: string; size: string; style: string }) => {
     await generateIcon(prompt, options);
@@ -167,7 +222,6 @@ const StudioTabContent = ({
               isGenerating={isGeneratingImage}
             />
             
-            {/* Image-to-3D Progress Component */}
             <ImageTo3DProgress
               isGenerating={isGenerating}
               progress={progress}
@@ -209,14 +263,13 @@ const StudioTabContent = ({
             className="lg:col-span-2"
           >
             <EnhancedModelViewer 
-              modelUrl={displayModelUrl} 
+              modelInfo={createModelInfo('image-to-3d')}
               isLoading={shouldModelViewerLoad && !displayModelUrl}
               progress={progress.progress || 0}
               errorMessage={progress.status === 'error' ? progress.message : undefined}
               onCustomModelLoad={(url, file) => setCustomModelUrl(url)}
               variant="standard"
               showControls={true}
-              autoRotate={true}
             />
           </motion.div>
         </motion.div>
@@ -276,11 +329,9 @@ const StudioTabContent = ({
                 thumbnailUrl={textTo3DProgress.thumbnailUrl}
                 downloadStatus={textTo3DProgress.downloadStatus}
                 onViewModel={() => {
-                  // Model is already displayed in the ModelViewer component
                   console.log('Model already displayed in viewer');
                 }}
                 onDownload={() => {
-                  // Use the best available URL for download
                   const downloadUrl = textTo3DProgress.localModelUrl || textTo3DProgress.modelUrl;
                   if (downloadUrl) {
                     const link = document.createElement('a');
@@ -305,14 +356,13 @@ const StudioTabContent = ({
             className="lg:col-span-2"
           >
             <EnhancedModelViewer 
-              modelUrl={displayModelUrl} 
+              modelInfo={createModelInfo('text-to-3d')}
               isLoading={shouldModelViewerLoad && !displayModelUrl}
               progress={textTo3DProgress.progress || 0}
               errorMessage={textTo3DProgress.status === 'error' ? 'Failed to generate 3D model' : undefined}
               onCustomModelLoad={(url, file) => setCustomModelUrl(url)}
               variant="standard"
               showControls={true}
-              autoRotate={true}
             />
           </motion.div>
         </motion.div>
