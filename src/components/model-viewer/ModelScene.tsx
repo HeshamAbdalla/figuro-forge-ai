@@ -7,9 +7,8 @@ import LoadingSpinner from "./LoadingSpinner";
 import DummyBox from "./DummyBox";
 import ErrorBoundary from "./ErrorBoundary";
 import Model3D from "./Model3D";
-import { globalPerformanceMonitor, PerformanceStats } from "./utils/performanceMonitor";
+import { useModelViewerPerformance } from "./hooks/useModelViewerPerformance";
 import { webGLContextTracker } from "./utils/resourceManager";
-import { sharedResourcePool } from "../gallery/performance/SharedResourcePool";
 
 interface ModelSceneProps {
   modelUrl: string | null;
@@ -22,7 +21,7 @@ interface ModelSceneProps {
 
 export interface ModelSceneRef {
   resetCamera: () => void;
-  getPerformanceStats: () => PerformanceStats;
+  getPerformanceMetrics: () => any;
 }
 
 const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({ 
@@ -33,60 +32,33 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
   isPreview = false,
   enablePerformanceMonitoring = false
 }, ref) => {
-  // Track the current model source to prevent unnecessary re-renders
   const currentSourceRef = useRef<string | Blob | null>(null);
   const [stableSource, setStableSource] = useState<string | null>(modelUrl);
   const [stableBlob, setStableBlob] = useState<Blob | null>(modelBlob || null);
   const [loadKey, setLoadKey] = useState<string>(`load-${Date.now()}`);
-  const [performanceStats, setPerformanceStats] = useState<PerformanceStats | null>(null);
   const orbitControlsRef = useRef<any>(null);
   
-  // Expose reset camera functionality and performance stats
+  // Performance monitoring
+  const { 
+    metrics, 
+    shouldReduceQuality,
+    isPerformanceOptimal 
+  } = useModelViewerPerformance(enablePerformanceMonitoring);
+
+  // Expose ref methods
   useImperativeHandle(ref, () => ({
     resetCamera: () => {
       if (orbitControlsRef.current) {
         orbitControlsRef.current.reset();
       }
     },
-    getPerformanceStats: () => {
-      return globalPerformanceMonitor.getStats();
-    }
+    getPerformanceMetrics: () => metrics
   }));
-
-  // Initialize performance monitoring (development only)
-  useEffect(() => {
-    if (enablePerformanceMonitoring && process.env.NODE_ENV === 'development') {
-      const handlePerformanceUpdate = (stats: PerformanceStats) => {
-        setPerformanceStats(stats);
-        
-        // Log performance warnings in development only
-        if (stats.fps < 30) {
-          console.warn(`Low FPS detected: ${stats.fps.toFixed(1)}`);
-        }
-        if (stats.renderTime > 16) {
-          console.warn(`High render time: ${stats.renderTime.toFixed(1)}ms`);
-        }
-        if (stats.memoryUsage > 100) {
-          console.warn(`High memory usage: ${stats.memoryUsage.toFixed(1)}MB`);
-        }
-      };
-
-      globalPerformanceMonitor.addCallback(handlePerformanceUpdate);
-      globalPerformanceMonitor.start();
-
-      return () => {
-        globalPerformanceMonitor.removeCallback(handlePerformanceUpdate);
-        globalPerformanceMonitor.stop();
-      };
-    }
-  }, [enablePerformanceMonitoring]);
   
-  // Stabilize the source to prevent rapid changes
+  // Stabilize URL changes
   useEffect(() => {
     if (modelUrl !== currentSourceRef.current) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log("ModelScene: URL source changed to", modelUrl);
-      }
+      console.log("ModelScene: URL source changed to", modelUrl);
       
       const current = currentSourceRef.current;
       currentSourceRef.current = modelUrl;
@@ -104,12 +76,10 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
     }
   }, [modelUrl]);
   
-  // Separate effect for blob changes
+  // Stabilize blob changes
   useEffect(() => {
     if (modelBlob && modelBlob !== currentSourceRef.current) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log("ModelScene: Blob source changed");
-      }
+      console.log("ModelScene: Blob source changed");
       
       setLoadKey(`load-${Date.now()}`);
       currentSourceRef.current = modelBlob;
@@ -124,43 +94,44 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
   }, [modelBlob]);
 
   const handleModelError = (error: any) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.error("ModelScene: Error in 3D model:", error);
-    }
+    console.error("ModelScene: Error in 3D model:", error);
     onModelError(error);
   };
 
-  // Optimized Canvas settings with shared resources
+  // Dynamic canvas settings based on performance
   const canvasSettings = {
-    shadows: !isPreview,
+    shadows: !isPreview && !shouldReduceQuality,
     gl: {
-      powerPreference: isPreview ? "low-power" as const : "high-performance" as const,
-      antialias: !isPreview,
+      powerPreference: (isPreview || shouldReduceQuality) ? "low-power" as const : "high-performance" as const,
+      antialias: !isPreview && !shouldReduceQuality,
       alpha: true,
       depth: true,
       stencil: false,
       preserveDrawingBuffer: false,
-      failIfMajorPerformanceCaveat: isPreview
+      failIfMajorPerformanceCaveat: isPreview || shouldReduceQuality
     },
-    dpr: isPreview ? [0.5, 1] as [number, number] : [1, 2] as [number, number],
+    dpr: (isPreview || shouldReduceQuality) ? [0.5, 1] as [number, number] : [1, 2] as [number, number],
     frameloop: (autoRotate ? "always" : "demand") as "always" | "demand" | "never",
     performance: {
-      min: isPreview ? 0.2 : 0.5,
-      max: 1,
+      min: (isPreview || shouldReduceQuality) ? 0.2 : 0.5,
+      max: shouldReduceQuality ? 0.7 : 1,
       debounce: 200
     }
   };
 
+  const lightIntensity = isPreview || shouldReduceQuality ? 0.5 : 1;
+  const shadowMapSize = (isPreview || shouldReduceQuality) ? 512 : 1024;
+
   return (
     <>
       <Canvas key={loadKey} {...canvasSettings}>
-        <ambientLight intensity={isPreview ? 0.3 : 0.5} />
+        <ambientLight intensity={lightIntensity * 0.5} />
         <directionalLight 
           position={[10, 10, 5]} 
-          intensity={isPreview ? 0.5 : 1}
-          castShadow={!isPreview}
-          shadow-mapSize-width={isPreview ? 512 : 1024}
-          shadow-mapSize-height={isPreview ? 512 : 1024}
+          intensity={lightIntensity}
+          castShadow={!isPreview && !shouldReduceQuality}
+          shadow-mapSize-width={shadowMapSize}
+          shadow-mapSize-height={shadowMapSize}
         />
         <PerspectiveCamera 
           makeDefault 
@@ -194,25 +165,29 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
           enablePan={!isPreview}
           enableZoom={true}
           enableRotate={true}
-          enableDamping={!isPreview}
+          enableDamping={!isPreview && !shouldReduceQuality}
           dampingFactor={0.05}
           maxDistance={isPreview ? 50 : 100}
           minDistance={1}
         />
         <Environment 
           preset="sunset" 
-          resolution={isPreview ? 64 : 256}
+          resolution={isPreview || shouldReduceQuality ? 64 : 256}
         />
       </Canvas>
       
-      {/* Performance Stats Display (Development Mode Only) */}
-      {enablePerformanceMonitoring && performanceStats && process.env.NODE_ENV === 'development' && (
+      {/* Performance overlay for development */}
+      {enablePerformanceMonitoring && process.env.NODE_ENV === 'development' && (
         <div className="absolute top-2 left-2 bg-black/80 text-white text-xs p-2 rounded font-mono">
-          <div>FPS: {performanceStats.fps.toFixed(1)}</div>
-          <div>Render: {performanceStats.renderTime.toFixed(1)}ms</div>
-          <div>Memory: {performanceStats.memoryUsage.toFixed(1)}MB</div>
-          <div>Contexts: {webGLContextTracker.getActiveContextCount()}</div>
-          <div>Pool: {JSON.stringify(sharedResourcePool.getStats())}</div>
+          <div>FPS: {metrics.fps.toFixed(1)}</div>
+          <div>Memory: {metrics.memoryUsage.toFixed(1)}MB</div>
+          <div>Contexts: {metrics.webglContexts}</div>
+          <div className={cn(
+            "mt-1 px-1 rounded text-xs",
+            isPerformanceOptimal ? "bg-green-600" : "bg-red-600"
+          )}>
+            {isPerformanceOptimal ? "OPTIMAL" : "DEGRADED"}
+          </div>
         </div>
       )}
     </>

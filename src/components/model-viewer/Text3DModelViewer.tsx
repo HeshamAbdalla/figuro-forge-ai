@@ -2,32 +2,25 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, ContactShadows, Html } from '@react-three/drei';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Download, 
-  Upload, 
-  RotateCcw, 
-  Eye, 
-  EyeOff, 
-  Share,
-  Sparkles,
-  Info
-} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { RotateCcw, EyeOff, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import EnhancedModelScene from './EnhancedModelScene';
+import ModelViewerControls from './components/ModelViewerControls';
+import ModelInfoPanel from './components/ModelInfoPanel';
+import ModelViewerOverlay from './components/ModelViewerOverlay';
 import { useModelViewerState } from './useModelViewerState';
 import { useTextTo3DModelLoader } from '@/hooks/useTextTo3DModelLoader';
+import { useModelViewerPerformance } from './hooks/useModelViewerPerformance';
 import { TextTo3DModelInfo, BaseModelViewerProps } from './types/ModelViewerTypes';
 
 interface Text3DModelViewerProps extends BaseModelViewerProps {
   modelInfo: TextTo3DModelInfo;
 }
 
-// Enhanced loading component for text-to-3D
 const Text3DLoadingView = React.memo(({ progress = 0, modelInfo }: { progress: number; modelInfo: TextTo3DModelInfo }) => {
   return (
     <Html center>
@@ -80,7 +73,11 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
   const [showModelInfo, setShowModelInfo] = useState(false);
   const { toast } = useToast();
 
-  // Use specialized text-to-3D loader
+  // Performance monitoring for development
+  const { metrics, shouldReduceQuality } = useModelViewerPerformance(
+    process.env.NODE_ENV === 'development'
+  );
+
   const {
     loading: textTo3DLoading,
     model: textTo3DModel,
@@ -163,6 +160,17 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
   const isCompact = variant === 'compact' || variant === 'gallery';
   const heightClass = isCompact ? 'h-[300px]' : 'h-[500px]';
 
+  // Adjust quality based on performance
+  const canvasSettings = {
+    shadows: !shouldReduceQuality,
+    gl: {
+      powerPreference: shouldReduceQuality ? "low-power" as const : "high-performance" as const,
+      antialias: !shouldReduceQuality,
+      alpha: true
+    },
+    dpr: shouldReduceQuality ? [0.5, 1] as [number, number] : [1, 2] as [number, number]
+  };
+
   return (
     <motion.div
       ref={containerRef}
@@ -174,124 +182,27 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
         className
       )}
     >
-      {/* Enhanced Header for Text-to-3D */}
-      {showControls && (
-        <div className="p-4 border-b border-blue-500/20 bg-gradient-to-r from-blue-500/10 to-purple-500/10">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="w-5 h-5 text-blue-400" />
-                <h3 className="text-lg font-semibold text-gradient">
-                  AI Generated 3D
-                </h3>
-              </div>
-              
-              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                Text-to-3D
-              </Badge>
-              
-              {modelInfo.status && (
-                <Badge 
-                  className={cn(
-                    "border",
-                    modelInfo.status === 'completed' && "bg-green-500/20 text-green-400 border-green-500/30",
-                    modelInfo.status === 'processing' && "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-                    modelInfo.status === 'failed' && "bg-red-500/20 text-red-400 border-red-500/30"
-                  )}
-                >
-                  {modelInfo.status}
-                </Badge>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              {modelInfo.modelUrl && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowModelInfo(!showModelInfo)}
-                    className="hover:bg-white/10"
-                    aria-label="Toggle model information"
-                  >
-                    <Info className="w-4 h-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setAutoRotate(!autoRotate)}
-                    className="hover:bg-white/10"
-                    aria-label={autoRotate ? "Stop auto rotation" : "Start auto rotation"}
-                  >
-                    <RotateCcw className={cn(
-                      "w-4 h-4",
-                      autoRotate && "animate-spin"
-                    )} />
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleShare}
-                    className="hover:bg-white/10"
-                    aria-label="Share model"
-                  >
-                    <Share className="w-4 h-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={resetCamera}
-                    className="hover:bg-white/10"
-                    aria-label="Reset camera position"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                </>
-              )}
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={triggerFileInputClick}
-                className="hover:bg-white/10"
-                aria-label="Upload custom model"
-              >
-                <Upload className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-          
-          {/* Model Info Panel */}
-          <AnimatePresence>
-            {showModelInfo && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-4 p-3 bg-white/5 rounded-lg border border-white/10"
-              >
-                <div className="text-sm text-white/80 space-y-2">
-                  {modelInfo.prompt && (
-                    <div><span className="text-blue-400 font-medium">Prompt:</span> {modelInfo.prompt}</div>
-                  )}
-                  {modelInfo.artStyle && (
-                    <div><span className="text-blue-400 font-medium">Style:</span> {modelInfo.artStyle}</div>
-                  )}
-                  {modelInfo.metadata?.polycount && (
-                    <div><span className="text-blue-400 font-medium">Polygons:</span> {modelInfo.metadata.polycount.toLocaleString()}</div>
-                  )}
-                  <div><span className="text-blue-400 font-medium">Task ID:</span> {modelInfo.taskId}</div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
+      <ModelViewerControls
+        showControls={showControls}
+        modelType="text-to-3d"
+        modelStatus={modelInfo.status}
+        autoRotate={autoRotate}
+        showEnvironment={showEnvironment}
+        showModelInfo={showModelInfo}
+        onAutoRotateToggle={() => setAutoRotate(!autoRotate)}
+        onEnvironmentToggle={() => setShowEnvironment(!showEnvironment)}
+        onModelInfoToggle={() => setShowModelInfo(!showModelInfo)}
+        onResetCamera={resetCamera}
+        onShare={handleShare}
+        onUpload={triggerFileInputClick}
+        onDownload={handleDownload}
+      />
 
-      {/* Hidden file input */}
+      <ModelInfoPanel 
+        show={showModelInfo} 
+        modelInfo={modelInfo} 
+      />
+
       <input
         type="file"
         ref={fileInputRef}
@@ -301,25 +212,15 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
         aria-label="Upload 3D model file"
       />
 
-      {/* Enhanced 3D Scene for Text-to-3D */}
       <div className={cn("relative", heightClass)}>
-        <Canvas
-          shadows
-          gl={{
-            powerPreference: "high-performance",
-            antialias: true,
-            alpha: true
-          }}
-          dpr={[1, 2]}
-          camera={{ position: [0, 0, 5], fov: 45 }}
-        >
+        <Canvas {...canvasSettings}>
           <ambientLight intensity={0.4} />
           <directionalLight 
             position={[10, 10, 5]} 
             intensity={1}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
+            castShadow={!shouldReduceQuality}
+            shadow-mapSize-width={shouldReduceQuality ? 512 : 2048}
+            shadow-mapSize-height={shouldReduceQuality ? 512 : 2048}
           />
           <pointLight position={[-10, -10, -5]} intensity={0.3} color="#4f46e5" />
           
@@ -382,7 +283,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
                 scale={10} 
                 blur={1} 
                 far={10} 
-                resolution={256} 
+                resolution={shouldReduceQuality ? 128 : 256} 
               />
             </>
           )}
@@ -390,48 +291,14 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
           <gridHelper args={[20, 20, '#ffffff20', '#ffffff10']} position={[0, -2, 0]} />
         </Canvas>
         
-        {/* Enhanced overlay controls for Text-to-3D */}
-        {displayModelUrl && showControls && !isModelLoading && (
-          <div className="absolute bottom-4 left-4 right-4">
-            <div className="glass-panel p-3 rounded-xl backdrop-blur-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Badge variant="outline" className="border-blue-400/30 text-blue-400">
-                    {modelInfo.prompt?.substring(0, 30) || 'AI Generated'}
-                    {(modelInfo.prompt?.length || 0) > 30 && '...'}
-                  </Badge>
-                  {modelInfo.progress !== undefined && modelInfo.progress < 100 && (
-                    <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-                      {modelInfo.progress}%
-                    </Badge>
-                  )}
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowEnvironment(!showEnvironment)}
-                    className="hover:bg-white/10 text-white/70"
-                    aria-label={showEnvironment ? "Hide environment" : "Show environment"}
-                  >
-                    {showEnvironment ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
-                  
-                  <Button
-                    onClick={handleDownload}
-                    size="sm"
-                    className="bg-blue-500 hover:bg-blue-600 text-white"
-                    aria-label="Download 3D model"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <ModelViewerOverlay
+          modelInfo={modelInfo}
+          showControls={showControls}
+          showEnvironment={showEnvironment}
+          isLoading={isModelLoading}
+          onEnvironmentToggle={() => setShowEnvironment(!showEnvironment)}
+          onDownload={handleDownload}
+        />
       </div>
     </motion.div>
   );
