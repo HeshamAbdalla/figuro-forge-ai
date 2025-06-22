@@ -207,66 +207,13 @@ const Studio = () => {
   // Determine if ModelViewer should show loading
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
-  // CRITICAL FIX: Remove all functions from dependencies and use only primitive values
-  const studioLayoutProps = useMemo(() => {
-    // Detect rapid re-renders
-    if (renderCountRef.current > 20) {
-      console.warn('⚠️ [STUDIO] POTENTIAL INFINITE LOOP IN STUDIO COMPONENT', {
-        renderCount: renderCountRef.current,
-        upgradeModalState: { isUpgradeModalOpen, upgradeModalAction }
-      });
-    }
-
-    return {
-      activeTab,
-      setActiveTab,
-      authUser,
-      generatedImage,
-      isGeneratingImage,
-      isGenerating,
-      isGeneratingTextTo3D,
-      currentTaskId,
-      progress,
-      textTo3DProgress,
-      displayModelUrl,
-      shouldModelViewerLoad,
-      uploadModalOpen,
-      setUploadModalOpen,
-      configModalOpen,
-      setConfigModalOpen,
-      textTo3DConfigModalOpen,
-      setTextTo3DConfigModalOpen,
-      textTo3DConfigPrompt,
-      generationModalOpen,
-      setGenerationModalOpen,
-      setCustomModelUrl
-    };
-  }, [
-    // ONLY include primitive values and stable state setters - NO FUNCTIONS AT ALL
-    activeTab,
-    authUser,
-    generatedImage,
-    isGeneratingImage,
-    isGenerating,
-    isGeneratingTextTo3D,
-    currentTaskId,
-    progress,
-    textTo3DProgress,
-    displayModelUrl,
-    shouldModelViewerLoad,
-    uploadModalOpen,
-    configModalOpen,
-    textTo3DConfigModalOpen,
-    textTo3DConfigPrompt,
-    generationModalOpen,
-    // State setters are stable
-    setActiveTab,
-    setUploadModalOpen,
-    setConfigModalOpen,
-    setTextTo3DConfigModalOpen,
-    setGenerationModalOpen,
-    setCustomModelUrl
-  ]);
+  // Detect rapid re-renders
+  if (renderCountRef.current > 20) {
+    console.warn('⚠️ [STUDIO] POTENTIAL INFINITE LOOP IN STUDIO COMPONENT', {
+      renderCount: renderCountRef.current,
+      upgradeModalState: { isUpgradeModalOpen, upgradeModalAction }
+    });
+  }
 
   // Memory cleanup on unmount
   useEffect(() => {
@@ -287,7 +234,27 @@ const Studio = () => {
           <Header />
           <div className="pt-20">
             <StudioLayout
-              {...studioLayoutProps}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              authUser={authUser}
+              generatedImage={generatedImage}
+              isGeneratingImage={isGeneratingImage}
+              isGenerating={isGenerating}
+              isGeneratingTextTo3D={isGeneratingTextTo3D}
+              currentTaskId={currentTaskId}
+              progress={progress}
+              textTo3DProgress={textTo3DProgress}
+              displayModelUrl={displayModelUrl}
+              shouldModelViewerLoad={shouldModelViewerLoad}
+              uploadModalOpen={uploadModalOpen}
+              setUploadModalOpen={setUploadModalOpen}
+              configModalOpen={configModalOpen}
+              setConfigModalOpen={setConfigModalOpen}
+              textTo3DConfigModalOpen={textTo3DConfigModalOpen}
+              setTextTo3DConfigModalOpen={setTextTo3DConfigModalOpen}
+              textTo3DConfigPrompt={textTo3DConfigPrompt}
+              generationModalOpen={generationModalOpen}
+              setGenerationModalOpen={setGenerationModalOpen}
               onGenerate={studioHandlers.onGenerate}
               handleOpenConfigModal={studioHandlers.handleOpenConfigModal}
               handleGenerate3DWithConfig={studioHandlers.handleGenerate3DWithConfig}
@@ -299,6 +266,7 @@ const Studio = () => {
               handleSignOut={studioHandlers.handleSignOut}
               handleSignIn={studioHandlers.handleSignIn}
               handleCloseGenerationModal={studioHandlers.handleCloseGenerationModal}
+              setCustomModelUrl={setCustomModelUrl}
               onCameraImageCapture={handleCameraImageCapture}
             />
           </div>
