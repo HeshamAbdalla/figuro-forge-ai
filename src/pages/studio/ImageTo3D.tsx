@@ -174,7 +174,8 @@ const ImageTo3D = () => {
                       <ModelViewer
                         modelUrl={progress.modelUrl}
                         isLoading={isGenerating}
-                        onModelError={handleModelError}
+                        errorMessage={null}
+                        onCustomModelLoad={(url, file) => {}}
                       />
                     </div>
                   ) : (
