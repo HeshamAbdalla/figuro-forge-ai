@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 
 // Type-safe upgrade modal action enum - standardized across the application
@@ -71,7 +71,7 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
     }
   }, [isUpgradeModalOpen, upgradeModalAction, user]);
 
-  const showUpgradeModal = (action: UpgradeModalAction) => {
+  const showUpgradeModal = useCallback((action: UpgradeModalAction) => {
     console.log('🔥 [UPGRADE-MODAL-HOOK] ===== SHOWING UPGRADE MODAL =====');
     
     // Type-safe validation of the action parameter
@@ -116,9 +116,9 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
     } else {
       console.warn('⚠️ [UPGRADE-MODAL-HOOK] No user found, cannot show upgrade modal');
     }
-  };
+  }, [user, isUpgradeModalOpen, upgradeModalAction]);
 
-  const hideUpgradeModal = () => {
+  const hideUpgradeModal = useCallback(() => {
     console.log('❌ [UPGRADE-MODAL-HOOK] Hiding upgrade modal');
     console.log('📥 [UPGRADE-MODAL-HOOK] setIsUpgradeModalOpen: false');
     setIsUpgradeModalOpen(false);
@@ -128,9 +128,9 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
       console.log('📥 [UPGRADE-MODAL-HOOK] setUpgradeModalAction: null');
       setUpgradeModalAction(null);
     }, 150);
-  };
+  }, []);
 
-  const triggerCelebration = (planName: string = "Premium") => {
+  const triggerCelebration = useCallback((planName: string = "Premium") => {
     console.log('🎉 [UPGRADE-MODAL-HOOK] Triggering celebration:', planName);
     setCelebrationPlan(planName);
     setShowCelebration(true);
@@ -139,12 +139,12 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
     setTimeout(() => {
       setShowCelebration(false);
     }, 5000);
-  };
+  }, []);
 
-  const hideCelebration = () => {
+  const hideCelebration = useCallback(() => {
     console.log('🎊 [UPGRADE-MODAL-HOOK] Hiding celebration');
     setShowCelebration(false);
-  };
+  }, []);
 
   return {
     isUpgradeModalOpen,
