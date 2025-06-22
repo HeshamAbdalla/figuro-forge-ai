@@ -203,12 +203,12 @@ const Studio = () => {
   // Handle model upload with proper async signature
   const handleModelUpload = useCallback(async (figurineId: string, file: File) => {
     studioHandlers.handleModelUpload(file);
-  }, [studioHandlers.handleModelUpload]);
+  }, [studioHandlers]);
 
   // Determine if ModelViewer should show loading
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
-  // FIXED: Completely remove studioHandlers from dependencies to break circular dependency
+  // FINAL FIX: Remove ALL handler functions from dependencies - use static values only
   const studioLayoutProps = useMemo(() => {
     const props = {
       activeTab,
@@ -232,7 +232,7 @@ const Studio = () => {
       textTo3DConfigPrompt,
       generationModalOpen,
       setGenerationModalOpen,
-      // Use studioHandlers functions directly - they are already memoized
+      // Use studioHandlers functions directly - they are now stable
       onGenerate: studioHandlers.onGenerate,
       handleOpenConfigModal: studioHandlers.handleOpenConfigModal,
       handleGenerate3DWithConfig: studioHandlers.handleGenerate3DWithConfig,
@@ -258,7 +258,7 @@ const Studio = () => {
 
     return props;
   }, [
-    // FIXED: Remove studioHandlers from dependencies completely to break circular dependency
+    // FINAL FIX: Only include primitive values and stable state setters - NO HANDLER FUNCTIONS
     activeTab,
     authUser,
     generatedImage,
@@ -275,15 +275,17 @@ const Studio = () => {
     textTo3DConfigModalOpen,
     textTo3DConfigPrompt,
     generationModalOpen,
+    // State setters are stable
     setActiveTab,
     setUploadModalOpen,
     setConfigModalOpen,
     setTextTo3DConfigModalOpen,
     setGenerationModalOpen,
     setCustomModelUrl,
+    // These are the only callback functions we include - they use useCallback with stable deps
     handleCameraImageCapture,
     handleModelUpload
-    // Removed studioHandlers from dependencies to break circular dependency
+    // Completely removed studioHandlers and all handler functions from dependencies
   ]);
 
   // Memory cleanup on unmount

@@ -40,7 +40,6 @@ export const useStudioHandlers = ({
 
   // Add debugging for handler stability
   const renderCountRef = useRef(0);
-  const prevHandlersRef = useRef<any>(null);
   
   renderCountRef.current += 1;
 
@@ -214,48 +213,29 @@ export const useStudioHandlers = ({
     resetProgress();
   }, [setGenerationModalOpen, resetProgress]);
 
-  // FIXED: Remove all callback function dependencies to break circular dependency
-  const handlers = useMemo(() => {
-    const handlersObject = {
-      handleSignOut,
-      handleSignIn,
-      onGenerate,
-      handleOpenConfigModal,
-      handleGenerate3DWithConfig,
-      handleQuickConvert,
-      handleTextTo3D,
-      handleOpenTextTo3DConfigModal,
-      handleTextTo3DWithConfig,
-      handleModelUpload,
-      handleCloseGenerationModal,
-    };
+  // SOLUTION: Return a stable object reference that doesn't change on every render
+  // Create the handlers object once and return the same reference unless dependencies actually change
+  const stableHandlers = useMemo(() => ({
+    handleSignOut,
+    handleSignIn,
+    onGenerate,
+    handleOpenConfigModal,
+    handleGenerate3DWithConfig,
+    handleQuickConvert,
+    handleTextTo3D,
+    handleOpenTextTo3DConfigModal,
+    handleTextTo3DWithConfig,
+    handleModelUpload,
+    handleCloseGenerationModal,
+  }), []); // EMPTY DEPENDENCIES - handlers are stable
 
-    // Debug handler stability
-    const handlersChanged = JSON.stringify(prevHandlersRef.current) !== JSON.stringify(handlersObject);
-    if (handlersChanged) {
-      console.log('🔧 [STUDIO-HANDLERS] Handlers object changed:', {
-        renderCount: renderCountRef.current,
-        timestamp: new Date().toISOString()
-      });
-      prevHandlersRef.current = handlersObject;
-    }
+  // Detect potential infinite loops
+  if (renderCountRef.current > 10) {
+    console.warn('⚠️ [STUDIO-HANDLERS] POTENTIAL INFINITE LOOP IN HANDLERS', {
+      renderCount: renderCountRef.current,
+      timestamp: new Date().toISOString()
+    });
+  }
 
-    // Detect potential infinite loops
-    if (renderCountRef.current > 10) {
-      console.warn('⚠️ [STUDIO-HANDLERS] POTENTIAL INFINITE LOOP IN HANDLERS', {
-        renderCount: renderCountRef.current,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    return handlersObject;
-  }, [
-    // FIXED: Only include the most primitive dependencies - no callback functions
-    generatedImage, // primitive string | null
-    navigate, // stable reference from useNavigate
-    toast // stable reference from useToast
-    // Removed ALL other dependencies to prevent circular dependency
-  ]);
-
-  return handlers;
+  return stableHandlers;
 };
