@@ -46,7 +46,7 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
     if (user) {
       console.log('✅ [UPGRADE-MODAL-HOOK] User authenticated, updating modal state...');
       
-      // Force state updates with functional updates to ensure reliability
+      // Use functional updates to ensure reliability and prevent race conditions
       setUpgradeModalAction((prev) => {
         console.log('🔄 [UPGRADE-MODAL-HOOK] Action state change:', prev, '->', action);
         return action;
@@ -72,10 +72,10 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
   const hideUpgradeModal = () => {
     console.log('❌ [UPGRADE-MODAL-HOOK] Hiding upgrade modal');
     setIsUpgradeModalOpen(false);
-    // Small delay to prevent race conditions
+    // Small delay to prevent race conditions and ensure smooth animation
     setTimeout(() => {
       setUpgradeModalAction(null);
-    }, 100);
+    }, 150);
   };
 
   const triggerCelebration = (planName: string = "Premium") => {

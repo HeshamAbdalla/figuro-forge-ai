@@ -1,6 +1,6 @@
 
-import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { Sparkles, Zap, Crown, ArrowRight, Check } from "lucide-react";
-import { useState } from "react";
 
 interface EnhancedUpgradeModalProps {
   isOpen: boolean;
@@ -158,6 +157,11 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
       timestamp: new Date().toISOString()
     });
     onOpenChange(open);
+  };
+
+  const handleMaybeLater = () => {
+    console.log('⏭️ [ENHANCED-UPGRADE-MODAL] Maybe later clicked');
+    onOpenChange(false);
   };
 
   console.log('🎯 [ENHANCED-UPGRADE-MODAL] About to render Dialog with isOpen:', isOpen);
@@ -304,7 +308,7 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
               >
                 <Button 
                   variant="ghost" 
-                  onClick={() => onOpenChange(false)}
+                  onClick={handleMaybeLater}
                   className="w-full text-white/60 hover:text-white/80 py-2"
                   aria-label="Close upgrade modal"
                 >

@@ -1,5 +1,5 @@
+
 import { useMemo, useCallback, useEffect } from "react";
-import { AnimatePresence } from "framer-motion";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
@@ -9,10 +9,9 @@ import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
-import EnhancedUpgradeModal from "@/components/upgrade/EnhancedUpgradeModal";
-import UpgradeCelebration from "@/components/upgrade/UpgradeCelebration";
 import Header from "@/components/Header";
 import StudioLayout from "@/components/studio/StudioLayout";
+import StudioUpgradeHandler from "@/components/studio/StudioUpgradeHandler";
 import { StudioErrorBoundary } from "@/components/studio/StudioErrorBoundary";
 import { useStudioState } from "@/components/studio/hooks/useStudioState";
 import { useStudioHandlers } from "@/components/studio/hooks/useStudioHandlers";
@@ -24,6 +23,9 @@ const Studio = () => {
   const { user: authUser, isLoading: authLoading, session } = useEnhancedAuth();
   const isAuthenticated = !!session?.user;
   const { toast } = useToast();
+
+  // Get upgrade modal functions
+  const { showUpgradeModal } = useEnhancedUpgradeModal();
 
   const {
     customModelUrl,
@@ -70,52 +72,13 @@ const Studio = () => {
     tabs: ['image-to-3d', 'camera', 'text-to-3d', 'web-icons', 'gallery']
   });
 
-  // Use enhanced upgrade modal functionality with debugging
-  const {
-    isUpgradeModalOpen,
-    upgradeModalAction,
-    showUpgradeModal,
-    hideUpgradeModal,
-    showCelebration,
-    triggerCelebration,
-    hideCelebration,
-    celebrationPlan
-  } = useEnhancedUpgradeModal();
-
-  // Debug upgrade modal state changes with more detail
-  useEffect(() => {
-    console.log('🔧 [STUDIO] ===== UPGRADE MODAL STATE CHANGED =====');
-    console.log('🔧 [STUDIO] Upgrade modal state changed:', {
-      isUpgradeModalOpen,
-      upgradeModalAction,
-      shouldRenderModal: isUpgradeModalOpen && upgradeModalAction,
-      timestamp: new Date().toISOString()
-    });
-    
-    if (isUpgradeModalOpen && upgradeModalAction) {
-      console.log('✅ [STUDIO] Modal should be visible now!');
-    } else if (isUpgradeModalOpen && !upgradeModalAction) {
-      console.log('⚠️ [STUDIO] Modal open but no action set');
-    } else if (!isUpgradeModalOpen && upgradeModalAction) {
-      console.log('⚠️ [STUDIO] Action set but modal not open');
-    }
-  }, [isUpgradeModalOpen, upgradeModalAction]);
-
-  // Add debugging for showUpgradeModal function changes
-  useEffect(() => {
-    console.log('🔧 [STUDIO] showUpgradeModal function changed:', {
-      hasFunction: !!showUpgradeModal,
-      functionType: typeof showUpgradeModal
-    });
-  }, [showUpgradeModal]);
-
   // Determine which model URL to display
   const displayModelUrl = customModelUrl || textTo3DProgress.modelUrl || progress.modelUrl;
 
   // Add camera progress tracking
   const { cameraProgress, resetProgress: resetCameraProgress } = useCameraProgress(progress, displayModelUrl);
 
-  // Call useStudioHandlers directly at the top level - FIX FOR HOOKS RULE VIOLATION
+  // Call useStudioHandlers with showUpgradeModal
   const studioHandlers = useStudioHandlers({
     generatedImage,
     setCustomModelUrl,
@@ -243,7 +206,7 @@ const Studio = () => {
   // Determine if ModelViewer should show loading
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
-  // Memoize the StudioLayout props to prevent unnecessary re-renders - FIXED DEPENDENCY ARRAY
+  // Memoize the StudioLayout props to prevent unnecessary re-renders
   const studioLayoutProps = useMemo(() => ({
     activeTab,
     setActiveTab,
@@ -307,7 +270,6 @@ const Studio = () => {
     wrappedHandleModelUpload,
     setCustomModelUrl,
     handleCameraImageCapture,
-    // Fixed: Use individual handler functions instead of the entire studioHandlers object
     studioHandlers.handleOpenConfigModal,
     studioHandlers.handleGenerate3DWithConfig,
     studioHandlers.handleQuickConvert,
@@ -317,27 +279,17 @@ const Studio = () => {
     studioHandlers.handleCloseGenerationModal
   ]);
 
+  // Memory cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup any URL objects to prevent memory leaks
+      if (customModelUrl && customModelUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(customModelUrl);
+      }
+    };
+  }, [customModelUrl]);
+
   console.log('✅ [STUDIO] Rendering with secure auth state:', { isAuthenticated, hasUser: !!authUser });
-  console.log('🔧 [STUDIO] About to render upgrade modal with state:', {
-    isUpgradeModalOpen,
-    upgradeModalAction,
-    hasAction: !!upgradeModalAction,
-    shouldRender: !!(isUpgradeModalOpen && upgradeModalAction)
-  });
-
-  // Move console.log outside of JSX
-  const upgradeModalRenderLog = () => {
-    console.log('🎯 [STUDIO] ===== RENDERING UPGRADE MODAL =====', { 
-      isUpgradeModalOpen, 
-      upgradeModalAction,
-      timestamp: new Date().toISOString()
-    });
-  };
-
-  // Call the logging function when modal is about to render
-  if (isUpgradeModalOpen && upgradeModalAction) {
-    upgradeModalRenderLog();
-  }
 
   return (
     <SecurityEnforcedRoute requireVerification={true}>
@@ -348,42 +300,8 @@ const Studio = () => {
             <StudioLayout {...studioLayoutProps} />
           </div>
           
-          {/* Enhanced Upgrade Modal with key-based re-rendering and better fallback */}
-          <AnimatePresence mode="wait">
-            {(isUpgradeModalOpen || upgradeModalAction) && (
-              <StudioErrorBoundary key={`upgrade-modal-${upgradeModalAction}`}>
-                <EnhancedUpgradeModal
-                  key={upgradeModalAction} // Force re-mount on action change
-                  isOpen={isUpgradeModalOpen}
-                  onOpenChange={(open) => {
-                    console.log('💥 [STUDIO] Modal open state changed:', open);
-                    if (!open) hideUpgradeModal();
-                  }}
-                  actionType={upgradeModalAction!}
-                  title="Upgrade Required"
-                  description={
-                    upgradeModalAction === "image_generation"
-                      ? "You've reached your daily image generation limit."
-                      : "You've reached your monthly 3D conversion limit. Upgrade to continue creating 3D models."
-                  }
-                />
-              </StudioErrorBoundary>
-            )}
-          </AnimatePresence>
-
-          {/* Fallback debug div - remove in production */}
-          {process.env.NODE_ENV === 'development' && upgradeModalAction && !isUpgradeModalOpen && (
-            <div className="fixed bottom-4 left-4 bg-red-500 text-white p-2 text-xs rounded z-50">
-              Debug: Action set ({upgradeModalAction}) but modal not open
-            </div>
-          )}
-
-          {/* Upgrade Celebration */}
-          <UpgradeCelebration
-            isVisible={showCelebration}
-            onComplete={hideCelebration}
-            planName={celebrationPlan}
-          />
+          {/* Upgraded modal handling with dedicated component */}
+          <StudioUpgradeHandler />
         </div>
       </StudioErrorBoundary>
     </SecurityEnforcedRoute>

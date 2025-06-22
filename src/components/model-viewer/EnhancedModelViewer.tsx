@@ -89,18 +89,25 @@ const EnhancedModelViewer: React.FC<ModelViewerProps> = (props) => {
   // Fallback - should not happen with proper TypeScript usage
   console.error('❌ [ENHANCED-MODEL-VIEWER] Invalid props provided, unable to determine viewer type');
   
-  // Render error state instead of null for better debugging
+  // Enhanced error state with better UX
   return (
-    <div className="w-full h-64 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
-      <div className="text-center">
-        <p className="text-red-500 font-medium">Model Viewer Error</p>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Invalid props configuration
+    <div className="w-full h-64 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+      <div className="text-center p-6">
+        <div className="w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+          <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Model Viewer Error</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Unable to display 3D model due to configuration issues
         </p>
         {process.env.NODE_ENV === 'development' && (
-          <details className="mt-2 text-xs">
-            <summary className="cursor-pointer">Debug Info</summary>
-            <pre className="mt-1 text-left bg-gray-200 dark:bg-gray-700 p-2 rounded">
+          <details className="text-left">
+            <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+              Show Debug Info
+            </summary>
+            <pre className="mt-2 text-xs bg-gray-200 dark:bg-gray-700 p-3 rounded overflow-auto max-h-32">
               {JSON.stringify(props, null, 2)}
             </pre>
           </details>

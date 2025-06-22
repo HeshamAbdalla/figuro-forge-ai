@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, ContactShadows, Html } from '@react-three/drei';
@@ -27,7 +28,7 @@ interface Text3DModelViewerProps extends BaseModelViewerProps {
 }
 
 // Enhanced loading component for text-to-3D
-const Text3DLoadingView = ({ progress = 0, modelInfo }: { progress: number; modelInfo: TextTo3DModelInfo }) => {
+const Text3DLoadingView = React.memo(({ progress = 0, modelInfo }: { progress: number; modelInfo: TextTo3DModelInfo }) => {
   return (
     <Html center>
       <motion.div 
@@ -58,7 +59,9 @@ const Text3DLoadingView = ({ progress = 0, modelInfo }: { progress: number; mode
       </motion.div>
     </Html>
   );
-};
+});
+
+Text3DLoadingView.displayName = 'Text3DLoadingView';
 
 const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
   modelInfo,
@@ -77,7 +80,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
   const [showModelInfo, setShowModelInfo] = useState(false);
   const { toast } = useToast();
 
-  // Use specialized text-to-3D loader - FIXED: Pass modelInfo directly instead of wrapping it
+  // Use specialized text-to-3D loader - FIXED: Pass modelInfo directly
   const {
     loading: textTo3DLoading,
     model: textTo3DModel,
@@ -142,6 +145,15 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
     }
   }, [modelInfo, toast]);
 
+  // Memory cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (customModelBlob) {
+        URL.revokeObjectURL(customModelBlob);
+      }
+    };
+  }, [customModelBlob]);
+
   // Determine loading and error states
   const isModelLoading = isLoading || textTo3DLoading;
   const modelLoadingProgress = Math.max(progress, textTo3DProgress);
@@ -200,6 +212,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
                     size="sm"
                     onClick={() => setShowModelInfo(!showModelInfo)}
                     className="hover:bg-white/10"
+                    aria-label="Toggle model information"
                   >
                     <Info className="w-4 h-4" />
                   </Button>
@@ -209,6 +222,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
                     size="sm"
                     onClick={() => setAutoRotate(!autoRotate)}
                     className="hover:bg-white/10"
+                    aria-label={autoRotate ? "Stop auto rotation" : "Start auto rotation"}
                   >
                     <RotateCcw className={cn(
                       "w-4 h-4",
@@ -221,6 +235,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
                     size="sm"
                     onClick={handleShare}
                     className="hover:bg-white/10"
+                    aria-label="Share model"
                   >
                     <Share className="w-4 h-4" />
                   </Button>
@@ -230,6 +245,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
                     size="sm"
                     onClick={resetCamera}
                     className="hover:bg-white/10"
+                    aria-label="Reset camera position"
                   >
                     <Eye className="w-4 h-4" />
                   </Button>
@@ -241,6 +257,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
                 size="sm"
                 onClick={triggerFileInputClick}
                 className="hover:bg-white/10"
+                aria-label="Upload custom model"
               >
                 <Upload className="w-4 h-4" />
               </Button>
@@ -281,6 +298,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
         onChange={handleFileChange}
         accept=".glb,.gltf"
         className="hidden"
+        aria-label="Upload 3D model file"
       />
 
       {/* Enhanced 3D Scene for Text-to-3D */}
@@ -395,6 +413,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
                     size="sm"
                     onClick={() => setShowEnvironment(!showEnvironment)}
                     className="hover:bg-white/10 text-white/70"
+                    aria-label={showEnvironment ? "Hide environment" : "Show environment"}
                   >
                     {showEnvironment ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </Button>
@@ -403,6 +422,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
                     onClick={handleDownload}
                     size="sm"
                     className="bg-blue-500 hover:bg-blue-600 text-white"
+                    aria-label="Download 3D model"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Download
