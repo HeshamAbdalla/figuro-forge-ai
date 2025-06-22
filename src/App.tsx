@@ -90,7 +90,6 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <HelmetProvider>
           <TooltipProvider>
-            <Toaster />
             <ProductionMonitor 
               enableErrorReporting={true}
               enablePerformanceTracking={true}
@@ -98,6 +97,7 @@ function App() {
             <BrowserRouter>
               <EnhancedAuthProvider>
                 <ErrorBoundary>
+                  <Toaster />
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/gallery" element={<Gallery />} />
