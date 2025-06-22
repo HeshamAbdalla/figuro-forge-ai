@@ -224,20 +224,18 @@ const ImageTo3D = () => {
           imageUrl={generatedImage}
         />
 
-        {/* Enhanced Upgrade Modal */}
-        <AnimatePresence mode="wait">
-          {isUpgradeModalOpen && upgradeModalAction && (
-            <EnhancedUpgradeModal
-              isOpen={isUpgradeModalOpen}
-              onOpenChange={(open) => {
-                if (!open) hideUpgradeModal();
-              }}
-              actionType={upgradeModalAction}
-              title="Upgrade Required"
-              description="You've reached your usage limit. Upgrade to continue creating amazing content."
-            />
-          )}
-        </AnimatePresence>
+        {/* Enhanced Upgrade Modal - Simplified conditional rendering */}
+        {isUpgradeModalOpen && upgradeModalAction && (
+          <EnhancedUpgradeModal
+            isOpen={isUpgradeModalOpen}
+            onOpenChange={(open) => {
+              if (!open) hideUpgradeModal();
+            }}
+            actionType={upgradeModalAction}
+            title="Upgrade Required"
+            description="You've reached your usage limit. Upgrade to continue creating amazing content."
+          />
+        )}
       </div>
     </SecurityEnforcedRoute>
   );

@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
@@ -194,20 +195,18 @@ const TextTo3D = () => {
           initialPrompt={configPrompt}
         />
 
-        {/* Enhanced Upgrade Modal */}
-        <AnimatePresence mode="wait">
-          {isUpgradeModalOpen && upgradeModalAction && (
-            <EnhancedUpgradeModal
-              isOpen={isUpgradeModalOpen}
-              onOpenChange={(open) => {
-                if (!open) hideUpgradeModal();
-              }}
-              actionType={upgradeModalAction}
-              title="Upgrade Required"
-              description="You've reached your usage limit. Upgrade to continue creating amazing 3D models."
-            />
-          )}
-        </AnimatePresence>
+        {/* Enhanced Upgrade Modal - Simplified conditional rendering */}
+        {isUpgradeModalOpen && upgradeModalAction && (
+          <EnhancedUpgradeModal
+            isOpen={isUpgradeModalOpen}
+            onOpenChange={(open) => {
+              if (!open) hideUpgradeModal();
+            }}
+            actionType={upgradeModalAction}
+            title="Upgrade Required"
+            description="You've reached your usage limit. Upgrade to continue creating amazing 3D models."
+          />
+        )}
 
         {/* Debug Buttons - Remove in production */}
         {process.env.NODE_ENV === 'development' && <DebugUpgradeButtons />}
