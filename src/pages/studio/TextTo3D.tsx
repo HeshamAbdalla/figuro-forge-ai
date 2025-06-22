@@ -33,9 +33,13 @@ const TextTo3D = () => {
 
   const handleTextTo3D = useCallback(async (prompt: string, artStyle: string, negativePrompt: string = "") => {
     try {
+      console.log('📝 [TEXT-TO-3D] Starting generation with:', { prompt, artStyle, negativePrompt });
       return await generateModel(prompt, artStyle, negativePrompt);
     } catch (error: any) {
+      console.log('❌ [TEXT-TO-3D] Generation failed:', error);
+      
       if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
+        console.log('🔔 [TEXT-TO-3D] Showing upgrade notification for model_conversion');
         showUpgradeNotification("model_conversion");
       } else {
         toast({
@@ -55,10 +59,14 @@ const TextTo3D = () => {
 
   const handleTextTo3DWithConfig = useCallback(async (config: any): Promise<void> => {
     try {
+      console.log('⚙️ [TEXT-TO-3D] Starting generation with config:', config);
       setConfigModalOpen(false);
       await generateModelWithConfig(config);
     } catch (error: any) {
+      console.log('❌ [TEXT-TO-3D] Config generation failed:', error);
+      
       if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
+        console.log('🔔 [TEXT-TO-3D] Showing upgrade notification for model_conversion');
         showUpgradeNotification("model_conversion");
       } else {
         toast({

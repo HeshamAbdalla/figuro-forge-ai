@@ -13,6 +13,7 @@ import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
 import StreamlinedImagePreview from "@/components/studio/StreamlinedImagePreview";
 import ImageTo3DConfigModal from "@/components/studio/ImageTo3DConfigModal";
 import ModelViewer from "@/components/model-viewer";
+import DebugUpgradeButtons from "@/components/upgrade/DebugUpgradeButtons";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Wand2 } from "lucide-react";
 
@@ -37,9 +38,13 @@ const ImageTo3D = () => {
 
   const handleGenerate = useCallback(async (prompt: string, style: string): Promise<void> => {
     try {
+      console.log('🎨 [IMAGE-TO-3D] Starting image generation with:', { prompt, style });
       await originalHandleGenerate(prompt, style);
     } catch (error: any) {
+      console.log('❌ [IMAGE-TO-3D] Image generation failed:', error);
+      
       if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
+        console.log('🔔 [IMAGE-TO-3D] Showing upgrade notification for image_generation');
         showUpgradeNotification("image_generation");
       } else {
         toast({
@@ -62,9 +67,13 @@ const ImageTo3D = () => {
     }
 
     try {
+      console.log('⚡ [IMAGE-TO-3D] Starting quick convert');
       await generate3DModel(generatedImage, `generated-${Date.now()}.jpg`);
     } catch (error: any) {
+      console.log('❌ [IMAGE-TO-3D] Quick convert failed:', error);
+      
       if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
+        console.log('🔔 [IMAGE-TO-3D] Showing upgrade notification for model_conversion');
         showUpgradeNotification("model_conversion");
       } else {
         toast({
@@ -92,10 +101,14 @@ const ImageTo3D = () => {
     if (!generatedImage) return;
 
     try {
+      console.log('⚙️ [IMAGE-TO-3D] Starting 3D generation with config:', config);
       setConfigModalOpen(false);
       await generate3DModel(generatedImage, `generated-${Date.now()}.jpg`, config);
     } catch (error: any) {
+      console.log('❌ [IMAGE-TO-3D] 3D generation with config failed:', error);
+      
       if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
+        console.log('🔔 [IMAGE-TO-3D] Showing upgrade notification for model_conversion');
         showUpgradeNotification("model_conversion");
       } else {
         toast({
@@ -217,6 +230,9 @@ const ImageTo3D = () => {
           isGenerating={isGenerating}
           imageUrl={generatedImage}
         />
+
+        {/* Debug Buttons - Remove in production */}
+        {process.env.NODE_ENV === 'development' && <DebugUpgradeButtons />}
       </div>
     </SecurityEnforcedRoute>
   );
