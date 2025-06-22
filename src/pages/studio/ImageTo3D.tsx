@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
@@ -13,6 +13,7 @@ import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
 import StreamlinedImagePreview from "@/components/studio/StreamlinedImagePreview";
 import ImageTo3DConfigModal from "@/components/studio/ImageTo3DConfigModal";
 import ModelViewer from "@/components/model-viewer";
+import EnhancedUpgradeModal from "@/components/upgrade/EnhancedUpgradeModal";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Wand2 } from "lucide-react";
 
@@ -21,7 +22,12 @@ const ImageTo3D = () => {
   const { toast } = useToast();
   const [configModalOpen, setConfigModalOpen] = useState(false);
   
-  const { showUpgradeModal } = useEnhancedUpgradeModal();
+  const { 
+    showUpgradeModal,
+    isUpgradeModalOpen,
+    upgradeModalAction,
+    hideUpgradeModal
+  } = useEnhancedUpgradeModal();
 
   const {
     isGeneratingImage,
@@ -217,6 +223,21 @@ const ImageTo3D = () => {
           isGenerating={isGenerating}
           imageUrl={generatedImage}
         />
+
+        {/* Enhanced Upgrade Modal */}
+        <AnimatePresence mode="wait">
+          {isUpgradeModalOpen && upgradeModalAction && (
+            <EnhancedUpgradeModal
+              isOpen={isUpgradeModalOpen}
+              onOpenChange={(open) => {
+                if (!open) hideUpgradeModal();
+              }}
+              actionType={upgradeModalAction}
+              title="Upgrade Required"
+              description="You've reached your usage limit. Upgrade to continue creating amazing content."
+            />
+          )}
+        </AnimatePresence>
       </div>
     </SecurityEnforcedRoute>
   );

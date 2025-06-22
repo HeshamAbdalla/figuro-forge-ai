@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
@@ -12,6 +12,7 @@ import TextTo3DForm from "@/components/studio/TextTo3DForm";
 import TextTo3DConfigModal from "@/components/studio/TextTo3DConfigModal";
 import TextTo3DProgress from "@/components/studio/TextTo3DProgress";
 import ModelViewer from "@/components/model-viewer";
+import EnhancedUpgradeModal from "@/components/upgrade/EnhancedUpgradeModal";
 import { Type, Sparkles } from "lucide-react";
 
 const TextTo3D = () => {
@@ -20,7 +21,12 @@ const TextTo3D = () => {
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [configPrompt, setConfigPrompt] = useState("");
   
-  const { showUpgradeModal } = useEnhancedUpgradeModal();
+  const { 
+    showUpgradeModal,
+    isUpgradeModalOpen,
+    upgradeModalAction,
+    hideUpgradeModal
+  } = useEnhancedUpgradeModal();
 
   const {
     isGenerating,
@@ -187,6 +193,21 @@ const TextTo3D = () => {
           isGenerating={isGenerating}
           initialPrompt={configPrompt}
         />
+
+        {/* Enhanced Upgrade Modal */}
+        <AnimatePresence mode="wait">
+          {isUpgradeModalOpen && upgradeModalAction && (
+            <EnhancedUpgradeModal
+              isOpen={isUpgradeModalOpen}
+              onOpenChange={(open) => {
+                if (!open) hideUpgradeModal();
+              }}
+              actionType={upgradeModalAction}
+              title="Upgrade Required"
+              description="You've reached your usage limit. Upgrade to continue creating amazing 3D models."
+            />
+          )}
+        </AnimatePresence>
       </div>
     </SecurityEnforcedRoute>
   );
