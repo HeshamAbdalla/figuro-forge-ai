@@ -70,6 +70,14 @@ const TextTo3D = () => {
     }
   }, [generateModelWithConfig, showUpgradeModal, toast, setConfigModalOpen]);
 
+  const handleModelError = useCallback((error: string) => {
+    toast({
+      title: "Model Loading Error",
+      description: error,
+      variant: "destructive",
+    });
+  }, [toast]);
+
   return (
     <SecurityEnforcedRoute requireVerification={true}>
       <div className="min-h-screen bg-figuro-dark">
@@ -96,6 +104,7 @@ const TextTo3D = () => {
                   </h2>
                   <TextTo3DForm
                     onGenerate={handleTextTo3D}
+                    onOpenConfigModal={handleOpenConfigModal}
                     isGenerating={isGenerating}
                   />
                 </div>
@@ -131,13 +140,7 @@ const TextTo3D = () => {
                       <ModelViewer
                         modelUrl={progress.modelUrl}
                         isLoading={isGenerating}
-                        onError={(error) => {
-                          toast({
-                            title: "Model Loading Error",
-                            description: error,
-                            variant: "destructive",
-                          });
-                        }}
+                        onModelError={handleModelError}
                       />
                     </div>
                   ) : (

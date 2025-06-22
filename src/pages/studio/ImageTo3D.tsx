@@ -107,6 +107,14 @@ const ImageTo3D = () => {
     }
   }, [generatedImage, generate3DModel, showUpgradeModal, toast, setConfigModalOpen]);
 
+  const handleModelError = useCallback((error: string) => {
+    toast({
+      title: "Model Loading Error",
+      description: error,
+      variant: "destructive",
+    });
+  }, [toast]);
+
   return (
     <SecurityEnforcedRoute requireVerification={true}>
       <div className="min-h-screen bg-figuro-dark">
@@ -166,13 +174,7 @@ const ImageTo3D = () => {
                       <ModelViewer
                         modelUrl={progress.modelUrl}
                         isLoading={isGenerating}
-                        onError={(error) => {
-                          toast({
-                            title: "Model Loading Error",
-                            description: error,
-                            variant: "destructive",
-                          });
-                        }}
+                        onModelError={handleModelError}
                       />
                     </div>
                   ) : (
