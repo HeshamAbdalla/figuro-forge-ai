@@ -104,6 +104,27 @@ function App() {
                     <Route path="/about" element={<About />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/auth" element={<Auth />} />
+                    <Route path="/studio-hub" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <StudioHub />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/studio/image-to-3d" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <ImageTo3D />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/studio/text-to-3d" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <TextTo3D />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
                     <Route path="/studio" element={
                       <ErrorBoundary>
                         <SecurityEnforcedRoute>

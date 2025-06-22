@@ -11,7 +11,7 @@ import {
   Camera, 
   Type, 
   Palette, 
-  Gallery,
+  Images,
   ArrowRight,
   Sparkles,
   Zap
@@ -60,7 +60,7 @@ const StudioHub = () => {
       id: 'gallery',
       title: 'Gallery Studio',
       description: 'Browse and manage your created models',
-      icon: Gallery,
+      icon: Images,
       path: '/studio/gallery',
       color: 'from-indigo-500 to-purple-500'
     }
@@ -167,7 +167,7 @@ const StudioHub = () => {
                   variant="outline"
                   className="border-white/20 text-white hover:bg-white/10"
                 >
-                  <Gallery className="w-4 h-4 mr-2" />
+                  <Images className="w-4 h-4 mr-2" />
                   Browse Public Gallery
                 </Button>
                 <Button

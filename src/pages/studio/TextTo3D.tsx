@@ -11,7 +11,7 @@ import StudioBreadcrumb from "@/components/studio/StudioBreadcrumb";
 import TextTo3DForm from "@/components/studio/TextTo3DForm";
 import TextTo3DConfigModal from "@/components/studio/TextTo3DConfigModal";
 import TextTo3DProgress from "@/components/studio/TextTo3DProgress";
-import { ModelViewer } from "@/components/model-viewer";
+import ModelViewer from "@/components/model-viewer";
 import { Type, Sparkles } from "lucide-react";
 
 const TextTo3D = () => {
@@ -52,10 +52,10 @@ const TextTo3D = () => {
     setConfigModalOpen(true);
   }, []);
 
-  const handleTextTo3DWithConfig = useCallback(async (config: any) => {
+  const handleTextTo3DWithConfig = useCallback(async (config: any): Promise<void> => {
     try {
       setConfigModalOpen(false);
-      return await generateModelWithConfig(config);
+      await generateModelWithConfig(config);
     } catch (error: any) {
       if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
         showUpgradeModal("model_conversion");
@@ -96,7 +96,6 @@ const TextTo3D = () => {
                   </h2>
                   <TextTo3DForm
                     onGenerate={handleTextTo3D}
-                    onAdvancedGenerate={handleOpenConfigModal}
                     isGenerating={isGenerating}
                   />
                 </div>
@@ -131,7 +130,7 @@ const TextTo3D = () => {
                     <div className="h-[500px] rounded-lg overflow-hidden">
                       <ModelViewer
                         modelUrl={progress.modelUrl}
-                        loading={isGenerating}
+                        isLoading={isGenerating}
                         onError={(error) => {
                           toast({
                             title: "Model Loading Error",

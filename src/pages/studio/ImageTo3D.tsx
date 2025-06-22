@@ -12,7 +12,7 @@ import StudioBreadcrumb from "@/components/studio/StudioBreadcrumb";
 import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
 import StreamlinedImagePreview from "@/components/studio/StreamlinedImagePreview";
 import ImageTo3DConfigModal from "@/components/studio/ImageTo3DConfigModal";
-import { ModelViewer } from "@/components/model-viewer";
+import ModelViewer from "@/components/model-viewer";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Wand2 } from "lucide-react";
 
@@ -141,10 +141,10 @@ const ImageTo3D = () => {
                   <div className="bg-figuro-light/5 rounded-2xl p-6 border border-white/10">
                     <h3 className="text-xl font-semibold text-white mb-4">Generated Image</h3>
                     <StreamlinedImagePreview
-                      imageUrl={generatedImage}
-                      isGenerating={isGeneratingImage}
-                      onQuickConvert={handleQuickConvert}
-                      onAdvancedConvert={handleOpenConfigModal}
+                      imageSrc={generatedImage}
+                      isLoading={isGeneratingImage}
+                      onConvertTo3D={handleQuickConvert}
+                      onOpenConfig={handleOpenConfigModal}
                       isConverting={isGenerating}
                     />
                   </div>
@@ -165,7 +165,7 @@ const ImageTo3D = () => {
                     <div className="h-[500px] rounded-lg overflow-hidden">
                       <ModelViewer
                         modelUrl={progress.modelUrl}
-                        loading={isGenerating}
+                        isLoading={isGenerating}
                         onError={(error) => {
                           toast({
                             title: "Model Loading Error",
