@@ -38,7 +38,7 @@ export const useStudioHandlers = ({
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // FIXED: Create truly stable references for each handler function
+  // Create truly stable references for each handler function
   const stableHandleSignOut = useCallback(async () => {
     try {
       await supabase.auth.signOut();
@@ -204,8 +204,8 @@ export const useStudioHandlers = ({
     resetProgress();
   }, [setGenerationModalOpen, resetProgress]);
 
-  // Return a simple object with stable references - no useMemo needed
-  return {
+  // CRITICAL FIX: Memoize the returned object itself to prevent recreation
+  return useMemo(() => ({
     handleSignOut: stableHandleSignOut,
     handleSignIn: stableHandleSignIn,
     onGenerate: stableOnGenerate,
@@ -217,5 +217,17 @@ export const useStudioHandlers = ({
     handleTextTo3DWithConfig: stableHandleTextTo3DWithConfig,
     handleModelUpload: stableHandleModelUpload,
     handleCloseGenerationModal: stableHandleCloseGenerationModal,
-  };
+  }), [
+    stableHandleSignOut,
+    stableHandleSignIn,
+    stableOnGenerate,
+    stableHandleOpenConfigModal,
+    stableHandleGenerate3DWithConfig,
+    stableHandleQuickConvert,
+    stableHandleTextTo3D,
+    stableHandleOpenTextTo3DConfigModal,
+    stableHandleTextTo3DWithConfig,
+    stableHandleModelUpload,
+    stableHandleCloseGenerationModal,
+  ]);
 };
