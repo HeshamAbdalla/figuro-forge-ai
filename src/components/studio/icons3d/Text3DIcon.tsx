@@ -1,0 +1,75 @@
+
+import React from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Environment, Text } from '@react-three/drei';
+import Icon3DBase from './Icon3DBase';
+
+const Text3DIcon: React.FC = () => {
+  return (
+    <Canvas camera={{ position: [0, 0, 4] }} style={{ width: '100%', height: '100%' }}>
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[2, 2, 2]} intensity={0.8} />
+      
+      <Icon3DBase rotationSpeed={0.8}>
+        <group>
+          {/* 3D Text */}
+          <Text
+            font="/fonts/helvetiker_regular.typeface.json"
+            fontSize={0.8}
+            height={0.2}
+            curveSegments={12}
+            bevelEnabled
+            bevelThickness={0.02}
+            bevelSize={0.02}
+            bevelOffset={0}
+            bevelSegments={5}
+            position={[0, 0.2, 0]}
+          >
+            AI
+            <meshStandardMaterial 
+              color="#9333ea"
+              metalness={0.5}
+              roughness={0.2}
+            />
+          </Text>
+          
+          {/* Floating letters */}
+          <Text
+            fontSize={0.3}
+            height={0.1}
+            position={[-1, -0.5, 0.5]}
+            rotation={[0, 0, Math.PI / 6]}
+          >
+            A
+            <meshStandardMaterial color="#ec4899" />
+          </Text>
+          
+          <Text
+            fontSize={0.25}
+            height={0.08}
+            position={[0.8, -0.3, -0.3]}
+            rotation={[0, 0, -Math.PI / 8]}
+          >
+            B
+            <meshStandardMaterial color="#06b6d4" />
+          </Text>
+          
+          <Text
+            fontSize={0.2}
+            height={0.06}
+            position={[0, -0.8, 0.2]}
+            rotation={[0, 0, Math.PI / 4]}
+          >
+            C
+            <meshStandardMaterial color="#10b981" />
+          </Text>
+        </group>
+      </Icon3DBase>
+      
+      <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.3} />
+      <Environment preset="city" />
+    </Canvas>
+  );
+};
+
+export default Text3DIcon;

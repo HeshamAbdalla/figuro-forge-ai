@@ -8,14 +8,19 @@ import VantaBackground from "@/components/VantaBackground";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
-  Image, 
-  Camera, 
-  Type, 
-  Palette, 
   Images,
   ArrowRight,
   Sparkles
 } from "lucide-react";
+import { Suspense } from "react";
+import { ErrorBoundary } from "@/components/common/SimpleErrorBoundary";
+
+// Import 3D icon components
+import Image3DIcon from "@/components/studio/icons3d/Image3DIcon";
+import Text3DIcon from "@/components/studio/icons3d/Text3DIcon";
+import Camera3DIcon from "@/components/studio/icons3d/Camera3DIcon";
+import Palette3DIcon from "@/components/studio/icons3d/Palette3DIcon";
+import Gallery3DIcon from "@/components/studio/icons3d/Gallery3DIcon";
 
 const StudioHub = () => {
   const navigate = useNavigate();
@@ -26,7 +31,7 @@ const StudioHub = () => {
       id: 'image-to-3d',
       title: 'Photo Magic',
       description: "Don't have a photo? Generate one with our Advanced AI and turn it into 3D!",
-      icon: Image,
+      icon3d: Image3DIcon,
       path: '/studio/image-to-3d',
       color: 'from-blue-400 to-cyan-600',
       popular: true
@@ -35,7 +40,7 @@ const StudioHub = () => {
       id: 'text-to-3d',
       title: 'Dream It, Build It',
       description: 'Describe your wildest ideas and watch them come to life',
-      icon: Type,
+      icon3d: Text3DIcon,
       path: '/studio/text-to-3d',
       color: 'from-purple-400 to-rose-500',
       new: true
@@ -44,7 +49,7 @@ const StudioHub = () => {
       id: 'camera',
       title: 'Instant 3D Capture',
       description: 'Snap, convert, and create stunning models on the spot',
-      icon: Camera,
+      icon3d: Camera3DIcon,
       path: '/studio/camera',
       color: 'from-green-400 to-teal-600'
     },
@@ -52,7 +57,7 @@ const StudioHub = () => {
       id: 'web-icons',
       title: 'Icon Workshop',
       description: 'Craft beautiful, unique icons that make your projects shine',
-      icon: Palette,
+      icon3d: Palette3DIcon,
       path: '/studio/web-icons',
       color: 'from-orange-400 to-pink-500'
     },
@@ -60,7 +65,7 @@ const StudioHub = () => {
       id: 'gallery',
       title: 'Your Creative Space',
       description: 'Browse, organize, and showcase your amazing creations',
-      icon: Images,
+      icon3d: Gallery3DIcon,
       path: '/studio/gallery',
       color: 'from-indigo-400 to-violet-600'
     }
@@ -100,7 +105,7 @@ const StudioHub = () => {
               {/* Creation Methods Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-12">
                 {creationMethods.map((method, index) => {
-                  const IconComponent = method.icon;
+                  const Icon3DComponent = method.icon3d;
                   return (
                     <motion.div
                       key={method.id}
@@ -115,8 +120,20 @@ const StudioHub = () => {
                       >
                         <CardHeader>
                           <div className="flex items-center justify-between mb-3">
-                            <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${method.color} flex items-center justify-center group-hover:scale-105 transition-transform`}>
-                              <IconComponent className="w-6 h-6 text-white" />
+                            <div className="w-16 h-16 rounded-lg overflow-hidden bg-gradient-to-br from-black/20 to-black/40 border border-white/10 group-hover:scale-105 transition-transform">
+                              <ErrorBoundary fallback={
+                                <div className={`w-full h-full bg-gradient-to-br ${method.color} rounded-lg flex items-center justify-center`}>
+                                  <div className="w-8 h-8 bg-white/20 rounded"></div>
+                                </div>
+                              }>
+                                <Suspense fallback={
+                                  <div className={`w-full h-full bg-gradient-to-br ${method.color} rounded-lg flex items-center justify-center`}>
+                                    <div className="w-8 h-8 bg-white/20 rounded animate-pulse"></div>
+                                  </div>
+                                }>
+                                  <Icon3DComponent />
+                                </Suspense>
+                              </ErrorBoundary>
                             </div>
                             
                             <div className="flex flex-col gap-1">
