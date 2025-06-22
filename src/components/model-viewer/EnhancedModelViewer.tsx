@@ -30,8 +30,22 @@ const EnhancedModelViewer: React.FC<ModelViewerProps> = (props) => {
     
     // Skip rendering if no model URL in legacy mode
     if (!modelUrl) {
-      console.warn('⚠️ [ENHANCED-MODEL-VIEWER] No model URL provided in legacy mode');
-      return null;
+      console.log('⚠️ [ENHANCED-MODEL-VIEWER] No model URL provided in legacy mode - rendering placeholder');
+      return (
+        <div className="w-full h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="text-center p-6">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No 3D Model</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Generate an image and convert it to 3D to see your model here
+            </p>
+          </div>
+        </div>
+      );
     }
     
     // Convert legacy props to new UrlModelInfo format for consistent handling
@@ -61,10 +75,24 @@ const EnhancedModelViewer: React.FC<ModelViewerProps> = (props) => {
       isTextTo3D: isTextTo3DModelInfo(modelInfo)
     });
     
-    // Skip rendering if no model info in enhanced mode
+    // Render placeholder if no model info in enhanced mode
     if (!modelInfo) {
-      console.warn('⚠️ [ENHANCED-MODEL-VIEWER] No model info provided in enhanced mode');
-      return null;
+      console.log('⚠️ [ENHANCED-MODEL-VIEWER] No model info provided in enhanced mode - rendering placeholder');
+      return (
+        <div className="w-full h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="text-center p-6">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Ready for 3D</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Your 3D model will appear here once generated
+            </p>
+          </div>
+        </div>
+      );
     }
     
     // Use discriminated union to render appropriate viewer based on model type

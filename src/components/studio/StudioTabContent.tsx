@@ -1,3 +1,4 @@
+
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -89,36 +90,48 @@ const StudioTabContent = ({
   const textTo3DFormRef = useRef<{ focusInput: () => void } | null>(null);
   const webIconsFormRef = useRef<{ focusInput: () => void } | null>(null);
 
-  // Helper function to create properly typed modelInfo objects
+  // Helper function to create properly typed modelInfo objects with improved null handling
   const createModelInfo = (activeTab: TabKey) => {
     // For text-to-3d tab, prioritize TextTo3DModelInfo if we have text-to-3D specific data
-    if (activeTab === 'text-to-3d' && (currentTaskId || textTo3DProgress.taskId)) {
-      const textTo3DModelInfo: TextTo3DModelInfo = {
-        type: 'text-to-3d',
-        taskId: currentTaskId || textTo3DProgress.taskId || 'unknown',
-        modelUrl: textTo3DProgress.localModelUrl || textTo3DProgress.modelUrl || displayModelUrl || '',
-        localModelUrl: textTo3DProgress.localModelUrl,
-        thumbnailUrl: textTo3DProgress.thumbnailUrl,
-        progress: textTo3DProgress.progress,
-        status: textTo3DProgress.status === 'SUCCEEDED' ? 'SUCCEEDED' : 
-                textTo3DProgress.status === 'completed' ? 'completed' : 
-                textTo3DProgress.status === 'failed' ? 'failed' : 'processing',
-        downloadStatus: textTo3DProgress.downloadStatus,
-        // Add metadata if available
-        metadata: {
-          polycount: undefined, // Will be populated by the loader
-          fileSize: undefined,
-          dimensions: undefined
-        }
-      };
+    if (activeTab === 'text-to-3d') {
+      const hasTextTo3DData = currentTaskId || textTo3DProgress.taskId || textTo3DProgress.modelUrl;
+      const hasCompletedStatus = textTo3DProgress.status === 'SUCCEEDED' || textTo3DProgress.status === 'completed';
       
-      console.log('🎨 [STUDIO-TAB-CONTENT] Created TextTo3DModelInfo:', {
-        taskId: textTo3DModelInfo.taskId,
-        hasModelUrl: !!textTo3DModelInfo.modelUrl,
-        status: textTo3DModelInfo.status
-      });
-      
-      return textTo3DModelInfo;
+      if (hasTextTo3DData && hasCompletedStatus) {
+        const textTo3DModelInfo: TextTo3DModelInfo = {
+          type: 'text-to-3d',
+          taskId: currentTaskId || textTo3DProgress.taskId || 'unknown',
+          modelUrl: textTo3DProgress.localModelUrl || textTo3DProgress.modelUrl || displayModelUrl || '',
+          localModelUrl: textTo3DProgress.localModelUrl,
+          thumbnailUrl: textTo3DProgress.thumbnailUrl,
+          progress: textTo3DProgress.progress,
+          status: textTo3DProgress.status === 'SUCCEEDED' ? 'SUCCEEDED' : 
+                  textTo3DProgress.status === 'completed' ? 'completed' : 
+                  textTo3DProgress.status === 'failed' ? 'failed' : 'processing',
+          downloadStatus: textTo3DProgress.downloadStatus,
+          // Add metadata if available
+          metadata: {
+            polycount: undefined, // Will be populated by the loader
+            fileSize: undefined,
+            dimensions: undefined
+          }
+        };
+        
+        console.log('🎨 [STUDIO-TAB-CONTENT] Created TextTo3DModelInfo:', {
+          taskId: textTo3DModelInfo.taskId,
+          hasModelUrl: !!textTo3DModelInfo.modelUrl,
+          status: textTo3DModelInfo.status
+        });
+        
+        return textTo3DModelInfo;
+      } else {
+        console.log('⚠️ [STUDIO-TAB-CONTENT] Text-to-3D data incomplete or not ready:', {
+          hasData: hasTextTo3DData,
+          hasCompleted: hasCompletedStatus,
+          status: textTo3DProgress.status
+        });
+        return null;
+      }
     }
     
     // For other tabs or fallback, use UrlModelInfo if we have a displayModelUrl
@@ -139,8 +152,8 @@ const StudioTabContent = ({
       return urlModelInfo;
     }
     
-    // No valid model data available
-    console.log('⚠️ [STUDIO-TAB-CONTENT] No valid model data for tab:', activeTab);
+    // No valid model data available - this is normal and expected when no models have been generated
+    console.log('✅ [STUDIO-TAB-CONTENT] No model data available for tab - this is expected:', activeTab);
     return null;
   };
 
