@@ -117,9 +117,13 @@ const TextTo3D = () => {
                       Generation Progress
                     </h3>
                     <TextTo3DProgress
-                      isGenerating={isGenerating}
-                      progress={progress}
-                      currentTaskId={currentTaskId}
+                      taskId={currentTaskId}
+                      status={progress.status}
+                      progress={progress.progress}
+                      modelUrl={progress.modelUrl}
+                      localModelUrl={progress.localModelUrl}
+                      thumbnailUrl={progress.thumbnailUrl}
+                      downloadStatus={progress.downloadStatus}
                     />
                   </div>
                 )}
