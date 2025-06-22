@@ -55,7 +55,7 @@ const Header = () => {
     >
       <div className="container mx-auto flex items-center justify-between py-4 px-4">
         <div className="flex items-center gap-2">
-          <Link to={user ? "/studio" : "/"} className="flex items-center gap-2">
+          <Link to={user ? "/studio-hub" : "/"} className="flex items-center gap-2">
             <div className="hidden sm:block">
               <FiguroMascot size={40} />
             </div>
@@ -72,7 +72,7 @@ const Header = () => {
         {/* Desktop Navigation - Always visible on desktop */}
         <nav className="hidden md:flex items-center gap-6">
           <Link 
-            to={user ? "/studio" : "/"} 
+            to={user ? "/studio-hub" : "/"} 
             className="text-sm text-white/70 hover:text-white transition-colors font-medium px-3 py-2 rounded-md hover:bg-white/10"
           >
             {user ? "Studio" : "Home"}
@@ -203,7 +203,7 @@ const Header = () => {
           >
             <div className="container mx-auto py-4 flex flex-col space-y-4 px-4">
               <Link 
-                to={user ? "/studio" : "/"} 
+                to={user ? "/studio-hub" : "/"} 
                 className="text-white py-2 px-4 rounded-md hover:bg-white/10 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >

@@ -2,7 +2,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
@@ -10,7 +10,6 @@ import Gallery from "./pages/Gallery";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
-import Studio from "./pages/Studio";
 import StudioHub from "./pages/StudioHub";
 import ImageTo3D from "./pages/studio/ImageTo3D";
 import TextTo3D from "./pages/studio/TextTo3D";
@@ -104,6 +103,8 @@ function App() {
                     <Route path="/about" element={<About />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/auth" element={<Auth />} />
+                    {/* Redirect /studio to /studio-hub */}
+                    <Route path="/studio" element={<Navigate to="/studio-hub" replace />} />
                     <Route path="/studio-hub" element={
                       <ErrorBoundary>
                         <SecurityEnforcedRoute>
@@ -125,10 +126,25 @@ function App() {
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
-                    <Route path="/studio" element={
+                    {/* Add missing studio routes */}
+                    <Route path="/studio/camera" element={
                       <ErrorBoundary>
                         <SecurityEnforcedRoute>
-                          <Studio />
+                          <Navigate to="/studio-hub" replace />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/studio/web-icons" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <Navigate to="/studio-hub" replace />
+                        </SecurityEnforcedRoute>
+                      </ErrorBoundary>
+                    } />
+                    <Route path="/studio/gallery" element={
+                      <ErrorBoundary>
+                        <SecurityEnforcedRoute>
+                          <Navigate to="/profile/figurines" replace />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
