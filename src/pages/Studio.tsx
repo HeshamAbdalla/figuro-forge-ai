@@ -1,3 +1,4 @@
+
 import { useMemo, useCallback, useEffect, useRef } from "react";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
@@ -78,8 +79,13 @@ const Studio = () => {
   const {
     isGeneratingImage,
     generatedImage,
-    handleGenerate,
+    handleGenerate: originalHandleGenerate,
   } = useImageGeneration();
+
+  // Create a wrapper function that matches the expected signature
+  const handleGenerate = useCallback(async (prompt: string, style: string): Promise<void> => {
+    await originalHandleGenerate(prompt, style);
+  }, [originalHandleGenerate]);
 
   const {
     isGenerating,
