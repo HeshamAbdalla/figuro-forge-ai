@@ -1,3 +1,4 @@
+
 import { useMemo, useCallback, useEffect, useRef } from "react";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
@@ -109,23 +110,6 @@ const Studio = () => {
     showUpgradeModal
   });
 
-  // Memoize callback functions to prevent unnecessary re-renders
-  const wrappedOnGenerate = useCallback(async (prompt: string, style: string) => {
-    await studioHandlers.onGenerate(prompt, style);
-  }, [studioHandlers.onGenerate]);
-
-  const wrappedHandleTextTo3D = useCallback(async (prompt: string, artStyle: string, negativePrompt: string = "") => {
-    return await studioHandlers.handleTextTo3D(prompt, artStyle, negativePrompt);
-  }, [studioHandlers.handleTextTo3D]);
-
-  const wrappedHandleTextTo3DWithConfig = useCallback(async (config: any) => {
-    return await studioHandlers.handleTextTo3DWithConfig(config);
-  }, [studioHandlers.handleTextTo3DWithConfig]);
-
-  const wrappedHandleModelUpload = useCallback(async (figurineId: string, file: File) => {
-    studioHandlers.handleModelUpload(file);
-  }, [studioHandlers.handleModelUpload]);
-
   const handleCameraImageCapture = useCallback(async (imageBlob: Blob) => {
     try {
       console.log('📸 [CAMERA] Image captured, starting secure processing...');
@@ -216,10 +200,15 @@ const Studio = () => {
     }
   }, [generate3DModel, resetCameraProgress, toast]);
 
+  // Handle model upload with proper async signature
+  const handleModelUpload = useCallback(async (figurineId: string, file: File) => {
+    studioHandlers.handleModelUpload(file);
+  }, [studioHandlers.handleModelUpload]);
+
   // Determine if ModelViewer should show loading
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
-  // Properly memoize studio layout props with optimized dependencies
+  // Simplified studio layout props with direct handler references - NO WRAPPING
   const studioLayoutProps = useMemo(() => {
     const props = {
       activeTab,
@@ -243,14 +232,15 @@ const Studio = () => {
       textTo3DConfigPrompt,
       generationModalOpen,
       setGenerationModalOpen,
-      onGenerate: wrappedOnGenerate,
+      // Use studioHandlers functions directly - they are already memoized
+      onGenerate: studioHandlers.onGenerate,
       handleOpenConfigModal: studioHandlers.handleOpenConfigModal,
       handleGenerate3DWithConfig: studioHandlers.handleGenerate3DWithConfig,
       handleQuickConvert: studioHandlers.handleQuickConvert,
-      handleTextTo3D: wrappedHandleTextTo3D,
+      handleTextTo3D: studioHandlers.handleTextTo3D,
       handleOpenTextTo3DConfigModal: studioHandlers.handleOpenTextTo3DConfigModal,
       handleTextTo3DWithConfig: studioHandlers.handleTextTo3DWithConfig,
-      handleModelUpload: wrappedHandleModelUpload,
+      handleModelUpload,
       handleSignOut: studioHandlers.handleSignOut,
       handleSignIn: studioHandlers.handleSignIn,
       handleCloseGenerationModal: studioHandlers.handleCloseGenerationModal,
@@ -278,8 +268,8 @@ const Studio = () => {
 
     return props;
   }, [
+    // Only include primitive values and stable references
     activeTab,
-    setActiveTab,
     authUser,
     generatedImage,
     isGeneratingImage,
@@ -291,23 +281,20 @@ const Studio = () => {
     displayModelUrl,
     shouldModelViewerLoad,
     uploadModalOpen,
-    setUploadModalOpen,
     configModalOpen,
-    setConfigModalOpen,
     textTo3DConfigModalOpen,
-    setTextTo3DConfigModalOpen,
     textTo3DConfigPrompt,
     generationModalOpen,
+    setActiveTab,
+    setUploadModalOpen,
+    setConfigModalOpen,
+    setTextTo3DConfigModalOpen,
     setGenerationModalOpen,
-    wrappedOnGenerate,
-    wrappedHandleTextTo3D,
-    wrappedHandleTextTo3DWithConfig,
-    wrappedHandleModelUpload,
     setCustomModelUrl,
     handleCameraImageCapture,
-    studioHandlers,
-    isUpgradeModalOpen,
-    upgradeModalAction
+    handleModelUpload,
+    // Include studioHandlers but not individual functions to avoid circular deps
+    studioHandlers
   ]);
 
   // Memory cleanup on unmount
