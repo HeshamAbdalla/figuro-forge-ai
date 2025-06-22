@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
@@ -30,7 +29,7 @@ const StudioHub = () => {
     {
       id: 'image-to-3d',
       title: 'Photo Magic ✨',
-      description: 'Turn your favorite photos into incredible 3D masterpieces',
+      description: "Don't have a photo? Generate one with our Advanced AI and turn it into 3D!",
       longDescription: 'Got a cool photo? Let\'s make it pop in 3D!',
       icon: Image,
       path: '/studio/image-to-3d',
@@ -213,7 +212,7 @@ const StudioHub = () => {
                       }}
                     >
                       <Card 
-                        className="backdrop-blur-xl bg-gradient-to-br from-white/15 via-white/10 to-white/5 border border-white/20 hover:bg-gradient-to-br hover:from-white/25 hover:via-white/15 hover:to-white/10 hover:border-figuro-accent/40 transition-all duration-700 cursor-pointer group h-full shadow-xl hover:shadow-2xl hover:shadow-figuro-accent/30 relative overflow-hidden"
+                        className="backdrop-blur-xl bg-gradient-to-br from-white/15 via-white/10 to-white/5 border border-white/20 hover:bg-gradient-to-br hover:from-white/25 hover:via-white/10 hover:border-figuro-accent/40 transition-all duration-700 cursor-pointer group h-full shadow-xl hover:shadow-2xl hover:shadow-figuro-accent/30 relative overflow-hidden"
                         onClick={() => handleNavigate(method.path)}
                       >
                         {/* Animated background gradient */}
