@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 
 // Type-safe upgrade modal action enum - standardized across the application
@@ -29,14 +29,46 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
   const [celebrationPlan, setCelebrationPlan] = useState("Premium");
   const { user } = useEnhancedAuth();
 
-  // Enhanced debugging for state changes
+  // Add refs to track previous values and prevent infinite loops
+  const prevModalOpenRef = useRef(isUpgradeModalOpen);
+  const prevActionRef = useRef(upgradeModalAction);
+  const prevUserRef = useRef(user);
+  const renderCountRef = useRef(0);
+
+  // Increment render count for debugging
+  renderCountRef.current += 1;
+
+  // Enhanced debugging with loop detection
   useEffect(() => {
-    console.log('🪄 [UPGRADE-MODAL-HOOK] MODAL STATE CHANGED', {
-      isUpgradeModalOpen,
-      upgradeModalAction,
-      user: !!user,
-      timestamp: new Date().toISOString()
-    });
+    // Only log when values actually change to prevent spam
+    const modalOpenChanged = prevModalOpenRef.current !== isUpgradeModalOpen;
+    const actionChanged = prevActionRef.current !== upgradeModalAction;
+    const userChanged = prevUserRef.current !== user;
+
+    if (modalOpenChanged || actionChanged || userChanged) {
+      console.log('🪄 [UPGRADE-MODAL-HOOK] STATE CHANGED', {
+        renderCount: renderCountRef.current,
+        changes: {
+          modalOpen: modalOpenChanged ? `${prevModalOpenRef.current} → ${isUpgradeModalOpen}` : 'no change',
+          action: actionChanged ? `${prevActionRef.current} → ${upgradeModalAction}` : 'no change',
+          user: userChanged ? `${!!prevUserRef.current} → ${!!user}` : 'no change'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      // Update refs
+      prevModalOpenRef.current = isUpgradeModalOpen;
+      prevActionRef.current = upgradeModalAction;
+      prevUserRef.current = user;
+    }
+
+    // Detect rapid re-renders (potential infinite loop)
+    if (renderCountRef.current > 10) {
+      console.warn('⚠️ [UPGRADE-MODAL-HOOK] POTENTIAL INFINITE LOOP DETECTED', {
+        renderCount: renderCountRef.current,
+        currentState: { isUpgradeModalOpen, upgradeModalAction, hasUser: !!user }
+      });
+    }
   }, [isUpgradeModalOpen, upgradeModalAction, user]);
 
   const showUpgradeModal = (action: UpgradeModalAction) => {
@@ -47,6 +79,12 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
       console.error('❌ [UPGRADE-MODAL-HOOK] Invalid upgrade action provided:', action);
       console.error('✅ [UPGRADE-MODAL-HOOK] Valid actions are:', ["image_generation", "model_conversion", "model_remesh"]);
       return; // Early exit on invalid action
+    }
+    
+    // Prevent duplicate calls - guard against re-triggering
+    if (isUpgradeModalOpen && upgradeModalAction === action) {
+      console.log('⏭️ [UPGRADE-MODAL-HOOK] Modal already open with same action, skipping');
+      return;
     }
     
     console.log('🔄 [UPGRADE-MODAL-HOOK] Showing upgrade modal:', {
@@ -61,16 +99,12 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
     if (user) {
       console.log('✅ [UPGRADE-MODAL-HOOK] User authenticated, updating modal state...');
       
-      // Use functional updates to ensure reliability and prevent race conditions
-      setUpgradeModalAction((prev) => {
-        console.log('🔄 [UPGRADE-MODAL-HOOK] Action state change:', prev, '->', action);
-        return action;
-      });
+      // Log state changes for debugging
+      console.log('📥 [UPGRADE-MODAL-HOOK] setUpgradeModalAction:', action);
+      setUpgradeModalAction(action);
       
-      setIsUpgradeModalOpen((prev) => {
-        console.log('🔄 [UPGRADE-MODAL-HOOK] Modal open state change:', prev, '->', true);
-        return true;
-      });
+      console.log('📥 [UPGRADE-MODAL-HOOK] setIsUpgradeModalOpen: true');
+      setIsUpgradeModalOpen(true);
       
       // Log upgrade modal trigger for analytics
       console.log('📊 [UPGRADE-MODAL-HOOK] User hit limit:', {
@@ -86,9 +120,12 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
 
   const hideUpgradeModal = () => {
     console.log('❌ [UPGRADE-MODAL-HOOK] Hiding upgrade modal');
+    console.log('📥 [UPGRADE-MODAL-HOOK] setIsUpgradeModalOpen: false');
     setIsUpgradeModalOpen(false);
+    
     // Small delay to prevent race conditions and ensure smooth animation
     setTimeout(() => {
+      console.log('📥 [UPGRADE-MODAL-HOOK] setUpgradeModalAction: null');
       setUpgradeModalAction(null);
     }, 150);
   };

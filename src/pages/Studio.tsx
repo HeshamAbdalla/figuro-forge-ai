@@ -1,5 +1,4 @@
-
-import { useMemo, useCallback, useEffect } from "react";
+import { useMemo, useCallback, useEffect, useRef } from "react";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
@@ -19,14 +18,46 @@ import { useStudioHandlers } from "@/components/studio/hooks/useStudioHandlers";
 const Studio = () => {
   console.log('🎬 [STUDIO] Component rendering with security enforcement...');
 
+  // Add debug refs to track renders and function stability
+  const renderCountRef = useRef(0);
+  const prevShowUpgradeModalRef = useRef<Function | null>(null);
+  
+  renderCountRef.current += 1;
+
   // Use EnhancedAuth for secure authentication
   const { user: authUser, isLoading: authLoading, session } = useEnhancedAuth();
   const isAuthenticated = !!session?.user;
   const { toast } = useToast();
 
   // Get upgrade modal functions
-  const { showUpgradeModal } = useEnhancedUpgradeModal();
+  const { 
+    showUpgradeModal,
+    isUpgradeModalOpen,
+    upgradeModalAction 
+  } = useEnhancedUpgradeModal();
 
+  // Track showUpgradeModal function stability
+  useEffect(() => {
+    const functionChanged = prevShowUpgradeModalRef.current !== showUpgradeModal;
+    if (functionChanged) {
+      console.log('🔧 [STUDIO] showUpgradeModal function changed:', {
+        renderCount: renderCountRef.current,
+        hasFunction: !!showUpgradeModal,
+        functionType: typeof showUpgradeModal
+      });
+      prevShowUpgradeModalRef.current = showUpgradeModal;
+    }
+
+    // Detect rapid re-renders
+    if (renderCountRef.current > 20) {
+      console.warn('⚠️ [STUDIO] POTENTIAL INFINITE LOOP IN STUDIO COMPONENT', {
+        renderCount: renderCountRef.current,
+        upgradeModalState: { isUpgradeModalOpen, upgradeModalAction }
+      });
+    }
+  }, [showUpgradeModal, isUpgradeModalOpen, upgradeModalAction]);
+
+  // ... keep existing code (state initialization)
   const {
     customModelUrl,
     setCustomModelUrl,
@@ -95,7 +126,7 @@ const Studio = () => {
     showUpgradeModal
   });
 
-  // Memoize wrapper functions that match StudioLayout expectations
+  // ... keep existing code (memoized callback functions)
   const wrappedOnGenerate = useCallback(async (prompt: string, style: string) => {
     await studioHandlers.onGenerate(prompt, style);
   }, [studioHandlers.onGenerate]);
@@ -112,7 +143,7 @@ const Studio = () => {
     studioHandlers.handleModelUpload(file);
   }, [studioHandlers.handleModelUpload]);
 
-  // Enhanced camera image capture with security validation
+  // ... keep existing code (camera image capture handler)
   const handleCameraImageCapture = useCallback(async (imageBlob: Blob) => {
     try {
       console.log('📸 [CAMERA] Image captured, starting secure processing...');
@@ -206,7 +237,7 @@ const Studio = () => {
   // Determine if ModelViewer should show loading
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
-  // Memoize the StudioLayout props to prevent unnecessary re-renders
+  // ... keep existing code (memoized studio layout props)
   const studioLayoutProps = useMemo(() => ({
     activeTab,
     setActiveTab,
