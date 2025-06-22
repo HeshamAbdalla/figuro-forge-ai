@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useTextTo3D } from "@/hooks/useTextTo3D";
-import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
+import { useUpgradeNotifications } from "@/hooks/useUpgradeNotifications";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import StudioBreadcrumb from "@/components/studio/StudioBreadcrumb";
@@ -12,7 +12,6 @@ import TextTo3DForm from "@/components/studio/TextTo3DForm";
 import TextTo3DConfigModal from "@/components/studio/TextTo3DConfigModal";
 import TextTo3DProgress from "@/components/studio/TextTo3DProgress";
 import ModelViewer from "@/components/model-viewer";
-import EnhancedUpgradeModal from "@/components/upgrade/EnhancedUpgradeModal";
 import DebugUpgradeButtons from "@/components/upgrade/DebugUpgradeButtons";
 import { Type, Sparkles } from "lucide-react";
 
@@ -22,12 +21,7 @@ const TextTo3D = () => {
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [configPrompt, setConfigPrompt] = useState("");
   
-  const { 
-    showUpgradeModal,
-    isUpgradeModalOpen,
-    upgradeModalAction,
-    hideUpgradeModal
-  } = useEnhancedUpgradeModal();
+  const { showUpgradeNotification } = useUpgradeNotifications();
 
   const {
     isGenerating,
@@ -42,7 +36,7 @@ const TextTo3D = () => {
       return await generateModel(prompt, artStyle, negativePrompt);
     } catch (error: any) {
       if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
-        showUpgradeModal("model_conversion");
+        showUpgradeNotification("model_conversion");
       } else {
         toast({
           title: "Text-to-3D Failed",
@@ -52,7 +46,7 @@ const TextTo3D = () => {
       }
       throw error;
     }
-  }, [generateModel, showUpgradeModal, toast]);
+  }, [generateModel, showUpgradeNotification, toast]);
 
   const handleOpenConfigModal = useCallback((prompt: string) => {
     setConfigPrompt(prompt);
@@ -65,7 +59,7 @@ const TextTo3D = () => {
       await generateModelWithConfig(config);
     } catch (error: any) {
       if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
-        showUpgradeModal("model_conversion");
+        showUpgradeNotification("model_conversion");
       } else {
         toast({
           title: "Text-to-3D Failed",
@@ -75,7 +69,7 @@ const TextTo3D = () => {
       }
       throw error;
     }
-  }, [generateModelWithConfig, showUpgradeModal, toast, setConfigModalOpen]);
+  }, [generateModelWithConfig, showUpgradeNotification, toast, setConfigModalOpen]);
 
   const handleModelError = useCallback((error: string) => {
     toast({
@@ -194,19 +188,6 @@ const TextTo3D = () => {
           isGenerating={isGenerating}
           initialPrompt={configPrompt}
         />
-
-        {/* Enhanced Upgrade Modal - Simplified conditional rendering */}
-        {isUpgradeModalOpen && upgradeModalAction && (
-          <EnhancedUpgradeModal
-            isOpen={isUpgradeModalOpen}
-            onOpenChange={(open) => {
-              if (!open) hideUpgradeModal();
-            }}
-            actionType={upgradeModalAction}
-            title="Upgrade Required"
-            description="You've reached your usage limit. Upgrade to continue creating amazing 3D models."
-          />
-        )}
 
         {/* Debug Buttons - Remove in production */}
         {process.env.NODE_ENV === 'development' && <DebugUpgradeButtons />}

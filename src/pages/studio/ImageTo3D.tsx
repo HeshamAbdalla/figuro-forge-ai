@@ -5,7 +5,7 @@ import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
-import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
+import { useUpgradeNotifications } from "@/hooks/useUpgradeNotifications";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import StudioBreadcrumb from "@/components/studio/StudioBreadcrumb";
@@ -13,7 +13,6 @@ import EnhancedPromptForm from "@/components/studio/EnhancedPromptForm";
 import StreamlinedImagePreview from "@/components/studio/StreamlinedImagePreview";
 import ImageTo3DConfigModal from "@/components/studio/ImageTo3DConfigModal";
 import ModelViewer from "@/components/model-viewer";
-import EnhancedUpgradeModal from "@/components/upgrade/EnhancedUpgradeModal";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Wand2 } from "lucide-react";
 
@@ -22,12 +21,7 @@ const ImageTo3D = () => {
   const { toast } = useToast();
   const [configModalOpen, setConfigModalOpen] = useState(false);
   
-  const { 
-    showUpgradeModal,
-    isUpgradeModalOpen,
-    upgradeModalAction,
-    hideUpgradeModal
-  } = useEnhancedUpgradeModal();
+  const { showUpgradeNotification } = useUpgradeNotifications();
 
   const {
     isGeneratingImage,
@@ -46,7 +40,7 @@ const ImageTo3D = () => {
       await originalHandleGenerate(prompt, style);
     } catch (error: any) {
       if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
-        showUpgradeModal("image_generation");
+        showUpgradeNotification("image_generation");
       } else {
         toast({
           title: "Generation Failed",
@@ -55,7 +49,7 @@ const ImageTo3D = () => {
         });
       }
     }
-  }, [originalHandleGenerate, showUpgradeModal, toast]);
+  }, [originalHandleGenerate, showUpgradeNotification, toast]);
 
   const handleQuickConvert = useCallback(async () => {
     if (!generatedImage) {
@@ -71,7 +65,7 @@ const ImageTo3D = () => {
       await generate3DModel(generatedImage, `generated-${Date.now()}.jpg`);
     } catch (error: any) {
       if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
-        showUpgradeModal("model_conversion");
+        showUpgradeNotification("model_conversion");
       } else {
         toast({
           title: "Conversion Failed",
@@ -80,7 +74,7 @@ const ImageTo3D = () => {
         });
       }
     }
-  }, [generatedImage, generate3DModel, showUpgradeModal, toast]);
+  }, [generatedImage, generate3DModel, showUpgradeNotification, toast]);
 
   const handleOpenConfigModal = useCallback(() => {
     if (!generatedImage) {
@@ -102,7 +96,7 @@ const ImageTo3D = () => {
       await generate3DModel(generatedImage, `generated-${Date.now()}.jpg`, config);
     } catch (error: any) {
       if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
-        showUpgradeModal("model_conversion");
+        showUpgradeNotification("model_conversion");
       } else {
         toast({
           title: "3D Generation Failed",
@@ -111,7 +105,7 @@ const ImageTo3D = () => {
         });
       }
     }
-  }, [generatedImage, generate3DModel, showUpgradeModal, toast, setConfigModalOpen]);
+  }, [generatedImage, generate3DModel, showUpgradeNotification, toast, setConfigModalOpen]);
 
   const handleModelError = useCallback((error: string) => {
     toast({
@@ -223,19 +217,6 @@ const ImageTo3D = () => {
           isGenerating={isGenerating}
           imageUrl={generatedImage}
         />
-
-        {/* Enhanced Upgrade Modal - Simplified conditional rendering */}
-        {isUpgradeModalOpen && upgradeModalAction && (
-          <EnhancedUpgradeModal
-            isOpen={isUpgradeModalOpen}
-            onOpenChange={(open) => {
-              if (!open) hideUpgradeModal();
-            }}
-            actionType={upgradeModalAction}
-            title="Upgrade Required"
-            description="You've reached your usage limit. Upgrade to continue creating amazing content."
-          />
-        )}
       </div>
     </SecurityEnforcedRoute>
   );
