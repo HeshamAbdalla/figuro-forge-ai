@@ -1,4 +1,3 @@
-
 import { useMemo, useCallback, useEffect, useRef } from "react";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
@@ -19,9 +18,9 @@ import { useStudioHandlers } from "@/components/studio/hooks/useStudioHandlers";
 const Studio = () => {
   console.log('🎬 [STUDIO] Component rendering with security enforcement...');
 
-  // Add debug refs to track renders and function stability
+  // Add debug refs to track renders and prevent infinite loops
   const renderCountRef = useRef(0);
-  const prevShowUpgradeModalRef = useRef<Function | null>(null);
+  const prevStudioLayoutPropsRef = useRef<any>(null);
   
   renderCountRef.current += 1;
 
@@ -30,35 +29,13 @@ const Studio = () => {
   const isAuthenticated = !!session?.user;
   const { toast } = useToast();
 
-  // Get upgrade modal functions
+  // Get upgrade modal functions - now properly memoized
   const { 
     showUpgradeModal,
     isUpgradeModalOpen,
     upgradeModalAction 
   } = useEnhancedUpgradeModal();
 
-  // Track showUpgradeModal function stability
-  useEffect(() => {
-    const functionChanged = prevShowUpgradeModalRef.current !== showUpgradeModal;
-    if (functionChanged) {
-      console.log('🔧 [STUDIO] showUpgradeModal function changed:', {
-        renderCount: renderCountRef.current,
-        hasFunction: !!showUpgradeModal,
-        functionType: typeof showUpgradeModal
-      });
-      prevShowUpgradeModalRef.current = showUpgradeModal;
-    }
-
-    // Detect rapid re-renders
-    if (renderCountRef.current > 20) {
-      console.warn('⚠️ [STUDIO] POTENTIAL INFINITE LOOP IN STUDIO COMPONENT', {
-        renderCount: renderCountRef.current,
-        upgradeModalState: { isUpgradeModalOpen, upgradeModalAction }
-      });
-    }
-  }, [showUpgradeModal, isUpgradeModalOpen, upgradeModalAction]);
-
-  // ... keep existing code (state initialization)
   const {
     customModelUrl,
     setCustomModelUrl,
@@ -115,7 +92,7 @@ const Studio = () => {
   // Add camera progress tracking
   const { cameraProgress, resetProgress: resetCameraProgress } = useCameraProgress(progress, displayModelUrl);
 
-  // Call useStudioHandlers with showUpgradeModal
+  // Now use properly memoized useStudioHandlers
   const studioHandlers = useStudioHandlers({
     generatedImage,
     setCustomModelUrl,
@@ -132,7 +109,7 @@ const Studio = () => {
     showUpgradeModal
   });
 
-  // ... keep existing code (memoized callback functions)
+  // Memoize callback functions to prevent unnecessary re-renders
   const wrappedOnGenerate = useCallback(async (prompt: string, style: string) => {
     await studioHandlers.onGenerate(prompt, style);
   }, [studioHandlers.onGenerate]);
@@ -149,7 +126,6 @@ const Studio = () => {
     studioHandlers.handleModelUpload(file);
   }, [studioHandlers.handleModelUpload]);
 
-  // ... keep existing code (camera image capture handler)
   const handleCameraImageCapture = useCallback(async (imageBlob: Blob) => {
     try {
       console.log('📸 [CAMERA] Image captured, starting secure processing...');
@@ -243,43 +219,65 @@ const Studio = () => {
   // Determine if ModelViewer should show loading
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
-  // ... keep existing code (memoized studio layout props)
-  const studioLayoutProps = useMemo(() => ({
-    activeTab,
-    setActiveTab,
-    authUser,
-    generatedImage,
-    isGeneratingImage,
-    isGenerating,
-    isGeneratingTextTo3D,
-    currentTaskId,
-    progress,
-    textTo3DProgress,
-    displayModelUrl,
-    shouldModelViewerLoad,
-    uploadModalOpen,
-    setUploadModalOpen,
-    configModalOpen,
-    setConfigModalOpen,
-    textTo3DConfigModalOpen,
-    setTextTo3DConfigModalOpen,
-    textTo3DConfigPrompt,
-    generationModalOpen,
-    setGenerationModalOpen,
-    onGenerate: wrappedOnGenerate,
-    handleOpenConfigModal: studioHandlers.handleOpenConfigModal,
-    handleGenerate3DWithConfig: studioHandlers.handleGenerate3DWithConfig,
-    handleQuickConvert: studioHandlers.handleQuickConvert,
-    handleTextTo3D: wrappedHandleTextTo3D,
-    handleOpenTextTo3DConfigModal: studioHandlers.handleOpenTextTo3DConfigModal,
-    handleTextTo3DWithConfig: wrappedHandleTextTo3DWithConfig,
-    handleModelUpload: wrappedHandleModelUpload,
-    handleSignOut: studioHandlers.handleSignOut,
-    handleSignIn: studioHandlers.handleSignIn,
-    handleCloseGenerationModal: studioHandlers.handleCloseGenerationModal,
-    setCustomModelUrl,
-    onCameraImageCapture: handleCameraImageCapture
-  }), [
+  // Properly memoize studio layout props with optimized dependencies
+  const studioLayoutProps = useMemo(() => {
+    const props = {
+      activeTab,
+      setActiveTab,
+      authUser,
+      generatedImage,
+      isGeneratingImage,
+      isGenerating,
+      isGeneratingTextTo3D,
+      currentTaskId,
+      progress,
+      textTo3DProgress,
+      displayModelUrl,
+      shouldModelViewerLoad,
+      uploadModalOpen,
+      setUploadModalOpen,
+      configModalOpen,
+      setConfigModalOpen,
+      textTo3DConfigModalOpen,
+      setTextTo3DConfigModalOpen,
+      textTo3DConfigPrompt,
+      generationModalOpen,
+      setGenerationModalOpen,
+      onGenerate: wrappedOnGenerate,
+      handleOpenConfigModal: studioHandlers.handleOpenConfigModal,
+      handleGenerate3DWithConfig: studioHandlers.handleGenerate3DWithConfig,
+      handleQuickConvert: studioHandlers.handleQuickConvert,
+      handleTextTo3D: wrappedHandleTextTo3D,
+      handleOpenTextTo3DConfigModal: studioHandlers.handleOpenTextTo3DConfigModal,
+      handleTextTo3DWithConfig: studioHandlers.handleTextTo3DWithConfig,
+      handleModelUpload: wrappedHandleModelUpload,
+      handleSignOut: studioHandlers.handleSignOut,
+      handleSignIn: studioHandlers.handleSignIn,
+      handleCloseGenerationModal: studioHandlers.handleCloseGenerationModal,
+      setCustomModelUrl,
+      onCameraImageCapture: handleCameraImageCapture
+    };
+
+    // Debug props stability
+    const propsChanged = JSON.stringify(prevStudioLayoutPropsRef.current) !== JSON.stringify(props);
+    if (propsChanged) {
+      console.log('🔧 [STUDIO] StudioLayout props changed:', {
+        renderCount: renderCountRef.current,
+        timestamp: new Date().toISOString()
+      });
+      prevStudioLayoutPropsRef.current = props;
+    }
+
+    // Detect rapid re-renders
+    if (renderCountRef.current > 20) {
+      console.warn('⚠️ [STUDIO] POTENTIAL INFINITE LOOP IN STUDIO COMPONENT', {
+        renderCount: renderCountRef.current,
+        upgradeModalState: { isUpgradeModalOpen, upgradeModalAction }
+      });
+    }
+
+    return props;
+  }, [
     activeTab,
     setActiveTab,
     authUser,
@@ -307,13 +305,9 @@ const Studio = () => {
     wrappedHandleModelUpload,
     setCustomModelUrl,
     handleCameraImageCapture,
-    studioHandlers.handleOpenConfigModal,
-    studioHandlers.handleGenerate3DWithConfig,
-    studioHandlers.handleQuickConvert,
-    studioHandlers.handleOpenTextTo3DConfigModal,
-    studioHandlers.handleSignOut,
-    studioHandlers.handleSignIn,
-    studioHandlers.handleCloseGenerationModal
+    studioHandlers,
+    isUpgradeModalOpen,
+    upgradeModalAction
   ]);
 
   // Memory cleanup on unmount

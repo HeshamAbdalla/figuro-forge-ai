@@ -1,5 +1,5 @@
 
-import { useCallback } from "react";
+import { useCallback, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +37,12 @@ export const useStudioHandlers = ({
 }: UseStudioHandlersProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Add debugging for handler stability
+  const renderCountRef = useRef(0);
+  const prevHandlersRef = useRef<any>(null);
+  
+  renderCountRef.current += 1;
 
   const handleSignOut = useCallback(async () => {
     try {
@@ -208,7 +214,42 @@ export const useStudioHandlers = ({
     resetProgress();
   }, [setGenerationModalOpen, resetProgress]);
 
-  return {
+  // Memoize the handlers object to prevent recreation on every render
+  const handlers = useMemo(() => {
+    const handlersObject = {
+      handleSignOut,
+      handleSignIn,
+      onGenerate,
+      handleOpenConfigModal,
+      handleGenerate3DWithConfig,
+      handleQuickConvert,
+      handleTextTo3D,
+      handleOpenTextTo3DConfigModal,
+      handleTextTo3DWithConfig,
+      handleModelUpload,
+      handleCloseGenerationModal,
+    };
+
+    // Debug handler stability
+    const handlersChanged = JSON.stringify(prevHandlersRef.current) !== JSON.stringify(handlersObject);
+    if (handlersChanged) {
+      console.log('🔧 [STUDIO-HANDLERS] Handlers object changed:', {
+        renderCount: renderCountRef.current,
+        timestamp: new Date().toISOString()
+      });
+      prevHandlersRef.current = handlersObject;
+    }
+
+    // Detect potential infinite loops
+    if (renderCountRef.current > 10) {
+      console.warn('⚠️ [STUDIO-HANDLERS] POTENTIAL INFINITE LOOP IN HANDLERS', {
+        renderCount: renderCountRef.current,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    return handlersObject;
+  }, [
     handleSignOut,
     handleSignIn,
     onGenerate,
@@ -219,6 +260,8 @@ export const useStudioHandlers = ({
     handleOpenTextTo3DConfigModal,
     handleTextTo3DWithConfig,
     handleModelUpload,
-    handleCloseGenerationModal,
-  };
+    handleCloseGenerationModal
+  ]);
+
+  return handlers;
 };

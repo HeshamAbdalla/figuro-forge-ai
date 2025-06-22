@@ -71,6 +71,7 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
     }
   }, [isUpgradeModalOpen, upgradeModalAction, user]);
 
+  // Properly memoize the showUpgradeModal function with stable dependencies
   const showUpgradeModal = useCallback((action: UpgradeModalAction) => {
     console.log('🔥 [UPGRADE-MODAL-HOOK] ===== SHOWING UPGRADE MODAL =====');
     
@@ -116,7 +117,7 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
     } else {
       console.warn('⚠️ [UPGRADE-MODAL-HOOK] No user found, cannot show upgrade modal');
     }
-  }, [user, isUpgradeModalOpen, upgradeModalAction]);
+  }, [user, isUpgradeModalOpen, upgradeModalAction]); // Stable dependencies
 
   const hideUpgradeModal = useCallback(() => {
     console.log('❌ [UPGRADE-MODAL-HOOK] Hiding upgrade modal');
@@ -128,7 +129,7 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
       console.log('📥 [UPGRADE-MODAL-HOOK] setUpgradeModalAction: null');
       setUpgradeModalAction(null);
     }, 150);
-  }, []);
+  }, []); // No dependencies needed
 
   const triggerCelebration = useCallback((planName: string = "Premium") => {
     console.log('🎉 [UPGRADE-MODAL-HOOK] Triggering celebration:', planName);
@@ -139,12 +140,12 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
     setTimeout(() => {
       setShowCelebration(false);
     }, 5000);
-  }, []);
+  }, []); // No dependencies needed
 
   const hideCelebration = useCallback(() => {
     console.log('🎊 [UPGRADE-MODAL-HOOK] Hiding celebration');
     setShowCelebration(false);
-  }, []);
+  }, []); // No dependencies needed
 
   return {
     isUpgradeModalOpen,
