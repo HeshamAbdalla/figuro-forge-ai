@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } f
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Environment } from "@react-three/drei";
 import { Suspense } from "react";
+import { cn } from "@/lib/utils";
 import LoadingSpinner from "./LoadingSpinner";
 import DummyBox from "./DummyBox";
 import ErrorBoundary from "./ErrorBoundary";
