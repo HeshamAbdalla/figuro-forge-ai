@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,17 +30,55 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
   description,
   actionType,
 }) => {
-  console.log('🎯 [ENHANCED-UPGRADE-MODAL] Component rendering with props:', {
+  // Enhanced debugging logs
+  console.log('🔥 [ENHANCED-UPGRADE-MODAL] === COMPONENT RENDER ===', {
     isOpen,
     actionType,
     title,
     hasOnOpenChange: !!onOpenChange,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    location: window.location.pathname
   });
 
   const navigate = useNavigate();
   const { user } = useEnhancedAuth();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Debug effect to track prop changes
+  useEffect(() => {
+    console.log('🔄 [ENHANCED-UPGRADE-MODAL] Props changed:', {
+      isOpen,
+      actionType,
+      timestamp: new Date().toISOString()
+    });
+  }, [isOpen, actionType]);
+
+  // Debug effect for DOM mounting
+  useEffect(() => {
+    console.log('🏗️ [ENHANCED-UPGRADE-MODAL] Component mounted/unmounted');
+    
+    // Check if modal portal exists in DOM
+    const checkPortal = () => {
+      const portals = document.querySelectorAll('[data-radix-portal]');
+      console.log('📊 [ENHANCED-UPGRADE-MODAL] Radix portals found:', portals.length);
+      portals.forEach((portal, index) => {
+        console.log(`📊 [ENHANCED-UPGRADE-MODAL] Portal ${index}:`, {
+          element: portal.tagName,
+          children: portal.children.length,
+          visible: getComputedStyle(portal).display !== 'none'
+        });
+      });
+    };
+
+    if (isOpen) {
+      // Check portal after a small delay to let Radix mount
+      setTimeout(checkPortal, 100);
+    }
+
+    return () => {
+      console.log('🧹 [ENHANCED-UPGRADE-MODAL] Component cleanup');
+    };
+  }, [isOpen]);
 
   // Enhanced validation and fallback logic
   if (!actionType) {
@@ -56,6 +94,27 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
   // Log when modal should be visible but isOpen is false
   if (!isOpen && actionType) {
     console.warn('❌ [ENHANCED-UPGRADE-MODAL] Modal rendered but isOpen=false with actionType:', actionType);
+  }
+
+  // If modal should be open, log visibility check
+  if (isOpen) {
+    console.log('🎯 [ENHANCED-UPGRADE-MODAL] Modal should be VISIBLE now!');
+    
+    // Check z-index and positioning
+    setTimeout(() => {
+      const dialogs = document.querySelectorAll('[role="dialog"]');
+      console.log('🔍 [ENHANCED-UPGRADE-MODAL] Dialog elements found:', dialogs.length);
+      dialogs.forEach((dialog, index) => {
+        const styles = getComputedStyle(dialog);
+        console.log(`🔍 [ENHANCED-UPGRADE-MODAL] Dialog ${index} styles:`, {
+          display: styles.display,
+          visibility: styles.visibility,
+          opacity: styles.opacity,
+          zIndex: styles.zIndex,
+          position: styles.position
+        });
+      });
+    }, 50);
   }
 
   const getActionContent = () => {
@@ -169,9 +228,10 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent 
-        className="max-w-md bg-figuro-dark border-figuro-accent/30 p-0 overflow-hidden"
+        className="max-w-md bg-figuro-dark border-figuro-accent/30 p-0 overflow-hidden fixed left-[50%] top-[50%] z-[9999] translate-x-[-50%] translate-y-[-50%]"
         aria-labelledby="upgrade-modal-title"
         aria-describedby="upgrade-modal-description"
+        style={{ zIndex: 9999 }}
       >
         <div className="relative">
           {/* Background gradient */}

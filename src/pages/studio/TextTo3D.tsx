@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
@@ -13,6 +12,7 @@ import TextTo3DConfigModal from "@/components/studio/TextTo3DConfigModal";
 import TextTo3DProgress from "@/components/studio/TextTo3DProgress";
 import ModelViewer from "@/components/model-viewer";
 import EnhancedUpgradeModal from "@/components/upgrade/EnhancedUpgradeModal";
+import DebugUpgradeButtons from "@/components/upgrade/DebugUpgradeButtons";
 import { Type, Sparkles } from "lucide-react";
 
 const TextTo3D = () => {
@@ -208,6 +208,9 @@ const TextTo3D = () => {
             />
           )}
         </AnimatePresence>
+
+        {/* Debug Buttons - Remove in production */}
+        {process.env.NODE_ENV === 'development' && <DebugUpgradeButtons />}
       </div>
     </SecurityEnforcedRoute>
   );
