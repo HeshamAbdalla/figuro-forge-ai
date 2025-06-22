@@ -16,7 +16,6 @@ const Text3DIcon: React.FC = () => {
           <Text
             font="/fonts/helvetiker_regular.typeface.json"
             fontSize={0.8}
-            curveSegments={12}
             bevelEnabled
             bevelThickness={0.02}
             bevelSize={0.02}
