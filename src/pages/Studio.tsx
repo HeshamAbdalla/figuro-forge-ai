@@ -1,5 +1,3 @@
-
-
 import { useMemo, useCallback, useEffect, useRef } from "react";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
@@ -93,7 +91,7 @@ const Studio = () => {
   // Add camera progress tracking
   const { cameraProgress, resetProgress: resetCameraProgress } = useCameraProgress(progress, displayModelUrl);
 
-  // Now use properly memoized useStudioHandlers
+  // Now use properly memoized useStudioHandlers with stable references
   const studioHandlers = useStudioHandlers({
     generatedImage,
     setCustomModelUrl,
@@ -111,6 +109,7 @@ const Studio = () => {
   });
 
   const handleCameraImageCapture = useCallback(async (imageBlob: Blob) => {
+    // ... keep existing code (camera image capture logic)
     try {
       console.log('📸 [CAMERA] Image captured, starting secure processing...');
       
@@ -306,7 +305,42 @@ const Studio = () => {
         <div className="min-h-screen bg-figuro-dark">
           <Header />
           <div className="pt-20">
-            <StudioLayout {...studioLayoutProps} />
+            <StudioLayout
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              authUser={authUser}
+              generatedImage={generatedImage}
+              isGeneratingImage={isGeneratingImage}
+              isGenerating={isGenerating}
+              isGeneratingTextTo3D={isGeneratingTextTo3D}
+              currentTaskId={currentTaskId}
+              progress={progress}
+              textTo3DProgress={textTo3DProgress}
+              displayModelUrl={displayModelUrl}
+              shouldModelViewerLoad={shouldModelViewerLoad}
+              uploadModalOpen={uploadModalOpen}
+              setUploadModalOpen={setUploadModalOpen}
+              configModalOpen={configModalOpen}
+              setConfigModalOpen={setConfigModalOpen}
+              textTo3DConfigModalOpen={textTo3DConfigModalOpen}
+              setTextTo3DConfigModalOpen={setTextTo3DConfigModalOpen}
+              textTo3DConfigPrompt={textTo3DConfigPrompt}
+              generationModalOpen={generationModalOpen}
+              setGenerationModalOpen={setGenerationModalOpen}
+              onGenerate={studioHandlers.onGenerate}
+              handleOpenConfigModal={studioHandlers.handleOpenConfigModal}
+              handleGenerate3DWithConfig={studioHandlers.handleGenerate3DWithConfig}
+              handleQuickConvert={studioHandlers.handleQuickConvert}
+              handleTextTo3D={studioHandlers.handleTextTo3D}
+              handleOpenTextTo3DConfigModal={studioHandlers.handleOpenTextTo3DConfigModal}
+              handleTextTo3DWithConfig={studioHandlers.handleTextTo3DWithConfig}
+              handleModelUpload={handleModelUpload}
+              handleSignOut={studioHandlers.handleSignOut}
+              handleSignIn={studioHandlers.handleSignIn}
+              handleCloseGenerationModal={studioHandlers.handleCloseGenerationModal}
+              setCustomModelUrl={setCustomModelUrl}
+              onCameraImageCapture={handleCameraImageCapture}
+            />
           </div>
           
           {/* Upgraded modal handling with dedicated component */}
