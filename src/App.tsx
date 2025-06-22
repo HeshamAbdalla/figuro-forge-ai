@@ -13,6 +13,8 @@ import Auth from "./pages/Auth";
 import StudioHub from "./pages/StudioHub";
 import ImageTo3D from "./pages/studio/ImageTo3D";
 import TextTo3D from "./pages/studio/TextTo3D";
+import CameraCapture from "./pages/studio/CameraCapture";
+import WebIcons from "./pages/studio/WebIcons";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Pricing from "./pages/Pricing";
@@ -126,18 +128,17 @@ function App() {
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
-                    {/* Add missing studio routes */}
                     <Route path="/studio/camera" element={
                       <ErrorBoundary>
                         <SecurityEnforcedRoute>
-                          <Navigate to="/studio-hub" replace />
+                          <CameraCapture />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
                     <Route path="/studio/web-icons" element={
                       <ErrorBoundary>
                         <SecurityEnforcedRoute>
-                          <Navigate to="/studio-hub" replace />
+                          <WebIcons />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
