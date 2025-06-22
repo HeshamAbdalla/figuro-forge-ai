@@ -1,7 +1,7 @@
 
 import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Mesh } from 'three';
+import { Group } from 'three';
 
 interface Icon3DBaseProps {
   children: React.ReactNode;
@@ -18,16 +18,16 @@ const Icon3DBase: React.FC<Icon3DBaseProps> = ({
   scale = 1,
   color = '#ffffff'
 }) => {
-  const meshRef = useRef<Mesh>(null);
+  const groupRef = useRef<Group>(null);
 
   useFrame((state, delta) => {
-    if (meshRef.current && autoRotate) {
-      meshRef.current.rotation.y += delta * rotationSpeed;
+    if (groupRef.current && autoRotate) {
+      groupRef.current.rotation.y += delta * rotationSpeed;
     }
   });
 
   return (
-    <group ref={meshRef} scale={[scale, scale, scale]}>
+    <group ref={groupRef} scale={[scale, scale, scale]}>
       {children}
     </group>
   );

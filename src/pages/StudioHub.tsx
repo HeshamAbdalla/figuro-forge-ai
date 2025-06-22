@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
@@ -13,7 +12,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { Suspense } from "react";
-import { ErrorBoundary } from "@/components/common/SimpleErrorBoundary";
+import SimpleErrorBoundary from "@/components/common/SimpleErrorBoundary";
 
 // Import 3D icon components
 import Image3DIcon from "@/components/studio/icons3d/Image3DIcon";
@@ -121,7 +120,7 @@ const StudioHub = () => {
                         <CardHeader>
                           <div className="flex items-center justify-between mb-3">
                             <div className="w-16 h-16 rounded-lg overflow-hidden bg-gradient-to-br from-black/20 to-black/40 border border-white/10 group-hover:scale-105 transition-transform">
-                              <ErrorBoundary fallback={
+                              <SimpleErrorBoundary fallback={
                                 <div className={`w-full h-full bg-gradient-to-br ${method.color} rounded-lg flex items-center justify-center`}>
                                   <div className="w-8 h-8 bg-white/20 rounded"></div>
                                 </div>
@@ -133,7 +132,7 @@ const StudioHub = () => {
                                 }>
                                   <Icon3DComponent />
                                 </Suspense>
-                              </ErrorBoundary>
+                              </SimpleErrorBoundary>
                             </div>
                             
                             <div className="flex flex-col gap-1">

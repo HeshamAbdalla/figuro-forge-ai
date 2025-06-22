@@ -16,7 +16,6 @@ const Text3DIcon: React.FC = () => {
           <Text
             font="/fonts/helvetiker_regular.typeface.json"
             fontSize={0.8}
-            height={0.2}
             curveSegments={12}
             bevelEnabled
             bevelThickness={0.02}
@@ -36,7 +35,6 @@ const Text3DIcon: React.FC = () => {
           {/* Floating letters */}
           <Text
             fontSize={0.3}
-            height={0.1}
             position={[-1, -0.5, 0.5]}
             rotation={[0, 0, Math.PI / 6]}
           >
@@ -46,7 +44,6 @@ const Text3DIcon: React.FC = () => {
           
           <Text
             fontSize={0.25}
-            height={0.08}
             position={[0.8, -0.3, -0.3]}
             rotation={[0, 0, -Math.PI / 8]}
           >
@@ -56,7 +53,6 @@ const Text3DIcon: React.FC = () => {
           
           <Text
             fontSize={0.2}
-            height={0.06}
             position={[0, -0.8, 0.2]}
             rotation={[0, 0, Math.PI / 4]}
           >
