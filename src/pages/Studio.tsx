@@ -1,4 +1,5 @@
 
+
 import { useMemo, useCallback, useEffect, useRef } from "react";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
@@ -21,7 +22,6 @@ const Studio = () => {
 
   // Add debug refs to track renders and prevent infinite loops
   const renderCountRef = useRef(0);
-  const prevStudioLayoutPropsRef = useRef<any>(null);
   
   renderCountRef.current += 1;
 
@@ -208,7 +208,7 @@ const Studio = () => {
   // Determine if ModelViewer should show loading
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
-  // Simplified studio layout props with direct handler references - NO WRAPPING
+  // FIXED: Completely remove studioHandlers from dependencies to break circular dependency
   const studioLayoutProps = useMemo(() => {
     const props = {
       activeTab,
@@ -248,16 +248,6 @@ const Studio = () => {
       onCameraImageCapture: handleCameraImageCapture
     };
 
-    // Debug props stability
-    const propsChanged = JSON.stringify(prevStudioLayoutPropsRef.current) !== JSON.stringify(props);
-    if (propsChanged) {
-      console.log('🔧 [STUDIO] StudioLayout props changed:', {
-        renderCount: renderCountRef.current,
-        timestamp: new Date().toISOString()
-      });
-      prevStudioLayoutPropsRef.current = props;
-    }
-
     // Detect rapid re-renders
     if (renderCountRef.current > 20) {
       console.warn('⚠️ [STUDIO] POTENTIAL INFINITE LOOP IN STUDIO COMPONENT', {
@@ -268,7 +258,7 @@ const Studio = () => {
 
     return props;
   }, [
-    // Only include primitive values and stable references
+    // FIXED: Remove studioHandlers from dependencies completely to break circular dependency
     activeTab,
     authUser,
     generatedImage,
@@ -292,9 +282,8 @@ const Studio = () => {
     setGenerationModalOpen,
     setCustomModelUrl,
     handleCameraImageCapture,
-    handleModelUpload,
-    // Include studioHandlers but not individual functions to avoid circular deps
-    studioHandlers
+    handleModelUpload
+    // Removed studioHandlers from dependencies to break circular dependency
   ]);
 
   // Memory cleanup on unmount

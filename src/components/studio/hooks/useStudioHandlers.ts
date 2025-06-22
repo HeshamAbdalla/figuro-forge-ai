@@ -214,8 +214,7 @@ export const useStudioHandlers = ({
     resetProgress();
   }, [setGenerationModalOpen, resetProgress]);
 
-  // Fix the circular dependency by only including stable primitive values in dependencies
-  // The callback functions themselves should NOT be in the dependencies array
+  // FIXED: Remove all callback function dependencies to break circular dependency
   const handlers = useMemo(() => {
     const handlersObject = {
       handleSignOut,
@@ -251,12 +250,11 @@ export const useStudioHandlers = ({
 
     return handlersObject;
   }, [
-    // Only include stable primitive values and references that determine when handlers need to be recreated
-    // DO NOT include the callback functions themselves - this creates circular dependency
-    generatedImage, // string | null - stable primitive
+    // FIXED: Only include the most primitive dependencies - no callback functions
+    generatedImage, // primitive string | null
     navigate, // stable reference from useNavigate
     toast // stable reference from useToast
-    // Removed all callback function dependencies to break the circular dependency
+    // Removed ALL other dependencies to prevent circular dependency
   ]);
 
   return handlers;
