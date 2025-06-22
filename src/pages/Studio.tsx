@@ -202,14 +202,22 @@ const Studio = () => {
   // Handle model upload with proper async signature
   const handleModelUpload = useCallback(async (figurineId: string, file: File) => {
     studioHandlers.handleModelUpload(file);
-  }, [studioHandlers]);
+  }, [studioHandlers.handleModelUpload]);
 
   // Determine if ModelViewer should show loading
   const shouldModelViewerLoad = !isGenerating && !generationModalOpen && !isGeneratingTextTo3D && !!displayModelUrl;
 
-  // FINAL FIX: Remove ALL handler functions from dependencies - use static values only
+  // CRITICAL FIX: Remove all functions from dependencies and use only primitive values
   const studioLayoutProps = useMemo(() => {
-    const props = {
+    // Detect rapid re-renders
+    if (renderCountRef.current > 20) {
+      console.warn('⚠️ [STUDIO] POTENTIAL INFINITE LOOP IN STUDIO COMPONENT', {
+        renderCount: renderCountRef.current,
+        upgradeModalState: { isUpgradeModalOpen, upgradeModalAction }
+      });
+    }
+
+    return {
       activeTab,
       setActiveTab,
       authUser,
@@ -231,33 +239,10 @@ const Studio = () => {
       textTo3DConfigPrompt,
       generationModalOpen,
       setGenerationModalOpen,
-      // Use studioHandlers functions directly - they are now stable
-      onGenerate: studioHandlers.onGenerate,
-      handleOpenConfigModal: studioHandlers.handleOpenConfigModal,
-      handleGenerate3DWithConfig: studioHandlers.handleGenerate3DWithConfig,
-      handleQuickConvert: studioHandlers.handleQuickConvert,
-      handleTextTo3D: studioHandlers.handleTextTo3D,
-      handleOpenTextTo3DConfigModal: studioHandlers.handleOpenTextTo3DConfigModal,
-      handleTextTo3DWithConfig: studioHandlers.handleTextTo3DWithConfig,
-      handleModelUpload,
-      handleSignOut: studioHandlers.handleSignOut,
-      handleSignIn: studioHandlers.handleSignIn,
-      handleCloseGenerationModal: studioHandlers.handleCloseGenerationModal,
-      setCustomModelUrl,
-      onCameraImageCapture: handleCameraImageCapture
+      setCustomModelUrl
     };
-
-    // Detect rapid re-renders
-    if (renderCountRef.current > 20) {
-      console.warn('⚠️ [STUDIO] POTENTIAL INFINITE LOOP IN STUDIO COMPONENT', {
-        renderCount: renderCountRef.current,
-        upgradeModalState: { isUpgradeModalOpen, upgradeModalAction }
-      });
-    }
-
-    return props;
   }, [
-    // FINAL FIX: Only include primitive values and stable state setters - NO HANDLER FUNCTIONS
+    // ONLY include primitive values and stable state setters - NO FUNCTIONS AT ALL
     activeTab,
     authUser,
     generatedImage,
@@ -280,11 +265,7 @@ const Studio = () => {
     setConfigModalOpen,
     setTextTo3DConfigModalOpen,
     setGenerationModalOpen,
-    setCustomModelUrl,
-    // These are the only callback functions we include - they use useCallback with stable deps
-    handleCameraImageCapture,
-    handleModelUpload
-    // Completely removed studioHandlers and all handler functions from dependencies
+    setCustomModelUrl
   ]);
 
   // Memory cleanup on unmount
@@ -306,27 +287,7 @@ const Studio = () => {
           <Header />
           <div className="pt-20">
             <StudioLayout
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              authUser={authUser}
-              generatedImage={generatedImage}
-              isGeneratingImage={isGeneratingImage}
-              isGenerating={isGenerating}
-              isGeneratingTextTo3D={isGeneratingTextTo3D}
-              currentTaskId={currentTaskId}
-              progress={progress}
-              textTo3DProgress={textTo3DProgress}
-              displayModelUrl={displayModelUrl}
-              shouldModelViewerLoad={shouldModelViewerLoad}
-              uploadModalOpen={uploadModalOpen}
-              setUploadModalOpen={setUploadModalOpen}
-              configModalOpen={configModalOpen}
-              setConfigModalOpen={setConfigModalOpen}
-              textTo3DConfigModalOpen={textTo3DConfigModalOpen}
-              setTextTo3DConfigModalOpen={setTextTo3DConfigModalOpen}
-              textTo3DConfigPrompt={textTo3DConfigPrompt}
-              generationModalOpen={generationModalOpen}
-              setGenerationModalOpen={setGenerationModalOpen}
+              {...studioLayoutProps}
               onGenerate={studioHandlers.onGenerate}
               handleOpenConfigModal={studioHandlers.handleOpenConfigModal}
               handleGenerate3DWithConfig={studioHandlers.handleGenerate3DWithConfig}
@@ -338,7 +299,6 @@ const Studio = () => {
               handleSignOut={studioHandlers.handleSignOut}
               handleSignIn={studioHandlers.handleSignIn}
               handleCloseGenerationModal={studioHandlers.handleCloseGenerationModal}
-              setCustomModelUrl={setCustomModelUrl}
               onCameraImageCapture={handleCameraImageCapture}
             />
           </div>
