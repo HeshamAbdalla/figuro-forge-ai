@@ -80,7 +80,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
   const [showModelInfo, setShowModelInfo] = useState(false);
   const { toast } = useToast();
 
-  // Use specialized text-to-3D loader - FIXED: Pass modelInfo directly
+  // Use specialized text-to-3D loader
   const {
     loading: textTo3DLoading,
     model: textTo3DModel,
@@ -353,7 +353,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
           ) : (
             <EnhancedModelScene
               modelUrl={customModelBlob ? null : displayModelUrl}
-              modelBlob={customModelBlob}
+              modelBlob={customModelBlob ? URL.createObjectURL(customModelBlob) : null}
               autoRotate={autoRotate}
               showWireframe={false}
               onModelError={handleModelLoadError}
