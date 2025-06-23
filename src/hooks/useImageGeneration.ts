@@ -81,7 +81,8 @@ export const useImageGeneration = () => {
 
       console.log("📊 [IMAGE-GENERATION] Generation result:", result);
 
-      if (!result.success || !result.blob || !result.url) {
+      // Check if generation was successful by checking if we have both blob and url
+      if (!result.blob || !result.url || result.error) {
         throw new Error(result.error || 'Failed to generate image');
       }
 
