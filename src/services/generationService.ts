@@ -55,18 +55,29 @@ const validateAuthentication = async (retryCount = 0): Promise<{ isValid: boolea
   }
 };
 
+// Progress tracking for better user experience
+interface GenerationProgress {
+  stage: 'validating' | 'generating' | 'processing' | 'completed' | 'error';
+  progress: number;
+  message: string;
+  retryAttempt?: number;
+  modelUsed?: string;
+}
+
 // Enhanced image generation with comprehensive error handling and retry logic
 export const generateImage = async (
   prompt: string, 
   style: string, 
   apiKey: string = "",
-  retryCount = 0
+  retryCount = 0,
+  onProgress?: (progress: GenerationProgress) => void
 ): Promise<{
   blob: Blob | null; 
   url: string | null; 
   error?: string; 
   method: "edge" | "direct";
   retryAttempt?: number;
+  modelUsed?: string;
 }> => {
   const maxRetries = 3;
   const baseDelay = 2000; // 2 seconds base delay
@@ -78,12 +89,28 @@ export const generateImage = async (
     timestamp: new Date().toISOString()
   });
 
+  // Progress tracking
+  const updateProgress = (stage: GenerationProgress['stage'], progress: number, message: string, extra?: Partial<GenerationProgress>) => {
+    if (onProgress) {
+      onProgress({
+        stage,
+        progress,
+        message,
+        retryAttempt: retryCount,
+        ...extra
+      });
+    }
+  };
+
   try {
+    updateProgress('validating', 10, 'Validating authentication...');
+
     // Enhanced authentication check with retry
     const { isValid, session, error: authError } = await validateAuthentication();
     if (!isValid || !session) {
       const errorMsg = authError || "Authentication required. Please refresh the page and try again.";
       console.error('❌ [GENERATION] Auth failed:', errorMsg);
+      updateProgress('error', 0, errorMsg);
       return {
         blob: null,
         url: null,
@@ -93,10 +120,13 @@ export const generateImage = async (
       };
     }
 
+    updateProgress('validating', 20, 'Preparing generation request...');
+
     const supabaseUrl = SUPABASE_URL;
     if (!supabaseUrl) {
       const errorMsg = "Supabase configuration error";
       console.error('❌ [GENERATION]', errorMsg);
+      updateProgress('error', 0, errorMsg);
       return {
         blob: null,
         url: null,
@@ -106,6 +136,8 @@ export const generateImage = async (
       };
     }
     
+    updateProgress('generating', 30, 'Generating image with AI...');
+
     // Enhanced timeout based on retry attempt
     const timeoutMs = 60000 + (retryCount * 30000); // Increase timeout with retries
     const controller = new AbortController();
@@ -139,11 +171,31 @@ export const generateImage = async (
       headers: Object.fromEntries(response.headers.entries()),
       attempt: retryCount + 1
     });
+
+    // Extract generation metadata from headers
+    const modelUsed = response.headers.get('X-Generation-Model') || 'unknown';
+    const serverRetryAttempts = parseInt(response.headers.get('X-Retry-Attempts') || '0');
+    
+    updateProgress('processing', 70, `Processing image (Model: ${modelUsed})...`, { modelUsed });
     
     // Enhanced error handling with retry logic
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ [GENERATION] Edge function error (${response.status}):`, errorText);
+      let errorData: any = {};
+      const contentType = response.headers.get('content-type');
+      
+      try {
+        if (contentType?.includes('application/json')) {
+          errorData = await response.json();
+        } else {
+          const errorText = await response.text();
+          errorData = { error: errorText };
+        }
+      } catch (parseError) {
+        console.error('❌ [GENERATION] Failed to parse error response:', parseError);
+        errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+      }
+
+      console.error(`❌ [GENERATION] Edge function error (${response.status}):`, errorData);
       
       let errorMessage = `Generation failed: ${response.status}`;
       let shouldRetry = false;
@@ -153,35 +205,33 @@ export const generateImage = async (
       } else if (response.status === 429) {
         errorMessage = "Generation limit reached. Please upgrade your plan or try again later.";
       } else if (response.status === 503 || response.status === 502) {
-        errorMessage = "Service temporarily unavailable. Retrying...";
+        errorMessage = errorData.error || "Service temporarily unavailable. Retrying...";
         shouldRetry = true;
       } else if (response.status >= 500) {
-        errorMessage = "Server error. Retrying...";
+        errorMessage = errorData.error || "Server error. Retrying...";
+        shouldRetry = true;
+      } else if (response.status === 408) {
+        errorMessage = "Request timeout. Retrying with longer timeout...";
         shouldRetry = true;
       } else {
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error || errorMessage;
-          
-          // Check if error suggests retry
-          if (errorData.error?.includes('timeout') || errorData.error?.includes('network')) {
-            shouldRetry = true;
-          }
-        } catch {
-          errorMessage = errorText || errorMessage;
-          if (errorText.includes('timeout') || errorText.includes('network')) {
-            shouldRetry = true;
-          }
+        errorMessage = errorData.error || errorMessage;
+        
+        // Check if error suggests retry
+        if (errorData.error?.includes('timeout') || errorData.error?.includes('network') || errorData.error?.includes('load')) {
+          shouldRetry = true;
         }
       }
+      
+      updateProgress('error', 0, errorMessage, { modelUsed });
       
       // Retry logic for recoverable errors
       if (shouldRetry && retryCount < maxRetries) {
         const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
         console.log(`🔄 [GENERATION] Retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
         
+        updateProgress('generating', 40, `Retrying with backup systems... (${delay/1000}s)`, { modelUsed });
         await new Promise(resolve => setTimeout(resolve, delay));
-        return generateImage(prompt, style, apiKey, retryCount + 1);
+        return generateImage(prompt, style, apiKey, retryCount + 1, onProgress);
       }
       
       return { 
@@ -189,31 +239,38 @@ export const generateImage = async (
         url: null,
         error: errorMessage,
         method: "edge",
-        retryAttempt: retryCount
+        retryAttempt: retryCount,
+        modelUsed
       };
     }
     
+    updateProgress('processing', 80, 'Finalizing image...');
+
     // Get and validate the image blob
     const imageBlob = await response.blob();
     
     console.log(`📊 [GENERATION] Image blob received:`, {
       size: imageBlob.size,
       type: imageBlob.type,
-      attempt: retryCount + 1
+      attempt: retryCount + 1,
+      modelUsed,
+      serverRetries: serverRetryAttempts
     });
     
     // Validate blob
     if (!imageBlob || imageBlob.size === 0) {
       const errorMsg = "Empty response received from generation service";
       console.error('❌ [GENERATION]', errorMsg);
+      updateProgress('error', 0, errorMsg);
       
       // Retry on empty response
       if (retryCount < maxRetries) {
         const delay = baseDelay * Math.pow(2, retryCount);
         console.log(`🔄 [GENERATION] Retrying due to empty response in ${delay}ms`);
         
+        updateProgress('generating', 50, `Retrying due to empty response... (${delay/1000}s)`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        return generateImage(prompt, style, apiKey, retryCount + 1);
+        return generateImage(prompt, style, apiKey, retryCount + 1, onProgress);
       }
       
       return {
@@ -221,7 +278,33 @@ export const generateImage = async (
         url: null,
         error: errorMsg,
         method: "edge",
-        retryAttempt: retryCount
+        retryAttempt: retryCount,
+        modelUsed
+      };
+    }
+    
+    // Additional validation for suspicious responses
+    if (imageBlob.size < 1000) {
+      const errorMsg = "Invalid image data received (file too small)";
+      console.error('❌ [GENERATION]', errorMsg, { size: imageBlob.size });
+      updateProgress('error', 0, errorMsg);
+      
+      if (retryCount < maxRetries) {
+        const delay = baseDelay * Math.pow(2, retryCount);
+        console.log(`🔄 [GENERATION] Retrying due to invalid data in ${delay}ms`);
+        
+        updateProgress('generating', 60, `Retrying due to invalid data... (${delay/1000}s)`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return generateImage(prompt, style, apiKey, retryCount + 1, onProgress);
+      }
+      
+      return {
+        blob: null,
+        url: null,
+        error: errorMsg,
+        method: "edge",
+        retryAttempt: retryCount,
+        modelUsed
       };
     }
     
@@ -230,6 +313,8 @@ export const generateImage = async (
       console.warn('⚠️ [GENERATION] Unexpected content type:', imageBlob.type);
     }
     
+    updateProgress('completed', 100, 'Image generated successfully!', { modelUsed });
+
     const imageUrl = URL.createObjectURL(imageBlob);
     
     console.log(`✅ [GENERATION] Successfully generated image:`, {
@@ -237,6 +322,8 @@ export const generateImage = async (
       contentType: imageBlob.type,
       url: imageUrl.substring(0, 50) + '...',
       totalAttempts: retryCount + 1,
+      modelUsed,
+      serverRetries: serverRetryAttempts,
       timestamp: new Date().toISOString()
     });
     
@@ -244,7 +331,8 @@ export const generateImage = async (
       blob: imageBlob, 
       url: imageUrl, 
       method: "edge",
-      retryAttempt: retryCount
+      retryAttempt: retryCount,
+      modelUsed
     };
     
   } catch (error) {
@@ -275,13 +363,16 @@ export const generateImage = async (
       }
     }
     
+    updateProgress('error', 0, finalErrorMessage);
+    
     // Retry logic for network/timeout errors
     if (shouldRetry && retryCount < maxRetries) {
       const delay = baseDelay * Math.pow(2, retryCount);
       console.log(`🔄 [GENERATION] Retrying due to ${errorType} in ${delay}ms`);
       
+      updateProgress('generating', 25, `Retrying due to ${errorType.toLowerCase()}... (${delay/1000}s)`);
       await new Promise(resolve => setTimeout(resolve, delay));
-      return generateImage(prompt, style, apiKey, retryCount + 1);
+      return generateImage(prompt, style, apiKey, retryCount + 1, onProgress);
     }
     
     return { 
@@ -307,7 +398,7 @@ export const cleanupImageUrl = (url: string | null) => {
 };
 
 // Helper function to validate image before display
-export const validateImageForDisplay = (blob: Blob | null, url: string | null): boolean =>  {
+export const validateImageForDisplay = (blob: Blob | null, url: string | null): boolean => {
   if (!blob || !url) {
     console.warn('⚠️ [GENERATION] Invalid image data for display');
     return false;
@@ -326,3 +417,6 @@ export const validateImageForDisplay = (blob: Blob | null, url: string | null): 
   console.log('✅ [GENERATION] Image validated for display');
   return true;
 };
+
+// Enhanced progress tracking types
+export type { GenerationProgress };

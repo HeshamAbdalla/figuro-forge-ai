@@ -1,729 +1,172 @@
-import { useState, useEffect, useRef } from "react";
+
+import { useState, useCallback } from "react";
+import { generateImage, cleanupImageUrl, type GenerationProgress } from "@/services/generationService";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useEnhancedUpgradeModal } from "@/hooks/useEnhancedUpgradeModal";
-import { saveFigurine, updateFigurineWithModelUrl } from "@/services/figurineService";
-import { generateImage } from "@/services/generationService";
-import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
-import { downloadAndSaveModel } from "@/utils/modelUtils";
 
-// Define the return type for handleGenerate to make it consistent
-export type GenerateResult = {
+export interface ImageGenerationResult {
   success: boolean;
-  needsApiKey: boolean;
+  imageUrl?: string;
+  imageBlob?: Blob;
   error?: string;
-  needsUpgrade?: boolean;
-};
+  modelUsed?: string;
+  retryAttempts?: number;
+}
 
 export const useImageGeneration = () => {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [isConverting, setIsConverting] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [modelUrl, setModelUrl] = useState<string | null>(null);
-  const [requiresApiKey, setRequiresApiKey] = useState(false);
-  const [currentFigurineId, setCurrentFigurineId] = useState<string | null>(null);
-  const [generationMethod, setGenerationMethod] = useState<"edge" | "direct" | null>(null);
-  const [conversionProgress, setConversionProgress] = useState(0);
-  const [conversionError, setConversionError] = useState<string | null>(null);
-  
-  // Request deduplication refs
-  const isGenerationInProgress = useRef(false);
-  const currentRequestId = useRef<string | null>(null);
-  
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const currentTaskRef = useRef<string | null>(null);
-  const modelUrlRef = useRef<string | null>(null);
+  const [generationProgress, setGenerationProgress] = useState<GenerationProgress | null>(null);
   const { toast } = useToast();
   
-  // Add subscription hook for usage management
-  const { canPerformAction, consumeAction, getUpgradeRecommendation } = useSubscription();
+  // Add subscription management and upgrade modal hooks
+  const { canPerformAction, consumeAction } = useSubscription();
   const { showUpgradeModal } = useEnhancedUpgradeModal();
 
-  // Update the ref when modelUrl changes
-  useEffect(() => {
-    modelUrlRef.current = modelUrl;
-  }, [modelUrl]);
-
-  // Clean up event source on unmount
-  useEffect(() => {
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-    };
-  }, []);
-
-  // Helper function to convert image to base64
-  const imageUrlToBase64 = async (imageUrl: string): Promise<string | null> => {
-    try {
-      // Fetch the image
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      
-      // Convert blob to base64
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          // Extract just the base64 part without the data URL prefix
-          const base64Data = base64String.split(',')[1];
-          resolve(base64Data);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (error) {
-      console.error("Error converting image to base64:", error);
-      return null;
-    }
-  };
-
-  // Enhanced model download and save function with better error handling
-  const downloadAndSaveModelWithRetry = async (externalUrl: string, figurineId: string, maxRetries = 3): Promise<string | null> => {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`🔄 [CONVERSION] Attempt ${attempt}/${maxRetries} to download and save model...`);
-        
-        const storedModelUrl = await downloadAndSaveModel(
-          externalUrl, 
-          `figurine_${figurineId}`
-        );
-        
-        if (storedModelUrl) {
-          console.log(`✅ [CONVERSION] Model successfully saved on attempt ${attempt}`);
-          return storedModelUrl;
-        }
-      } catch (error) {
-        console.error(`❌ [CONVERSION] Attempt ${attempt} failed:`, error);
-        
-        if (attempt === maxRetries) {
-          console.error(`❌ [CONVERSION] All ${maxRetries} attempts failed`);
-          throw error;
-        } else {
-          // Wait before retrying (exponential backoff)
-          const delay = Math.pow(2, attempt) * 1000;
-          console.log(`⏳ [CONVERSION] Waiting ${delay}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-    }
-    return null;
-  };
-
-  // Set up SSE connection for real-time updates on conversion
-  const setupSSEConnection = (taskId: string) => {
-    // Store the current task ID
-    currentTaskRef.current = taskId;
+  const handleGenerate = useCallback(async (prompt: string, style: string): Promise<void> => {
+    console.log("🎨 [IMAGE-GENERATION] Starting image generation with enhanced error handling");
     
-    // Close any existing connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-    
-    const sseUrl = `${SUPABASE_URL}/functions/v1/check-3d-status?taskId=${taskId}&sse=true`;
-    console.log(`Setting up SSE connection to: ${sseUrl}`);
-
-    const eventSource = new EventSource(sseUrl);
-    eventSourceRef.current = eventSource;
-
-    // Handle connection open
-    eventSource.onopen = () => {
-      console.log('SSE connection established');
-    };
-
-    // Handle connection error
-    eventSource.onerror = (error) => {
-      console.error('SSE connection error:', error);
-      
-      // Don't set an error if we already have a model URL
-      if (!modelUrlRef.current) {
-        // Start polling as a fallback if SSE connection fails
-        pollTaskStatus(taskId);
-      }
-      
-      eventSource.close();
-      eventSourceRef.current = null;
-    };
-
-    // Handle general messages
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('SSE message received:', data);
-        
-        // Update progress if available
-        if (data.progress !== undefined) {
-          setConversionProgress(data.progress);
-        }
-      } catch (error) {
-        console.error('Error parsing SSE message:', error);
-      }
-    };
-
-    // Handle specific events
-    eventSource.addEventListener('connected', (event: any) => {
-      console.log('SSE connected event:', event.data ? JSON.parse(event.data) : event);
-    });
-
-    eventSource.addEventListener('status', (event: any) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('SSE status update:', data);
-        
-        // Update progress
-        if (data.progress !== undefined) {
-          setConversionProgress(data.progress);
-        }
-      } catch (error) {
-        console.error('Error parsing SSE status:', error);
-      }
-    });
-
-    eventSource.addEventListener('processing', (event: any) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('SSE processing update:', data);
-        setConversionProgress(data.progress || 0);
-      } catch (error) {
-        console.error('Error parsing SSE processing event:', error);
-      }
-    });
-
-    eventSource.addEventListener('completed', async (event: any) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('SSE completed event:', data);
-        
-        // Handle completion
-        if (data.modelUrl) {
-          try {
-            setConversionProgress(95); // Show near completion
-            
-            // Show initial success message
-            toast({
-              title: "3D model created",
-              description: "Downloading and saving your 3D model to gallery...",
-            });
-            
-            // Attempt to download and save the model to our storage
-            if (currentFigurineId) {
-              console.log('🔄 [CONVERSION] Starting enhanced model download and save process...');
-              
-              try {
-                // Download and save the model to our storage with retry logic
-                const storedModelUrl = await downloadAndSaveModelWithRetry(
-                  data.modelUrl, 
-                  currentFigurineId
-                );
-                
-                if (storedModelUrl) {
-                  // Update the model URL to our stored version
-                  setModelUrl(storedModelUrl);
-                  setConversionProgress(100);
-                  
-                  // Update figurine with the stored model URL
-                  await updateFigurineWithModelUrl(currentFigurineId, storedModelUrl);
-                  
-                  console.log('✅ [CONVERSION] Model successfully saved to gallery storage');
-                  toast({
-                    title: "3D model saved to gallery",
-                    description: "Your figurine is ready to view in 3D and has been added to the gallery",
-                  });
-                } else {
-                  throw new Error("Failed to save model to storage");
-                }
-              } catch (saveError) {
-                console.error('❌ [CONVERSION] Error during model save process:', saveError);
-                
-                // Fallback to the external URL if storage failed
-                setModelUrl(data.modelUrl);
-                setConversionProgress(100);
-                await updateFigurineWithModelUrl(currentFigurineId, data.modelUrl);
-                
-                toast({
-                  title: "3D model created",
-                  description: "Your figurine is ready to view in 3D (using external hosting - storage save failed)",
-                  variant: "default"
-                });
-              }
-            } else {
-              console.log('ℹ️ [CONVERSION] No figurine ID available, using external URL');
-              setModelUrl(data.modelUrl);
-              setConversionProgress(100);
-              
-              toast({
-                title: "3D model created",
-                description: "Your 3D model is ready to view",
-              });
-            }
-            
-            setIsConverting(false);
-            setConversionError(null);
-          } catch (error) {
-            console.error('❌ [CONVERSION] Error in completion handler:', error);
-            
-            // Ensure we still show the model even if save fails
-            setModelUrl(data.modelUrl);
-            setConversionProgress(100);
-            setIsConverting(false);
-            
-            if (currentFigurineId) {
-              await updateFigurineWithModelUrl(currentFigurineId, data.modelUrl);
-            }
-          }
-          
-          // Close the connection as we're done
-          eventSource.close();
-          eventSourceRef.current = null;
-        }
-      } catch (error) {
-        console.error('Error parsing SSE completed event:', error);
-      }
-    });
-
-    eventSource.addEventListener('failed', (event: any) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.error('SSE failure event:', data);
-        
-        // Only set error if we don't already have a model URL
-        if (!modelUrlRef.current) {
-          const errorMessage = data.error || data.details || 'Conversion failed';
-          setConversionError(errorMessage);
-          
-          toast({
-            title: "Conversion failed",
-            description: errorMessage,
-            variant: "destructive",
-          });
-        }
-        
-        setIsConverting(false);
-        
-        // Close the connection as we're done
-        eventSource.close();
-        eventSourceRef.current = null;
-      } catch (error) {
-        console.error('Error parsing SSE failed event:', error);
-      }
-    });
-
-    eventSource.addEventListener('error', (event: any) => {
-      try {
-        let errorData;
-        try {
-          errorData = event.data ? JSON.parse(event.data) : { error: 'Unknown error' };
-        } catch (e) {
-          errorData = { error: 'Unknown error' };
-        }
-        console.error('SSE error event:', errorData);
-        
-        // Don't set error if we already have a model URL
-        if (!modelUrlRef.current) {
-          // Check task status directly as fallback
-          pollTaskStatus(taskId);
-        }
-        
-        // Close the connection as we're done
-        eventSource.close();
-        eventSourceRef.current = null;
-      } catch (error) {
-        console.error('Error handling SSE error event:', error);
-      }
-    });
-
-    return eventSource;
-  };
-
-  // Fallback polling mechanism when SSE fails
-  const pollTaskStatus = async (taskId: string, maxAttempts = 60, delay = 5000) => {
-    // Don't start polling if we already have a model URL
-    if (modelUrlRef.current) return;
-    
-    let attempts = 0;
-    
-    const checkInterval = setInterval(async () => {
-      // If we already have a model URL or we're checking a different task, stop polling
-      if (
-        attempts >= maxAttempts || 
-        modelUrlRef.current !== null || 
-        taskId !== currentTaskRef.current
-      ) {
-        clearInterval(checkInterval);
-        return;
-      }
-      
-      attempts++;
-      try {
-        const statusResponse = await fetch(`${SUPABASE_URL}/functions/v1/check-3d-status?taskId=${taskId}`);
-        
-        if (!statusResponse.ok) {
-          console.error(`Error checking status (attempt ${attempts}):`, statusResponse.status);
-          return;
-        }
-        
-        const statusData = await statusResponse.json();
-        console.log(`Status check (attempt ${attempts}):`, statusData);
-        
-        // Update progress
-        if (statusData.progress !== undefined) {
-          setConversionProgress(statusData.progress);
-        }
-        
-        // Check if completed
-        if (statusData.modelUrl) {
-          clearInterval(checkInterval);
-          
-          // Enhanced model saving with retry logic
-          try {
-            if (currentFigurineId) {
-              console.log('🔄 [CONVERSION] Starting model save from polling...');
-              
-              const storedModelUrl = await downloadAndSaveModelWithRetry(
-                statusData.modelUrl, 
-                currentFigurineId
-              );
-              
-              if (storedModelUrl) {
-                setModelUrl(storedModelUrl);
-                await updateFigurineWithModelUrl(currentFigurineId, storedModelUrl);
-                
-                toast({
-                  title: "3D model saved to gallery",
-                  description: "Your figurine is ready to view in 3D",
-                });
-              } else {
-                // Fallback to external URL
-                setModelUrl(statusData.modelUrl);
-                await updateFigurineWithModelUrl(currentFigurineId, statusData.modelUrl);
-                
-                toast({
-                  title: "3D model created",
-                  description: "Your 3D model is ready to view",
-                });
-              }
-            } else {
-              setModelUrl(statusData.modelUrl);
-              
-              toast({
-                title: "3D model created",
-                description: "Your 3D model is ready to view",
-              });
-            }
-          } catch (error) {
-            console.error('❌ [CONVERSION] Error saving model from polling:', error);
-            // Still show the model even if saving fails
-            setModelUrl(statusData.modelUrl);
-            if (currentFigurineId) {
-              await updateFigurineWithModelUrl(currentFigurineId, statusData.modelUrl);
-            }
-          }
-          
-          setConversionError(null); // Clear any errors since we got a valid URL
-          setIsConverting(false);
-        } else if (statusData.error && !modelUrlRef.current) {
-          clearInterval(checkInterval);
-          setConversionError(statusData.error);
-          setIsConverting(false);
-          
-          toast({
-            title: "Conversion failed",
-            description: statusData.error,
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error(`Error checking status (attempt ${attempts}):`, error);
-      }
-    }, delay);
-    
-    // Clean up the interval on unmount
-    return () => clearInterval(checkInterval);
-  };
-
-  // Generate image with usage checks and consumption
-  const handleGenerate = async (prompt: string, style: string, apiKey: string = "", preGeneratedImageUrl?: string): Promise<GenerateResult> => {
-    // Create a unique request ID for this generation
-    const requestId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    console.log(`🎯 [GENERATION] Starting generation request ${requestId} for prompt: "${prompt}"`);
-    
-    // Check if a generation is already in progress
-    if (isGenerationInProgress.current) {
-      console.log(`⚠️ [GENERATION] Request ${requestId} blocked - generation already in progress (${currentRequestId.current})`);
-      toast({
-        title: "Generation in progress",
-        description: "Please wait for the current generation to complete",
-        variant: "default",
-      });
-      return { success: false, needsApiKey: false, error: "Generation already in progress" };
-    }
-
-    // Check authentication first
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      throw new Error('Authentication required to generate figurines');
-    }
-
-    // FIXED: Check if user can perform IMAGE GENERATION (not model conversion)
+    // Check if user can perform image generation
     if (!canPerformAction('image_generation')) {
-      console.log(`🚫 [GENERATION] Request ${requestId} blocked - IMAGE GENERATION usage limit reached`);
+      console.log("❌ [IMAGE-GENERATION] User has reached image generation limit");
       
-      // Show upgrade modal specifically for image generation limits
+      // Show upgrade modal for image generation limits
       showUpgradeModal('image_generation');
       
-      return { 
-        success: false, 
-        needsApiKey: false, 
-        needsUpgrade: true,
-        error: "You've reached your daily image generation limit. Please upgrade to continue." 
-      };
+      throw new Error("You've reached your daily limit for image generations. Please upgrade to continue.");
     }
-
-    // Set the generation lock
-    isGenerationInProgress.current = true;
-    currentRequestId.current = requestId;
     
-    console.log(`🔒 [GENERATION] Request ${requestId} acquired generation lock`);
-
-    const savedApiKey = localStorage.getItem("tempHuggingFaceApiKey") || apiKey;
-    
-    setIsGeneratingImage(true);
-    setGeneratedImage(null);
-    setModelUrl(null);
-    setCurrentFigurineId(null);
-    setGenerationMethod(null);
-    setConversionProgress(0);
-    setConversionError(null);
-    
-    try {
-      let imageUrl: string | null = null;
-      let imageBlob: Blob | null = null;
-
-      // Use the pre-generated image URL if provided
-      if (preGeneratedImageUrl) {
-        imageUrl = preGeneratedImageUrl;
-        setGenerationMethod("edge"); // Assume it came from edge if pre-generated
-        
-        // Fetch the blob from the URL for storage
-        const response = await fetch(preGeneratedImageUrl);
-        imageBlob = await response.blob();
-      } else {
-        // Make a single generation request to the service layer
-        console.log(`🚀 [GENERATION] Request ${requestId} making API call to service layer`);
-        const result = await generateImage(prompt, style, savedApiKey);
-        
-        if (result.error) {
-          // Check if the error is about API key
-          if (result.error.includes("API key") || result.error.includes("unauthorized")) {
-            setRequiresApiKey(true);
-            return { success: false, needsApiKey: true, error: result.error };
-          }
-          
-          throw new Error(result.error);
-        }
-        
-        setGenerationMethod(result.method);
-        
-        // We don't need an API key anymore if we got a successful response
-        setRequiresApiKey(false);
-        
-        imageBlob = result.blob;
-        imageUrl = result.url;
-        
-        console.log(`✅ [GENERATION] Request ${requestId} successfully generated image via ${result.method} method`);
-      }
-      
-      // FIXED: Consume the IMAGE GENERATION usage credit after successful generation
-      const consumeSuccess = await consumeAction('image_generation');
-      if (!consumeSuccess) {
-        console.error(`❌ [GENERATION] Request ${requestId} failed to consume IMAGE GENERATION usage credit`);
-        // Continue with the generation since we already created the image
-        toast({
-          title: "Usage tracking error",
-          description: "Image generated but usage tracking failed. Please contact support if this persists.",
-          variant: "default",
-        });
-      } else {
-        console.log(`✅ [GENERATION] Request ${requestId} successfully consumed IMAGE GENERATION usage credit`);
-      }
-      
-      // Save the figurine to Supabase if we have an image
-      if (imageUrl) {
-        setGeneratedImage(imageUrl);
-        
-        toast({
-          title: "Image generated",
-          description: `Created "${prompt}" in ${style} style using ${generationMethod || "API"} method`,
-        });
-        
-        try {
-          const figurineId = await saveFigurine(prompt, style, imageUrl, imageBlob);
-          
-          if (figurineId) {
-            setCurrentFigurineId(figurineId);
-            console.log(`💾 [GENERATION] Request ${requestId} saved figurine with ID: ${figurineId}`);
-          }
-        } catch (saveError) {
-          console.error(`❌ [GENERATION] Request ${requestId} error saving figurine:`, saveError);
-          toast({
-            title: "Save failed",
-            description: "Image generated but failed to save to database",
-            variant: "destructive",
-          });
-          // Continue anyway since we have the image
-        }
-      }
-      
-      console.log(`🎉 [GENERATION] Request ${requestId} completed successfully`);
-      return { success: true, needsApiKey: false };
-    } catch (error) {
-      console.error(`❌ [GENERATION] Request ${requestId} failed:`, error);
-      
+    // Validate input
+    if (!prompt || prompt.trim().length === 0) {
       toast({
-        title: "Generation failed",
-        description: error instanceof Error ? error.message : "Failed to generate image",
+        title: "Invalid Input",
+        description: "Please provide a prompt for image generation.",
         variant: "destructive",
       });
+      throw new Error("Prompt is required");
+    }
+
+    if (prompt.length > 1000) {
+      toast({
+        title: "Prompt Too Long",
+        description: "Please keep your prompt under 1000 characters.",
+        variant: "destructive",
+      });
+      throw new Error("Prompt is too long");
+    }
+
+    setIsGeneratingImage(true);
+    setGenerationProgress({ stage: 'validating', progress: 0, message: 'Preparing generation...' });
+    
+    // Clean up previous image
+    if (generatedImage) {
+      cleanupImageUrl(generatedImage);
+      setGeneratedImage(null);
+    }
+
+    try {
+      console.log("📤 [IMAGE-GENERATION] Calling generation service...");
       
-      return { 
-        success: false, 
-        needsApiKey: requiresApiKey,
-        error: error instanceof Error ? error.message : "Unknown error"
-      };
+      const result = await generateImage(
+        prompt, 
+        style, 
+        "", // API key not needed for edge function
+        0,  // Initial retry count
+        (progress) => {
+          setGenerationProgress(progress);
+          console.log("📊 [IMAGE-GENERATION] Progress update:", progress);
+        }
+      );
+
+      console.log("📊 [IMAGE-GENERATION] Generation result:", result);
+
+      if (!result.success || !result.blob || !result.url) {
+        throw new Error(result.error || 'Failed to generate image');
+      }
+
+      // ONLY consume image generation credit AFTER successful generation
+      console.log("💳 [IMAGE-GENERATION] Consuming image generation credit after successful generation...");
+      const consumptionResult = await consumeAction('image_generation');
+      if (!consumptionResult) {
+        console.warn("⚠️ [IMAGE-GENERATION] Failed to consume image generation credit, but generation was successful");
+        // Don't fail the generation since it was successful
+      } else {
+        console.log("✅ [IMAGE-GENERATION] Successfully consumed image generation credit");
+      }
+
+      // Set the generated image
+      setGeneratedImage(result.url);
+      setGenerationProgress({ 
+        stage: 'completed', 
+        progress: 100, 
+        message: `Image generated successfully!${result.modelUsed ? ` (Model: ${result.modelUsed})` : ''}`,
+        modelUsed: result.modelUsed
+      });
+
+      toast({
+        title: "Image Generated",
+        description: `Your image has been created successfully!${result.retryAttempt && result.retryAttempt > 0 ? ` (Completed after ${result.retryAttempt + 1} attempts)` : ''}`,
+      });
+
+      console.log("✅ [IMAGE-GENERATION] Image generation completed successfully");
+
+    } catch (error) {
+      console.error("❌ [IMAGE-GENERATION] Error during image generation:", error);
+      
+      setGenerationProgress({ 
+        stage: 'error', 
+        progress: 0, 
+        message: error instanceof Error ? error.message : 'Generation failed'
+      });
+      
+      let errorMessage = "Failed to generate image";
+      if (error instanceof Error) {
+        if (error.message.includes('limit') || error.message.includes('quota')) {
+          errorMessage = "You've reached your generation limit. Please upgrade to continue.";
+          // The upgrade modal is already shown by the generation service
+        } else if (error.message.includes('authentication') || error.message.includes('JWT')) {
+          errorMessage = "Authentication expired. Please refresh the page and try again.";
+        } else if (error.message.includes('network')) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else if (error.message.includes('timeout')) {
+          errorMessage = "Request timeout. The service might be experiencing high load. Please try again.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      // Only show toast for non-limit errors (limit errors show upgrade modal)
+      if (!errorMessage.includes('limit') && !errorMessage.includes('quota')) {
+        toast({
+          title: "Generation Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+      
+      throw error;
     } finally {
       setIsGeneratingImage(false);
-      // Release the generation lock
-      isGenerationInProgress.current = false;
-      currentRequestId.current = null;
-      console.log(`🔓 [GENERATION] Request ${requestId} released generation lock`);
+      // Clear progress after a delay
+      setTimeout(() => setGenerationProgress(null), 3000);
     }
-  };
+  }, [generatedImage, toast, canPerformAction, consumeAction, showUpgradeModal]);
 
-  // Convert image to 3D model with usage checks
-  const handleConvertTo3D = async () => {
-    if (!generatedImage) {
-      toast({
-        title: "No image to convert",
-        description: "Please generate an image first",
-        variant: "destructive",
-      });
-      return;
+  const resetGeneration = useCallback(() => {
+    if (generatedImage) {
+      cleanupImageUrl(generatedImage);
+      setGeneratedImage(null);
     }
-
-    // FIXED: Check if user can perform MODEL CONVERSION (not image generation)
-    if (!canPerformAction('model_conversion')) {
-      console.log("🚫 [CONVERSION] Blocked - MODEL CONVERSION usage limit reached");
-      
-      // Show upgrade modal specifically for model conversion limits
-      showUpgradeModal('model_conversion');
-      return;
-    }
-
-    setIsConverting(true);
-    setConversionProgress(0);
-    setConversionError(null);
-    setModelUrl(null);
-    modelUrlRef.current = null;
-    
-    try {
-      // Get current session for authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('Authentication required');
-      }
-
-      // Check if the image URL is a blob URL
-      const isBlobUrl = generatedImage.startsWith('blob:');
-      let requestBody: any = {};
-      
-      if (isBlobUrl) {
-        console.log("Converting blob URL to base64...");
-        const base64Data = await imageUrlToBase64(generatedImage);
-        if (!base64Data) {
-          throw new Error("Failed to convert image to base64");
-        }
-        requestBody = { imageBase64: base64Data };
-      } else {
-        // Use the URL directly
-        requestBody = { imageUrl: generatedImage };
-      }
-      
-      console.log("Sending conversion request to edge function...");
-      
-      // Call the convert-to-3d edge function using supabase.functions.invoke
-      const { data, error } = await supabase.functions.invoke('convert-to-3d', {
-        body: requestBody
-      });
-      
-      if (error) {
-        console.error("Error response from edge function:", error);
-        
-        // Handle specific error cases with better messages
-        if (error.message?.includes('limit reached') || error.message?.includes('429')) {
-          throw new Error('You have reached your 3D model conversion limit. Please upgrade your plan to continue.');
-        }
-        
-        if (error.message?.includes('Model conversion limit reached')) {
-          throw new Error('You have reached your monthly 3D model conversion limit. Please upgrade your plan or wait until next month.');
-        }
-        
-        throw new Error(error.message || 'Failed to convert image to 3D model');
-      }
-      
-      if (!data?.taskId) {
-        throw new Error("No task ID returned from conversion service");
-      }
-      
-      // FIXED: Consume the MODEL CONVERSION usage credit after successful conversion start
-      const consumeSuccess = await consumeAction('model_conversion');
-      if (!consumeSuccess) {
-        console.error('❌ [CONVERSION] Failed to consume MODEL CONVERSION credit');
-        toast({
-          title: "Usage tracking error",
-          description: "Conversion started but usage tracking failed. Please contact support if this persists.",
-          variant: "default",
-        });
-      } else {
-        console.log('✅ [CONVERSION] Successfully consumed MODEL CONVERSION credit');
-      }
-      
-      console.log("Conversion task started with ID:", data.taskId);
-      toast({
-        title: "3D conversion started",
-        description: "Your 3D model is being created. You'll see real-time updates.",
-      });
-      
-      // Set up SSE connection for real-time updates
-      setupSSEConnection(data.taskId);
-      
-      // Start checking status periodically as a backup to SSE
-      pollTaskStatus(data.taskId);
-      
-    } catch (error) {
-      console.error("Conversion error:", error);
-      setConversionError(error instanceof Error ? error.message : "Unknown error");
-      setIsConverting(false);
-      
-      toast({
-        title: "Conversion failed",
-        description: error instanceof Error ? error.message : "Failed to convert to 3D model",
-        variant: "destructive",
-      });
-    }
-  };
+    setGenerationProgress(null);
+    setIsGeneratingImage(false);
+  }, [generatedImage]);
 
   return {
     isGeneratingImage,
-    isConverting,
     generatedImage,
-    modelUrl,
+    generationProgress,
     handleGenerate,
-    handleConvertTo3D,
-    requiresApiKey,
-    currentFigurineId,
-    generationMethod,
-    conversionProgress,
-    conversionError
+    resetGeneration
   };
 };

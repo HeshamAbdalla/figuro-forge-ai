@@ -27,6 +27,7 @@ const ImageTo3D = () => {
   const {
     isGeneratingImage,
     generatedImage,
+    generationProgress,
     handleGenerate: originalHandleGenerate,
   } = useImageGeneration();
 
@@ -156,6 +157,39 @@ const ImageTo3D = () => {
                     onGenerate={handleGenerate}
                     isGenerating={isGeneratingImage}
                   />
+                  
+                  {/* Enhanced Progress Display */}
+                  {generationProgress && (
+                    <div className="mt-4 p-4 bg-black/20 rounded-lg border border-white/10">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-white/80 capitalize">
+                          {generationProgress.stage.replace('_', ' ')}
+                        </span>
+                        <span className="text-sm text-figuro-accent">
+                          {generationProgress.progress}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-white/10 rounded-full h-2 mb-2">
+                        <div 
+                          className="bg-figuro-accent h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${generationProgress.progress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-white/70">
+                        {generationProgress.message}
+                        {generationProgress.retryAttempt && generationProgress.retryAttempt > 0 && (
+                          <span className="ml-2 text-yellow-400">
+                            (Attempt {generationProgress.retryAttempt + 1})
+                          </span>
+                        )}
+                        {generationProgress.modelUsed && generationProgress.stage === 'completed' && (
+                          <span className="ml-2 text-green-400">
+                            via {generationProgress.modelUsed}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {generatedImage && (
@@ -204,6 +238,9 @@ const ImageTo3D = () => {
                             />
                           </div>
                           <p className="text-sm mt-2">{progress.progress || 0}% complete</p>
+                          {progress.message && (
+                            <p className="text-xs mt-1 text-white/60">{progress.message}</p>
+                          )}
                         </div>
                       ) : (
                         <div className="text-center">
