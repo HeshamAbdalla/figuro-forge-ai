@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
@@ -10,7 +9,7 @@ const Palette3DIcon: React.FC = () => {
       <ambientLight intensity={0.5} />
       <directionalLight position={[2, 2, 2]} intensity={0.8} />
       
-      <Icon3DBase rotationSpeed={0.7}>
+      <Icon3DBase autoRotate={false}>
         <group>
           {/* Palette base */}
           <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 8]}>
@@ -67,7 +66,7 @@ const Palette3DIcon: React.FC = () => {
         </group>
       </Icon3DBase>
       
-      <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.5} />
+      <OrbitControls enableZoom={false} enablePan={false} />
       <Environment preset="apartment" />
     </Canvas>
   );

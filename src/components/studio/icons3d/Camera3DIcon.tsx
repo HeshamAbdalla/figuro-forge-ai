@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
@@ -10,7 +9,7 @@ const Camera3DIcon: React.FC = () => {
       <ambientLight intensity={0.5} />
       <directionalLight position={[2, 2, 2]} intensity={0.8} />
       
-      <Icon3DBase rotationSpeed={0.6}>
+      <Icon3DBase autoRotate={false}>
         <group>
           {/* Camera body */}
           <mesh position={[0, 0, 0]}>
@@ -50,7 +49,7 @@ const Camera3DIcon: React.FC = () => {
         </group>
       </Icon3DBase>
       
-      <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.4} />
+      <OrbitControls enableZoom={false} enablePan={false} />
       <Environment preset="studio" />
     </Canvas>
   );
