@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Sparkles, Users, Zap, Star, Gift } from "lucide-react";
+import { ArrowRight, Sparkles, Gift } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
@@ -119,27 +119,6 @@ const Hero = () => {
             Figuro.AI turns your imagination into stunning 3D figurines with just a text prompt. 
             Start creating amazing figurines today - no credit card required, no hidden fees.
           </motion.p>
-
-          {/* Enhanced social proof indicators */}
-          <motion.div
-            className="flex flex-wrap justify-center items-center gap-6 mb-8 text-white/60"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.8 }}
-          >
-            <div className="flex items-center gap-2">
-              <Users size={16} />
-              <span className="text-sm">50K+ happy creators</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Zap size={16} />
-              <span className="text-sm">500K+ figurines made</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Star size={16} className="text-yellow-400" />
-              <span className="text-sm">4.9/5 rating</span>
-            </div>
-          </motion.div>
           
           <motion.div
             className="max-w-xl mx-auto"
