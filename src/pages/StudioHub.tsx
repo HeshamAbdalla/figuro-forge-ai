@@ -1,9 +1,9 @@
+
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import Header from "@/components/Header";
-import VantaBackground from "@/components/VantaBackground";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
@@ -76,8 +76,15 @@ const StudioHub = () => {
 
   return (
     <SecurityEnforcedRoute requireVerification={true}>
-      <div className="min-h-screen relative">
-        <VantaBackground>
+      <div className="min-h-screen bg-gradient-to-br from-figuro-dark via-slate-900 to-indigo-950 relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-figuro-accent/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }}></div>
+        </div>
+
+        <div className="relative z-10">
           <Header />
           <div className="pt-20">
             <div className="container mx-auto px-4 py-12">
@@ -207,7 +214,7 @@ const StudioHub = () => {
               </motion.div>
             </div>
           </div>
-        </VantaBackground>
+        </div>
       </div>
     </SecurityEnforcedRoute>
   );
