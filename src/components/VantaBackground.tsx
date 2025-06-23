@@ -19,23 +19,23 @@ const VantaBackground: React.FC<VantaBackgroundProps> = ({ children }) => {
   const [vantaEffect, setVantaEffect] = useState<any>(null);
 
   useEffect(() => {
-    // Load Three.js
-    const threeScript = document.createElement('script');
-    threeScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js';
-    threeScript.async = true;
-    document.body.appendChild(threeScript);
+    // Load p5.js
+    const p5Script = document.createElement('script');
+    p5Script.src = 'https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js';
+    p5Script.async = true;
+    document.body.appendChild(p5Script);
     
-    // Load VANTA.NET after Three.js is loaded
-    threeScript.onload = () => {
+    // Load VANTA.TOPOLOGY after p5.js is loaded
+    p5Script.onload = () => {
       const vantaScript = document.createElement('script');
-      vantaScript.src = 'https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js';
+      vantaScript.src = 'https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.topology.min.js';
       vantaScript.async = true;
       document.body.appendChild(vantaScript);
       
       // Initialize VANTA effect once the script is loaded
       vantaScript.onload = () => {
         if (!vantaEffect && vantaRef.current) {
-          const effect = window.VANTA.NET({
+          const effect = window.VANTA.TOPOLOGY({
             el: vantaRef.current,
             mouseControls: true,
             touchControls: true,
@@ -45,11 +45,7 @@ const VantaBackground: React.FC<VantaBackgroundProps> = ({ children }) => {
             scale: 1.00,
             scaleMobile: 1.00,
             color: 0x9b87f5,           // Purple color matching figuro-accent
-            backgroundColor: 0x09090f,  // Dark background to match our theme
-            points: 8.00,
-            maxDistance: 25.00,
-            spacing: 18.00,
-            showDots: false
+            backgroundColor: 0x09090f  // Dark background to match our theme
           });
           setVantaEffect(effect);
         }
@@ -60,7 +56,7 @@ const VantaBackground: React.FC<VantaBackgroundProps> = ({ children }) => {
     return () => {
       if (vantaEffect) vantaEffect.destroy();
       // Remove scripts when component unmounts
-      document.querySelectorAll('script[src*="vanta"], script[src*="three"]')
+      document.querySelectorAll('script[src*="vanta"], script[src*="p5"]')
         .forEach(script => script.remove());
     };
   }, [vantaEffect]);
