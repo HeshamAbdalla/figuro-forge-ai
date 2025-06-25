@@ -1,246 +1,237 @@
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Loader2, Sparkles, Box, Eye, Download, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Figurine } from '@/types/figurine';
-import EnhancedModelDialog from './EnhancedModelDialog';
-import DeleteConfirmationModal from '@/components/common/DeleteConfirmationModal';
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Eye, Play, Calendar, User, Sparkles, Zap } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Figurine } from "@/types/figurine";
+import FigurineModelDialog from "@/components/figurine/FigurineModelDialog";
 
 interface FuturisticGalleryGridProps {
   figurines: Figurine[];
   loading: boolean;
-  viewMode: 'grid' | 'list';
+  viewMode: "grid" | "list";
   onViewModel: (figurine: Figurine) => void;
-  onDelete?: (figurine: Figurine) => Promise<void>;
 }
+
+// Helper function to get the best display title
+const getDisplayTitle = (figurine: Figurine): string => {
+  // First priority: use the prompt if it exists and isn't empty
+  if (figurine.prompt && figurine.prompt.trim()) {
+    return figurine.prompt.trim();
+  }
+  
+  // Second priority: clean up the title
+  let cleanTitle = figurine.title;
+  
+  // Remove common prefixes for text-to-3D models
+  if (cleanTitle.startsWith('Text-to-3D: ')) {
+    cleanTitle = cleanTitle.replace('Text-to-3D: ', '');
+  }
+  
+  // Remove generic "3D Model - " prefixes
+  if (cleanTitle.startsWith('3D Model - ')) {
+    cleanTitle = cleanTitle.replace('3D Model - ', '');
+  }
+  
+  return cleanTitle || 'Untitled Model';
+};
 
 const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
   figurines,
   loading,
   viewMode,
-  onViewModel,
-  onDelete
+  onViewModel
 }) => {
   const [selectedFigurine, setSelectedFigurine] = useState<Figurine | null>(null);
-  const [modelViewerOpen, setModelViewerOpen] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [figurineToDelete, setFigurineToDelete] = useState<Figurine | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const handleViewModel = (figurine: Figurine) => {
-    if (!figurine.model_url) {
-      return;
-    }
     setSelectedFigurine(figurine);
-    setModelViewerOpen(true);
   };
 
-  const handleDeleteClick = (figurine: Figurine) => {
-    setFigurineToDelete(figurine);
-    setShowDeleteModal(true);
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!figurineToDelete || !onDelete) return;
-    
-    try {
-      setIsDeleting(true);
-      await onDelete(figurineToDelete);
-      setShowDeleteModal(false);
-      setFigurineToDelete(null);
-    } catch (error) {
-      console.error('Delete failed:', error);
-    } finally {
-      setIsDeleting(false);
-    }
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = event.currentTarget;
+    img.src = "/placeholder.svg";
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-figuro-accent" />
-          <p className="text-white/60">Loading your collection...</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: index * 0.1 }}
+            className="glass-panel rounded-2xl overflow-hidden border border-white/10"
+          >
+            <div className="aspect-square bg-gradient-to-br from-white/5 to-white/10 animate-pulse" />
+            <div className="p-4 space-y-3">
+              <div className="h-4 bg-white/10 rounded animate-pulse" />
+              <div className="h-3 bg-white/5 rounded animate-pulse" />
+            </div>
+          </motion.div>
+        ))}
       </div>
     );
   }
 
   if (figurines.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="text-white/60 mb-4">
-          <p>No figurines found in your collection.</p>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center py-20"
+      >
+        <div className="w-20 h-20 bg-gradient-to-br from-figuro-accent/20 to-purple-500/20 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+          <Sparkles className="w-8 h-8 text-figuro-accent" />
         </div>
-      </div>
+        <h3 className="text-2xl font-semibold text-white mb-4">No models found</h3>
+        <p className="text-white/60 max-w-md mx-auto">
+          Try adjusting your search filters or be the first to share your amazing 3D creations with the community!
+        </p>
+      </motion.div>
     );
   }
 
+  const gridCols = viewMode === "list" 
+    ? "grid-cols-1" 
+    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+
   return (
     <>
-      <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
-        {figurines.map((figurine, index) => {
-          const isTextTo3D = figurine.style === 'text-to-3d' || figurine.title.startsWith('Text-to-3D:');
-          const isWebIcon = figurine.file_type === 'web-icon';
-          const imageUrl = figurine.saved_image_url || figurine.image_url;
-          
-          return (
-            <motion.div
-              key={figurine.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
-              className="group relative overflow-hidden aspect-square bg-white/5 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl hover:scale-105 transition-all duration-300"
-            >
-              {/* Image/Preview */}
-              <div className="relative w-full h-full">
-                {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt={figurine.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800/50 to-gray-900/50">
-                    <div className="text-center text-white/60">
-                      <div className="w-12 h-12 mx-auto mb-2 bg-white/10 rounded-lg flex items-center justify-center">
-                        {isTextTo3D ? (
-                          <Box size={24} className="text-figuro-accent" />
-                        ) : (
-                          <Sparkles size={24} className="text-white/40" />
-                        )}
-                      </div>
-                      <p className="text-sm font-medium">
-                        {isTextTo3D ? '3D Model' : 'Preview unavailable'}
-                      </p>
-                    </div>
-                  </div>
+      <div className={cn("grid gap-6", gridCols)}>
+        <AnimatePresence>
+          {figurines.map((figurine, index) => {
+            const displayTitle = getDisplayTitle(figurine);
+            
+            return (
+              <motion.div
+                key={figurine.id}
+                initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                transition={{ 
+                  delay: index * 0.05,
+                  type: "spring",
+                  stiffness: 100
+                }}
+                className={cn(
+                  "group relative glass-panel rounded-2xl overflow-hidden border border-white/10",
+                  "hover:border-figuro-accent/30 hover:shadow-glow transition-all duration-500",
+                  "transform hover:scale-105 hover:-translate-y-2",
+                  viewMode === "list" && "flex flex-row h-32"
                 )}
+                onMouseEnter={() => setHoveredId(figurine.id)}
+                onMouseLeave={() => setHoveredId(null)}
+              >
+                {/* Image section */}
+                <div className={cn(
+                  "relative overflow-hidden",
+                  viewMode === "list" ? "w-32 h-32 flex-shrink-0" : "aspect-square"
+                )}>
+                  <img
+                    src={figurine.saved_image_url || figurine.image_url || "/placeholder.svg"}
+                    alt={displayTitle}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    onError={handleImageError}
+                  />
+                  
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  
+                  {/* Floating action button */}
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ 
+                      opacity: hoveredId === figurine.id ? 1 : 0,
+                      scale: hoveredId === figurine.id ? 1 : 0.8
+                    }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Button
+                      onClick={() => handleViewModel(figurine)}
+                      className="bg-figuro-accent/90 hover:bg-figuro-accent text-white rounded-full w-14 h-14 shadow-glow"
+                    >
+                      {figurine.model_url ? <Play className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
+                    </Button>
+                  </motion.div>
 
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
-                {/* Type badges */}
-                <div className="absolute top-3 left-3 z-10 flex gap-2">
-                  {isTextTo3D && (
-                    <Badge className="bg-figuro-accent/90 text-white text-xs px-2 py-1 backdrop-blur-sm">
-                      <Sparkles size={10} className="mr-1" />
-                      Text-to-3D
-                    </Badge>
-                  )}
-                  {isWebIcon && (
-                    <Badge className="bg-purple-500/90 text-white text-xs px-2 py-1 backdrop-blur-sm">
-                      Web Icon
-                    </Badge>
-                  )}
-                  {figurine.model_url && !isTextTo3D && (
-                    <Badge className="bg-blue-500/90 text-white text-xs px-2 py-1 backdrop-blur-sm">
-                      <Box size={10} className="mr-1" />
-                      3D Model
-                    </Badge>
-                  )}
+                  {/* Type badges */}
+                  <div className="absolute top-3 left-3 flex gap-2">
+                    {figurine.metadata?.conversion_type === 'text-to-3d' && (
+                      <Badge className="bg-figuro-accent/80 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                        <Zap className="w-3 h-3 mr-1" />
+                        AI Generated
+                      </Badge>
+                    )}
+                    {figurine.model_url && (
+                      <Badge className="bg-blue-500/80 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                        3D
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
-                {/* Enhanced Action Bar */}
-                <motion.div
-                  className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                >
-                  <div className="flex justify-center gap-2">
-                    {/* View Button */}
-                    {figurine.model_url && (
-                      <Button
-                        onClick={() => handleViewModel(figurine)}
-                        size="sm"
-                        className="h-8 px-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:scale-105"
-                      >
-                        <Eye size={14} className="mr-1.5" />
-                        View 3D
-                      </Button>
+                {/* Content section */}
+                <div className={cn(
+                  "p-4 flex-1",
+                  viewMode === "list" && "flex flex-col justify-center"
+                )}>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-white text-sm leading-tight line-clamp-2 group-hover:text-figuro-accent transition-colors duration-200">
+                      {displayTitle}
+                    </h3>
+                    
+                    {/* Show original title as subtitle if we're displaying the prompt */}
+                    {figurine.prompt && figurine.prompt.trim() && figurine.prompt !== figurine.title && viewMode === "grid" && (
+                      <p className="text-white/40 text-xs line-clamp-1 leading-relaxed">
+                        {figurine.title.replace('Text-to-3D: ', '')}
+                      </p>
                     )}
-
-                    {/* Download Button */}
-                    <Button
-                      onClick={() => {
-                        // Handle download logic here if needed
-                        console.log('Download figurine:', figurine.title);
-                      }}
-                      size="sm"
-                      className="h-8 px-3 bg-figuro-accent/20 hover:bg-figuro-accent/30 border border-figuro-accent/30 text-figuro-accent backdrop-blur-sm transition-all duration-200 hover:scale-105"
-                    >
-                      <Download size={14} className="mr-1.5" />
-                      Download
-                    </Button>
-
-                    {/* Delete Button */}
-                    {onDelete && (
-                      <Button
-                        onClick={() => handleDeleteClick(figurine)}
-                        size="sm"
-                        className="h-8 px-3 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:text-red-300"
-                      >
-                        <Trash2 size={14} className="mr-1.5" />
-                        Delete
-                      </Button>
-                    )}
+                    
+                    <div className="flex items-center justify-between text-xs text-white/40 pt-2">
+                      <div className="flex items-center gap-1">
+                        <User className="w-3 h-3" />
+                        <span className="truncate max-w-20">
+                          {figurine.metadata?.creator_name || 'Anonymous'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        <span>{formatDate(figurine.created_at)}</span>
+                      </div>
+                    </div>
                   </div>
-                </motion.div>
+                </div>
 
-                {/* File info footer */}
-                <motion.div
-                  className="absolute bottom-16 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                  initial={{ opacity: 0, y: 10 }}
-                  whileHover={{ opacity: 1, y: 0 }}
-                >
-                  <div className="flex items-center gap-2">
-                    {figurine.model_url ? (
-                      <Box size={14} className="text-figuro-accent flex-shrink-0" />
-                    ) : isWebIcon ? (
-                      <Sparkles size={14} className="text-purple-400 flex-shrink-0" />
-                    ) : (
-                      <Sparkles size={14} className="text-white/70 flex-shrink-0" />
-                    )}
-                    <span className="text-white text-xs font-medium truncate">
-                      {figurine.title}
-                    </span>
-                  </div>
-                </motion.div>
-
-                {/* Subtle border glow */}
-                <div className="absolute inset-0 rounded-xl border border-figuro-accent/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-              </div>
-            </motion.div>
-          );
-        })}
+                {/* Futuristic border effect */}
+                <div className="absolute inset-0 rounded-2xl border border-transparent bg-gradient-to-r from-figuro-accent/0 via-figuro-accent/20 to-figuro-accent/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
 
-      {/* Model Viewer Dialog */}
-      <EnhancedModelDialog
-        open={modelViewerOpen}
-        onOpenChange={setModelViewerOpen}
-        modelUrl={selectedFigurine?.model_url || null}
-        fileName={selectedFigurine?.title}
-        onClose={() => {
-          setModelViewerOpen(false);
-          setSelectedFigurine(null);
-        }}
-      />
-
-      {/* Delete confirmation modal */}
-      <DeleteConfirmationModal
-        open={showDeleteModal}
-        onOpenChange={setShowDeleteModal}
-        onConfirm={handleDeleteConfirm}
-        title="Delete Figurine"
-        description={`Are you sure you want to delete this ${figurineToDelete?.model_url ? '3D model' : figurineToDelete?.file_type === 'web-icon' ? 'web icon' : 'figurine'}? This action cannot be undone.`}
-        itemName={figurineToDelete?.title}
-        isDeleting={isDeleting}
-      />
+      {/* Model viewer dialog */}
+      {selectedFigurine && (
+        <FigurineModelDialog
+          figurine={selectedFigurine}
+          isOpen={!!selectedFigurine}
+          onClose={() => setSelectedFigurine(null)}
+        />
+      )}
     </>
   );
 };
