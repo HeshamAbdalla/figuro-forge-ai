@@ -2,7 +2,7 @@
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
-import { SUPABASE_URL } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { saveFigurine } from "@/services/figurineService";
 
 export interface WebIconGenerationResult {
@@ -65,30 +65,20 @@ export const useWebIconsGeneration = () => {
     try {
       console.log("Generating web icon...", { prompt, options });
       
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-web-icon`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
+      // Use Supabase client's functions.invoke() method for authenticated requests
+      const { data, error } = await supabase.functions.invoke('generate-web-icon', {
+        body: { 
           prompt,
           category: options.category,
           size: options.size,
           style: options.style
-        }),
+        },
       });
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Web icon generation error:", response.status, errorText);
+      if (error) {
+        console.error("Web icon generation error:", error);
         
-        let errorMessage = `Generation failed: ${response.status}`;
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
-        }
+        let errorMessage = `Generation failed: ${error.message || 'Unknown error'}`;
         
         toast({
           title: "Generation failed",
@@ -99,7 +89,23 @@ export const useWebIconsGeneration = () => {
         return { success: false, error: errorMessage };
       }
       
-      const imageBlob = await response.blob();
+      // The response from the edge function should be a blob (image data)
+      // Since we're using functions.invoke(), we need to handle the response differently
+      if (!data) {
+        throw new Error('No image data received from the server');
+      }
+      
+      // Convert the response to a blob if it's not already
+      let imageBlob: Blob;
+      if (data instanceof Blob) {
+        imageBlob = data;
+      } else if (data instanceof ArrayBuffer) {
+        imageBlob = new Blob([data], { type: 'image/png' });
+      } else {
+        // If data is base64 or other format, handle accordingly
+        throw new Error('Unexpected response format from server');
+      }
+      
       const imageUrl = URL.createObjectURL(imageBlob);
       
       // Consume the usage credit after successful generation
