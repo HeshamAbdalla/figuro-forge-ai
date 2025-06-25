@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
 import { useFigurines } from "@/components/figurine/useFigurines";
+import { deleteFigurine } from "@/services/deletionService";
 import { Figurine } from "@/types/figurine";
 import PersonalGalleryHero from "@/components/figurine/PersonalGalleryHero";
 import EnhancedGalleryFilters from "@/components/gallery/enhanced/EnhancedGalleryFilters";
@@ -128,6 +129,36 @@ const ProfileFigurines = () => {
     // The FuturisticGalleryGrid component will handle the modal internally
   };
 
+  // Handle delete functionality
+  const handleDelete = async (figurine: Figurine): Promise<void> => {
+    try {
+      console.log('🗑️ [PROFILE-FIGURINES] Starting delete process for figurine:', figurine.title);
+      
+      const result = await deleteFigurine(figurine.id);
+      
+      if (result.success) {
+        toast({
+          title: "Figurine Deleted",
+          description: `"${figurine.title}" has been successfully deleted from your collection.`,
+        });
+        
+        // Refresh the gallery to show updated list
+        await refreshFigurines();
+        console.log('✅ [PROFILE-FIGURINES] Gallery refreshed after deletion');
+      } else {
+        throw new Error(result.error || 'Unknown deletion error');
+      }
+      
+    } catch (error) {
+      console.error('❌ [PROFILE-FIGURINES] Delete operation failed:', error);
+      toast({
+        title: "Delete Failed",
+        description: error instanceof Error ? error.message : "Failed to delete the figurine. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // If still loading authentication, show loading state
   if (authLoading) {
     return (
@@ -211,12 +242,13 @@ const ProfileFigurines = () => {
               </Button>
             </div>
             
-            {/* Futuristic Gallery Grid */}
+            {/* Futuristic Gallery Grid with Delete Support */}
             <FuturisticGalleryGrid
               figurines={filteredFigurines}
               loading={loading}
               viewMode={filters.viewMode}
               onViewModel={handleViewModel}
+              onDelete={handleDelete}
             />
           </motion.div>
         </div>
