@@ -3,16 +3,18 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Play, Calendar, User, Sparkles, Zap } from "lucide-react";
+import { Eye, Play, Calendar, User, Sparkles, Zap, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Figurine } from "@/types/figurine";
 import FigurineModelDialog from "@/components/figurine/FigurineModelDialog";
+import DeleteConfirmationModal from "@/components/common/DeleteConfirmationModal";
 
 interface FuturisticGalleryGridProps {
   figurines: Figurine[];
   loading: boolean;
   viewMode: "grid" | "list";
   onViewModel: (figurine: Figurine) => void;
+  onDelete?: (figurine: Figurine) => Promise<void>;
 }
 
 // Helper function to get the best display title
@@ -42,13 +44,38 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
   figurines,
   loading,
   viewMode,
-  onViewModel
+  onViewModel,
+  onDelete
 }) => {
   const [selectedFigurine, setSelectedFigurine] = useState<Figurine | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [figurineToDelete, setFigurineToDelete] = useState<Figurine | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleViewModel = (figurine: Figurine) => {
     setSelectedFigurine(figurine);
+  };
+
+  const handleDeleteClick = (figurine: Figurine, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFigurineToDelete(figurine);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!figurineToDelete || !onDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await onDelete(figurineToDelete);
+      setDeleteModalOpen(false);
+      setFigurineToDelete(null);
+    } catch (error) {
+      console.error('Delete failed:', error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -150,6 +177,28 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
                   {/* Gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   
+                  {/* Delete button - only show if onDelete prop is provided */}
+                  {onDelete && (
+                    <motion.div
+                      className="absolute top-3 right-3 z-10"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ 
+                        opacity: hoveredId === figurine.id ? 1 : 0,
+                        scale: hoveredId === figurine.id ? 1 : 0.8
+                      }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Button
+                        onClick={(e) => handleDeleteClick(figurine, e)}
+                        size="sm"
+                        variant="destructive"
+                        className="h-8 w-8 p-0 bg-red-600/80 hover:bg-red-600 backdrop-blur-sm border border-red-500/30"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </motion.div>
+                  )}
+                  
                   {/* Floating action button */}
                   <motion.div
                     className="absolute inset-0 flex items-center justify-center"
@@ -232,6 +281,17 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
           onClose={() => setSelectedFigurine(null)}
         />
       )}
+
+      {/* Delete confirmation modal */}
+      <DeleteConfirmationModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Figurine"
+        description="Are you sure you want to delete this figurine? This action cannot be undone and will permanently remove the figurine and all associated files."
+        itemName={figurineToDelete?.title || getDisplayTitle(figurineToDelete!)}
+        isDeleting={isDeleting}
+      />
     </>
   );
 };

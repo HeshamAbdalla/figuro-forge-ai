@@ -21,7 +21,7 @@ export const useGalleryFiles = () => {
       // Transform figurines to BucketImage format
       const bucketImages: BucketImage[] = figurines.map((figurine) => {
         // Determine the primary URL to display
-        const displayUrl = figurine.display_url || figurine.saved_image_url || figurine.image_url;
+        const displayUrl = figurine.saved_image_url || figurine.image_url;
         
         // Determine file type based on model_url and file_type
         let fileType: 'image' | '3d-model' | 'web-icon' = 'image';
@@ -46,12 +46,14 @@ export const useGalleryFiles = () => {
         }
         
         return {
+          id: figurine.id,
           name: fileName,
           url: displayUrl || '',
           type: fileType,
           fullPath: fullPath,
           size: 0, // Not available from figurines
-          lastModified: new Date(figurine.updated_at).getTime(),
+          lastModified: new Date(figurine.updated_at || figurine.created_at).getTime(),
+          created_at: figurine.created_at,
           // Store original figurine data for reference
           figurineId: figurine.id,
           userId: figurine.user_id

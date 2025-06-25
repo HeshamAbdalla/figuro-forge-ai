@@ -15,6 +15,7 @@ import { Figurine } from "@/types/figurine";
 import PersonalGalleryHero from "@/components/figurine/PersonalGalleryHero";
 import EnhancedGalleryFilters from "@/components/gallery/enhanced/EnhancedGalleryFilters";
 import FuturisticGalleryGrid from "@/components/gallery/enhanced/FuturisticGalleryGrid";
+import { deleteFigurine } from "@/services/deletionService";
 
 interface FilterState {
   search: string;
@@ -128,6 +129,40 @@ const ProfileFigurines = () => {
     // The FuturisticGalleryGrid component will handle the modal internally
   };
 
+  const handleDelete = async (figurine: Figurine): Promise<void> => {
+    console.log('🗑️ [PROFILE-FIGURINES] Starting delete process for figurine:', figurine.id);
+    
+    try {
+      const result = await deleteFigurine(figurine.id);
+      
+      if (result.success) {
+        console.log('✅ [PROFILE-FIGURINES] Figurine deleted successfully');
+        
+        // Refresh the figurines list
+        await refreshFigurines();
+        
+        toast({
+          title: "Figurine Deleted",
+          description: "Your figurine has been permanently deleted."
+        });
+      } else {
+        console.error('❌ [PROFILE-FIGURINES] Delete failed:', result.error);
+        toast({
+          title: "Delete Failed",
+          description: result.error || "Failed to delete the figurine. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('❌ [PROFILE-FIGURINES] Delete error:', error);
+      toast({
+        title: "Delete Error",
+        description: "An unexpected error occurred while deleting the figurine.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // If still loading authentication, show loading state
   if (authLoading) {
     return (
@@ -217,6 +252,7 @@ const ProfileFigurines = () => {
               loading={loading}
               viewMode={filters.viewMode}
               onViewModel={handleViewModel}
+              onDelete={handleDelete}
             />
           </motion.div>
         </div>
