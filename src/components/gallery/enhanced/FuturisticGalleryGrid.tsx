@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,12 @@ interface FuturisticGalleryGridProps {
 }
 
 // Helper function to get the best display title
-const getDisplayTitle = (figurine: Figurine): string => {
+const getDisplayTitle = (figurine: Figurine | null): string => {
+  // Handle null figurine case
+  if (!figurine) {
+    return 'Unknown Item';
+  }
+  
   // First priority: use the prompt if it exists and isn't empty
   if (figurine.prompt && figurine.prompt.trim()) {
     return figurine.prompt.trim();
@@ -289,7 +293,7 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
         onConfirm={handleDeleteConfirm}
         title="Delete Figurine"
         description="Are you sure you want to delete this figurine? This action cannot be undone and will permanently remove the figurine and all associated files."
-        itemName={figurineToDelete?.title || getDisplayTitle(figurineToDelete!)}
+        itemName={getDisplayTitle(figurineToDelete)}
         isDeleting={isDeleting}
       />
     </>
