@@ -1,11 +1,11 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Eye, Download, Loader2, Box, Image as ImageIcon, Sparkles, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Box, Image as ImageIcon, Sparkles } from "lucide-react";
 import { BucketImage } from "@/components/gallery/types";
 import HomepageEnhancedModelPreview from "./HomepageEnhancedModelPreview";
+import HomepageEnhancedGalleryItemActions from "./HomepageEnhancedGalleryItemActions";
 import DeleteConfirmationModal from "@/components/common/DeleteConfirmationModal";
 
 interface HomepageEnhancedGalleryItemProps {
@@ -29,20 +29,11 @@ const HomepageEnhancedGalleryItem: React.FC<HomepageEnhancedGalleryItemProps> = 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleView = () => {
-    onView(file.url, file.name, file.type);
-  };
-
-  const handleDownload = () => {
-    onDownload(file.url, file.name);
-  };
-
   const handleImageError = () => {
     setImageError(true);
   };
 
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteClick = async (fileToDelete: BucketImage) => {
     setShowDeleteModal(true);
   };
 
@@ -117,7 +108,7 @@ const HomepageEnhancedGalleryItem: React.FC<HomepageEnhancedGalleryItemProps> = 
             {renderPreview()}
             
             {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             
             {/* Type badges */}
             <div className="absolute top-3 left-3 z-10 flex gap-2">
@@ -140,57 +131,15 @@ const HomepageEnhancedGalleryItem: React.FC<HomepageEnhancedGalleryItemProps> = 
               )}
             </div>
             
-            {/* Delete button - only show for authenticated users */}
-            {isAuthenticated && onDelete && (
-              <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <Button
-                  onClick={handleDeleteClick}
-                  size="sm"
-                  variant="destructive"
-                  className="h-8 w-8 p-0 bg-red-600/80 hover:bg-red-600 backdrop-blur-sm border border-red-500/30"
-                >
-                  <Trash2 size={14} />
-                </Button>
-              </div>
-            )}
-            
-            {/* Action buttons overlay */}
-            <motion.div 
-              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              initial={{ opacity: 0, y: 20 }}
-              whileHover={{ opacity: 1, y: 0 }}
-            >
-              <div className="flex flex-col gap-3 p-4">
-                <Button
-                  onClick={handleView}
-                  size="sm"
-                  className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105"
-                >
-                  <Eye size={16} className="mr-2" />
-                  {is3DModel ? 'View 3D' : isWebIcon ? 'View Icon' : 'View Image'}
-                </Button>
-                
-                <Button
-                  onClick={handleDownload}
-                  disabled={isDownloading}
-                  size="sm"
-                  variant="outline"
-                  className="bg-figuro-accent/10 hover:bg-figuro-accent/20 backdrop-blur-md border border-figuro-accent/30 text-figuro-accent px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105"
-                >
-                  {isDownloading ? (
-                    <>
-                      <Loader2 size={16} className="mr-2 animate-spin" />
-                      Downloading...
-                    </>
-                  ) : (
-                    <>
-                      <Download size={16} className="mr-2" />
-                      {isAuthenticated ? 'Download' : 'Sign in'}
-                    </>
-                  )}
-                </Button>
-              </div>
-            </motion.div>
+            {/* Enhanced Quick Action Bar */}
+            <HomepageEnhancedGalleryItemActions
+              file={file}
+              isDownloading={isDownloading}
+              isAuthenticated={isAuthenticated}
+              onView={onView}
+              onDownload={onDownload}
+              onDelete={onDelete ? handleDeleteClick : undefined}
+            />
           </div>
           
           {/* Subtle border glow */}
@@ -199,7 +148,7 @@ const HomepageEnhancedGalleryItem: React.FC<HomepageEnhancedGalleryItemProps> = 
         
         {/* Enhanced file info footer */}
         <motion.div
-          className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          className="absolute bottom-16 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
           initial={{ opacity: 0, y: 10 }}
           whileHover={{ opacity: 1, y: 0 }}
         >
