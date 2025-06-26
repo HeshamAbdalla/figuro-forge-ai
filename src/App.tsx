@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,8 +8,6 @@ import { HelmetProvider } from 'react-helmet-async';
 import Gallery from "@/pages/Gallery";
 import ProfileFigurines from "@/pages/ProfileFigurines";
 import Auth from "@/pages/Auth";
-import Studio from "@/pages/Studio";
-import Upgrade from "@/pages/Upgrade";
 import NotFound from "@/pages/NotFound";
 import Contact from "@/pages/Contact";
 import Privacy from "@/pages/Privacy";
@@ -41,8 +40,6 @@ const AppContent = () => {
       <Route path="/gallery" element={<Gallery />} />
       <Route path="/profile" element={<ProfileFigurines />} />
       <Route path="/auth" element={<Auth />} />
-      <Route path="/studio" element={<Studio />} />
-      <Route path="/upgrade" element={<Upgrade />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
