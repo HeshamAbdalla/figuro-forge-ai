@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -42,8 +41,6 @@ import CombiningMultipleStyles from "./pages/docs/CombiningMultipleStyles";
 import { EnhancedAuthProvider } from "@/components/auth/EnhancedAuthProvider";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
 import ProductionMonitor from "@/components/production/ProductionMonitor";
-import ProductionReadyBanner from "@/components/production/ProductionReadyBanner";
-import ProductionMetrics from "@/components/production/ProductionMetrics";
 import { PRODUCTION_CONFIG } from "@/utils/productionConfig";
 import { validateProductionEnvironment } from "@/utils/deploymentUtils";
 import "./App.css";
@@ -101,8 +98,6 @@ function App() {
               enableErrorReporting={PRODUCTION_CONFIG.monitoring.enableErrorReporting}
               enablePerformanceTracking={PRODUCTION_CONFIG.monitoring.enablePerformanceTracking}
             />
-            <ProductionReadyBanner />
-            <ProductionMetrics />
             <BrowserRouter>
               <EnhancedAuthProvider>
                 <ErrorBoundary>
