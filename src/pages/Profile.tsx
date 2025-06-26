@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
@@ -130,6 +129,11 @@ const Profile = () => {
       });
     }
   };
+
+  // Create a wrapper function for upgrade modal that provides default action
+  const handleUpgrade = () => {
+    showUpgradeModal("image_generation");
+  };
   
   // Show loading state
   const isLoading = authLoading || subscriptionLoading;
@@ -188,7 +192,7 @@ const Profile = () => {
       <EnhancedProfileTabs
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        onUpgrade={showUpgradeModal}
+        onUpgrade={handleUpgrade}
       />
       
       {/* Enhanced Upgrade Modal */}
