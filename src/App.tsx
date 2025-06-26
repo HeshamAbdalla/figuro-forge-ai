@@ -176,7 +176,8 @@ function App() {
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
-                    <Route path="/checkout/return" element={<CheckoutReturn />} />
+                    {/* Fixed: Changed from /checkout/return to /checkout-return to match Stripe redirect URL */}
+                    <Route path="/checkout-return" element={<CheckoutReturn />} />
                     <Route path="/features" element={<Features />} />
                     <Route path="/solutions" element={<Solutions />} />
                     <Route path="/resources" element={<Resources />} />
