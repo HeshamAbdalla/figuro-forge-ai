@@ -9,10 +9,20 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Heart, Sparkles, Zap, Users, Rocket } from "lucide-react";
 import { cleanupAuthState } from "@/utils/authUtils";
 import { Badge } from "@/components/ui/badge";
+import { useRecaptchaBadgeVisibility } from "@/hooks/useRecaptchaBadgeVisibility";
+import { injectRecaptchaBadgeStyles } from "@/utils/recaptchaBadgeStyles";
 
 const Auth = () => {
   const { user, isLoading } = useEnhancedAuth();
   const navigate = useNavigate();
+  
+  // Control reCAPTCHA badge visibility
+  useRecaptchaBadgeVisibility();
+  
+  // Inject global styles for reCAPTCHA badge control
+  useEffect(() => {
+    injectRecaptchaBadgeStyles();
+  }, []);
   
   // Clean up auth state when mounting the auth page
   useEffect(() => {
