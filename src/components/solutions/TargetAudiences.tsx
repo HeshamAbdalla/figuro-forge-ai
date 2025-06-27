@@ -22,7 +22,8 @@ const audiences = [
       "Reduce development costs and time",
       "Perfect for indie developers"
     ],
-    cta: "Start Building Game Assets"
+    cta: "Start Building Game Assets",
+    gradient: "from-blue-500/20 to-purple-500/20"
   },
   {
     icon: Brush,
@@ -34,7 +35,8 @@ const audiences = [
       "Generate reference materials",
       "Focus on refinement over creation"
     ],
-    cta: "Enhance Your Art"
+    cta: "Enhance Your Art",
+    gradient: "from-pink-500/20 to-red-500/20"
   },
   {
     icon: Film,
@@ -46,7 +48,8 @@ const audiences = [
       "Background environments",
       "Branded visual elements"
     ],
-    cta: "Create Content Assets"
+    cta: "Create Content Assets",
+    gradient: "from-green-500/20 to-emerald-500/20"
   },
   {
     icon: Building,
@@ -58,27 +61,28 @@ const audiences = [
       "Presentation assets",
       "Brand consistency"
     ],
-    cta: "Visualize Your Products"
+    cta: "Visualize Your Products",
+    gradient: "from-orange-500/20 to-yellow-500/20"
   }
 ];
 
 export const TargetAudiences = () => {
   return (
-    <section className="py-24">
+    <section className="py-24 bg-gradient-to-b from-figuro-dark/50 to-transparent">
       <div className="container mx-auto px-4">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gradient">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gradient bg-gradient-to-br from-white via-white/90 to-figuro-accent bg-clip-text text-transparent">
             Built for Creators Like You
           </h2>
-          <p className="text-lg text-white/70 max-w-2xl mx-auto">
+          <p className="text-xl text-white/70 max-w-3xl mx-auto">
             Whether you're building the next hit game or creating stunning visual content, 
-            Figuro.AI adapts to your specific needs and workflow.
+            Figuros.AI adapts to your specific needs and workflow.
           </p>
         </motion.div>
 
@@ -88,30 +92,34 @@ export const TargetAudiences = () => {
             return (
               <motion.div
                 key={audience.title}
-                initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
+                initial={{ opacity: 0, x: index % 2 === 0 ? -30 : 30 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
+                whileHover={{ y: -5 }}
+                className="relative group"
               >
-                <Card className="glass-panel h-full hover:shadow-glow-sm transition-all duration-300">
-                  <CardHeader>
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 bg-figuro-accent/20 rounded-lg flex items-center justify-center">
-                        <Icon className="w-6 h-6 text-figuro-accent" />
+                <div className="glass-panel h-full p-8 relative overflow-hidden hover:shadow-glow-sm transition-all duration-300">
+                  {/* Background Gradient */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${audience.gradient} opacity-50 group-hover:opacity-70 transition-opacity duration-300`} />
+                  
+                  <div className="relative z-10 space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-figuro-accent/20 rounded-xl flex items-center justify-center border border-figuro-accent/30">
+                        <Icon className="w-8 h-8 text-figuro-accent" />
                       </div>
-                      <CardTitle className="text-2xl text-white">
+                      <h3 className="text-2xl font-bold text-white">
                         {audience.title}
-                      </CardTitle>
+                      </h3>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
+                    
                     <p className="text-white/80 leading-relaxed">
                       {audience.description}
                     </p>
                     
                     <div>
-                      <h4 className="text-white font-semibold mb-3">Key Benefits:</h4>
-                      <ul className="space-y-2">
+                      <h4 className="text-white font-semibold mb-4">Key Benefits:</h4>
+                      <ul className="space-y-3">
                         {audience.benefits.map((benefit, benefitIndex) => (
                           <li key={benefitIndex} className="flex items-center gap-3 text-white/70">
                             <div className="w-1.5 h-1.5 bg-figuro-accent rounded-full" />
@@ -123,15 +131,15 @@ export const TargetAudiences = () => {
                     
                     <Button 
                       asChild 
-                      className="w-full bg-figuro-accent/10 hover:bg-figuro-accent/20 text-figuro-accent border border-figuro-accent/30"
+                      className="w-full bg-figuro-accent/10 hover:bg-figuro-accent/20 text-figuro-accent border border-figuro-accent/30 hover:border-figuro-accent/50 transition-all duration-300"
                       variant="outline"
                     >
                       <Link to="/studio" className="flex items-center justify-center gap-2">
                         {audience.cta} <ArrowRight className="w-4 h-4" />
                       </Link>
                     </Button>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </motion.div>
             );
           })}

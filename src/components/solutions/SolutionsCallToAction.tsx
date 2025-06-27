@@ -1,92 +1,123 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, Sparkles, Zap, MessageCircle, BookOpen, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export const SolutionsCallToAction = () => {
   return (
     <section className="py-24 relative overflow-hidden">
-      {/* Background effects */}
-      <div className="absolute inset-0 bg-gradient-to-br from-figuro-accent/10 via-transparent to-figuro-light/10" />
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-figuro-accent/5 rounded-full blur-3xl" />
-      
-      <div className="container mx-auto px-4 relative">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
+      <div className="container mx-auto px-4">
+        <motion.div 
+          className="glass-panel p-12 text-center relative overflow-hidden max-w-4xl mx-auto"
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="text-center max-w-4xl mx-auto"
         >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="inline-flex items-center gap-2 bg-figuro-accent/10 border border-figuro-accent/20 rounded-full px-4 py-2 mb-6"
-          >
-            <Sparkles className="w-4 h-4 text-figuro-accent" />
-            <span className="text-sm text-figuro-accent font-medium">Ready to Transform Your Workflow?</span>
-          </motion.div>
-
-          <h2 className="text-3xl md:text-5xl font-bold mb-6 text-gradient leading-tight">
-            Start Creating Amazing 3D Assets Today
-          </h2>
+          {/* Background decoration */}
+          <div className="absolute inset-0 bg-gradient-to-r from-figuro-accent/10 via-purple-500/10 to-figuro-accent/10 opacity-50" />
           
-          <p className="text-xl text-white/80 mb-8 leading-relaxed">
-            Join thousands of creators who are already using Figuro.AI to bring their ideas to life. 
-            No credit card required to get started.
-          </p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12"
-          >
-            <Button 
-              asChild 
-              size="lg" 
-              className="bg-figuro-accent hover:bg-figuro-accent/90 text-white font-semibold px-8 py-4 rounded-xl group"
+          <div className="relative z-10">
+            <motion.div
+              initial={{ scale: 0 }}
+              whileInView={{ scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-figuro-accent/20 border border-figuro-accent/30 mb-8"
             >
-              <Link to="/studio" className="flex items-center gap-2">
-                <Zap className="w-5 h-5" />
-                Start Creating Now 
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </Button>
+              <Sparkles size={40} className="text-figuro-accent" />
+            </motion.div>
+
+            <motion.h2
+              className="text-4xl md:text-5xl font-bold mb-6 text-gradient bg-gradient-to-br from-white via-white/90 to-figuro-accent bg-clip-text text-transparent"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              Start Creating Amazing 3D Assets Today
+            </motion.h2>
             
-            <Button 
-              asChild 
-              variant="outline" 
-              size="lg"
-              className="border-white/20 text-white hover:bg-white/10 px-8 py-4 rounded-xl"
+            <motion.p
+              className="text-xl text-white/80 mb-12 max-w-2xl mx-auto leading-relaxed"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.4 }}
             >
-              <Link to="/pricing">View Pricing</Link>
-            </Button>
-          </motion.div>
+              Join thousands of creators who are already using Figuros.AI to bring their ideas to life. 
+              No credit card required to get started.
+            </motion.p>
 
-          {/* Feature highlights */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto"
-          >
-            {[
-              { text: "Free to start", subtext: "No credit card required" },
-              { text: "Instant results", subtext: "Generate in seconds" },
-              { text: "Export anywhere", subtext: "All major formats supported" }
-            ].map((feature, index) => (
-              <div key={index} className="text-center">
-                <div className="text-white font-semibold mb-1">{feature.text}</div>
-                <div className="text-white/60 text-sm">{feature.subtext}</div>
+            <motion.div
+              className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+            >
+              <Button 
+                asChild 
+                size="lg" 
+                className="bg-figuro-accent hover:bg-figuro-accent-hover text-white font-semibold px-8 py-4 rounded-xl group shadow-glow-sm hover:shadow-glow transition-all duration-300 min-w-[200px]"
+              >
+                <Link to="/studio" className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  Start Creating Now 
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </Button>
+              
+              <Button 
+                asChild 
+                variant="outline" 
+                size="lg"
+                className="border-white/30 hover:border-white hover:bg-white/10 text-white px-8 py-4 rounded-xl min-w-[200px]"
+              >
+                <Link to="/pricing">View Pricing</Link>
+              </Button>
+            </motion.div>
+
+            {/* Trust indicators */}
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+            >
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-figuro-accent/20 border border-figuro-accent/30 flex items-center justify-center">
+                  <BookOpen className="w-6 h-6 text-figuro-accent" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold">Free to Start</p>
+                  <p className="text-white/60 text-sm">No credit card required</p>
+                </div>
               </div>
-            ))}
-          </motion.div>
+
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-figuro-accent/20 border border-figuro-accent/30 flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-figuro-accent" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold">Instant Results</p>
+                  <p className="text-white/60 text-sm">Generate in seconds</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-figuro-accent/20 border border-figuro-accent/30 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-figuro-accent" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold">Export Anywhere</p>
+                  <p className="text-white/60 text-sm">All major formats supported</p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </motion.div>
       </div>
     </section>
