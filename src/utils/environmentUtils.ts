@@ -3,6 +3,8 @@
  * Environment detection and URL utilities - Production Ready
  */
 
+import { logDebug } from './productionLogger';
+
 export const getEnvironmentType = (): 'production' | 'staging' | 'development' => {
   const hostname = window.location.hostname;
   
@@ -57,14 +59,12 @@ export const getSupabaseRedirectUrl = (targetPath: string = '/studio'): string =
 };
 
 export const logEnvironmentInfo = (): void => {
-  // Only log in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🌍 [Environment] Current environment:', {
-      type: getEnvironmentType(),
-      hostname: window.location.hostname,
-      origin: window.location.origin,
-      baseUrl: getBaseUrl(),
-      isProduction: isProduction()
-    });
-  }
+  // Only log in development using production logger
+  logDebug('Current environment info', {
+    type: getEnvironmentType(),
+    hostname: window.location.hostname,
+    origin: window.location.origin,
+    baseUrl: getBaseUrl(),
+    isProduction: isProduction()
+  });
 };

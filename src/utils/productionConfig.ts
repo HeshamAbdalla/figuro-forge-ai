@@ -3,6 +3,8 @@
  * Production Configuration and Environment Detection
  */
 
+import { logInfo } from './productionLogger';
+
 export const PRODUCTION_CONFIG = {
   // Environment detection
   environment: {
@@ -65,7 +67,8 @@ export const isProductionReady = (): boolean => {
   return checks.every(check => check === true);
 };
 
-console.log('🚀 [PRODUCTION] Configuration loaded:', {
+// Use production logger instead of console.log
+logInfo('Production configuration loaded', {
   environment: PRODUCTION_CONFIG.environment,
   isProductionReady: isProductionReady(),
   baseUrl: getProductionBaseUrl()

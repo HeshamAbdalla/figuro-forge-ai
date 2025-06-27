@@ -8,6 +8,7 @@ import { sessionManager } from "@/utils/sessionManager";
 import { securityManager } from "@/utils/securityUtils";
 import { executeRecaptcha, ReCaptchaAction, initializeRecaptcha, isRecaptchaReady } from "@/utils/recaptchaUtils";
 import { toast, success, error, warning, info, loading, promise } from "@/hooks/use-enhanced-toast";
+import { logDebug, logInfo, logWarn, logError } from "@/utils/productionLogger";
 
 interface EnhancedAuthContextType {
   user: User | null;
@@ -59,11 +60,11 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   useEffect(() => {
     const loadRecaptcha = async () => {
       try {
-        console.log('🚀 [ENHANCED-AUTH] Initializing reCAPTCHA...');
+        logDebug('Initializing reCAPTCHA...');
         
         // Check if it's already ready
         if (isRecaptchaReady()) {
-          console.log('✅ [ENHANCED-AUTH] reCAPTCHA already ready');
+          logDebug('reCAPTCHA already ready');
           setRecaptchaLoaded(true);
           return;
         }
@@ -75,12 +76,12 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         setRecaptchaLoaded(true);
         
         if (loaded) {
-          console.log('✅ [ENHANCED-AUTH] reCAPTCHA loaded successfully');
+          logDebug('reCAPTCHA loaded successfully');
         } else {
-          console.log('⚠️ [ENHANCED-AUTH] reCAPTCHA failed to load, app will continue without it');
+          logWarn('reCAPTCHA failed to load, app will continue without it');
         }
       } catch (error) {
-        console.error('❌ [ENHANCED-AUTH] reCAPTCHA initialization error:', error);
+        logError('reCAPTCHA initialization error', error);
         setRecaptchaLoaded(true); // Allow app to continue
       }
     };
@@ -91,11 +92,11 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   // Enhanced auth refresh with security enforcement
   const refreshAuth = async () => {
     try {
-      console.log("🔄 [ENHANCED-AUTH] Refreshing auth state with security enforcement...");
+      logDebug("Refreshing auth state with security enforcement...");
       
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
-        console.error("❌ [ENHANCED-AUTH] Session error:", error.message);
+        logError("Session error", error);
         return;
       }
       
@@ -107,7 +108,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         );
 
         if (!enforcementResult.allowAccess) {
-          console.log("🚫 [ENHANCED-AUTH] Access denied due to verification enforcement");
+          logWarn("Access denied due to verification enforcement");
           
           // Force sign out if verification is required
           await EmailVerificationEnforcer.forceSignOutUnverified(
@@ -143,7 +144,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
             // Trigger subscription refresh after successful auth
             window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
           } catch (error) {
-            console.error("❌ [ENHANCED-AUTH] Profile fetch failed:", error);
+            logError("Profile fetch failed", error);
           }
         }, 100);
       } else {
@@ -151,7 +152,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       }
       
     } catch (error) {
-      console.error("❌ [ENHANCED-AUTH] Error refreshing auth:", error);
+      logError("Error refreshing auth", error);
     }
   };
 
@@ -165,7 +166,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       async (event, session) => {
         if (!mounted) return;
         
-        console.log("🔄 [ENHANCED-AUTH] Auth state changed:", event);
+        logDebug("Auth state changed", { event, userEmail: session?.user?.email });
         
         // Log auth event (non-blocking)
         securityManager.logSecurityEvent({
@@ -188,7 +189,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           );
 
           if (!enforcementResult.allowAccess) {
-            console.log("🚫 [ENHANCED-AUTH] Access denied during auth state change");
+            logWarn("Access denied during auth state change");
             
             // Force sign out for unverified users
             await EmailVerificationEnforcer.forceSignOutUnverified(
@@ -219,7 +220,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                 window.location.pathname === '/auth' && 
                 !hasRedirected) {
               
-              console.log("✅ [ENHANCED-AUTH] Google sign-in successful, redirecting to studio");
+              logInfo("Google sign-in successful, redirecting to studio");
               setHasRedirected(true);
               
               // Defer profile loading and redirect
@@ -237,7 +238,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                       window.location.href = '/studio';
                     }
                   } catch (error) {
-                    console.error("❌ [ENHANCED-AUTH] Profile fetch failed:", error);
+                    logError("Profile fetch failed", error);
                     setIsLoading(false);
                   }
                 }
@@ -251,7 +252,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                     
                     // If no profile exists, create one for new user
                     if (!profileData) {
-                      console.log("🆕 [ENHANCED-AUTH] New user detected, creating profile with onboarding flag");
+                      logInfo("New user detected, creating profile with onboarding flag");
                       
                       const { data: newProfile, error: createError } = await supabase
                         .from('profiles')
@@ -264,10 +265,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                         .single();
                       
                       if (createError) {
-                        console.error("❌ [ENHANCED-AUTH] Failed to create profile:", createError);
+                        logError("Failed to create profile", createError);
                       } else {
                         profileData = newProfile;
-                        console.log("✅ [ENHANCED-AUTH] Created new profile for onboarding");
+                        logInfo("Created new profile for onboarding");
                       }
                     }
                     
@@ -278,7 +279,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                     
                     setIsLoading(false);
                   } catch (error) {
-                    console.error("❌ [ENHANCED-AUTH] Profile fetch failed:", error);
+                    logError("Profile fetch failed", error);
                     setIsLoading(false);
                   }
                 }
@@ -305,7 +306,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                   
                   setIsLoading(false);
                 } catch (error) {
-                  console.error("❌ [ENHANCED-AUTH] Initial profile fetch failed:", error);
+                  logError("Initial profile fetch failed", error);
                   setIsLoading(false);
                 }
               }
@@ -320,11 +321,11 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     // Initialize auth with security enforcement
     const initializeAuth = async () => {
       try {
-        console.log("🚀 [ENHANCED-AUTH] Initializing with security enforcement...");
+        logDebug("Initializing with security enforcement...");
         
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-          console.error("❌ [ENHANCED-AUTH] Initial session error:", error.message);
+          logError("Initial session error", error);
         }
         
         if (mounted) {
@@ -336,7 +337,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
             );
 
             if (!enforcementResult.allowAccess) {
-              console.log("🚫 [ENHANCED-AUTH] Initial session denied due to verification");
+              logWarn("Initial session denied due to verification");
               
               // Force sign out and redirect
               await EmailVerificationEnforcer.forceSignOutUnverified(
@@ -373,7 +374,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                   
                   setIsLoading(false);
                 } catch (error) {
-                  console.error("❌ [ENHANCED-AUTH] Profile load failed:", error);
+                  logError("Profile load failed", error);
                   setIsLoading(false);
                 }
               }
@@ -383,7 +384,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           }
         }
       } catch (error) {
-        console.error("❌ [ENHANCED-AUTH] Initialization error:", error);
+        logError("Initialization error", error);
         if (mounted) {
           setIsLoading(false);
         }
@@ -401,7 +402,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   // Enhanced sign up with Supabase's built-in reCAPTCHA
   const signUp = async (email: string, password: string) => {
     try {
-      console.log("🚀 [ENHANCED-AUTH] Starting secure signup process for:", email);
+      logDebug("Starting secure signup process", { email });
       
       // Validation
       if (!securityManager.validateEmail(email)) {
@@ -425,15 +426,15 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       try {
         await supabase.auth.signOut({ scope: 'global' });
       } catch (err) {
-        console.log("⚠️ [ENHANCED-AUTH] Pre-signup signout failed (non-critical)");
+        logWarn("Pre-signup signout failed (non-critical)");
       }
       
       // STEP 1: Pre-signup validation
-      console.log("🔍 [ENHANCED-AUTH] Performing comprehensive pre-signup validation...");
+      logDebug("Performing comprehensive pre-signup validation...");
       const preValidation = await validateSignupAttempt(email);
       
       if (preValidation.accountExists) {
-        console.log("👤 [ENHANCED-AUTH] Pre-validation detected existing account");
+        logInfo("Pre-validation detected existing account");
         
         securityManager.logSecurityEvent({
           event_type: 'signup_existing_account_pre_detected',
@@ -452,20 +453,20 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       let recaptchaToken: string | null = null;
       
       if (isRecaptchaReady()) {
-        console.log("🤖 [RECAPTCHA] Getting token for signup action");
+        logDebug("Getting reCAPTCHA token for signup action");
         recaptchaToken = await executeRecaptcha("signup");
         
         if (recaptchaToken) {
-          console.log("✅ [RECAPTCHA] Token obtained for Supabase auth");
+          logDebug("reCAPTCHA token obtained for Supabase auth");
         }
       } else {
-        console.warn("⚠️ [RECAPTCHA] Not available, proceeding without reCAPTCHA");
+        logWarn("reCAPTCHA not available, proceeding without reCAPTCHA");
       }
       
       // STEP 3: Attempt actual signup with Supabase's built-in reCAPTCHA
       const redirectTo = `${window.location.origin}/studio`;
       
-      console.log("📧 [ENHANCED-AUTH] Attempting secure Supabase signup...");
+      logDebug("Attempting secure Supabase signup...");
       
       const signupParams = {
         email,
@@ -480,8 +481,9 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       // Execute signup
       const { data, error } = await supabase.auth.signUp(signupParams);
       
-      console.log("📊 [ENHANCED-AUTH] Signup response - Error:", error?.message || 'None');
-      console.log("📊 [ENHANCED-AUTH] Signup response - Data:", {
+      logDebug("Signup response", { 
+        hasError: !!error, 
+        errorMessage: error?.message,
         hasUser: !!data?.user,
         hasSession: !!data?.session,
         userEmailConfirmed: data?.user?.email_confirmed_at,
@@ -506,17 +508,17 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       });
       
       if (validationResult.accountExists) {
-        console.log("👤 [ENHANCED-AUTH] Post-signup validation found existing account");
+        logInfo("Post-signup validation found existing account");
         return { error: null, data: null, accountExists: true };
       }
       
       // SECURITY ENFORCEMENT: Never allow immediate access without verification
       if (!validationResult.allowAccess) {
-        console.log("🔒 [ENHANCED-AUTH] Access denied by security enforcement");
+        logInfo("Access denied by security enforcement");
         
         // If there's a session but verification is required, force sign out
         if (data?.session) {
-          console.log("🚪 [ENHANCED-AUTH] Forcing sign out due to verification requirement");
+          logInfo("Forcing sign out due to verification requirement");
           await EmailVerificationEnforcer.forceSignOutUnverified('Email verification required');
         }
         
@@ -531,7 +533,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       // Handle explicit signup errors
       if (error) {
-        console.log("❌ [ENHANCED-AUTH] Signup error:", error.message);
+        logError("Signup error", error);
         
         const friendlyError = getAuthErrorMessage(error);
         
@@ -554,12 +556,12 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       }
       
       // This should not be reached due to security enforcement above
-      console.log("✅ [ENHANCED-AUTH] Signup completed with verification requirement");
+      logInfo("Signup completed with verification requirement");
       
       return { error: null, data, accountExists: false };
       
     } catch (error: any) {
-      console.error("❌ [ENHANCED-AUTH] Signup exception:", error);
+      logError("Signup exception", error);
       const friendlyError = getAuthErrorMessage(error);
       
       securityManager.logSecurityEvent({
@@ -579,7 +581,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
 
   // Enhanced sign in with Supabase's built-in reCAPTCHA
   const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
-    console.log("🚀 [ENHANCED-AUTH] Starting secure sign-in...");
+    logDebug("Starting secure sign-in...");
     
     try {
       // Quick validation
@@ -600,24 +602,24 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       try {
         await supabase.auth.signOut({ scope: 'global' });
       } catch (err) {
-        console.log("⚠️ [ENHANCED-AUTH] Pre-signin signout failed (non-critical)");
+        logWarn("Pre-signin signout failed (non-critical)");
       }
 
       // Get reCAPTCHA token for Supabase auth
       let recaptchaToken: string | null = null;
       
       if (isRecaptchaReady()) {
-        console.log("🤖 [RECAPTCHA] Getting token for login action");
+        logDebug("Getting reCAPTCHA token for login action");
         recaptchaToken = await executeRecaptcha("login");
         
         if (recaptchaToken) {
-          console.log("✅ [RECAPTCHA] Token obtained for Supabase auth");
+          logDebug("reCAPTCHA token obtained for Supabase auth");
         }
       } else {
-        console.warn("⚠️ [RECAPTCHA] Not available, proceeding without reCAPTCHA");
+        logWarn("reCAPTCHA not available, proceeding without reCAPTCHA");
       }
       
-      console.log("🔐 [ENHANCED-AUTH] Attempting sign-in...");
+      logDebug("Attempting sign-in...");
       
       // Set session persistence in localStorage based on "Remember Me"
       if (rememberMe) {
@@ -640,7 +642,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
-        console.error("❌ [ENHANCED-AUTH] Sign-in failed:", error.message);
+        logError("Sign-in failed", error);
         
         // Log failure (non-blocking)
         securityManager.logSecurityEvent({
@@ -674,7 +676,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         success: true
       });
       
-      console.log("✅ [ENHANCED-AUTH] Secure sign-in successful");
+      logInfo("Secure sign-in successful");
       
       toast({
         title: "Welcome back! 🎉",
@@ -683,7 +685,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       return { error: null };
     } catch (error: any) {
-      console.error("❌ [ENHANCED-AUTH] Sign-in exception:", error);
+      logError("Sign-in exception", error);
       const friendlyError = getAuthErrorMessage(error);
       
       securityManager.logSecurityEvent({
@@ -708,7 +710,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         throw new Error('Invalid email format');
       }
 
-      console.log("🔄 [ENHANCED-AUTH] Securely sending password reset email...");
+      logDebug("Securely sending password reset email...");
       
       // Get reCAPTCHA token for Supabase auth
       let recaptchaToken: string | null = null;
@@ -751,11 +753,11 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         success: true
       });
       
-      console.log("✅ [ENHANCED-AUTH] Password reset email sent securely");
+      logInfo("Password reset email sent securely");
       
       return { error: null };
     } catch (error: any) {
-      console.error("❌ [ENHANCED-AUTH] Password reset exception:", error);
+      logError("Password reset exception", error);
       const friendlyError = getAuthErrorMessage(error);
       
       securityManager.logSecurityEvent({
@@ -848,7 +850,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       const currentUserId = user?.id;
       const currentEmail = user?.email;
       
-      console.log("🚪 [ENHANCED-AUTH] Starting enhanced secure sign out...");
+      logDebug("Starting enhanced secure sign out...");
       
       // Show loading toast with progress
       const loadingToast = loading({
@@ -871,19 +873,19 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       });
       
       // Step 1: Clean up auth state
-      console.log("🧹 [ENHANCED-AUTH] Cleaning up authentication state...");
+      logDebug("Cleaning up authentication state...");
       cleanupAuthState();
       
       // Step 2: Clear session manager cache
-      console.log("🗑️ [ENHANCED-AUTH] Clearing session cache...");
+      logDebug("Clearing session cache...");
       sessionManager.clearCache();
       
       // Step 3: Perform global sign out
-      console.log("🌐 [ENHANCED-AUTH] Performing global sign out...");
+      logDebug("Performing global sign out...");
       await supabase.auth.signOut({ scope: 'global' });
       
       // Step 4: Clear local state
-      console.log("🔄 [ENHANCED-AUTH] Clearing local auth state...");
+      logDebug("Clearing local auth state...");
       setSession(null);
       setUser(null);
       setProfile(null);
@@ -891,13 +893,13 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       setHasRedirected(false);
       
       // Step 5: Clear any remaining auth-related data
-      console.log("🧽 [ENHANCED-AUTH] Final cleanup...");
+      logDebug("Final cleanup...");
       
       // Clear subscription refresh events
       window.dispatchEvent(new CustomEvent('auth-signout-complete'));
       
       const signOutDuration = performance.now() - signOutStart;
-      console.log(`✅ [ENHANCED-AUTH] Secure sign out completed in ${signOutDuration.toFixed(2)}ms`);
+      logInfo(`Secure sign out completed in ${signOutDuration.toFixed(2)}ms`);
       
       // Log successful signout
       securityManager.logSecurityEvent({
@@ -929,7 +931,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
     } catch (error: any) {
       const signOutDuration = performance.now() - signOutStart;
-      console.error("❌ [ENHANCED-AUTH] Sign out error:", error);
+      logError("Sign out error", error);
       
       const friendlyError = getAuthErrorMessage(error);
       
@@ -966,7 +968,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       
       const redirectTo = `${window.location.origin}/studio`;
       
-      console.log("🚀 [ENHANCED-AUTH] Starting Google sign-in with redirect:", redirectTo);
+      logDebug("Starting Google sign-in", { redirectTo });
       
       // Try to execute reCAPTCHA for logging purposes (but don't block)
       let recaptchaToken: string | null = null;
@@ -998,7 +1000,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         throw error;
       }
     } catch (error: any) {
-      console.error("❌ [ENHANCED-AUTH] Google sign-in error:", error);
+      logError("Google sign-in error", error);
       const friendlyError = getAuthErrorMessage(error);
       
       securityManager.logSecurityEvent({

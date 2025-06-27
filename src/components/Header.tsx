@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { logError } from "@/utils/productionLogger";
 
 const Header = () => {
   const { user, profile, signOut, isLoading } = useEnhancedAuth();
@@ -45,7 +46,7 @@ const Header = () => {
       await signOut();
       // Navigation is handled by the signOut function
     } catch (error) {
-      console.error("Sign out error:", error);
+      logError("Sign out error", error);
       // Fallback navigation in case of error
       navigate("/auth");
     }

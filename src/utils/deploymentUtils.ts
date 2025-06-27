@@ -3,6 +3,8 @@
  * Production Deployment Utilities
  */
 
+import { logInfo, logWarn } from './productionLogger';
+
 export interface DeploymentConfig {
   environment: 'production' | 'staging' | 'development';
   version: string;
@@ -39,16 +41,16 @@ export const validateProductionEnvironment = (): boolean => {
   const isValid = checks.every(check => check === true);
   
   if (!isValid) {
-    console.warn('🚨 [DEPLOYMENT] Production environment validation failed');
+    logWarn('Production environment validation failed');
   } else {
-    console.log('✅ [DEPLOYMENT] Production environment validated successfully');
+    logInfo('Production environment validated successfully');
   }
 
   return isValid;
 };
 
 export const logDeploymentInfo = (): void => {
-  console.log('🚀 [DEPLOYMENT] Production deployment active:', {
+  logInfo('Production deployment active', {
     environment: DEPLOYMENT_CONFIG.environment,
     version: DEPLOYMENT_CONFIG.version,
     buildTime: DEPLOYMENT_CONFIG.buildTime.toISOString(),

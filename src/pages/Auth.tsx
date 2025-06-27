@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { cleanupAuthState } from "@/utils/authUtils";
 import SEO from "@/components/SEO";
 import { motion } from "framer-motion";
+import { logDebug } from "@/utils/productionLogger";
 
 const Auth = () => {
   const { user, isLoading } = useEnhancedAuth();
@@ -16,12 +17,14 @@ const Auth = () => {
 
   // Clean up auth state when mounting the auth page
   useEffect(() => {
+    logDebug("Auth page mounted, cleaning up auth state");
     cleanupAuthState();
   }, []);
 
   // Redirect if already authenticated to Studio
   useEffect(() => {
     if (user && !isLoading) {
+      logDebug("User already authenticated, redirecting to studio");
       navigate("/studio");
     }
   }, [user, isLoading, navigate]);

@@ -7,6 +7,7 @@ import { cleanupAuthState, getAuthErrorMessage } from "@/utils/authUtils";
 import { sessionManager } from "@/utils/sessionManager";
 import { sessionDebugger } from "@/utils/debugUtils";
 import { getStudioUrl } from "@/utils/environmentUtils";
+import { logDebug, logInfo, logError } from "@/utils/productionLogger";
 
 interface AuthContextType {
   user: User | null;
@@ -31,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize debugging and monitoring
   useEffect(() => {
-    console.log('🔧 [AUTH-PROVIDER] Initializing with debugging...');
+    logDebug('Initializing auth provider with debugging...');
     sessionDebugger.monitorConcurrentSessions();
     
     return () => {
@@ -43,14 +44,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshAuth = async () => {
     const refreshStart = performance.now();
     try {
-      console.log("🔄 [AUTH-PROVIDER] Refreshing auth state...");
+      logDebug("Refreshing auth state...");
       
       // Initialize session with health check
       const sessionHealth = await sessionManager.initializeSession();
-      console.log("📊 [AUTH-PROVIDER] Session health:", sessionHealth);
+      logDebug("Session health check completed", sessionHealth);
       
       if (!sessionHealth.isValid) {
-        console.warn("⚠️ [AUTH-PROVIDER] Session health issues:", sessionHealth.issues);
+        logInfo("Session health issues detected", sessionHealth.issues);
         setSession(null);
         setUser(null);
         setProfile(null);
@@ -64,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      console.log("🔍 [AUTH-PROVIDER] Current session:", session?.user?.email);
+      logDebug("Current session retrieved", { userEmail: session?.user?.email });
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -73,20 +74,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const profileData = await sessionManager.getProfile(session.user.id);
           setProfile(profileData);
-          console.log("✅ [AUTH-PROVIDER] Profile loaded successfully");
+          logInfo("Profile loaded successfully");
         } catch (error) {
           sessionDebugger.logSessionError(error, 'Auth refresh - profile fetch');
-          console.error("❌ [AUTH-PROVIDER] Profile fetch failed:", error);
+          logError("Profile fetch failed", error);
         }
       } else {
         setProfile(null);
       }
       
-      console.log("✅ [AUTH-PROVIDER] Auth refresh completed in", performance.now() - refreshStart, "ms");
+      const duration = performance.now() - refreshStart;
+      logInfo(`Auth refresh completed in ${duration.toFixed(2)}ms`);
       
     } catch (error) {
       sessionDebugger.logSessionError(error, 'Auth refresh failed');
-      console.error("❌ [AUTH-PROVIDER] Error refreshing auth:", error);
+      logError("Error refreshing auth", error);
     }
   };
 
@@ -98,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (event, session) => {
         if (!mounted) return;
         
-        console.log("🔄 [AUTH-PROVIDER] Auth state changed:", event, session?.user?.email);
+        logDebug("Auth state changed", { event, userEmail: session?.user?.email });
         
         // Track auth events for debugging
         const authEvent = {
@@ -108,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionValid: !!session,
           hasAccessToken: !!session?.access_token
         };
-        console.log("📊 [AUTH-PROVIDER] Auth event details:", authEvent);
+        logDebug("Auth event details", authEvent);
         
         // Update state immediately for better UX
         setSession(session);
@@ -117,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Handle different auth events with enhanced monitoring
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user && mounted) {
-            console.log("👤 [AUTH-PROVIDER] User signed in, fetching profile...");
+            logInfo("User signed in, fetching profile...");
             // Defer profile fetching to prevent conflicts
             setTimeout(async () => {
               if (mounted) {
@@ -125,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   const profileData = await sessionManager.getProfile(session.user.id);
                   setProfile(profileData);
                   setIsLoading(false);
-                  console.log("✅ [AUTH-PROVIDER] Profile loaded after sign in");
+                  logInfo("Profile loaded after sign in");
                 } catch (error) {
                   sessionDebugger.logSessionError(error, 'Profile fetch after sign in');
                   setIsLoading(false);
@@ -134,20 +136,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }, 200);
           }
         } else if (event === 'SIGNED_OUT') {
-          console.log("👋 [AUTH-PROVIDER] User signed out, clearing data...");
+          logInfo("User signed out, clearing data...");
           setProfile(null);
           sessionManager.clearCache();
           setIsLoading(false);
         } else if (event === 'INITIAL_SESSION') {
           if (session?.user && mounted) {
-            console.log("🚀 [AUTH-PROVIDER] Initial session found, loading profile...");
+            logInfo("Initial session found, loading profile...");
             setTimeout(async () => {
               if (mounted) {
                 try {
                   const profileData = await sessionManager.getProfile(session.user.id);
                   setProfile(profileData);
                   setIsLoading(false);
-                  console.log("✅ [AUTH-PROVIDER] Initial profile loaded");
+                  logInfo("Initial profile loaded");
                 } catch (error) {
                   sessionDebugger.logSessionError(error, 'Initial profile fetch');
                   setIsLoading(false);
@@ -155,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             }, 200);
           } else {
-            console.log("❌ [AUTH-PROVIDER] No initial session found");
+            logInfo("No initial session found");
             setIsLoading(false);
           }
         }
@@ -165,19 +167,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check for existing session with enhanced error handling
     const initializeAuth = async () => {
       try {
-        console.log("🚀 [AUTH-PROVIDER] Initializing authentication...");
+        logDebug("Initializing authentication...");
         
         const initHealth = await sessionManager.initializeSession();
-        console.log("📊 [AUTH-PROVIDER] Initialization health:", initHealth);
+        logDebug("Initialization health check", initHealth);
         
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           sessionDebugger.logSessionError(error, 'Auth initialization');
-          console.error("❌ [AUTH-PROVIDER] Error getting initial session:", error);
+          logError("Error getting initial session", error);
         }
         
         if (mounted) {
-          console.log("🔍 [AUTH-PROVIDER] Initial session check:", session?.user?.email);
+          logDebug("Initial session check", { userEmail: session?.user?.email });
           setSession(session);
           setUser(session?.user ?? null);
           
@@ -185,19 +187,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
               const profileData = await sessionManager.getProfile(session.user.id);
               setProfile(profileData);
-              console.log("✅ [AUTH-PROVIDER] Initial profile loaded successfully");
+              logInfo("Initial profile loaded successfully");
             } catch (error) {
               sessionDebugger.logSessionError(error, 'Initial profile load');
-              console.error("❌ [AUTH-PROVIDER] Initial profile load failed:", error);
+              logError("Initial profile load failed", error);
             }
           }
           
           setIsLoading(false);
-          console.log("✅ [AUTH-PROVIDER] Authentication initialization completed");
+          logInfo("Authentication initialization completed");
         }
       } catch (error) {
         sessionDebugger.logSessionError(error, 'Auth initialization failed');
-        console.error("❌ [AUTH-PROVIDER] Error initializing auth:", error);
+        logError("Error initializing auth", error);
         if (mounted) {
           setIsLoading(false);
         }
@@ -215,13 +217,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Enhanced fetchProfile with debugging
   const fetchProfile = async (userId: string) => {
     try {
-      console.log('🔄 [AUTH-PROVIDER] Fetching profile for user:', userId);
+      logDebug('Fetching profile for user', { userId });
       const profileData = await sessionManager.getProfile(userId, true); // Force refresh
       setProfile(profileData);
-      console.log('✅ [AUTH-PROVIDER] Profile fetched:', profileData);
+      logInfo('Profile fetched successfully', profileData);
     } catch (error) {
       sessionDebugger.logSessionError(error, 'fetchProfile');
-      console.error('❌ [AUTH-PROVIDER] Error in fetchProfile:', error);
+      logError('Error in fetchProfile', error);
     }
   };
 
@@ -235,16 +237,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.auth.signOut({ scope: 'global' });
       } catch (err) {
         // Continue even if this fails
-        console.log("Pre-signIn global sign out error (non-critical):", err);
+        logInfo("Pre-signIn global sign out error (non-critical)", err);
       }
       
       // Log the attempt for debugging
-      console.log("Attempting sign-in with email:", email);
+      logDebug("Attempting sign-in", { email });
       
       // Attempt to sign in
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
-      console.log("Sign-in response:", error ? "Error" : "Success", error || data);
+      logDebug("Sign-in response", { hasError: !!error, hasData: !!data });
       
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
@@ -262,7 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       return { error: null };
     } catch (error: any) {
-      console.error("Sign-in exception:", error);
+      logError("Sign-in exception", error);
       const friendlyError = getAuthErrorMessage(error);
       toast({
         title: "Error signing in",
@@ -283,14 +285,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.auth.signOut({ scope: 'global' });
       } catch (err) {
         // Continue even if this fails
-        console.log("Pre-signUp global sign out error (non-critical):", err);
+        logInfo("Pre-signUp global sign out error (non-critical)", err);
       }
       
-      console.log("Attempting sign-up with email:", email);
+      logDebug("Attempting sign-up", { email });
       
       // Use environment-aware redirect URL
       const redirectTo = getStudioUrl();
-      console.log("Using redirect URL:", redirectTo);
+      logDebug("Using redirect URL", { redirectTo });
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -301,7 +303,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
       
-      console.log("Sign-up response:", error ? "Error" : "Success", error || data);
+      logDebug("Sign-up response", { hasError: !!error, hasData: !!data });
       
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
@@ -324,7 +326,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       return { error: null, data };
     } catch (error: any) {
-      console.error("Sign-up exception:", error);
+      logError("Sign-up exception", error);
       const friendlyError = getAuthErrorMessage(error);
       toast({
         title: "Error signing up",
@@ -365,7 +367,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cleanupAuthState();
       
       const redirectTo = getStudioUrl();
-      console.log("Using Google redirect URL:", redirectTo);
+      logDebug("Using Google redirect URL", { redirectTo });
       
       await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -385,13 +387,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   const resendVerificationEmail = async (email: string) => {
     try {
-      console.log("Resending verification email to:", email);
+      logDebug("Resending verification email", { email });
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email,
       });
       
-      console.log("Resend response:", error ? "Error" : "Success", error || "Email sent");
+      logDebug("Resend response", { hasError: !!error });
       
       if (error) {
         const friendlyError = getAuthErrorMessage(error);
@@ -410,7 +412,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       return { error: null };
     } catch (error: any) {
-      console.error("Resend verification exception:", error);
+      logError("Resend verification exception", error);
       const friendlyError = getAuthErrorMessage(error);
       toast({
         title: "Error sending verification email",
