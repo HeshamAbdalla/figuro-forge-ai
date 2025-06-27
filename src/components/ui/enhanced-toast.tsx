@@ -139,11 +139,12 @@ const ToastIcon = ({ variant }: { variant?: string }) => {
 
 const ToastProgress = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & {
+  {
+    className?: string;
     variant?: string;
     duration?: number;
   }
->(({ className, variant, duration = 5000, ...props }, ref) => {
+>(({ className, variant, duration = 5000 }, ref) => {
   const progressColor = React.useMemo(() => {
     switch (variant) {
       case "success": return "bg-gradient-to-r from-green-400 to-emerald-400"
@@ -166,7 +167,6 @@ const ToastProgress = React.forwardRef<
       initial={{ width: "100%" }}
       animate={{ width: "0%" }}
       transition={{ duration: duration / 1000, ease: "linear" }}
-      {...props}
     />
   )
 })
