@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { AuthForm } from "@/components/auth/AuthForm";
@@ -9,25 +8,25 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Heart, Sparkles, Zap, Users, Rocket } from "lucide-react";
 import { cleanupAuthState } from "@/utils/authUtils";
 import { Badge } from "@/components/ui/badge";
-
 const Auth = () => {
-  const { user, isLoading } = useEnhancedAuth();
+  const {
+    user,
+    isLoading
+  } = useEnhancedAuth();
   const navigate = useNavigate();
-  
+
   // Clean up auth state when mounting the auth page
   useEffect(() => {
     cleanupAuthState();
   }, []);
-  
+
   // Redirect if already authenticated to Studio
   useEffect(() => {
     if (user && !isLoading) {
       navigate("/studio");
     }
   }, [user, isLoading, navigate]);
-  
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-figuro-dark via-figuro-darker to-figuro-dark">
+  return <div className="min-h-screen bg-gradient-to-br from-figuro-dark via-figuro-darker to-figuro-dark">
       <Header />
       
       <section className="pt-32 pb-24 px-4">
@@ -36,13 +35,8 @@ const Auth = () => {
             {/* Left Side - Welcome Content */}
             <div className="space-y-8 lg:pr-8">
               <div className="space-y-4">
-                <h1 className="text-4xl md:text-5xl font-bold text-gradient bg-gradient-to-br from-white via-white/90 to-figuro-accent bg-clip-text text-transparent">
-                  Welcome to Figuro.AI
-                </h1>
-                <p className="text-xl text-white/70 leading-relaxed">
-                  Transform your wildest ideas into stunning 3D figurines with the magic of AI. 
-                  Join our amazing community of creators and start bringing your imagination to life today!
-                </p>
+                <h1 className="text-4xl md:text-5xl font-bold text-gradient bg-gradient-to-br from-white via-white/90 to-figuro-accent bg-clip-text text-transparent">Welcome to Figuros.AI</h1>
+                
               </div>
 
               {/* Exciting features */}
@@ -53,9 +47,7 @@ const Auth = () => {
                   </div>
                   <div className="flex-1">
                     <span>Instant AI-powered 3D creation magic</span>
-                    <Badge variant="secondary" className="ml-2">
-                      ✨ Amazing
-                    </Badge>
+                    
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-white/80">
@@ -79,13 +71,7 @@ const Auth = () => {
               </div>
 
               {/* Inspiring call-to-action */}
-              <Alert className="bg-figuro-accent/10 border-figuro-accent/30 backdrop-blur-sm">
-                <Heart className="h-4 w-4 text-figuro-accent" />
-                <AlertDescription className="text-white/90">
-                  <strong>Ready to create something incredible?</strong> Join thousands of creators who are already 
-                  bringing their dreams to life with Figuro.AI. Your next masterpiece is just a few clicks away!
-                </AlertDescription>
-              </Alert>
+              
 
               {/* Success stories showcase */}
               <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10">
@@ -115,8 +101,6 @@ const Auth = () => {
       </section>
       
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 export default Auth;
