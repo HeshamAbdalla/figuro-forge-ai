@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -866,7 +865,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           user_id: currentUserId,
           email: currentEmail,
           current_path: window.location.pathname,
-          session_duration: session ? Date.now() - new Date(session.created_at || Date.now()).getTime() : null
+          session_duration: null // Remove session duration calculation since we can't reliably get session creation time
         },
         success: true
       });
