@@ -549,7 +549,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         toast({
           title: "Error signing up",
           description: friendlyError,
-          variant: "destructive",
+          variant: "error",
         });
         return { error: friendlyError, data: null, accountExists: false };
       }
@@ -572,7 +572,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       toast({
         title: "Error signing up",
         description: friendlyError,
-        variant: "destructive",
+        variant: "error",
       });
       return { error: friendlyError, data: null, accountExists: false };
     }
@@ -658,7 +658,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         toast({
           title: "Error signing in",
           description: friendlyError,
-          variant: "destructive",
+          variant: "error",
         });
         return { error: friendlyError };
       }
@@ -696,7 +696,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       toast({
         title: "Error signing in",
         description: friendlyError,
-        variant: "destructive",
+        variant: "error",
       });
       return { error: friendlyError };
     }
@@ -803,7 +803,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         toast({
           title: "Error sending verification email",
           description: friendlyError,
-          variant: "destructive",
+          variant: "error",
         });
         return { error: friendlyError };
       }
@@ -835,7 +835,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       toast({
         title: "Error sending verification email",
         description: friendlyError,
-        variant: "destructive",
+        variant: "error",
       });
       return { error: friendlyError };
     }
@@ -866,7 +866,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           user_id: currentUserId,
           email: currentEmail,
           current_path: window.location.pathname,
-          session_duration: session ? Date.now() - new Date(session.issued_at || Date.now()).getTime() : null
+          session_duration: session ? Date.now() - new Date(session.created_at || Date.now()).getTime() : null
         },
         success: true
       });
@@ -1011,7 +1011,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       toast({
         title: "Error signing in with Google",
         description: friendlyError,
-        variant: "destructive",
+        variant: "error",
       });
     }
   };
