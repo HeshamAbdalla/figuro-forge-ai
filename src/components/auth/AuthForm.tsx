@@ -14,7 +14,7 @@ import { isEmailVerificationError } from "@/utils/authUtils";
 import { EmailVerificationHandler } from "./EmailVerificationHandler";
 import { ExistingAccountHandler } from "./ExistingAccountHandler";
 import { initializeRecaptcha, isRecaptchaReady, getCurrentDomain, isDomainConfigured } from "@/utils/recaptchaUtils";
-import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
 
 export function AuthForm() {
   const { signIn, signUp, signInWithGoogle, resendVerificationEmail, resetPassword } = useEnhancedAuth();
@@ -260,17 +260,25 @@ export function AuthForm() {
   // Show email verification handler
   if (showEmailVerification) {
     return (
-      <div className="w-full max-w-md animate-fade-in">
-        <Card className="glass-panel border-white/10 bg-white/5 backdrop-blur-xl">
-          <CardHeader className="space-y-3 pb-6">
-            <CardTitle className="text-2xl font-bold text-white text-center">
-              Verify Your Email 📧
-            </CardTitle>
-            <CardDescription className="text-white/70 text-center">
-              Your account is almost ready! Just need to verify your email address.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      <motion.div 
+        className="w-full max-w-md"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="glass-panel border-white/10 bg-white/5 backdrop-blur-xl rounded-xl">
+          <div className="p-8 space-y-6 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-figuro-accent/20 border border-figuro-accent/30 mb-4">
+              <Mail size={32} className="text-figuro-accent" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Verify Your Email 📧
+              </h2>
+              <p className="text-white/70">
+                Your account is almost ready! Just need to verify your email address.
+              </p>
+            </div>
             <EmailVerificationHandler
               email={email}
               onSuccess={() => {
@@ -279,83 +287,97 @@ export function AuthForm() {
               }}
               onCancel={resetFormState}
             />
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      </motion.div>
     );
   }
 
   // Show existing account handler
   if (showExistingAccount) {
     return (
-      <div className="w-full max-w-md animate-fade-in">
-        <Card className="glass-panel border-white/10 bg-white/5 backdrop-blur-xl">
-          <CardHeader className="space-y-3 pb-6">
-            <CardTitle className="text-2xl font-bold text-white text-center">
-              Account Found! 👋
-            </CardTitle>
-            <CardDescription className="text-white/70 text-center">
-              Looks like you already have an account. Let's get you signed in!
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      <motion.div 
+        className="w-full max-w-md"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="glass-panel border-white/10 bg-white/5 backdrop-blur-xl rounded-xl">
+          <div className="p-8 space-y-6 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-figuro-accent/20 border border-figuro-accent/30 mb-4">
+              <Shield size={32} className="text-figuro-accent" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Account Found! 👋
+              </h2>
+              <p className="text-white/70">
+                Looks like you already have an account. Let's get you signed in!
+              </p>
+            </div>
             <ExistingAccountHandler
               email={email}
               onCancel={resetFormState}
             />
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="w-full max-w-md animate-fade-in">
+    <motion.div 
+      className="w-full max-w-md"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+    >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/5 backdrop-blur-sm border border-white/10">
+        <TabsList className="grid w-full grid-cols-2 mb-8 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl">
           <TabsTrigger 
             value="signin" 
-            className="data-[state=active]:bg-figuro-accent data-[state=active]:text-white transition-all duration-300"
+            className="data-[state=active]:bg-figuro-accent data-[state=active]:text-white transition-all duration-300 rounded-lg"
           >
             Sign In
           </TabsTrigger>
           <TabsTrigger 
             value="signup"
-            className="data-[state=active]:bg-figuro-accent data-[state=active]:text-white transition-all duration-300"
+            className="data-[state=active]:bg-figuro-accent data-[state=active]:text-white transition-all duration-300 rounded-lg"
           >
             Sign Up
           </TabsTrigger>
         </TabsList>
         
         <TabsContent value="signin" className="space-y-0">
-          <Card className="glass-panel border-white/10 bg-white/5 backdrop-blur-xl">
-            <CardHeader className="space-y-3 pb-6">
-              <CardTitle className="text-2xl font-bold text-white text-center">
-                Welcome Back! 🎉
-              </CardTitle>
-              <CardDescription className="text-white/70 text-center">
-                Ready to create something amazing? Let's get you signed in!
-              </CardDescription>
-              
-              {recaptchaLoaded && !recaptchaError && domainConfigured && (
-                <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <Shield className="w-3.5 h-3.5 text-figuro-accent/80" />
-                  <span className="text-xs text-white/50">Protected by Supabase + reCAPTCHA</span>
-                </div>
-              )}
-              
-              {(!domainConfigured || recaptchaError) && (
-                <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <Info className="w-3.5 h-3.5 text-blue-500/80" />
-                  <span className="text-xs text-blue-400/70">
-                    {!domainConfigured ? 'Using Supabase security (reCAPTCHA domain setup needed)' : 'Using Supabase security (reCAPTCHA not available)'}
-                  </span>
-                </div>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-6">
+          <div className="glass-panel border-white/10 bg-white/5 backdrop-blur-xl rounded-xl">
+            <div className="p-8 space-y-6">
+              <div className="text-center space-y-4">
+                <h2 className="text-2xl font-bold text-white">
+                  Welcome Back! 🎉
+                </h2>
+                <p className="text-white/70">
+                  Ready to create something amazing? Let's get you signed in!
+                </p>
+                
+                {recaptchaLoaded && !recaptchaError && domainConfigured && (
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-figuro-accent/80" />
+                    <span className="text-xs text-white/50">Protected by Supabase + reCAPTCHA</span>
+                  </div>
+                )}
+                
+                {(!domainConfigured || recaptchaError) && (
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-blue-500/80" />
+                    <span className="text-xs text-blue-400/70">
+                      {!domainConfigured ? 'Using Supabase security (reCAPTCHA domain setup needed)' : 'Using Supabase security (reCAPTCHA not available)'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               {!domainConfigured && (
-                <Alert className="bg-blue-500/10 border-blue-500/30 animate-scale-in">
+                <Alert className="bg-blue-500/10 border-blue-500/30 animate-scale-in rounded-lg">
                   <Info className="h-4 w-4 text-blue-400" />
                   <AlertDescription className="text-white/90 text-sm">
                     <strong>Optional:</strong> To enable full reCAPTCHA protection, add <strong>{getCurrentDomain()}</strong> to your Google reCAPTCHA console. Authentication still works securely through Supabase.
@@ -364,14 +386,14 @@ export function AuthForm() {
               )}
 
               {errorMessage && (
-                <Alert variant="destructive" className="bg-red-500/10 border-red-500/30 animate-scale-in">
+                <Alert variant="destructive" className="bg-red-500/10 border-red-500/30 animate-scale-in rounded-lg">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{errorMessage}</AlertDescription>
                 </Alert>
               )}
 
               {successMessage && (
-                <Alert className="bg-green-500/10 border-green-500/30 animate-scale-in">
+                <Alert className="bg-green-500/10 border-green-500/30 animate-scale-in rounded-lg">
                   <CheckCircle className="h-4 w-4 text-green-400" />
                   <AlertDescription className="text-white/90">{successMessage}</AlertDescription>
                 </Alert>
@@ -387,7 +409,7 @@ export function AuthForm() {
                     size="sm"
                     onClick={handleClearRateLimits}
                     disabled={clearingLimits}
-                    className="flex items-center gap-2 bg-transparent border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10"
+                    className="flex items-center gap-2 bg-transparent border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-lg"
                   >
                     {clearingLimits ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -407,7 +429,7 @@ export function AuthForm() {
                     size="sm"
                     onClick={handleResendVerification}
                     disabled={resendLoading}
-                    className="flex items-center gap-2 bg-transparent border-figuro-accent/30 text-figuro-accent hover:bg-figuro-accent/10"
+                    className="flex items-center gap-2 bg-transparent border-figuro-accent/30 text-figuro-accent hover:bg-figuro-accent/10 rounded-lg"
                   >
                     {resendLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -433,7 +455,7 @@ export function AuthForm() {
                       <Button 
                         type="submit"
                         disabled={passwordResetLoading || !email}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
                       >
                         {passwordResetLoading ? (
                           <>
@@ -448,7 +470,7 @@ export function AuthForm() {
                         type="button"
                         variant="outline"
                         onClick={() => setShowPasswordReset(false)}
-                        className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                        className="bg-transparent border-white/20 text-white hover:bg-white/10 rounded-lg"
                       >
                         Cancel
                       </Button>
@@ -469,7 +491,7 @@ export function AuthForm() {
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={isLoading}
                       required
-                      className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300"
+                      className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300 rounded-lg"
                     />
                   </div>
                   <div className="space-y-2">
@@ -485,13 +507,13 @@ export function AuthForm() {
                         onChange={(e) => setPassword(e.target.value)}
                         disabled={isLoading}
                         required
-                        className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300 pr-10"
+                        className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300 pr-10 rounded-lg"
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-white/60 hover:text-white"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-white/60 hover:text-white rounded-lg"
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? (
@@ -526,7 +548,7 @@ export function AuthForm() {
                   </div>
                   
                   <Button 
-                    className="w-full bg-figuro-accent hover:bg-figuro-accent-hover text-white font-medium py-2.5 transition-all duration-300 disabled:opacity-50" 
+                    className="w-full bg-figuro-accent hover:bg-figuro-accent-hover text-white font-medium py-2.5 transition-all duration-300 disabled:opacity-50 rounded-lg shadow-glow-sm hover:shadow-glow" 
                     type="submit" 
                     disabled={isLoading || !isFormValid || clearingLimits}
                   >
@@ -556,7 +578,7 @@ export function AuthForm() {
                   <Button 
                     variant="outline" 
                     onClick={handleGoogleSignIn}
-                    className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10 transition-all duration-300"
+                    className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10 transition-all duration-300 rounded-lg"
                     disabled={isLoading || googleLoading || clearingLimits}
                   >
                     {googleLoading ? (
@@ -590,39 +612,40 @@ export function AuthForm() {
                   </Button>
                 </>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
         
         <TabsContent value="signup" className="space-y-0">
-          <Card className="glass-panel border-white/10 bg-white/5 backdrop-blur-xl">
-            <CardHeader className="space-y-3 pb-6">
-              <CardTitle className="text-2xl font-bold text-white text-center">
-                Start Creating! ✨
-              </CardTitle>
-              <CardDescription className="text-white/70 text-center">
-                Join thousands of creators and start building your dreams with AI
-              </CardDescription>
-              
-              {recaptchaLoaded && !recaptchaError && domainConfigured && (
-                <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <Shield className="w-3.5 h-3.5 text-figuro-accent/80" />
-                  <span className="text-xs text-white/50">Protected by Supabase + reCAPTCHA</span>
-                </div>
-              )}
-              
-              {(!domainConfigured || recaptchaError) && (
-                <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <Info className="w-3.5 h-3.5 text-blue-500/80" />
-                  <span className="text-xs text-blue-400/70">
-                    {!domainConfigured ? 'Using Supabase security (reCAPTCHA domain setup needed)' : 'Using Supabase security (reCAPTCHA not available)'}
-                  </span>
-                </div>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-6">
+          <div className="glass-panel border-white/10 bg-white/5 backdrop-blur-xl rounded-xl">
+            <div className="p-8 space-y-6">
+              <div className="text-center space-y-4">
+                <h2 className="text-2xl font-bold text-white">
+                  Start Creating! ✨
+                </h2>
+                <p className="text-white/70">
+                  Join thousands of creators and start building your dreams with AI
+                </p>
+                
+                {recaptchaLoaded && !recaptchaError && domainConfigured && (
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-figuro-accent/80" />
+                    <span className="text-xs text-white/50">Protected by Supabase + reCAPTCHA</span>
+                  </div>
+                )}
+                
+                {(!domainConfigured || recaptchaError) && (
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-blue-500/80" />
+                    <span className="text-xs text-blue-400/70">
+                      {!domainConfigured ? 'Using Supabase security (reCAPTCHA domain setup needed)' : 'Using Supabase security (reCAPTCHA not available)'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               {!domainConfigured && (
-                <Alert className="bg-blue-500/10 border-blue-500/30 animate-scale-in">
+                <Alert className="bg-blue-500/10 border-blue-500/30 animate-scale-in rounded-lg">
                   <Info className="h-4 w-4 text-blue-400" />
                   <AlertDescription className="text-white/90 text-sm">
                     <strong>Optional:</strong> To enable full reCAPTCHA protection, add <strong>{getCurrentDomain()}</strong> to your Google reCAPTCHA console. Authentication still works securely through Supabase.
@@ -631,14 +654,14 @@ export function AuthForm() {
               )}
 
               {errorMessage && (
-                <Alert variant="destructive" className="bg-red-500/10 border-red-500/30 animate-scale-in">
+                <Alert variant="destructive" className="bg-red-500/10 border-red-500/30 animate-scale-in rounded-lg">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{errorMessage}</AlertDescription>
                 </Alert>
               )}
 
               {successMessage && (
-                <Alert className="bg-green-500/10 border-green-500/30 animate-scale-in">
+                <Alert className="bg-green-500/10 border-green-500/30 animate-scale-in rounded-lg">
                   <CheckCircle className="h-4 w-4 text-green-400" />
                   <AlertDescription className="text-white/90">{successMessage}</AlertDescription>
                 </Alert>
@@ -654,7 +677,7 @@ export function AuthForm() {
                     size="sm"
                     onClick={handleClearRateLimits}
                     disabled={clearingLimits}
-                    className="flex items-center gap-2 bg-transparent border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10"
+                    className="flex items-center gap-2 bg-transparent border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-lg"
                   >
                     {clearingLimits ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -678,7 +701,7 @@ export function AuthForm() {
                     size="sm"
                     onClick={handleResendVerification}
                     disabled={resendLoading}
-                    className="flex items-center gap-2 bg-transparent border-figuro-accent/30 text-figuro-accent hover:bg-figuro-accent/10"
+                    className="flex items-center gap-2 bg-transparent border-figuro-accent/30 text-figuro-accent hover:bg-figuro-accent/10 rounded-lg"
                   >
                     {resendLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -703,7 +726,7 @@ export function AuthForm() {
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isLoading}
                     required
-                    className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300"
+                    className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300 rounded-lg"
                   />
                 </div>
                 <div className="space-y-2">
@@ -719,13 +742,13 @@ export function AuthForm() {
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={isLoading}
                       required
-                      className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300 pr-10"
+                      className="bg-white/5 border-white/20 text-white placeholder:text-white/50 focus:border-figuro-accent focus:ring-figuro-accent/30 transition-all duration-300 pr-10 rounded-lg"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-white/60 hover:text-white"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-white/60 hover:text-white rounded-lg"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
@@ -740,7 +763,7 @@ export function AuthForm() {
                   )}
                 </div>
                 <Button 
-                  className="w-full bg-figuro-accent hover:bg-figuro-accent-hover text-white font-medium py-2.5 transition-all duration-300 disabled:opacity-50" 
+                  className="w-full bg-figuro-accent hover:bg-figuro-accent-hover text-white font-medium py-2.5 transition-all duration-300 disabled:opacity-50 rounded-lg shadow-glow-sm hover:shadow-glow" 
                   type="submit" 
                   disabled={isLoading || !isFormValid || clearingLimits}
                 >
@@ -756,7 +779,7 @@ export function AuthForm() {
               </form>
               
               {domainConfigured && !recaptchaError && (
-                <div className="p-4 bg-figuro-accent/5 border border-figuro-accent/10 rounded-lg mt-4">
+                <div className="p-4 bg-figuro-accent/5 border border-figuro-accent/10 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <Shield className="h-4 w-4 text-figuro-accent" />
                     <h3 className="text-sm font-medium text-white/90">Enhanced Security</h3>
@@ -779,7 +802,7 @@ export function AuthForm() {
               <Button 
                 variant="outline" 
                 onClick={handleGoogleSignIn}
-                className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10 transition-all duration-300"
+                className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10 transition-all duration-300 rounded-lg"
                 disabled={isLoading || googleLoading || clearingLimits}
               >
                 {googleLoading ? (
@@ -811,10 +834,10 @@ export function AuthForm() {
                   </>
                 )}
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
-    </div>
+    </motion.div>
   );
 }
