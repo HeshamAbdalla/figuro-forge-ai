@@ -9,7 +9,7 @@ import PricingCTA from "@/components/pricing/PricingCTA";
 import PricingFAQ from "@/components/pricing/PricingFAQ";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { toast } from "@/hooks/use-toast";
-import { SEO } from "@/components/SEO";
+import SEO from "@/components/SEO";
 
 const Pricing = () => {
   const { profile } = useEnhancedAuth();
