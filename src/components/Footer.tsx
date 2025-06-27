@@ -1,13 +1,10 @@
-
 import { Link } from "react-router-dom";
-
 const Footer = () => {
-  return (
-    <footer className="bg-figuro-dark border-t border-white/10">
+  return <footer className="bg-figuro-dark border-t border-white/10">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-figuro-accent">Figuro</h3>
+            <h3 className="text-xl font-bold text-figuro-accent">Figuros.AI</h3>
             <p className="text-white/70 text-sm">
               Transform your imagination into stunning 3D figurines with our AI-powered platform.
             </p>
@@ -68,8 +65,6 @@ const Footer = () => {
           </p>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 };
-
 export default Footer;
