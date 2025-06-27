@@ -1,13 +1,14 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
-import { toast } from "@/hooks/use-toast";
 import { cleanupAuthState, getAuthErrorMessage, checkRateLimitSafe, isExistingAccountError } from "@/utils/authUtils";
 import { validateSignupAttempt, validateSignupResponse } from "@/utils/authValidation";
 import { EmailVerificationEnforcer } from "@/utils/emailVerificationEnforcer";
 import { sessionManager } from "@/utils/sessionManager";
 import { securityManager } from "@/utils/securityUtils";
 import { executeRecaptcha, ReCaptchaAction, initializeRecaptcha, isRecaptchaReady } from "@/utils/recaptchaUtils";
+import { toast, success, error, warning, info, loading, promise } from "@/hooks/use-enhanced-toast";
 
 interface EnhancedAuthContextType {
   user: User | null;
@@ -840,38 +841,122 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Simplified sign out
+  // Enhanced secure sign out with advanced toast feedback
   const signOut = async () => {
+    const signOutStart = performance.now();
+    
     try {
       const currentUserId = user?.id;
+      const currentEmail = user?.email;
       
+      console.log("🚪 [ENHANCED-AUTH] Starting enhanced secure sign out...");
+      
+      // Show loading toast with progress
+      const loadingToast = loading({
+        title: "Signing out...",
+        description: "Securely ending your session",
+        showProgress: true,
+        persistent: true
+      });
+      
+      // Log signout initiation (non-blocking)
       securityManager.logSecurityEvent({
         event_type: 'signout_initiated',
-        event_details: { user_id: currentUserId },
+        event_details: { 
+          user_id: currentUserId,
+          email: currentEmail,
+          current_path: window.location.pathname,
+          session_duration: session ? Date.now() - new Date(session.issued_at || Date.now()).getTime() : null
+        },
         success: true
       });
       
+      // Step 1: Clean up auth state
+      console.log("🧹 [ENHANCED-AUTH] Cleaning up authentication state...");
       cleanupAuthState();
-      await supabase.auth.signOut({ scope: 'global' });
-      window.location.href = '/auth';
       
-      toast({
-        title: "Signed out successfully",
+      // Step 2: Clear session manager cache
+      console.log("🗑️ [ENHANCED-AUTH] Clearing session cache...");
+      sessionManager.clearCache();
+      
+      // Step 3: Perform global sign out
+      console.log("🌐 [ENHANCED-AUTH] Performing global sign out...");
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      // Step 4: Clear local state
+      console.log("🔄 [ENHANCED-AUTH] Clearing local auth state...");
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setSecurityScore(0);
+      setHasRedirected(false);
+      
+      // Step 5: Clear any remaining auth-related data
+      console.log("🧽 [ENHANCED-AUTH] Final cleanup...");
+      
+      // Clear subscription refresh events
+      window.dispatchEvent(new CustomEvent('auth-signout-complete'));
+      
+      const signOutDuration = performance.now() - signOutStart;
+      console.log(`✅ [ENHANCED-AUTH] Secure sign out completed in ${signOutDuration.toFixed(2)}ms`);
+      
+      // Log successful signout
+      securityManager.logSecurityEvent({
+        event_type: 'signout_success',
+        event_details: { 
+          user_id: currentUserId,
+          email: currentEmail,
+          duration_ms: signOutDuration,
+          cleanup_completed: true
+        },
+        success: true
       });
+      
+      // Update loading toast to success
+      loadingToast.update({
+        id: loadingToast.id,
+        title: "Signed out successfully! 👋",
+        description: "Your session has been securely ended.",
+        variant: "success",
+        persistent: false,
+        duration: 3000,
+        showProgress: false
+      });
+      
+      // Redirect after a brief delay to show success message
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 1000);
+      
     } catch (error: any) {
+      const signOutDuration = performance.now() - signOutStart;
+      console.error("❌ [ENHANCED-AUTH] Sign out error:", error);
+      
       const friendlyError = getAuthErrorMessage(error);
       
+      // Log signout error
       securityManager.logSecurityEvent({
         event_type: 'signout_error',
-        event_details: { error: error.message },
+        event_details: { 
+          error: error.message,
+          duration_ms: signOutDuration
+        },
         success: false
       });
       
-      toast({
-        title: "Error signing out",
+      // Show error toast
+      error({
+        title: "Sign out error",
         description: friendlyError,
-        variant: "destructive",
+        duration: 5000,
+        actionLabel: "Try Again",
+        onAction: () => signOut() // Retry signout
       });
+      
+      // Force redirect anyway for security
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 2000);
     }
   };
 

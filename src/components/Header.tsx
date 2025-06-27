@@ -39,9 +39,16 @@ const Header = () => {
     return user.email.substring(0, 2).toUpperCase();
   };
   
+  // Enhanced sign out handler with better UX
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
+    try {
+      await signOut();
+      // Navigation is handled by the signOut function
+    } catch (error) {
+      console.error("Sign out error:", error);
+      // Fallback navigation in case of error
+      navigate("/auth");
+    }
   };
 
   return (
