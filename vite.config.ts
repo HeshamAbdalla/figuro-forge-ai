@@ -59,8 +59,6 @@ export default defineConfig(({ command, mode }) => ({
           'console.dirxml',
           'console.table'
         ] : [],
-        // Remove comments in production
-        comments: false,
         // Additional optimizations
         dead_code: true,
         unused: true,
