@@ -144,15 +144,15 @@ export const toastUtils = {
 
 // Promise wrapper for common async operations
 export const toastPromise = {
-  auth: <T>(promise: Promise<T>, operation: string) => 
-    promise({
+  auth: <T>(promiseValue: Promise<T>, operation: string) => 
+    promise(promiseValue, {
       loading: `${operation}...`,
       success: `${operation} successful!`,
       error: `${operation} failed. Please try again.`
     }),
   
-  generation: <T>(promise: Promise<T>, type: string) =>
-    promise({
+  generation: <T>(promiseValue: Promise<T>, type: string) =>
+    promise(promiseValue, {
       loading: {
         title: `Generating ${type}...`,
         description: "This may take a few moments."
@@ -167,8 +167,8 @@ export const toastPromise = {
       })
     }),
   
-  upload: <T>(promise: Promise<T>) =>
-    promise({
+  upload: <T>(promiseValue: Promise<T>) =>
+    promise(promiseValue, {
       loading: "Uploading file...",
       success: "Upload complete! 📁",
       error: "Upload failed. Please try again."

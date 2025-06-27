@@ -80,7 +80,7 @@ export function EnhancedToaster() {
                       <div className="flex items-center space-x-2 mt-3">
                         {action}
                         {onAction && actionLabel && (
-                          <ToastAction onClick={onAction}>
+                          <ToastAction onClick={onAction} altText={actionLabel}>
                             {actionLabel}
                           </ToastAction>
                         )}

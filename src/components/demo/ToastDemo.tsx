@@ -30,6 +30,7 @@ export const ToastDemo = () => {
     
     setTimeout(() => {
       loadingToast.update({
+        id: loadingToast.id,
         title: "Processing complete! ✅",
         description: "Your request has been processed successfully.",
         variant: "success",
