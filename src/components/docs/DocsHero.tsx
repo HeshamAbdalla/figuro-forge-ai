@@ -29,7 +29,7 @@ const DocsHero = () => {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="text-5xl md:text-6xl font-bold mb-6 text-gradient bg-gradient-to-br from-white via-white/90 to-figuro-accent bg-clip-text text-transparent"
             >
-              Master Figuro.AI
+              Master Figuros.AI
             </motion.h1>
 
             <motion.p
