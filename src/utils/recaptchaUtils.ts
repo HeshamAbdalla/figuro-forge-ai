@@ -1,10 +1,9 @@
 
 /**
- * Google reCAPTCHA v3 utilities - Simplified for Supabase integration
- * Now uses Supabase's built-in reCAPTCHA instead of custom edge function
+ * Google reCAPTCHA v3 utilities - Dynamic loading for auth page only
  */
 
-// reCAPTCHA site key - matches the one in index.html
+// reCAPTCHA site key
 const RECAPTCHA_SITE_KEY = "6Le5lFcrAAAAAOySTtpVoOrDH7EQx8pQiLFq5pRT";
 
 // Action types for reCAPTCHA
@@ -16,6 +15,81 @@ export type ReCaptchaAction =
   | "contact_form";
 
 /**
+ * Dynamically loads the reCAPTCHA script
+ */
+export const loadRecaptchaScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    // Check if already loaded
+    if (isRecaptchaReady()) {
+      console.log('✅ [RECAPTCHA] Script already loaded');
+      resolve(true);
+      return;
+    }
+
+    // Check if script is already being loaded
+    const existingScript = document.querySelector('script[src*="recaptcha"]');
+    if (existingScript) {
+      console.log('🔄 [RECAPTCHA] Script already loading, waiting...');
+      // Wait for it to load
+      const checkLoaded = () => {
+        if (isRecaptchaReady()) {
+          resolve(true);
+        } else {
+          setTimeout(checkLoaded, 100);
+        }
+      };
+      checkLoaded();
+      return;
+    }
+
+    console.log('📦 [RECAPTCHA] Loading script dynamically...');
+    
+    // Create and load the script
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+    script.async = true;
+    script.defer = true;
+    
+    script.onload = () => {
+      console.log('✅ [RECAPTCHA] Script loaded successfully');
+      // Wait a bit for grecaptcha to be ready
+      setTimeout(() => {
+        resolve(isRecaptchaReady());
+      }, 500);
+    };
+    
+    script.onerror = () => {
+      console.error('❌ [RECAPTCHA] Failed to load script');
+      resolve(false);
+    };
+    
+    document.head.appendChild(script);
+  });
+};
+
+/**
+ * Removes the reCAPTCHA script and cleans up
+ */
+export const unloadRecaptchaScript = (): void => {
+  console.log('🧹 [RECAPTCHA] Cleaning up...');
+  
+  // Remove the script
+  const scripts = document.querySelectorAll('script[src*="recaptcha"]');
+  scripts.forEach(script => script.remove());
+  
+  // Remove reCAPTCHA elements
+  const recaptchaElements = document.querySelectorAll('.grecaptcha-badge, [id^="grecaptcha"]');
+  recaptchaElements.forEach(element => element.remove());
+  
+  // Clear the global grecaptcha object
+  if (window && (window as any).grecaptcha) {
+    delete (window as any).grecaptcha;
+  }
+  
+  console.log('✅ [RECAPTCHA] Cleanup completed');
+};
+
+/**
  * Checks if reCAPTCHA is ready immediately (non-blocking)
  */
 export const isRecaptchaReady = (): boolean => {
@@ -24,65 +98,24 @@ export const isRecaptchaReady = (): boolean => {
 };
 
 /**
- * Helper to ensure reCAPTCHA is loaded with reasonable timeout
- */
-export const ensureRecaptchaLoaded = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    // Check if already ready
-    if (isRecaptchaReady()) {
-      resolve(true);
-      return;
-    }
-
-    let attempts = 0;
-    const maxAttempts = 30; // 3 seconds max wait
-    
-    const checkRecaptcha = () => {
-      attempts++;
-      
-      if (isRecaptchaReady()) {
-        console.log(`✅ [RECAPTCHA] Loaded successfully after ${attempts * 100}ms`);
-        resolve(true);
-        return;
-      }
-      
-      if (attempts >= maxAttempts) {
-        console.warn(`⚠️ [RECAPTCHA] Failed to load after ${maxAttempts * 100}ms, allowing app to continue`);
-        resolve(false);
-        return;
-      }
-      
-      // Check again in 100ms
-      setTimeout(checkRecaptcha, 100);
-    };
-    
-    checkRecaptcha();
-  });
-};
-
-/**
- * Initialize reCAPTCHA with improved error handling and faster timeout
+ * Initialize reCAPTCHA with dynamic loading
  */
 export const initializeRecaptcha = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    // Check if already loaded
-    if (isRecaptchaReady()) {
-      console.log('✅ [RECAPTCHA] Already initialized');
-      resolve(true);
-      return;
-    }
-    
+  return new Promise(async (resolve) => {
     console.log('🚀 [RECAPTCHA] Initializing...');
     
-    // Wait for reCAPTCHA to load with faster timeout
-    ensureRecaptchaLoaded().then((loaded) => {
+    try {
+      const loaded = await loadRecaptchaScript();
       if (loaded) {
         console.log('✅ [RECAPTCHA] Successfully initialized');
       } else {
         console.warn('⚠️ [RECAPTCHA] Failed to initialize, app will continue without reCAPTCHA');
       }
       resolve(loaded);
-    });
+    } catch (error) {
+      console.error('❌ [RECAPTCHA] Initialization error:', error);
+      resolve(false);
+    }
   });
 };
 
@@ -97,12 +130,8 @@ export const executeRecaptcha = async (action: ReCaptchaAction): Promise<string 
     
     // Check if reCAPTCHA is ready
     if (!isRecaptchaReady()) {
-      console.warn('❌ [RECAPTCHA] Not ready, attempting quick initialization...');
-      const initialized = await ensureRecaptchaLoaded();
-      if (!initialized) {
-        console.error('❌ [RECAPTCHA] Quick initialization failed');
-        return null;
-      }
+      console.warn('❌ [RECAPTCHA] Not ready for execution');
+      return null;
     }
     
     // Access the grecaptcha object from the global scope

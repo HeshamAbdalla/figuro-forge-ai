@@ -13,7 +13,7 @@ import { AlertCircle, Mail, Eye, EyeOff, Loader2, CheckCircle, RefreshCw, KeyRou
 import { isEmailVerificationError } from "@/utils/authUtils";
 import { EmailVerificationHandler } from "./EmailVerificationHandler";
 import { ExistingAccountHandler } from "./ExistingAccountHandler";
-import { initializeRecaptcha, isRecaptchaReady, getCurrentDomain, isDomainConfigured } from "@/utils/recaptchaUtils";
+import { isRecaptchaReady, getCurrentDomain, isDomainConfigured } from "@/utils/recaptchaUtils";
 import { motion } from "framer-motion";
 
 export function AuthForm() {
@@ -48,47 +48,45 @@ export function AuthForm() {
 
   // Check if reCAPTCHA is loaded and domain is configured
   useEffect(() => {
-    const loadRecaptcha = async () => {
-      try {
-        console.log('🚀 [AUTH-FORM] Initializing reCAPTCHA...');
-        
-        // Check domain configuration
-        const isDomainOk = isDomainConfigured();
-        setDomainConfigured(isDomainOk);
-        
-        if (!isDomainOk) {
-          console.warn(`⚠️ [AUTH-FORM] Domain ${getCurrentDomain()} not configured for reCAPTCHA`);
-        }
-        
-        // Check if it's already ready
-        if (isRecaptchaReady()) {
-          console.log('✅ [AUTH-FORM] reCAPTCHA already ready');
-          setRecaptchaLoaded(true);
-          setRecaptchaError(false);
-          return;
-        }
-        
-        // Try to initialize with faster timeout
-        const loaded = await initializeRecaptcha();
-        
-        // Always set to true to allow app to continue
-        setRecaptchaLoaded(true);
-        
-        if (loaded) {
-          console.log('✅ [AUTH-FORM] reCAPTCHA loaded successfully');
-          setRecaptchaError(false);
-        } else {
-          console.log('⚠️ [AUTH-FORM] reCAPTCHA failed to load, continuing without it');
-          setRecaptchaError(true);
-        }
-      } catch (error) {
-        console.error('❌ [AUTH-FORM] reCAPTCHA initialization error:', error);
-        setRecaptchaLoaded(true); // Allow app to continue
+    const checkRecaptcha = () => {
+      console.log('🔍 [AUTH-FORM] Checking reCAPTCHA status...');
+      
+      // Check domain configuration
+      const isDomainOk = isDomainConfigured();
+      setDomainConfigured(isDomainOk);
+      
+      if (!isDomainOk) {
+        console.warn(`⚠️ [AUTH-FORM] Domain ${getCurrentDomain()} not configured for reCAPTCHA`);
+      }
+      
+      // Check if reCAPTCHA is ready
+      const isReady = isRecaptchaReady();
+      setRecaptchaLoaded(true); // Always allow app to continue
+      
+      if (isReady) {
+        console.log('✅ [AUTH-FORM] reCAPTCHA is ready');
+        setRecaptchaError(false);
+      } else {
+        console.log('⚠️ [AUTH-FORM] reCAPTCHA not available, continuing without it');
         setRecaptchaError(true);
       }
     };
     
-    loadRecaptcha();
+    // Check immediately and then periodically until loaded
+    checkRecaptcha();
+    
+    const interval = setInterval(() => {
+      if (!isRecaptchaReady()) {
+        checkRecaptcha();
+      } else {
+        clearInterval(interval);
+      }
+    }, 500);
+    
+    // Cleanup interval after 10 seconds max
+    setTimeout(() => clearInterval(interval), 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {

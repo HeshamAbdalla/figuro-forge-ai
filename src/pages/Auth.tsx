@@ -7,18 +7,36 @@ import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { cleanupAuthState } from "@/utils/authUtils";
+import { loadRecaptchaScript, unloadRecaptchaScript } from "@/utils/recaptchaUtils";
 import SEO from "@/components/SEO";
 import { motion } from "framer-motion";
-import { logDebug } from "@/utils/productionLogger";
+import { logDebug, logInfo } from "@/utils/productionLogger";
 
 const Auth = () => {
   const { user, isLoading } = useEnhancedAuth();
   const navigate = useNavigate();
 
-  // Clean up auth state when mounting the auth page
+  // Load reCAPTCHA script when Auth page mounts
   useEffect(() => {
-    logDebug("Auth page mounted, cleaning up auth state");
+    logDebug("Auth page mounted, loading reCAPTCHA and cleaning up auth state");
+    
+    // Clean up auth state
     cleanupAuthState();
+    
+    // Load reCAPTCHA script
+    loadRecaptchaScript().then((loaded) => {
+      if (loaded) {
+        logInfo("reCAPTCHA loaded successfully on auth page");
+      } else {
+        logInfo("reCAPTCHA failed to load, continuing without it");
+      }
+    });
+
+    // Cleanup function to remove reCAPTCHA when leaving the page
+    return () => {
+      logDebug("Auth page unmounting, cleaning up reCAPTCHA");
+      unloadRecaptchaScript();
+    };
   }, []);
 
   // Redirect if already authenticated to Studio
