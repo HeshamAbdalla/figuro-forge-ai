@@ -34,7 +34,7 @@ const GalleryContent = () => {
   
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useEnhancedAuth();
-  const { figurines, loading, refreshFigurines } = usePublicFigurines();
+  const { figurines, loading, refetch } = usePublicFigurines();
   const navigate = useNavigate();
 
   console.log('🔍 [GALLERY] Gallery state:', {
@@ -111,7 +111,7 @@ const GalleryContent = () => {
 
   const handleRefresh = () => {
     console.log('🔄 [GALLERY] Manual refresh triggered');
-    refreshFigurines();
+    refetch();
     toast({
       title: "Gallery Refreshed",
       description: "Latest community models loaded"

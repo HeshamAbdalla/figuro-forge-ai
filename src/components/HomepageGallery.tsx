@@ -160,14 +160,16 @@ const HomepageGallery: React.FC = () => {
             {isLoading ? (
               <HomepageGalleryLoading />
             ) : files.length === 0 ? (
-              <HomepageGalleryEmpty />
+              <HomepageGalleryEmpty onNavigateToStudio={navigateToStudio} />
             ) : (
               <HomepageEnhancedGalleryGrid 
-                files={files}
+                images={files}
                 onView={handleView}
                 onDelete={handleDelete}
-                secureDownload={secureDownload}
+                onDownload={secureDownload}
                 isDownloading={isDownloading}
+                isAuthenticated={isAuthenticated}
+                onNavigateToGallery={navigateToGallery}
               />
             )}
           </div>

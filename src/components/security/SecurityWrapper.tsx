@@ -72,7 +72,7 @@ export const SecurityWrapper: React.FC<SecurityWrapperProps> = ({
           if (suspiciousActivity) {
             logWarn('Suspicious activity detected in SecurityWrapper', {
               userId: user.id,
-              sessionAge: session.issued_at
+              sessionCreated: session.created_at
             });
 
             securityManager.logSecurityEvent({
@@ -80,7 +80,7 @@ export const SecurityWrapper: React.FC<SecurityWrapperProps> = ({
               event_details: {
                 component: 'SecurityWrapper',
                 userId: user.id,
-                sessionAge: session.issued_at,
+                sessionCreated: session.created_at,
                 securityScore
               },
               success: false
