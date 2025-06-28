@@ -39,13 +39,31 @@ const Auth = () => {
     };
   }, []);
 
-  // Redirect if already authenticated to Studio
+  // Redirect if already authenticated to Studio with improved handling
   useEffect(() => {
     if (user && !isLoading) {
-      logDebug("User already authenticated, redirecting to studio");
-      navigate("/studio");
+      const provider = user.app_metadata?.provider;
+      logDebug("User already authenticated, redirecting to studio", { 
+        provider,
+        userId: user.id 
+      });
+      
+      // Use replace instead of navigate to avoid back button issues
+      navigate("/studio", { replace: true });
     }
   }, [user, isLoading, navigate]);
+
+  // Don't render auth form if user is already authenticated
+  if (user && !isLoading) {
+    return (
+      <div className="min-h-screen bg-figuro-dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-figuro-accent mx-auto"></div>
+          <p className="text-white mt-4">Redirecting to studio...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-figuro-dark">

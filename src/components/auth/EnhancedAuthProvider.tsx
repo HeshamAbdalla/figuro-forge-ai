@@ -89,10 +89,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     loadRecaptcha();
   }, []);
 
-  // Enhanced auth refresh with security enforcement
+  // Enhanced auth refresh with improved OAuth handling
   const refreshAuth = async () => {
     try {
-      logDebug("Refreshing auth state with security enforcement...");
+      logDebug("Refreshing auth state with improved OAuth handling...");
       
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
@@ -100,7 +100,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         return;
       }
       
-      // SECURITY ENFORCEMENT: Always validate session integrity
+      // Apply verification enforcement with OAuth awareness
       if (session?.user) {
         const enforcementResult = await EmailVerificationEnforcer.enforceVerification(
           session.user,
@@ -108,23 +108,30 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         );
 
         if (!enforcementResult.allowAccess) {
-          logWarn("Access denied due to verification enforcement");
+          logWarn("Access denied due to verification enforcement", {
+            provider: session.user.app_metadata?.provider,
+            error: enforcementResult.error
+          });
           
-          // Force sign out if verification is required
-          await EmailVerificationEnforcer.forceSignOutUnverified(
-            enforcementResult.error || 'Verification required'
-          );
-          
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setSecurityScore(0);
-          
-          // Redirect to auth page if on protected route
-          if (window.location.pathname !== '/auth') {
-            window.location.href = '/auth';
+          // Only force sign out for email users, not OAuth users
+          const isOAuth = session.user.app_metadata?.provider !== 'email';
+          if (!isOAuth) {
+            await EmailVerificationEnforcer.forceSignOutUnverified(
+              enforcementResult.error || 'Verification required'
+            );
+            
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setSecurityScore(0);
+            
+            if (window.location.pathname !== '/auth') {
+              window.location.href = '/auth';
+            }
+            return;
+          } else {
+            logInfo("OAuth user - allowing access despite enforcement result");
           }
-          return;
         }
       }
       
@@ -156,17 +163,20 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // ... keep existing code (useEffect for auth state management)
-
+  // Enhanced auth state management with improved OAuth handling
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener with enhanced security
+    // Set up auth state listener with improved OAuth handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
         
-        logDebug("Auth state changed", { event, userEmail: session?.user?.email });
+        logDebug("Auth state changed", { 
+          event, 
+          userEmail: session?.user?.email,
+          provider: session?.user?.app_metadata?.provider
+        });
         
         // Log auth event (non-blocking)
         securityManager.logSecurityEvent({
@@ -181,7 +191,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           success: true
         });
         
-        // SECURITY ENFORCEMENT: Validate every auth state change
+        // Apply verification enforcement with OAuth awareness
         if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
           const enforcementResult = await EmailVerificationEnforcer.enforceVerification(
             session.user,
@@ -189,23 +199,32 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           );
 
           if (!enforcementResult.allowAccess) {
-            logWarn("Access denied during auth state change");
+            const isOAuth = session.user.app_metadata?.provider !== 'email';
             
-            // Force sign out for unverified users
-            await EmailVerificationEnforcer.forceSignOutUnverified(
-              enforcementResult.error || 'Verification required'
-            );
+            logWarn("Access denied during auth state change", {
+              provider: session.user.app_metadata?.provider,
+              isOAuth,
+              error: enforcementResult.error
+            });
             
-            // Clear state and redirect
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-            setSecurityScore(0);
-            
-            if (window.location.pathname !== '/auth') {
-              window.location.href = '/auth';
+            // Only force sign out for email users, not OAuth users
+            if (!isOAuth) {
+              await EmailVerificationEnforcer.forceSignOutUnverified(
+                enforcementResult.error || 'Verification required'
+              );
+              
+              setSession(null);
+              setUser(null);
+              setProfile(null);
+              setSecurityScore(0);
+              
+              if (window.location.pathname !== '/auth') {
+                window.location.href = '/auth';
+              }
+              return;
+            } else {
+              logInfo("OAuth user - allowing access despite enforcement result");
             }
-            return;
           }
         }
         
@@ -215,7 +234,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user && mounted) {
-            // Handle Google OAuth redirect with verification check
+            // Handle Google OAuth redirect with improved logic
             if (session.user.app_metadata?.provider === 'google' && 
                 window.location.pathname === '/auth' && 
                 !hasRedirected) {
@@ -223,7 +242,13 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
               logInfo("Google sign-in successful, redirecting to studio");
               setHasRedirected(true);
               
-              // Defer profile loading and redirect
+              // Show success toast immediately
+              toast({
+                title: "Welcome back! 🎉",
+                description: "Google sign-in successful. Redirecting to studio...",
+              });
+              
+              // Load profile and redirect
               setTimeout(async () => {
                 if (mounted) {
                   try {
@@ -233,18 +258,17 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                     // Trigger subscription refresh
                     window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
                     
-                    // Only redirect if we're still on the auth page
-                    if (window.location.pathname === '/auth') {
-                      window.location.href = '/studio';
-                    }
+                    // Redirect to studio
+                    window.location.href = '/studio';
                   } catch (error) {
-                    logError("Profile fetch failed", error);
-                    setIsLoading(false);
+                    logError("Profile fetch failed during Google OAuth", error);
+                    // Still redirect even if profile fetch fails
+                    window.location.href = '/studio';
                   }
                 }
-              }, 200);
+              }, 500); // Slightly longer delay for better UX
             } else {
-              // Regular email/password sign-in with verification enforcement
+              // Regular email/password sign-in
               setTimeout(async () => {
                 if (mounted) {
                   try {
@@ -318,10 +342,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       }
     );
 
-    // Initialize auth with security enforcement
+    // Initialize auth with improved OAuth handling
     const initializeAuth = async () => {
       try {
-        logDebug("Initializing with security enforcement...");
+        logDebug("Initializing with improved OAuth handling...");
         
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
@@ -329,7 +353,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         }
         
         if (mounted) {
-          // SECURITY ENFORCEMENT: Validate initial session
+          // Apply verification enforcement with OAuth awareness
           if (session?.user) {
             const enforcementResult = await EmailVerificationEnforcer.enforceVerification(
               session.user,
@@ -337,23 +361,32 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
             );
 
             if (!enforcementResult.allowAccess) {
-              logWarn("Initial session denied due to verification");
+              const isOAuth = session.user.app_metadata?.provider !== 'email';
               
-              // Force sign out and redirect
-              await EmailVerificationEnforcer.forceSignOutUnverified(
-                enforcementResult.error || 'Verification required'
-              );
+              logWarn("Initial session denied due to verification", {
+                provider: session.user.app_metadata?.provider,
+                isOAuth
+              });
               
-              setSession(null);
-              setUser(null);
-              setProfile(null);
-              setSecurityScore(0);
-              setIsLoading(false);
-              
-              if (window.location.pathname !== '/auth') {
-                window.location.href = '/auth';
+              // Only force sign out for email users, not OAuth users
+              if (!isOAuth) {
+                await EmailVerificationEnforcer.forceSignOutUnverified(
+                  enforcementResult.error || 'Verification required'
+                );
+                
+                setSession(null);
+                setUser(null);
+                setProfile(null);
+                setSecurityScore(0);
+                setIsLoading(false);
+                
+                if (window.location.pathname !== '/auth') {
+                  window.location.href = '/auth';
+                }
+                return;
+              } else {
+                logInfo("OAuth user during initialization - allowing access");
               }
-              return;
             }
           }
           
