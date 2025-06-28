@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
@@ -14,7 +15,7 @@ import { useDropzone } from 'react-dropzone';
 import { cn } from "@/lib/utils";
 
 const ProfilePictures = () => {
-  const { user, profile, isLoading } = useEnhancedAuth();
+  const { user, profile, isLoading, refreshAuth } = useEnhancedAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState("");
   const navigate = useNavigate();
@@ -40,6 +41,17 @@ const ProfilePictures = () => {
       return user.email.substring(0, 2).toUpperCase();
     }
     return "FG";
+  };
+
+  // Function to notify profile page of avatar update
+  const notifyAvatarUpdate = () => {
+    // Dispatch custom event
+    window.dispatchEvent(new CustomEvent('avatarUpdated'));
+    
+    // Also refresh local auth data
+    refreshAuth().catch((error) => {
+      console.error("Error refreshing auth data:", error);
+    });
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -95,6 +107,9 @@ const ProfilePictures = () => {
         // Update local state
         setAvatarUrl(urlData.publicUrl);
         
+        // Notify other components of avatar update
+        notifyAvatarUpdate();
+        
         toast({
           title: "Avatar updated",
           description: "Your profile picture has been updated successfully.",
@@ -133,6 +148,9 @@ const ProfilePictures = () => {
       // Update local state
       setAvatarUrl("");
       
+      // Notify other components of avatar update
+      notifyAvatarUpdate();
+      
       toast({
         title: "Avatar removed",
         description: "Your profile picture has been removed.",
@@ -146,6 +164,14 @@ const ProfilePictures = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleBackToProfile = () => {
+    // Navigate back with state to indicate we came from pictures page
+    navigate("/profile", { 
+      state: { from: "/profile/pictures" },
+      replace: false 
+    });
   };
   
   // If still loading or no user, show loading state
@@ -244,7 +270,7 @@ const ProfilePictures = () => {
             </Card>
             
             <div className="mt-6 flex justify-between">
-              <Button variant="outline" onClick={() => navigate("/profile")}>
+              <Button variant="outline" onClick={handleBackToProfile}>
                 Back to Profile
               </Button>
             </div>

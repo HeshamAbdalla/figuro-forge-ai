@@ -1,5 +1,6 @@
+
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { motion } from "framer-motion";
@@ -20,6 +21,7 @@ const Profile = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [hasProcessedPaymentSuccess, setHasProcessedPaymentSuccess] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Enhanced upgrade modal functionality
   const {
@@ -32,6 +34,56 @@ const Profile = () => {
     hideCelebration,
     celebrationPlan
   } = useEnhancedUpgradeModal();
+
+  // Handle navigation-based profile refresh
+  useEffect(() => {
+    const handleNavigationRefresh = () => {
+      const avatarUpdated = searchParams.get("avatar_updated");
+      const fromPictures = location.state?.from === "/profile/pictures";
+      
+      if (avatarUpdated === "true" || fromPictures) {
+        console.log("🔄 [PROFILE] Detected return from pictures page, refreshing auth data");
+        
+        // Clear the parameter if it exists
+        if (avatarUpdated) {
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.delete("avatar_updated");
+          setSearchParams(newSearchParams, { replace: true });
+        }
+        
+        // Refresh auth data to get updated avatar
+        refreshAuth().then(() => {
+          console.log("✅ [PROFILE] Auth data refreshed after avatar update");
+        }).catch((error) => {
+          console.error("❌ [PROFILE] Error refreshing auth data:", error);
+        });
+      }
+    };
+
+    handleNavigationRefresh();
+  }, [searchParams, setSearchParams, refreshAuth, location.state]);
+
+  // Listen for custom avatar update events
+  useEffect(() => {
+    const handleAvatarUpdate = () => {
+      console.log("🔄 [PROFILE] Received avatar update event, refreshing auth data");
+      refreshAuth().then(() => {
+        toast({
+          title: "Profile Updated",
+          description: "Your avatar has been updated successfully.",
+        });
+      }).catch((error) => {
+        console.error("❌ [PROFILE] Error refreshing auth after avatar update:", error);
+      });
+    };
+
+    // Listen for custom avatar update events
+    window.addEventListener('avatarUpdated', handleAvatarUpdate);
+    
+    return () => {
+      window.removeEventListener('avatarUpdated', handleAvatarUpdate);
+    };
+  }, [refreshAuth]);
   
   // Handle payment success redirect from CheckoutReturn
   useEffect(() => {
