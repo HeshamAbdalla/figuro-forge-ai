@@ -16,6 +16,10 @@ import Pricing from "./pages/Pricing";
 import Docs from "./pages/Docs";
 import Solutions from "./pages/Solutions";
 import SecurityDashboard from "./pages/SecurityDashboard";
+import ImageTo3D from "./pages/studio/ImageTo3D";
+import TextTo3D from "./pages/studio/TextTo3D";
+import WebIcons from "./pages/studio/WebIcons";
+import CameraCapture from "./pages/studio/CameraCapture";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +34,11 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/studio" element={<StudioHub />} />
+                <Route path="/studio/image-to-3d" element={<ImageTo3D />} />
+                <Route path="/studio/text-to-3d" element={<TextTo3D />} />
+                <Route path="/studio/web-icons" element={<WebIcons />} />
+                <Route path="/studio/camera" element={<CameraCapture />} />
+                <Route path="/studio/gallery" element={<Gallery />} />
                 <Route path="/gallery" element={<Gallery />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/profile" element={<Profile />} />
