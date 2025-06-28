@@ -27,6 +27,19 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({ user, profile, onDataRefresh 
     return "FG";
   };
 
+  // Get user avatar URL from user metadata or profile (matching Header component logic)
+  const getUserAvatarUrl = () => {
+    // Check user metadata first (from OAuth providers like Google)
+    if (user?.user_metadata?.avatar_url) {
+      return user.user_metadata.avatar_url;
+    }
+    if (user?.user_metadata?.picture) {
+      return user.user_metadata.picture;
+    }
+    // Fall back to profile avatar_url
+    return profile?.avatar_url || null;
+  };
+
   // Format date for display
   const formatDate = (dateString: string) => {
     if (!dateString) return "Unknown";
@@ -82,7 +95,7 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({ user, profile, onDataRefresh 
               <div className="absolute -inset-1 bg-gradient-to-r from-figuro-accent via-purple-500 to-figuro-accent rounded-full blur opacity-30 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
               <Avatar className="relative h-32 w-32 border-4 border-white/20 shadow-glow">
                 <AvatarImage 
-                  src={profile?.avatar_url || `https://www.gravatar.com/avatar/${user?.email ? user.email.trim().toLowerCase() : ''}?d=mp&s=256`} 
+                  src={getUserAvatarUrl()} 
                   alt={profile?.full_name || user?.email || "User"} 
                 />
                 <AvatarFallback className="bg-figuro-accent text-white text-4xl font-bold">
