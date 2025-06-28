@@ -6,7 +6,7 @@ import MobileCameraStream from './MobileCameraStream';
 import CameraImagePreview from './CameraImagePreview';
 import CameraModelPreview from './CameraModelPreview';
 import { Button } from '@/components/ui/button';
-import { Camera, Monitor, AlertCircle, CheckCircle } from 'lucide-react';
+import { Camera, Monitor, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 
 interface EnhancedCameraWorkflowProps {
   onImageCapture: (imageBlob: Blob) => void;
@@ -22,7 +22,7 @@ interface EnhancedCameraWorkflowProps {
   };
 }
 
-type WorkflowState = 'start' | 'streaming' | 'captured' | 'converting' | 'completed';
+type WorkflowState = 'start' | 'streaming' | 'captured' | 'converting' | 'completed' | 'error';
 
 const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
   onImageCapture,
@@ -35,31 +35,32 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
     blob: Blob;
     url: string;
   } | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Update workflow state based on processing status
   useEffect(() => {
     if (isProcessing) {
       setWorkflowState('converting');
+      setErrorMessage('');
     } else if (progress.status === 'completed' && progress.modelUrl) {
       setWorkflowState('completed');
+      setErrorMessage('');
     } else if (progress.status === 'error') {
-      // Reset to captured state on error
-      if (capturedImage) {
-        setWorkflowState('captured');
-      } else {
-        setWorkflowState('start');
-      }
+      setWorkflowState('error');
+      setErrorMessage(progress.message || 'An error occurred during conversion');
     }
-  }, [isProcessing, progress.status, progress.modelUrl, capturedImage]);
+  }, [isProcessing, progress.status, progress.modelUrl, progress.message]);
 
   const handleStartCamera = () => {
     setWorkflowState('streaming');
+    setErrorMessage('');
   };
 
   const handleImageCapture = (imageBlob: Blob) => {
     const imageUrl = URL.createObjectURL(imageBlob);
     setCapturedImage({ blob: imageBlob, url: imageUrl });
     setWorkflowState('captured');
+    setErrorMessage('');
   };
 
   const handleRetake = () => {
@@ -68,12 +69,20 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
       setCapturedImage(null);
     }
     setWorkflowState('streaming');
+    setErrorMessage('');
   };
 
   const handleConvert = () => {
     if (capturedImage) {
-      onImageCapture(capturedImage.blob);
-      setWorkflowState('converting');
+      try {
+        onImageCapture(capturedImage.blob);
+        setWorkflowState('converting');
+        setErrorMessage('');
+      } catch (error) {
+        console.error('Error starting conversion:', error);
+        setErrorMessage('Failed to start conversion. Please try again.');
+        setWorkflowState('error');
+      }
     }
   };
 
@@ -83,6 +92,7 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
       setCapturedImage(null);
     }
     setWorkflowState('start');
+    setErrorMessage('');
   };
 
   const handleStartOver = () => {
@@ -91,6 +101,16 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
       setCapturedImage(null);
     }
     setWorkflowState('start');
+    setErrorMessage('');
+  };
+
+  const handleRetryFromError = () => {
+    setErrorMessage('');
+    if (capturedImage) {
+      setWorkflowState('captured');
+    } else {
+      setWorkflowState('start');
+    }
   };
 
   // Desktop fallback
@@ -211,6 +231,42 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
               </Button>
             </div>
           )}
+
+          {workflowState === 'error' && (
+            <div className="glass-panel rounded-xl p-6 text-center">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-red-400" />
+              </div>
+              
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Conversion Failed
+              </h3>
+              
+              <p className="text-white/70 mb-4 text-sm">
+                {errorMessage || 'An error occurred while converting your photo to 3D.'}
+              </p>
+              
+              <div className="flex gap-3 justify-center">
+                <Button
+                  onClick={handleRetryFromError}
+                  variant="outline"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
+                </Button>
+                
+                <Button
+                  onClick={handleStartOver}
+                  variant="outline"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  <Camera className="w-4 h-4 mr-2" />
+                  Take New Photo
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right column - 3D Model Preview */}
@@ -224,7 +280,7 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
         </div>
       </div>
 
-      {/* Tips section */}
+      {/* Enhanced tips section */}
       <div className="glass-panel rounded-lg p-4">
         <h4 className="text-sm font-medium text-white mb-2">📸 Photo Tips for Best Results</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -237,6 +293,14 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
             <li>• Avoid shadows and reflections</li>
           </ul>
         </div>
+        
+        {workflowState === 'error' && (
+          <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <p className="text-xs text-red-400">
+              <strong>Troubleshooting:</strong> If conversion keeps failing, try taking a new photo with better lighting or a simpler background.
+            </p>
+          </div>
+        )}
       </div>
     </motion.div>
   );

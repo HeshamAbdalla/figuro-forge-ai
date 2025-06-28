@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Generate3DConfig, ConversionCallbacks } from '../types/conversion';
 
-// Helper function to convert blob URL to base64
+// Helper function to convert blob URL to base64 with enhanced error handling
 const convertBlobToBase64 = async (blobUrl: string): Promise<string> => {
   try {
     console.log('🔄 [CONVERSION] Converting blob URL to base64:', blobUrl);
@@ -48,6 +48,11 @@ const isBlobUrl = (url: string): boolean => {
   return url.startsWith('blob:');
 };
 
+// Helper function to check if URL is a data URI
+const isDataUri = (url: string): boolean => {
+  return url.startsWith('data:image/');
+};
+
 // Helper function to validate authentication
 const validateAuthentication = async (): Promise<boolean> => {
   try {
@@ -84,6 +89,11 @@ export const startConversion = async (
 ): Promise<string> => {
   try {
     console.log('🔄 [CONVERSION] Starting 3D conversion with config:', config);
+    console.log('🔄 [CONVERSION] Image URL type:', { 
+      isBlob: isBlobUrl(imageUrl), 
+      isDataUri: isDataUri(imageUrl),
+      isHttp: imageUrl.startsWith('http')
+    });
 
     // Enhanced authentication check
     const isAuthenticated = await validateAuthentication();
@@ -111,7 +121,7 @@ export const startConversion = async (
       message: 'Processing image for 3D conversion...'
     });
 
-    // Convert blob URL to base64 if necessary
+    // Enhanced image processing logic
     let processedImageUrl = imageUrl;
     let imageBase64: string | undefined;
 
@@ -132,6 +142,10 @@ export const startConversion = async (
         console.error('❌ [CONVERSION] Blob conversion failed:', blobError);
         throw new Error(`Failed to process camera image: ${blobError.message}`);
       }
+    } else if (isDataUri(imageUrl)) {
+      console.log('🔄 [CONVERSION] Detected data URI, using directly...');
+      imageBase64 = imageUrl;
+      processedImageUrl = '';
     }
 
     // Use the provided config or fall back to defaults
@@ -152,7 +166,7 @@ export const startConversion = async (
       message: 'Starting 3D conversion...'
     });
 
-    // Prepare the request payload
+    // Prepare the request payload with enhanced structure
     const requestPayload: {
       imageUrl?: string;
       imageBase64?: string;
@@ -162,11 +176,13 @@ export const startConversion = async (
       config: finalConfig
     };
 
-    // Use either URL or base64 data
+    // Use either URL or base64 data with proper field assignment
     if (imageBase64) {
       requestPayload.imageBase64 = imageBase64;
+      console.log('📤 [CONVERSION] Using base64 image data');
     } else {
       requestPayload.imageUrl = processedImageUrl;
+      console.log('📤 [CONVERSION] Using image URL');
     }
 
     // Add prompt if provided
@@ -174,7 +190,7 @@ export const startConversion = async (
       requestPayload.prompt = prompt;
     }
 
-    console.log('📤 [CONVERSION] Sending conversion request with payload type:', imageBase64 ? 'base64' : 'url');
+    console.log('📤 [CONVERSION] Sending conversion request...');
 
     // Call the convert-to-3d edge function with fresh authentication
     const { data, error } = await supabase.functions.invoke('convert-to-3d', {
@@ -198,6 +214,8 @@ export const startConversion = async (
         errorMessage = 'Invalid image format. Please try a different image.';
       } else if (error.message?.includes('network') || error.message?.includes('timeout')) {
         errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message?.includes('Blob URL')) {
+        errorMessage = 'Camera image processing failed. Please try taking another photo.';
       } else if (error.message) {
         errorMessage = error.message;
       }

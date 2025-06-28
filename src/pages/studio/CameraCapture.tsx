@@ -11,7 +11,7 @@ import StudioBreadcrumb from "@/components/studio/StudioBreadcrumb";
 import EnhancedCameraWorkflow from "@/components/studio/camera/EnhancedCameraWorkflow";
 import ModelViewer from "@/components/model-viewer";
 import DebugUpgradeButtons from "@/components/upgrade/DebugUpgradeButtons";
-import { Camera, Sparkles } from "lucide-react";
+import { Camera, Sparkles, AlertCircle } from "lucide-react";
 
 const CameraCapture = () => {
   const { user } = useEnhancedAuth();
@@ -25,32 +25,78 @@ const CameraCapture = () => {
     generate3DModel,
   } = useGallery3DGeneration();
 
+  const [conversionAttempts, setConversionAttempts] = useState(0);
+
   const handleImageCapture = useCallback(async (imageBlob: Blob) => {
     try {
       console.log('📸 [CAMERA-CAPTURE] Starting 3D generation from camera image');
+      console.log('📸 [CAMERA-CAPTURE] Image blob size:', imageBlob.size, 'bytes');
+      console.log('📸 [CAMERA-CAPTURE] Image blob type:', imageBlob.type);
+      
+      // Increment attempt counter for debugging
+      setConversionAttempts(prev => prev + 1);
       
       // Convert blob to data URL for processing
       const reader = new FileReader();
       reader.onload = async () => {
-        const imageDataUrl = reader.result as string;
-        await generate3DModel(imageDataUrl, `camera-capture-${Date.now()}.jpg`);
+        try {
+          const imageDataUrl = reader.result as string;
+          console.log('📸 [CAMERA-CAPTURE] Converted to data URL, size:', imageDataUrl.length);
+          
+          await generate3DModel(imageDataUrl, `camera-capture-${Date.now()}.jpg`);
+          
+          toast({
+            title: "Conversion Started",
+            description: "Your camera photo is being converted to 3D. This may take a few minutes.",
+          });
+        } catch (conversionError: any) {
+          console.error('❌ [CAMERA-CAPTURE] 3D generation failed:', conversionError);
+          handleConversionError(conversionError);
+        }
       };
-      reader.readAsDataURL(imageBlob);
-    } catch (error: any) {
-      console.log('❌ [CAMERA-CAPTURE] 3D generation failed:', error);
       
-      if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
-        console.log('🔔 [CAMERA-CAPTURE] Showing upgrade notification for model_conversion');
-        showUpgradeNotification("model_conversion");
-      } else {
+      reader.onerror = () => {
+        console.error('❌ [CAMERA-CAPTURE] FileReader failed');
         toast({
-          title: "Camera Capture Failed",
-          description: error.message || "Failed to generate 3D model from camera",
+          title: "Image Processing Failed",
+          description: "Failed to process the camera image. Please try taking another photo.",
           variant: "destructive",
         });
-      }
+      };
+      
+      reader.readAsDataURL(imageBlob);
+    } catch (error: any) {
+      console.error('❌ [CAMERA-CAPTURE] Image capture handler failed:', error);
+      handleConversionError(error);
     }
-  }, [generate3DModel, showUpgradeNotification, toast]);
+  }, [generate3DModel, toast]);
+
+  const handleConversionError = (error: any) => {
+    console.log('🔍 [CAMERA-CAPTURE] Analyzing conversion error:', error);
+    
+    if (error?.message?.includes('limit') || error?.message?.includes('quota')) {
+      console.log('🔔 [CAMERA-CAPTURE] Showing upgrade notification for model_conversion');
+      showUpgradeNotification("model_conversion");
+    } else if (error?.message?.includes('authentication') || error?.message?.includes('session')) {
+      toast({
+        title: "Authentication Error",
+        description: "Your session has expired. Please refresh the page and try again.",
+        variant: "destructive",
+      });
+    } else if (error?.message?.includes('camera') || error?.message?.includes('blob')) {
+      toast({
+        title: "Camera Image Error",
+        description: "Failed to process the camera image. Please try taking another photo with better lighting.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Camera Capture Failed",
+        description: error.message || "Failed to generate 3D model from camera. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <SecurityEnforcedRoute requireVerification={true}>
@@ -110,6 +156,25 @@ const CameraCapture = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Debug info for development */}
+                {process.env.NODE_ENV === 'development' && conversionAttempts > 0 && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-yellow-400 mb-2">
+                      <AlertCircle size={16} />
+                      <span className="text-sm font-medium">Debug Info</span>
+                    </div>
+                    <p className="text-xs text-yellow-300">
+                      Conversion attempts: {conversionAttempts}
+                    </p>
+                    <p className="text-xs text-yellow-300">
+                      Progress status: {progress.status}
+                    </p>
+                    <p className="text-xs text-yellow-300">
+                      Is generating: {isGenerating ? 'Yes' : 'No'}
+                    </p>
+                  </div>
+                )}
               </motion.div>
 
               {/* Right Panel - 3D Model Preview */}
@@ -144,6 +209,7 @@ const CameraCapture = () => {
                             />
                           </div>
                           <p className="text-sm mt-2">{progress.progress || 0}% complete</p>
+                          <p className="text-xs mt-1 text-white/40">{progress.message}</p>
                         </div>
                       ) : (
                         <div className="text-center">

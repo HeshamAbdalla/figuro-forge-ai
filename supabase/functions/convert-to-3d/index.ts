@@ -29,7 +29,6 @@ serve(async (req: Request) => {
   try {
     logStep("Function started")
     logStep("Request method", req.method)
-    logStep("Request headers", Object.fromEntries(req.headers.entries()))
 
     // Enhanced authorization header validation
     const authHeader = req.headers.get('authorization')
@@ -196,7 +195,6 @@ serve(async (req: Request) => {
       // Get raw body and validate
       const rawBody = await req.text()
       logStep("Raw request body length", rawBody?.length || 0)
-      logStep("Raw request body preview", rawBody?.substring(0, 500) || 'empty')
       
       if (!rawBody || rawBody.trim() === '') {
         logStep("ERROR: Request body is empty")
@@ -219,7 +217,6 @@ serve(async (req: Request) => {
         logStep("Request body keys", Object.keys(requestBody || {}))
       } catch (jsonError) {
         logStep("ERROR: JSON parsing failed", { error: jsonError })
-        logStep("Invalid JSON content", rawBody)
         
         return new Response(
           JSON.stringify({ 
@@ -295,33 +292,46 @@ serve(async (req: Request) => {
     // Step 1: Prepare the request payload with correct structure for Meshy API v1
     const requestPayload: any = {}
     
-    // Use base64 data if available, otherwise use URL
+    // FIXED: Handle base64 data URLs and regular URLs properly
     if (imageBase64) {
-      // Ensure base64 string has proper data URI format
-      if (!imageBase64.startsWith('data:')) {
-        logStep("ERROR: Invalid base64 format, missing data URI prefix")
+      // For base64 data, use it directly - Meshy API supports data URIs
+      requestPayload.image_url = imageBase64
+      logStep("Using base64 image data (data URI)")
+    } else if (imageUrl) {
+      // For regular URLs, validate format but allow data URIs
+      if (imageUrl.startsWith('data:image/')) {
+        // This is a data URI, which is valid
+        requestPayload.image_url = imageUrl
+        logStep("Using data URI from imageUrl field")
+      } else if (imageUrl.startsWith('blob:')) {
+        // Blob URLs are not supported by external APIs, this should have been converted to base64
+        logStep("ERROR: Blob URL detected but not converted to base64")
         return new Response(
-          JSON.stringify({ success: false, error: 'Invalid image format. Base64 data must include data URI prefix.' }),
+          JSON.stringify({ 
+            success: false, 
+            error: 'Blob URLs are not supported. Please ensure image is converted to base64.' 
+          }),
           { 
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           }
         )
-      }
-      requestPayload.image_url = imageBase64
-      logStep("Using base64 image data")
-    } else {
-      // Validate HTTP URL format for non-blob URLs
-      if (!imageUrl.startsWith('blob:')) {
+      } else {
+        // Regular HTTP/HTTPS URL - validate format
         try {
           const url = new URL(imageUrl)
           if (!['http:', 'https:'].includes(url.protocol)) {
             throw new Error('URL must use HTTP or HTTPS protocol')
           }
+          requestPayload.image_url = imageUrl
+          logStep("Using HTTP/HTTPS image URL", { url: imageUrl.substring(0, 100) + '...' })
         } catch (urlError) {
-          logStep("ERROR: Invalid image URL format", { error: urlError })
+          logStep("ERROR: Invalid HTTP URL format", { error: urlError })
           return new Response(
-            JSON.stringify({ success: false, error: 'Invalid image URL format. Must be a valid HTTP/HTTPS URL.' }),
+            JSON.stringify({ 
+              success: false, 
+              error: 'Invalid image URL format. Must be a valid HTTP/HTTPS URL or data URI.' 
+            }),
             { 
               status: 400,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -329,8 +339,6 @@ serve(async (req: Request) => {
           )
         }
       }
-      requestPayload.image_url = imageUrl
-      logStep("Using image URL", { url: imageUrl.substring(0, 100) + '...' })
     }
     
     // Add optional configuration if provided
