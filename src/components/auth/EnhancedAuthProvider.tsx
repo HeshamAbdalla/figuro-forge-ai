@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
-import { cleanupAuthState, getAuthErrorMessage, checkRateLimitSafe, isExistingAccountError } from "@/utils/authUtils";
+import { cleanupAuthState, getAuthErrorMessage, checkRateLimitSafe } from "@/utils/authUtils";
 import { validateSignupAttempt, validateSignupResponse } from "@/utils/authValidation";
 import { EmailVerificationEnforcer } from "@/utils/emailVerificationEnforcer";
 import { sessionManager } from "@/utils/sessionManager";
@@ -305,7 +305,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
 
   const signUp = async (email: string, password: string) => {
     try {
-      logDebug("Starting secure signup process", { email });
+      logDebug("Starting simplified signup process", { email });
       
       // Validation
       if (!securityManager.validateEmail(email)) {
@@ -332,27 +332,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         logWarn("Pre-signup signout failed (non-critical)");
       }
       
-      // STEP 1: Pre-signup validation
-      logDebug("Performing comprehensive pre-signup validation...");
-      const preValidation = await validateSignupAttempt(email);
+      // REMOVED: Pre-signup validation that was causing false positives
+      logDebug("Skipping pre-signup validation to prevent false positives");
       
-      if (preValidation.accountExists) {
-        logInfo("Pre-validation detected existing account");
-        
-        securityManager.logSecurityEvent({
-          event_type: 'signup_existing_account_pre_detected',
-          event_details: { 
-            email, 
-            needs_verification: preValidation.needsVerification,
-            detection_method: 'pre_validation'
-          },
-          success: true
-        });
-        
-        return { error: null, data: null, accountExists: true };
-      }
-      
-      // STEP 2: Get reCAPTCHA token for Supabase auth
+      // Get reCAPTCHA token for Supabase auth
       let recaptchaToken: string | null = null;
       
       if (isRecaptchaReady()) {
@@ -366,10 +349,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         logWarn("reCAPTCHA not available, proceeding without reCAPTCHA");
       }
       
-      // STEP 3: Attempt actual signup with Supabase's built-in reCAPTCHA
-      const redirectTo = `${window.location.origin}/studio`;
+      // Attempt actual signup with Supabase
+      const redirectTo = `${window.location.origin}/studio-hub`;
       
-      logDebug("Attempting secure Supabase signup...");
+      logDebug("Attempting Supabase signup...");
       
       const signupParams = {
         email,
@@ -394,7 +377,7 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         userId: data?.user?.id
       });
       
-      // STEP 4: Enhanced post-signup validation with security enforcement
+      // Simplified post-signup validation
       const validationResult = await validateSignupResponse(data, error);
       
       // Log validation result
@@ -411,27 +394,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       });
       
       if (validationResult.accountExists) {
-        logInfo("Post-signup validation found existing account");
+        logInfo("Existing account detected from Supabase response");
         return { error: null, data: null, accountExists: true };
-      }
-      
-      // SECURITY ENFORCEMENT: Never allow immediate access without verification
-      if (!validationResult.allowAccess) {
-        logInfo("Access denied by security enforcement");
-        
-        // If there's a session but verification is required, force sign out
-        if (data?.session) {
-          logInfo("Forcing sign out due to verification requirement");
-          await EmailVerificationEnforcer.forceSignOutUnverified('Email verification required');
-        }
-        
-        // Always show verification required message
-        toast({
-          title: "Email verification required",
-          description: "Please check your email for the verification link before signing in.",
-        });
-        
-        return { error: null, data: data, accountExists: false };
       }
       
       // Handle explicit signup errors
@@ -458,8 +422,22 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         return { error: friendlyError, data: null, accountExists: false };
       }
       
-      // This should not be reached due to security enforcement above
-      logInfo("Signup completed with verification requirement");
+      // Success - show appropriate message based on verification status
+      if (validationResult.needsVerification) {
+        logInfo("Signup successful - email verification required");
+        
+        toast({
+          title: "Account created! 🎉",
+          description: "Please check your email for the verification link to complete your registration.",
+        });
+      } else {
+        logInfo("Signup successful - ready to use");
+        
+        toast({
+          title: "Welcome! 🎉",
+          description: "Your account has been created successfully.",
+        });
+      }
       
       return { error: null, data, accountExists: false };
       

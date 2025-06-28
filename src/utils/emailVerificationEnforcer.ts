@@ -11,8 +11,8 @@ export interface VerificationEnforcementResult {
 }
 
 /**
- * OAuth-friendly email verification enforcement utility
- * Designed to be permissive for OAuth users while maintaining security
+ * Simplified OAuth-friendly email verification enforcement
+ * Focuses on allowing legitimate users access while maintaining basic security
  */
 export class EmailVerificationEnforcer {
   
@@ -25,20 +25,10 @@ export class EmailVerificationEnforcer {
   }
 
   /**
-   * Check if OAuth provider handles email verification
-   * Most major OAuth providers pre-verify emails
-   */
-  private static isVerifiedOAuthProvider(provider: string): boolean {
-    const verifiedProviders = ['google', 'github', 'microsoft', 'linkedin_oidc', 'facebook', 'twitter'];
-    return verifiedProviders.includes(provider);
-  }
-
-  /**
-   * OAuth-friendly verification enforcement
-   * Prioritizes user access while maintaining security
+   * Simplified verification enforcement - OAuth-friendly approach
    */
   static async enforceVerification(user: any, session: any): Promise<VerificationEnforcementResult> {
-    console.log('🔒 [VERIFICATION-ENFORCER] OAuth-friendly verification check');
+    console.log('🔒 [VERIFICATION-ENFORCER] Simplified verification check');
     
     if (!user || !session) {
       return {
@@ -81,8 +71,23 @@ export class EmailVerificationEnforcer {
       };
     }
 
-    // For email users, be lenient - only block if explicitly unverified
+    // For email users, only block if explicitly unverified AND account is old
     if (!isEmailConfirmed) {
+      // Check if this is a brand new signup (less than 5 minutes old)
+      const userCreated = new Date(user.created_at);
+      const now = new Date();
+      const ageInMinutes = (now.getTime() - userCreated.getTime()) / (1000 * 60);
+      
+      // Allow new signups some time to verify their email
+      if (ageInMinutes < 5) {
+        console.log('✅ [VERIFICATION-ENFORCER] New email user - allowing grace period');
+        return {
+          isVerified: false,
+          requiresVerification: true,
+          allowAccess: true // Allow access during grace period
+        };
+      }
+      
       console.log('⚠️ [VERIFICATION-ENFORCER] Email user needs verification');
       
       securityManager.logSecurityEvent({
@@ -90,7 +95,8 @@ export class EmailVerificationEnforcer {
         event_details: {
           user_id: user.id,
           email: user.email,
-          provider: provider
+          provider: provider,
+          account_age_minutes: ageInMinutes
         },
         success: true
       });
@@ -101,19 +107,6 @@ export class EmailVerificationEnforcer {
         allowAccess: false,
         redirectTo: '/auth',
         error: 'Please verify your email to continue'
-      };
-    }
-
-    // Basic session validation (lightweight)
-    if (!session.access_token) {
-      console.log('⚠️ [VERIFICATION-ENFORCER] Invalid session token');
-      
-      return {
-        isVerified: false,
-        requiresVerification: true,
-        allowAccess: false,
-        redirectTo: '/auth',
-        error: 'Session expired, please sign in again'
       };
     }
 

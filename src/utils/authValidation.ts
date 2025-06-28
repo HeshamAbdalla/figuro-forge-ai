@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { validateEmailBeforeSignup, detectExistingAccountPatterns } from './preSignupValidation';
 import { EmailVerificationEnforcer } from './emailVerificationEnforcer';
 
 export interface SignupValidationResult {
@@ -12,75 +11,60 @@ export interface SignupValidationResult {
   error?: string;
 }
 
-// Enhanced detection for existing accounts based on Supabase response patterns
+/**
+ * Improved pattern detection for existing accounts - more conservative approach
+ */
 export const detectExistingAccountFromResponse = (error: any, data: any): boolean => {
   console.log('🔍 [AUTH-VALIDATION] Analyzing signup response for existing account detection');
   console.log('🔍 [AUTH-VALIDATION] Error:', error);
   console.log('🔍 [AUTH-VALIDATION] Data:', data);
   
-  // Use the new pattern detection system
-  const patternResult = detectExistingAccountPatterns(error, data);
-  
-  if (patternResult.exists) {
-    console.log(`✅ [AUTH-VALIDATION] Existing account detected: ${patternResult.reason}`);
-    return true;
+  // Only detect existing accounts from EXPLICIT error messages
+  if (error?.message) {
+    const errorMsg = error.message.toLowerCase();
+    const explicitExistingAccountKeywords = [
+      'user already registered',
+      'already been registered', 
+      'email already in use',
+      'user with this email already exists'
+    ];
+    
+    for (const keyword of explicitExistingAccountKeywords) {
+      if (errorMsg.includes(keyword)) {
+        console.log(`✅ [AUTH-VALIDATION] Existing account detected: ${keyword}`);
+        return true;
+      }
+    }
   }
   
   console.log('❌ [AUTH-VALIDATION] No existing account detected');
   return false;
 };
 
-// Enhanced validation with comprehensive security checks
+/**
+ * Simplified signup validation - no pre-flight checks
+ */
 export const validateSignupAttempt = async (email: string): Promise<SignupValidationResult> => {
-  console.log('🔍 [AUTH-VALIDATION] Starting comprehensive pre-signup validation for:', email);
+  console.log('🔍 [AUTH-VALIDATION] Simplified signup validation for:', email);
   
-  try {
-    // Perform pre-signup validation
-    const preValidation = await validateEmailBeforeSignup(email);
-    
-    if (preValidation.accountExists) {
-      console.log('✅ [AUTH-VALIDATION] Pre-validation detected existing account');
-      return {
-        isValid: false,
-        accountExists: true,
-        needsVerification: !preValidation.isVerified,
-        requiresEmailVerification: !preValidation.isVerified,
-        allowAccess: false,
-        error: preValidation.isVerified 
-          ? 'Account already exists with this email' 
-          : 'Account exists but needs email verification'
-      };
-    }
-    
-    console.log('✅ [AUTH-VALIDATION] Pre-validation passed, no existing account detected');
-    return {
-      isValid: true,
-      accountExists: false,
-      needsVerification: false,
-      requiresEmailVerification: true, // Always require verification for new accounts
-      allowAccess: false // No immediate access until verified
-    };
-    
-  } catch (error) {
-    console.log('⚠️ [AUTH-VALIDATION] Pre-validation failed, allowing signup attempt:', error);
-    // Fail open - allow signup but require verification
-    return {
-      isValid: true,
-      accountExists: false,
-      needsVerification: false,
-      requiresEmailVerification: true,
-      allowAccess: false
-    };
-  }
+  // No pre-validation - just allow the signup attempt
+  // Supabase will handle duplicate detection properly
+  return {
+    isValid: true,
+    accountExists: false,
+    needsVerification: false,
+    requiresEmailVerification: true,
+    allowAccess: false
+  };
 };
 
 /**
- * Enhanced post-signup validation with verification enforcement
+ * Simplified post-signup validation 
  */
 export const validateSignupResponse = async (data: any, error: any): Promise<SignupValidationResult> => {
-  console.log('🔍 [AUTH-VALIDATION] Validating signup response with security enforcement');
+  console.log('🔍 [AUTH-VALIDATION] Validating signup response');
   
-  // Check for existing account patterns first
+  // Check for existing account patterns first (but be conservative)
   const accountExists = detectExistingAccountFromResponse(error, data);
   
   if (accountExists) {
@@ -94,39 +78,9 @@ export const validateSignupResponse = async (data: any, error: any): Promise<Sig
     };
   }
 
-  // If we have a user but no session, verification is required
-  if (data?.user && !data?.session) {
-    console.log('📧 [AUTH-VALIDATION] User created, email verification required');
-    return {
-      isValid: true,
-      accountExists: false,
-      needsVerification: true,
-      requiresEmailVerification: true,
-      allowAccess: false
-    };
-  }
-
-  // SECURITY ENFORCEMENT: Even if we get a session, enforce verification
-  if (data?.user && data?.session) {
-    console.log('🔒 [AUTH-VALIDATION] Session received, enforcing verification requirements');
-    
-    const enforcementResult = await EmailVerificationEnforcer.enforceVerification(
-      data.user, 
-      data.session
-    );
-
-    return {
-      isValid: enforcementResult.allowAccess,
-      accountExists: false,
-      needsVerification: !enforcementResult.isVerified,
-      requiresEmailVerification: enforcementResult.requiresVerification,
-      allowAccess: enforcementResult.allowAccess,
-      error: enforcementResult.error
-    };
-  }
-
-  // Handle explicit errors
+  // Handle explicit signup errors
   if (error) {
+    console.log('❌ [AUTH-VALIDATION] Signup error:', error);
     return {
       isValid: false,
       accountExists: false,
@@ -134,6 +88,35 @@ export const validateSignupResponse = async (data: any, error: any): Promise<Sig
       requiresEmailVerification: false,
       allowAccess: false,
       error: error.message || 'Signup failed'
+    };
+  }
+
+  // Success case - user created, may need verification
+  if (data?.user) {
+    console.log('✅ [AUTH-VALIDATION] User created successfully');
+    
+    // Check if we have a session (immediate login) or need verification
+    const hasSession = !!data?.session;
+    const isEmailConfirmed = !!data.user.email_confirmed_at;
+    
+    if (hasSession && isEmailConfirmed) {
+      // User can access immediately
+      return {
+        isValid: true,
+        accountExists: false,
+        needsVerification: false,
+        requiresEmailVerification: false,
+        allowAccess: true
+      };
+    }
+    
+    // User created but needs verification
+    return {
+      isValid: true,
+      accountExists: false,
+      needsVerification: !isEmailConfirmed,
+      requiresEmailVerification: !isEmailConfirmed,
+      allowAccess: false
     };
   }
 
@@ -148,11 +131,7 @@ export const validateSignupResponse = async (data: any, error: any): Promise<Sig
 };
 
 export const checkEmailVerificationStatus = async (email: string): Promise<boolean> => {
-  try {
-    const preValidation = await validateEmailBeforeSignup(email);
-    return preValidation.isVerified;
-  } catch (error) {
-    console.log('⚠️ [AUTH-VALIDATION] Verification check failed:', error);
-    return false;
-  }
+  // Remove this check - it was causing false positives
+  console.log('⚠️ [AUTH-VALIDATION] Email verification check disabled to prevent false positives');
+  return false;
 };
