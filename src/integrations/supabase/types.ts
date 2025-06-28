@@ -552,6 +552,10 @@ export type Database = {
         Args: { feature_type: string; user_id_param: string; amount?: number }
         Returns: boolean
       }
+      enhanced_security_health_check: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_user_role: {
         Args: { check_user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
@@ -599,9 +603,17 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      security_cleanup: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       security_health_check: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      validate_payment_session: {
+        Args: { session_id: string; expected_user_id: string }
+        Returns: boolean
       }
       validate_rls_policies: {
         Args: Record<PropertyKey, never>
@@ -611,6 +623,15 @@ export type Database = {
           policy_count: number
           security_status: string
         }[]
+      }
+      validate_subscription_upgrade: {
+        Args: {
+          target_user_id: string
+          new_plan_type: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+        }
+        Returns: boolean
       }
     }
     Enums: {

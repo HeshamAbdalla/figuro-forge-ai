@@ -1,113 +1,138 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Shield, AlertTriangle, CheckCircle, Activity, RefreshCw } from 'lucide-react';
-import { useEnhancedAuth } from '@/components/auth/EnhancedAuthProvider';
-import { supabase } from '@/integrations/supabase/client';
 
-interface SecurityEventFromDB {
-  id: string;
-  event_type: string;
-  event_details: any;
-  created_at: string;
-  success: boolean;
-  ip_address: string | null;
-  user_agent: string;
-  user_id: string;
-}
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useEnhancedAuth } from '@/components/auth/EnhancedAuthProvider';
+import { useToast } from '@/hooks/use-toast';
+import { Shield, Activity, AlertTriangle, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 
 interface SecurityEvent {
   id: string;
   event_type: string;
-  event_details: any;
-  created_at: string;
   success: boolean;
-  ip_address?: string;
+  created_at: string;
+  event_details: any;
 }
 
-export function SecurityDashboard() {
-  const { user, securityScore } = useEnhancedAuth();
-  const [recentEvents, setRecentEvents] = useState<SecurityEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+interface SecurityStats {
+  totalEvents: number;
+  failedEvents: number;
+  successRate: number;
+  recentActivity: SecurityEvent[];
+}
 
-  const fetchSecurityEvents = async () => {
+/**
+ * SecurityDashboard provides user-level security monitoring
+ */
+export const SecurityDashboard: React.FC = () => {
+  const { user } = useEnhancedAuth();
+  const [securityStats, setSecurityStats] = useState<SecurityStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { toast } = useToast();
+
+  const fetchSecurityStats = async (showToast = false) => {
     if (!user) return;
-    
+
     try {
-      setLoading(true);
-      const { data, error } = await supabase
+      setRefreshing(true);
+
+      // Fetch user's security events
+      const { data: events, error } = await supabase
         .from('security_audit_log')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(50);
 
       if (error) throw error;
-      
-      // Transform the data to match our SecurityEvent interface
-      const transformedEvents: SecurityEvent[] = (data || []).map((event: SecurityEventFromDB) => ({
-        id: event.id,
-        event_type: event.event_type,
-        event_details: event.event_details,
-        created_at: event.created_at,
-        success: event.success,
-        ip_address: event.ip_address || undefined
-      }));
-      
-      setRecentEvents(transformedEvents);
-    } catch (error) {
-      console.error('Error fetching security events:', error);
+
+      const totalEvents = events?.length || 0;
+      const failedEvents = events?.filter(e => !e.success).length || 0;
+      const successRate = totalEvents > 0 ? ((totalEvents - failedEvents) / totalEvents) * 100 : 100;
+
+      setSecurityStats({
+        totalEvents,
+        failedEvents,
+        successRate,
+        recentActivity: events?.slice(0, 10) || []
+      });
+
+      if (showToast) {
+        toast({
+          title: "Security Data Refreshed",
+          description: `Found ${totalEvents} security events`
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching security stats:', error);
+      toast({
+        title: "Failed to Load Security Data",
+        description: error.message,
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchSecurityEvents();
-  }, [user]);
-
-  const getSecurityScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getSecurityScoreLabel = (score: number) => {
-    if (score >= 80) return 'Excellent';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Fair';
-    return 'Poor';
   };
 
   const getEventIcon = (eventType: string, success: boolean) => {
-    if (!success) return <AlertTriangle className="h-4 w-4 text-red-500" />;
+    if (!success) return <AlertTriangle className="w-4 h-4 text-red-500" />;
     
     switch (eventType) {
-      case 'signin_success':
-      case 'signup_success':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'auth_refresh_success':
-        return <RefreshCw className="h-4 w-4 text-blue-500" />;
+      case 'user_session_active':
+      case 'user_signin':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'checkout_session_created':
+      case 'payment_verified':
+        return <Shield className="w-4 h-4 text-blue-500" />;
       default:
-        return <Activity className="h-4 w-4 text-gray-500" />;
+        return <Activity className="w-4 h-4 text-gray-500" />;
     }
   };
 
-  const formatEventType = (eventType: string) => {
-    return eventType
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+  const getEventDescription = (event: SecurityEvent) => {
+    const baseDescription = event.event_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    
+    if (event.event_details) {
+      if (event.event_details.plan) {
+        return `${baseDescription} (${event.event_details.plan} plan)`;
+      }
+      if (event.event_details.sessionValid !== undefined) {
+        return `${baseDescription} (${event.event_details.sessionValid ? 'Valid' : 'Invalid'} session)`;
+      }
+    }
+    
+    return baseDescription;
   };
 
-  if (!user) {
+  useEffect(() => {
+    fetchSecurityStats();
+  }, [user]);
+
+  if (loading) {
     return (
-      <Alert>
-        <Shield className="h-4 w-4" />
-        <AlertDescription>
-          Please sign in to view your security dashboard.
+      <Card>
+        <CardContent className="flex items-center justify-center p-8">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            <span>Loading security data...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!securityStats) {
+    return (
+      <Alert className="border-red-500 bg-red-50">
+        <AlertTriangle className="w-4 h-4 text-red-600" />
+        <AlertDescription className="text-red-800">
+          Could not load security data
         </AlertDescription>
       </Alert>
     );
@@ -115,131 +140,99 @@ export function SecurityDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Security Score Card */}
+      {/* Security Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Security Score</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
+            <Activity className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              <span className={getSecurityScoreColor(securityScore)}>
-                {securityScore}/100
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {getSecurityScoreLabel(securityScore)} security level
-            </p>
-            <div className="mt-4">
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full ${
-                    securityScore >= 80 ? 'bg-green-600' :
-                    securityScore >= 60 ? 'bg-yellow-600' : 'bg-red-600'
-                  }`}
-                  style={{ width: `${securityScore}%` }}
-                ></div>
-              </div>
-            </div>
+            <div className="text-2xl font-bold">{securityStats.totalEvents}</div>
+            <p className="text-xs text-muted-foreground">Security events logged</p>
           </CardContent>
         </Card>
 
-        {/* Account Status Card */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+            <CheckCircle className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{securityStats.successRate.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground">
+              {securityStats.failedEvents} failed events
+            </p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Account Status</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <Shield className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Email Verified</span>
-                <Badge variant={user.email_confirmed_at ? "default" : "secondary"}>
-                  {user.email_confirmed_at ? "Yes" : "No"}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Phone Verified</span>
-                <Badge variant={user.phone_confirmed_at ? "default" : "secondary"}>
-                  {user.phone_confirmed_at ? "Yes" : "No"}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">2FA Enabled</span>
-                <Badge variant="secondary">Not Available</Badge>
-              </div>
+            <div className="text-2xl font-bold">
+              <Badge variant={securityStats.failedEvents === 0 ? "default" : "destructive"}>
+                {securityStats.failedEvents === 0 ? "Secure" : "Alert"}
+              </Badge>
             </div>
+            <p className="text-xs text-muted-foreground">Current security status</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Security Events */}
+      {/* Failed Events Alert */}
+      {securityStats.failedEvents > 0 && (
+        <Alert className="border-orange-500 bg-orange-50">
+          <AlertTriangle className="w-4 h-4 text-orange-600" />
+          <AlertDescription className="text-orange-800">
+            <strong>Security Alert:</strong> {securityStats.failedEvents} failed security events detected. 
+            Please review your recent activity below.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Recent Activity */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Recent Security Events</CardTitle>
+            <CardTitle>Recent Security Activity</CardTitle>
             <CardDescription>
-              Your latest authentication and security activities
+              Your latest security events and authentication activities
             </CardDescription>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={fetchSecurityEvents}
-            disabled={loading}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchSecurityStats(true)}
+            disabled={refreshing}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              ))}
-            </div>
-          ) : recentEvents.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+          {securityStats.recentActivity.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
               No security events found
-            </div>
+            </p>
           ) : (
-            <div className="space-y-4">
-              {recentEvents.map((event) => (
-                <div key={event.id} className="flex items-start space-x-3 p-3 rounded-lg border">
-                  {getEventIcon(event.event_type, event.success)}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">
-                        {formatEventType(event.event_type)}
+            <div className="space-y-3">
+              {securityStats.recentActivity.map((event) => (
+                <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {getEventIcon(event.event_type, event.success)}
+                    <div>
+                      <p className="font-medium">{getEventDescription(event)}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(event.created_at).toLocaleString()}
                       </p>
-                      <Badge variant={event.success ? "default" : "destructive"}>
-                        {event.success ? "Success" : "Failed"}
-                      </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(event.created_at).toLocaleString()}
-                    </p>
-                    {event.ip_address && (
-                      <p className="text-xs text-muted-foreground">
-                        IP: {event.ip_address}
-                      </p>
-                    )}
-                    {event.event_details && Object.keys(event.event_details).length > 0 && (
-                      <details className="mt-2">
-                        <summary className="text-xs cursor-pointer text-blue-600">
-                          View Details
-                        </summary>
-                        <pre className="text-xs mt-1 p-2 bg-gray-50 rounded overflow-auto">
-                          {JSON.stringify(event.event_details, null, 2)}
-                        </pre>
-                      </details>
-                    )}
                   </div>
+                  <Badge variant={event.success ? "default" : "destructive"}>
+                    {event.success ? "Success" : "Failed"}
+                  </Badge>
                 </div>
               ))}
             </div>
@@ -250,35 +243,33 @@ export function SecurityDashboard() {
       {/* Security Recommendations */}
       <Card>
         <CardHeader>
-          <CardTitle>Security Recommendations</CardTitle>
-          <CardDescription>
-            Improve your account security with these suggestions
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5" />
+            Security Recommendations
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {!user.email_confirmed_at && (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Verify your email address to improve account security and unlock full features.
-                </AlertDescription>
-              </Alert>
-            )}
+            <Alert>
+              <CheckCircle className="w-4 h-4" />
+              <AlertDescription>
+                <strong>Your account is being monitored:</strong> All authentication and payment activities are logged for security.
+              </AlertDescription>
+            </Alert>
             
-            {!user.phone_confirmed_at && (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Add and verify a phone number for enhanced account security and recovery options.
+            {securityStats.failedEvents > 0 && (
+              <Alert className="border-orange-500 bg-orange-50">
+                <AlertTriangle className="w-4 h-4 text-orange-600" />
+                <AlertDescription className="text-orange-800">
+                  <strong>Action Required:</strong> Review failed security events and ensure your account hasn't been compromised.
                 </AlertDescription>
               </Alert>
             )}
             
             <Alert>
-              <Shield className="h-4 w-4" />
+              <Clock className="w-4 h-4" />
               <AlertDescription>
-                Regularly review your security events and report any suspicious activity.
+                Security events are retained for 90 days. Older events are automatically cleaned up.
               </AlertDescription>
             </Alert>
           </div>
@@ -286,4 +277,4 @@ export function SecurityDashboard() {
       </Card>
     </div>
   );
-}
+};
