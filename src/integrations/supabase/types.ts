@@ -512,6 +512,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_admin_role: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       audit_security_definer_functions: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -539,6 +543,10 @@ export type Database = {
       clear_rate_limits_for_endpoint: {
         Args: { p_endpoint: string }
         Returns: undefined
+      }
+      comprehensive_security_check: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       consume_feature_usage: {
         Args: { feature_type: string; user_id_param: string; amount?: number }
@@ -578,6 +586,10 @@ export type Database = {
           user_id_param?: string
         }
         Returns: undefined
+      }
+      make_user_admin: {
+        Args: { user_email: string }
+        Returns: boolean
       }
       reset_daily_usage: {
         Args: Record<PropertyKey, never>
