@@ -17,7 +17,7 @@ import {
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, loading } = useEnhancedAuth();
+  const { user } = useEnhancedAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -74,9 +74,7 @@ const Header = () => {
 
         {/* User Menu / Auth Buttons */}
         <div className="flex items-center space-x-4">
-          {loading ? (
-            <div className="w-8 h-8 rounded-full bg-white/20 animate-pulse" />
-          ) : user ? (
+          {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">

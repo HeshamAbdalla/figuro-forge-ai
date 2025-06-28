@@ -34,7 +34,7 @@ export const SecurityAuditLogger: React.FC = () => {
           event_details: {
             userId: user.id,
             currentPath: window.location.pathname,
-            sessionDuration: session ? Date.now() - new Date(session.issued_at || Date.now()).getTime() : 0
+            sessionDuration: session ? Date.now() - new Date(session.created_at || Date.now()).getTime() : 0
           },
           success: true
         });

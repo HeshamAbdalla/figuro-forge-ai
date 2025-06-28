@@ -33,13 +33,19 @@ export const SecurityHealthMonitor: React.FC = () => {
       
       if (error) throw error;
       
-      setHealthData(data);
-      
-      if (showToast) {
-        toast({
-          title: "Security Health Updated",
-          description: `Security score: ${data.security_score}/100`
-        });
+      // Type guard to check if data is valid SecurityHealthData
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const typedData = data as SecurityHealthData;
+        setHealthData(typedData);
+        
+        if (showToast) {
+          toast({
+            title: "Security Health Updated",
+            description: `Security score: ${typedData.security_score}/100`
+          });
+        }
+      } else {
+        throw new Error('Invalid data format received from security health check');
       }
     } catch (error: any) {
       console.error('Error fetching security health:', error);
@@ -128,7 +134,7 @@ export const SecurityHealthMonitor: React.FC = () => {
       {/* Critical Issues */}
       {healthData.critical_issues.length > 0 && (
         <Alert className="border-red-500 bg-red-50">
-          <AlertTriangle className="w-4 h-4 text-red-600" />
+          <AlertTriangle className="w-4 w-4 text-red-600" />
           <AlertDescription>
             <div className="space-y-2">
               <strong className="text-red-800">Critical Security Issues:</strong>

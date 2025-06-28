@@ -8,7 +8,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { EnhancedAuthProvider } from "@/components/auth/EnhancedAuthProvider";
 import { SecurityAuditLogger } from "@/components/security/SecurityAuditLogger";
 import Index from "./pages/Index";
-import Studio from "./pages/Studio";
+import StudioHub from "./pages/StudioHub";
 import Gallery from "./pages/Gallery";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
@@ -29,7 +29,7 @@ const App = () => (
             <div className="min-h-screen bg-figuro-dark">
               <Routes>
                 <Route path="/" element={<Index />} />
-                <Route path="/studio" element={<Studio />} />
+                <Route path="/studio" element={<StudioHub />} />
                 <Route path="/gallery" element={<Gallery />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/profile" element={<Profile />} />
