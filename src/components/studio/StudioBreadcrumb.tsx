@@ -24,7 +24,7 @@ const StudioBreadcrumb = ({ currentPage, description }: StudioBreadcrumbProps) =
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate('/studio-hub')}
+          onClick={() => navigate('/studio')}
           className="text-white/60 hover:text-white p-0 h-auto font-normal"
         >
           <Home className="w-4 h-4 mr-1" />
@@ -45,7 +45,7 @@ const StudioBreadcrumb = ({ currentPage, description }: StudioBreadcrumbProps) =
         
         <Button
           variant="outline"
-          onClick={() => navigate('/studio-hub')}
+          onClick={() => navigate('/studio')}
           className="border-white/20 text-white hover:bg-white/10"
         >
           <ChevronLeft className="w-4 h-4 mr-2" />
