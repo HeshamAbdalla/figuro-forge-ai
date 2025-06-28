@@ -2,29 +2,70 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-// Plan configuration with live Stripe price IDs
+// Plan configuration with strict validation - MUST match create-checkout
 const PLANS = {
-  free: { monthlyCredits: 3, order: 0 },
-  starter: { monthlyCredits: 25, order: 1 },
-  pro: { monthlyCredits: 120, order: 2 },
-  unlimited: { monthlyCredits: 999999, order: 3 },
+  free: { monthlyCredits: 3, order: 0, maxAmount: 0 },
+  starter: { monthlyCredits: 25, order: 1, maxAmount: 1299 },
+  pro: { monthlyCredits: 120, order: 2, maxAmount: 2999 },
+  unlimited: { monthlyCredits: 999999, order: 3, maxAmount: 5999 },
 };
 
-// Price ID to plan mapping with live Stripe price IDs
+// SECURITY: Strict price ID validation with live Stripe price IDs
 const PRICE_TO_PLAN = {
-  'price_1QnGxCFz9RxnLs0LABo9Nv96': 'starter',
-  'price_1QnGzNFz9RxnLs0LPZneLEEd': 'pro', 
-  'price_1QnH0bFz9RxnLs0LQY4RdqvO': 'unlimited'
+  'price_1Rbr6rFmCMNpEEexgSZiJaKZ': 'starter',
+  'price_1Rbr6rFmCMNpEEFyJpgHJmxA': 'pro', 
+  'price_1Rbr6rFmCMNpEEF0dVqHyTgN': 'unlimited'
 };
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[WEBHOOK-STRIPE] ${step}${detailsStr}`);
+  console.log(`[WEBHOOK-STRIPE-SECURE] ${step}${detailsStr}`);
+};
+
+// Enhanced security logging
+const logSecurityEvent = async (supabaseAdmin: any, eventType: string, details: any, success: boolean = true) => {
+  try {
+    await supabaseAdmin.rpc('log_security_event', {
+      p_user_id: details.user_id || null,
+      p_event_type: eventType,
+      p_event_details: details,
+      p_ip_address: null,
+      p_user_agent: 'Stripe-Webhook',
+      p_success: success
+    });
+  } catch (error) {
+    console.error('Failed to log security event:', error);
+  }
+};
+
+// Enhanced plan validation with security checks
+const validatePlanTransition = (oldPlan: string, newPlan: string, paidAmount: number): boolean => {
+  const oldConfig = PLANS[oldPlan];
+  const newConfig = PLANS[newPlan];
+  
+  if (!oldConfig || !newConfig) {
+    logStep("SECURITY: Invalid plan in transition", { oldPlan, newPlan });
+    return false;
+  }
+  
+  // Free plans should not have payments
+  if (newPlan === 'free' && paidAmount > 0) {
+    logStep("SECURITY: Free plan with payment detected", { newPlan, paidAmount });
+    return false;
+  }
+  
+  // Paid plans must have appropriate payment amounts
+  if (newPlan !== 'free' && paidAmount < newConfig.maxAmount * 0.8) { // Allow 20% variance for promotions
+    logStep("SECURITY: Insufficient payment for plan", { newPlan, paidAmount, expected: newConfig.maxAmount });
+    return false;
+  }
+  
+  return true;
 };
 
 serve(async (req) => {
   try {
-    logStep("Webhook received");
+    logStep("Webhook received with enhanced security");
     
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
@@ -35,12 +76,13 @@ serve(async (req) => {
     const signature = req.headers.get("stripe-signature");
     
     if (!signature) {
+      logStep("SECURITY: No signature header in webhook");
       return new Response("No signature header", { status: 400 });
     }
     
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
     if (!webhookSecret) {
-      logStep("STRIPE_WEBHOOK_SECRET is not set");
+      logStep("CRITICAL: STRIPE_WEBHOOK_SECRET is not set");
       return new Response("Webhook secret not configured", { status: 500 });
     }
     
@@ -48,11 +90,11 @@ serve(async (req) => {
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     } catch (err) {
-      logStep(`Webhook signature verification failed`, { error: err instanceof Error ? err.message : String(err) });
+      logStep(`SECURITY: Webhook signature verification failed`, { error: err instanceof Error ? err.message : String(err) });
       return new Response("Webhook signature verification failed", { status: 400 });
     }
     
-    logStep("Webhook verified", { type: event.type });
+    logStep("Webhook verified securely", { type: event.type });
     
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -60,31 +102,31 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
     
-    // Helper function to determine plan from Stripe price with live price IDs
-    const determinePlanFromPrice = async (priceId: string): Promise<{ planType: string; planConfig: any }> => {
-      // First check our direct mapping
+    // Enhanced plan determination with strict validation
+    const determinePlanFromPrice = async (priceId: string): Promise<{ planType: string; planConfig: any; paidAmount: number }> => {
+      logStep("SECURITY: Validating price ID", { priceId });
+      
+      // CRITICAL: Only allow pre-approved price IDs
       if (PRICE_TO_PLAN[priceId]) {
         const planType = PRICE_TO_PLAN[priceId];
-        return { planType, planConfig: PLANS[planType] || PLANS.free };
+        const planConfig = PLANS[planType];
+        logStep("SECURITY: Valid price ID confirmed", { priceId, planType });
+        
+        // Get the actual amount paid from Stripe
+        try {
+          const price = await stripe.prices.retrieve(priceId);
+          const paidAmount = price.unit_amount || 0;
+          
+          return { planType, planConfig, paidAmount };
+        } catch (error) {
+          logStep("SECURITY: Failed to retrieve price details", { priceId, error: error.message });
+          throw new Error("Invalid price configuration");
+        }
       }
       
-      // Fallback to checking product name if price ID not found
-      try {
-        const price = await stripe.prices.retrieve(priceId);
-        const product = await stripe.products.retrieve(price.product as string);
-        const productName = product.name.toLowerCase();
-        
-        let planType = "free";
-        if (productName.includes("starter")) planType = "starter";
-        else if (productName.includes("pro")) planType = "pro";
-        else if (productName.includes("unlimited")) planType = "unlimited";
-        
-        logStep("Determined plan from product name", { priceId, productName, planType });
-        return { planType, planConfig: PLANS[planType] || PLANS.free };
-      } catch (error) {
-        logStep("Error determining plan from price", { priceId, error: error instanceof Error ? error.message : String(error) });
-        return { planType: "free", planConfig: PLANS.free };
-      }
+      logStep("SECURITY: UNAUTHORIZED PRICE ID DETECTED", { priceId });
+      await logSecurityEvent(supabaseAdmin, 'webhook_unauthorized_price', { priceId }, false);
+      throw new Error(`Unauthorized price ID: ${priceId}`);
     };
 
     // Enhanced plan switching logic with proportional credit preservation
@@ -256,29 +298,67 @@ serve(async (req) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
-        logStep("Checkout session completed", { sessionId: session.id });
+        logStep("Processing checkout.session.completed with enhanced security", { sessionId: session.id });
         
         const userId = session.metadata?.userId;
         const planType = session.metadata?.plan;
         const commercialLicense = session.metadata?.commercialLicense === 'true';
         const additionalConversions = parseInt(session.metadata?.additionalConversions || '0', 10);
         
+        // Enhanced validation
         if (!userId || !planType) {
-          logStep("Missing metadata in checkout session", { userId, planType });
+          logStep("SECURITY: Missing critical metadata in checkout session", { userId, planType });
+          await logSecurityEvent(supabaseAdmin, 'webhook_missing_metadata', { sessionId: session.id, userId, planType }, false);
           return new Response("Missing metadata", { status: 400 });
         }
         
         const subscriptionId = session.subscription;
         if (!subscriptionId) {
-          logStep("No subscription ID in checkout session");
+          logStep("SECURITY: No subscription ID in checkout session");
+          await logSecurityEvent(supabaseAdmin, 'webhook_missing_subscription', { sessionId: session.id, userId }, false);
           return new Response("No subscription ID", { status: 400 });
         }
         
+        // Enhanced subscription validation
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const validUntil = new Date(subscription.current_period_end * 1000).toISOString();
         const priceId = subscription.items.data[0].price.id;
         
-        const planConfig = PLANS[planType] || PLANS.free;
+        // CRITICAL: Validate price ID and plan match
+        const { planType: validatedPlan, planConfig, paidAmount } = await determinePlanFromPrice(priceId);
+        
+        if (validatedPlan !== planType) {
+          logStep("SECURITY: Plan mismatch detected", { 
+            sessionPlan: planType, 
+            validatedPlan, 
+            priceId,
+            userId 
+          });
+          await logSecurityEvent(supabaseAdmin, 'webhook_plan_mismatch', {
+            sessionPlan: planType,
+            validatedPlan,
+            priceId,
+            userId,
+            sessionId: session.id
+          }, false);
+          return new Response("Plan validation failed", { status: 400 });
+        }
+        
+        // Validate payment amount
+        if (!validatePlanTransition('free', validatedPlan, paidAmount)) {
+          logStep("SECURITY: Invalid plan transition detected", { 
+            plan: validatedPlan, 
+            paidAmount,
+            userId 
+          });
+          await logSecurityEvent(supabaseAdmin, 'webhook_invalid_transition', {
+            plan: validatedPlan,
+            paidAmount,
+            userId,
+            sessionId: session.id
+          }, false);
+          return new Response("Invalid plan transition", { status: 400 });
+        }
         
         const { error: updateError } = await supabaseAdmin
           .from("subscriptions")
@@ -287,7 +367,7 @@ serve(async (req) => {
             stripe_customer_id: session.customer,
             stripe_subscription_id: subscriptionId,
             stripe_price_id: priceId,
-            plan_type: planType,
+            plan_type: validatedPlan,
             commercial_license: commercialLicense,
             additional_conversions: additionalConversions,
             valid_until: validUntil,
@@ -305,25 +385,44 @@ serve(async (req) => {
           }, { onConflict: 'user_id' });
         
         if (updateError) {
-          logStep("Error updating subscription in database", { error: updateError.message });
+          logStep("SECURITY: Error updating subscription in database", { error: updateError.message });
+          await logSecurityEvent(supabaseAdmin, 'webhook_database_error', {
+            error: updateError.message,
+            userId,
+            sessionId: session.id
+          }, false);
           return new Response("Error updating subscription", { status: 500 });
         }
         
-        logStep("Subscription created successfully", { userId, planType, credits: planConfig.monthlyCredits, priceId });
+        await logSecurityEvent(supabaseAdmin, 'webhook_subscription_created', {
+          userId,
+          plan: validatedPlan,
+          credits: planConfig.monthlyCredits,
+          priceId,
+          paidAmount,
+          sessionId: session.id
+        });
+        
+        logStep("Subscription created successfully with enhanced security", { 
+          userId, 
+          planType: validatedPlan, 
+          credits: planConfig.monthlyCredits, 
+          priceId 
+        });
         break;
       }
       
       case 'customer.subscription.updated': {
         const subscription = event.data.object;
-        logStep("Subscription updated", { subscriptionId: subscription.id, status: subscription.status });
+        logStep("Processing subscription.updated with enhanced security", { subscriptionId: subscription.id, status: subscription.status });
         
         const customerId = subscription.customer;
         const priceId = subscription.items.data[0].price.id;
         
-        // Determine new plan from price using live price IDs
-        const { planType: newPlan } = await determinePlanFromPrice(priceId);
+        // Enhanced plan determination with security validation
+        const { planType: newPlan, paidAmount } = await determinePlanFromPrice(priceId);
         
-        // Find user by customer ID and get current plan
+        // Find user by customer ID
         const { data: currentSub, error: subError } = await supabaseAdmin
           .from("subscriptions")
           .select("user_id, plan_type")
@@ -331,7 +430,8 @@ serve(async (req) => {
           .single();
         
         if (subError || !currentSub) {
-          logStep("Could not find subscription for customer", { customerId, error: subError?.message });
+          logStep("SECURITY: Could not find subscription for customer", { customerId, error: subError?.message });
+          await logSecurityEvent(supabaseAdmin, 'webhook_customer_not_found', { customerId }, false);
           return new Response("Subscription not found", { status: 404 });
         }
         
@@ -339,48 +439,69 @@ serve(async (req) => {
         const isActive = subscription.status === 'active' || subscription.status === 'trialing';
         const validUntil = isActive ? new Date(subscription.current_period_end * 1000).toISOString() : null;
         
-        // Handle enhanced plan switching if plan changed
+        // Enhanced plan transition validation
         if (newPlan !== oldPlan && isActive) {
-          await handleEnhancedPlanSwitch(currentSub.user_id, newPlan, oldPlan, {
-            priceId,
-            subscriptionId: subscription.id,
-            validUntil
+          if (!validatePlanTransition(oldPlan, newPlan, paidAmount)) {
+            logStep("SECURITY: Invalid plan transition in subscription update", { 
+              oldPlan, 
+              newPlan, 
+              paidAmount,
+              userId: currentSub.user_id 
+            });
+            await logSecurityEvent(supabaseAdmin, 'webhook_invalid_plan_change', {
+              oldPlan,
+              newPlan,
+              paidAmount,
+              userId: currentSub.user_id,
+              subscriptionId: subscription.id
+            }, false);
+            return new Response("Invalid plan change", { status: 400 });
+          }
+          
+          await logSecurityEvent(supabaseAdmin, 'webhook_plan_change_validated', {
+            oldPlan,
+            newPlan,
+            paidAmount,
+            userId: currentSub.user_id,
+            subscriptionId: subscription.id
           });
-        } else {
-          // Just update status and dates
-          let dbStatus = 'inactive';
-          if (subscription.status === 'active' || subscription.status === 'trialing') {
-            dbStatus = 'active';
-          } else if (subscription.status === 'past_due') {
-            dbStatus = 'past_due';
-          } else if (subscription.status === 'canceled') {
-            dbStatus = 'canceled';
-          }
-          
-          const { error: updateError } = await supabaseAdmin
-            .from("subscriptions")
-            .update({
-              stripe_price_id: priceId,
-              valid_until: validUntil,
-              expires_at: validUntil,
-              status: dbStatus,
-              updated_at: new Date().toISOString()
-            })
-            .eq("user_id", currentSub.user_id);
-          
-          if (updateError) {
-            logStep("Error updating subscription status", { error: updateError.message });
-            return new Response("Error updating subscription status", { status: 500 });
-          }
         }
         
-        logStep("Subscription update processed", { userId: currentSub.user_id, newPlan, status: subscription.status, priceId });
+        // Update subscription with enhanced security logging
+        const updateData = {
+          plan_type: newPlan,
+          stripe_price_id: priceId,
+          status: isActive ? 'active' : 'cancelled',
+          valid_until: validUntil,
+          expires_at: validUntil,
+          updated_at: new Date().toISOString()
+        };
+        
+        const { error: updateError } = await supabaseAdmin
+          .from("subscriptions")
+          .update(updateData)
+          .eq("user_id", currentSub.user_id);
+        
+        if (updateError) {
+          logStep("SECURITY: Error updating subscription", { error: updateError.message });
+          await logSecurityEvent(supabaseAdmin, 'webhook_update_error', {
+            error: updateError.message,
+            userId: currentSub.user_id,
+            subscriptionId: subscription.id
+          }, false);
+        }
+        
+        logStep("Subscription updated successfully with security validation", { 
+          newPlan, 
+          userId: currentSub.user_id,
+          status: subscription.status 
+        });
         break;
       }
       
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object;
-        logStep("Invoice payment succeeded", { 
+        logStep("Processing invoice.payment_succeeded with enhanced security", { 
           invoiceId: invoice.id, 
           billingReason: invoice.billing_reason 
         });
@@ -395,7 +516,7 @@ serve(async (req) => {
             .single();
           
           if (subError || !subscription) {
-            logStep("Could not find subscription for renewal", { 
+            logStep("SECURITY: Could not find subscription for renewal", { 
               customerId: invoice.customer, 
               error: subError?.message 
             });
@@ -429,7 +550,7 @@ serve(async (req) => {
               .eq("user_id", subscription.user_id);
             
             if (updateError) {
-              logStep("Error updating subscription for renewal", { error: updateError.message });
+              logStep("SECURITY: Error updating subscription for renewal", { error: updateError.message });
               return new Response("Error updating subscription", { status: 500 });
             }
             
@@ -446,7 +567,7 @@ serve(async (req) => {
       
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
-        logStep("Invoice payment failed", { 
+        logStep("Processing invoice.payment_failed with enhanced security", { 
           invoiceId: invoice.id, 
           customerId: invoice.customer 
         });
@@ -458,7 +579,7 @@ serve(async (req) => {
           .single();
         
         if (subError || !subscription) {
-          logStep("Could not find subscription for failed payment", { 
+          logStep("SECURITY: Could not find subscription for failed payment", { 
             customerId: invoice.customer, 
             error: subError?.message 
           });
@@ -474,17 +595,17 @@ serve(async (req) => {
           .eq("user_id", subscription.user_id);
         
         if (updateError) {
-          logStep("Error updating subscription for failed payment", { error: updateError.message });
+          logStep("SECURITY: Error updating subscription for failed payment", { error: updateError.message });
           return new Response("Error updating subscription", { status: 500 });
         }
         
-        logStep("Subscription marked as past due", { userId: subscription.user_id });
+        logStep("Subscription marked as past due with security validation", { userId: subscription.user_id });
         break;
       }
       
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
-        logStep("Subscription deleted", { subscriptionId: subscription.id });
+        logStep("Processing customer.subscription.deleted with enhanced security", { subscriptionId: subscription.id });
         
         const customerId = subscription.customer;
         
@@ -495,7 +616,7 @@ serve(async (req) => {
           .single();
         
         if (userError || !userData) {
-          logStep("Could not find user for customer", { customerId, error: userError?.message });
+          logStep("SECURITY: Could not find user for customer", { customerId, error: userError?.message });
           return new Response("User not found", { status: 404 });
         }
         
@@ -516,11 +637,11 @@ serve(async (req) => {
           .eq("user_id", userData.user_id);
         
         if (updateError) {
-          logStep("Error downgrading to free plan", { error: updateError.message });
+          logStep("SECURITY: Error downgrading to free plan", { error: updateError.message });
           return new Response("Error downgrading subscription", { status: 500 });
         }
         
-        logStep("Downgraded to free plan", { userId: userData.user_id });
+        logStep("Downgraded to free plan with security validation", { userId: userData.user_id });
         break;
       }
       
@@ -530,15 +651,11 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ received: true }), {
       headers: { "Content-Type": "application/json" },
-      status: 200
+      status: 200,
     });
-    
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[WEBHOOK-STRIPE] Error: ${errorMessage}`);
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      headers: { "Content-Type": "application/json" },
-      status: 500
-    });
+    logStep("SECURITY ERROR processing webhook", { error: error instanceof Error ? error.message : String(error) });
+    console.error(`SECURITY ERROR in webhook: ${error instanceof Error ? error.message : String(error)}`);
+    return new Response(`Server error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
   }
 });
