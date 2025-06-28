@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useMobileDevice } from '@/hooks/useMobileDevice';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import MobileCameraStream from './MobileCameraStream';
 import CameraImagePreview from './CameraImagePreview';
 import CameraModelPreview from './CameraModelPreview';
@@ -29,7 +30,8 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
   isProcessing = false,
   progress
 }) => {
-  const { isMobile, hasCamera, isIOS, isAndroid } = useMobileDevice();
+  const { isMobile: deviceIsMobile, hasCamera, isIOS, isAndroid } = useMobileDevice();
+  const { isMobile, isTablet } = useResponsiveLayout();
   const [workflowState, setWorkflowState] = useState<WorkflowState>('start');
   const [capturedImage, setCapturedImage] = useState<{
     blob: Blob;
@@ -114,7 +116,7 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
   };
 
   // Desktop fallback
-  if (!isMobile || !hasCamera) {
+  if (!deviceIsMobile || !hasCamera) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -152,7 +154,7 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto space-y-6"
+      className={`space-y-4 ${isMobile ? 'max-w-none' : 'max-w-4xl mx-auto space-y-6'}`}
     >
       {/* Device info banner */}
       <div className="glass-panel rounded-lg p-3 text-center">
@@ -161,28 +163,28 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
         </p>
       </div>
 
-      {/* Main workflow area - responsive grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Responsive workflow area */}
+      <div className={isMobile ? 'space-y-4' : 'grid grid-cols-1 lg:grid-cols-2 gap-6'}>
         
-        {/* Left column - Camera/Image area */}
+        {/* Camera/Image area */}
         <div className="space-y-4">
           {workflowState === 'start' && (
-            <div className="glass-panel rounded-xl p-8 text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-figuro-accent/20 to-purple-500/20 rounded-full mx-auto mb-6 flex items-center justify-center">
-                <Camera className="w-10 h-10 text-figuro-accent" />
+            <div className="glass-panel rounded-xl p-6 text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-figuro-accent/20 to-purple-500/20 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <Camera className="w-8 h-8 text-figuro-accent" />
               </div>
               
-              <h3 className="text-xl font-semibold text-white mb-4">
+              <h3 className={`font-semibold text-white mb-3 ${isMobile ? 'text-lg' : 'text-xl'}`}>
                 Take a Photo
               </h3>
               
-              <p className="text-white/70 mb-6">
+              <p className="text-white/70 mb-6 text-sm">
                 Capture an object to create a 3D model. Position your subject clearly in the frame for best results.
               </p>
               
               <Button
                 onClick={handleStartCamera}
-                className="bg-figuro-accent hover:bg-figuro-accent-hover text-white"
+                className="bg-figuro-accent hover:bg-figuro-accent-hover text-white w-full"
               >
                 <Camera className="w-5 h-5 mr-2" />
                 Start Camera
@@ -209,22 +211,22 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
 
           {workflowState === 'completed' && (
             <div className="glass-panel rounded-xl p-6 text-center">
-              <div className="w-16 h-16 bg-green-500/20 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <CheckCircle className="w-8 h-8 text-green-400" />
+              <div className="w-12 h-12 bg-green-500/20 rounded-full mx-auto mb-3 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-400" />
               </div>
               
               <h3 className="text-lg font-semibold text-white mb-2">
                 3D Model Created!
               </h3>
               
-              <p className="text-white/70 mb-4">
+              <p className="text-white/70 mb-4 text-sm">
                 Your photo has been successfully converted to a 3D model and saved to your collection.
               </p>
               
               <Button
                 onClick={handleStartOver}
                 variant="outline"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 w-full"
               >
                 <Camera className="w-4 h-4 mr-2" />
                 Take Another Photo
@@ -234,8 +236,8 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
 
           {workflowState === 'error' && (
             <div className="glass-panel rounded-xl p-6 text-center">
-              <div className="w-16 h-16 bg-red-500/20 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <AlertCircle className="w-8 h-8 text-red-400" />
+              <div className="w-12 h-12 bg-red-500/20 rounded-full mx-auto mb-3 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-red-400" />
               </div>
               
               <h3 className="text-lg font-semibold text-white mb-2">
@@ -246,11 +248,11 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
                 {errorMessage || 'An error occurred while converting your photo to 3D.'}
               </p>
               
-              <div className="flex gap-3 justify-center">
+              <div className={`gap-3 ${isMobile ? 'space-y-2' : 'flex justify-center'}`}>
                 <Button
                   onClick={handleRetryFromError}
                   variant="outline"
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 w-full"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Try Again
@@ -259,7 +261,7 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
                 <Button
                   onClick={handleStartOver}
                   variant="outline"
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 w-full"
                 >
                   <Camera className="w-4 h-4 mr-2" />
                   Take New Photo
@@ -269,21 +271,23 @@ const EnhancedCameraWorkflow: React.FC<EnhancedCameraWorkflowProps> = ({
           )}
         </div>
 
-        {/* Right column - 3D Model Preview */}
-        <div>
-          <CameraModelPreview
-            modelUrl={progress.modelUrl || null}
-            isConverting={isProcessing || workflowState === 'converting'}
-            progress={progress}
-            onRetakePhoto={handleRetakeFromPreview}
-          />
-        </div>
+        {/* 3D Model Preview - Hidden on mobile */}
+        {!isMobile && (
+          <div>
+            <CameraModelPreview
+              modelUrl={progress.modelUrl || null}
+              isConverting={isProcessing || workflowState === 'converting'}
+              progress={progress}
+              onRetakePhoto={handleRetakeFromPreview}
+            />
+          </div>
+        )}
       </div>
 
       {/* Enhanced tips section */}
       <div className="glass-panel rounded-lg p-4">
         <h4 className="text-sm font-medium text-white mb-2">📸 Photo Tips for Best Results</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div className={isMobile ? 'space-y-1' : 'grid grid-cols-1 md:grid-cols-2 gap-2'}>
           <ul className="text-xs text-white/60 space-y-1">
             <li>• Ensure good lighting for clear details</li>
             <li>• Position object against a plain background</li>

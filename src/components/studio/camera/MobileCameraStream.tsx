@@ -3,6 +3,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, RotateCcw, Zap, ZapOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 interface MobileCameraStreamProps {
   onCapture: (imageBlob: Blob) => void;
@@ -16,6 +17,7 @@ const MobileCameraStream: React.FC<MobileCameraStreamProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const { isMobile } = useResponsiveLayout();
   
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +31,8 @@ const MobileCameraStream: React.FC<MobileCameraStreamProps> = ({
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          width: { ideal: isMobile ? 1280 : 1920 },
+          height: { ideal: isMobile ? 720 : 1080 }
         }
       };
 
@@ -98,8 +100,8 @@ const MobileCameraStream: React.FC<MobileCameraStreamProps> = ({
   if (error) {
     return (
       <div className="glass-panel rounded-xl p-6 text-center">
-        <div className="text-red-400 mb-4">{error}</div>
-        <Button onClick={startCamera} variant="outline">
+        <div className="text-red-400 mb-4 text-sm">{error}</div>
+        <Button onClick={startCamera} variant="outline" className="w-full">
           Try Again
         </Button>
       </div>
@@ -107,8 +109,8 @@ const MobileCameraStream: React.FC<MobileCameraStreamProps> = ({
   }
 
   return (
-    <div className="glass-panel rounded-xl p-4 space-y-4">
-      <div className="relative aspect-[4/3] bg-black rounded-lg overflow-hidden">
+    <div className="glass-panel rounded-xl p-3 space-y-4">
+      <div className={`relative bg-black rounded-lg overflow-hidden ${isMobile ? 'aspect-[3/4]' : 'aspect-[4/3]'}`}>
         <video
           ref={videoRef}
           className="w-full h-full object-cover"
@@ -118,44 +120,64 @@ const MobileCameraStream: React.FC<MobileCameraStreamProps> = ({
         
         {/* Camera overlay */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-64 h-64 border-2 border-white/50 rounded-lg" />
+          <div className={`border-2 border-white/50 rounded-lg ${isMobile ? 'w-48 h-48' : 'w-64 h-64'}`} />
         </div>
 
         {/* Camera controls overlay */}
-        <div className="absolute top-4 left-4 right-4 flex justify-between">
+        <div className="absolute top-3 left-3 right-3 flex justify-between">
           <Button
             variant="ghost"
-            size="icon"
+            size={isMobile ? "sm" : "icon"}
             onClick={switchCamera}
-            className="bg-black/50 text-white hover:bg-black/70"
+            className="bg-black/50 text-white hover:bg-black/70 backdrop-blur-sm"
           >
-            <RotateCcw size={20} />
+            <RotateCcw size={isMobile ? 16 : 20} />
           </Button>
           
           <Button
             variant="ghost"
-            size="icon"
+            size={isMobile ? "sm" : "icon"}
             onClick={() => setFlashEnabled(!flashEnabled)}
             className={cn(
-              "bg-black/50 text-white hover:bg-black/70",
+              "bg-black/50 text-white hover:bg-black/70 backdrop-blur-sm",
               flashEnabled && "bg-yellow-500/70"
             )}
           >
-            {flashEnabled ? <Zap size={20} /> : <ZapOff size={20} />}
+            {flashEnabled ? <Zap size={isMobile ? 16 : 20} /> : <ZapOff size={isMobile ? 16 : 20} />}
           </Button>
         </div>
+
+        {/* Touch-friendly capture area overlay for mobile */}
+        {isMobile && (
+          <div 
+            className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto"
+            onTouchStart={(e) => e.preventDefault()}
+          >
+            <div className="p-2">
+              <Button
+                onClick={capturePhoto}
+                disabled={!isStreaming || isProcessing}
+                className="bg-figuro-accent hover:bg-figuro-accent-hover text-white rounded-full w-16 h-16 p-0 shadow-lg"
+              >
+                <Camera size={28} />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Capture button */}
-      <div className="flex justify-center">
-        <Button
-          onClick={capturePhoto}
-          disabled={!isStreaming || isProcessing}
-          className="bg-figuro-accent hover:bg-figuro-accent-hover text-white rounded-full w-16 h-16"
-        >
-          <Camera size={24} />
-        </Button>
-      </div>
+      {/* Desktop capture button */}
+      {!isMobile && (
+        <div className="flex justify-center">
+          <Button
+            onClick={capturePhoto}
+            disabled={!isStreaming || isProcessing}
+            className="bg-figuro-accent hover:bg-figuro-accent-hover text-white rounded-full w-16 h-16"
+          >
+            <Camera size={24} />
+          </Button>
+        </div>
+      )}
 
       {/* Hidden canvas for image capture */}
       <canvas ref={canvasRef} className="hidden" />

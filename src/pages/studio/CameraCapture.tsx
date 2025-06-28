@@ -1,21 +1,24 @@
-
 import { useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGeneration";
 import { useUpgradeNotifications } from "@/hooks/useUpgradeNotifications";
 import { useToast } from "@/hooks/use-toast";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import Header from "@/components/Header";
 import StudioBreadcrumb from "@/components/studio/StudioBreadcrumb";
 import EnhancedCameraWorkflow from "@/components/studio/camera/EnhancedCameraWorkflow";
 import ModelViewer from "@/components/model-viewer";
+import CompactProgressIndicator from "@/components/studio/camera/CompactProgressIndicator";
 import DebugUpgradeButtons from "@/components/upgrade/DebugUpgradeButtons";
-import { Camera, Sparkles, AlertCircle } from "lucide-react";
+import { Camera, Sparkles, AlertCircle, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const CameraCapture = () => {
   const { user } = useEnhancedAuth();
   const { toast } = useToast();
+  const { isMobile } = useResponsiveLayout();
   
   const { showUpgradeNotification } = useUpgradeNotifications();
 
@@ -26,6 +29,7 @@ const CameraCapture = () => {
   } = useGallery3DGeneration();
 
   const [conversionAttempts, setConversionAttempts] = useState(0);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
 
   const handleImageCapture = useCallback(async (imageBlob: Blob) => {
     try {
@@ -33,10 +37,8 @@ const CameraCapture = () => {
       console.log('📸 [CAMERA-CAPTURE] Image blob size:', imageBlob.size, 'bytes');
       console.log('📸 [CAMERA-CAPTURE] Image blob type:', imageBlob.type);
       
-      // Increment attempt counter for debugging
       setConversionAttempts(prev => prev + 1);
       
-      // Convert blob to data URL for processing
       const reader = new FileReader();
       reader.onload = async () => {
         try {
@@ -49,6 +51,11 @@ const CameraCapture = () => {
             title: "Conversion Started",
             description: "Your camera photo is being converted to 3D. This may take a few minutes.",
           });
+
+          // On mobile, automatically show preview when conversion starts
+          if (isMobile) {
+            setShowMobilePreview(true);
+          }
         } catch (conversionError: any) {
           console.error('❌ [CAMERA-CAPTURE] 3D generation failed:', conversionError);
           handleConversionError(conversionError);
@@ -69,7 +76,7 @@ const CameraCapture = () => {
       console.error('❌ [CAMERA-CAPTURE] Image capture handler failed:', error);
       handleConversionError(error);
     }
-  }, [generate3DModel, toast]);
+  }, [generate3DModel, toast, isMobile]);
 
   const handleConversionError = (error: any) => {
     console.log('🔍 [CAMERA-CAPTURE] Analyzing conversion error:', error);
@@ -98,6 +105,111 @@ const CameraCapture = () => {
     }
   };
 
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <SecurityEnforcedRoute requireVerification={true}>
+        <div className="min-h-screen bg-figuro-dark">
+          <Header />
+          <div className="pt-16">
+            {/* Mobile header */}
+            <div className="sticky top-16 z-40 bg-figuro-dark/95 backdrop-blur-sm border-b border-white/10 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Camera className="w-5 h-5 text-figuro-accent" />
+                  <h1 className="text-lg font-semibold text-white">Camera Capture</h1>
+                </div>
+                {progress.modelUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowMobilePreview(!showMobilePreview)}
+                    className="bg-white/10 border-white/20 text-white"
+                  >
+                    {showMobilePreview ? 'Camera' : 'Preview'}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile content */}
+            <div className="px-4 pb-20">
+              <AnimatePresence mode="wait">
+                {showMobilePreview && progress.modelUrl ? (
+                  <motion.div
+                    key="preview"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="mt-4"
+                  >
+                    <div className="bg-figuro-light/5 rounded-2xl p-4 border border-white/10">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-white">3D Model</h2>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowMobilePreview(false)}
+                          className="text-white/70"
+                        >
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Back
+                        </Button>
+                      </div>
+                      <div className="aspect-square rounded-lg overflow-hidden">
+                        <ModelViewer
+                          modelUrl={progress.modelUrl}
+                          isLoading={isGenerating}
+                          errorMessage={null}
+                          onCustomModelLoad={(url, file) => {}}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="camera"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="mt-4"
+                  >
+                    <EnhancedCameraWorkflow
+                      onImageCapture={handleImageCapture}
+                      isProcessing={isGenerating}
+                      progress={{
+                        status: progress.status || 'idle',
+                        progress: progress.progress || 0,
+                        percentage: progress.percentage || 0,
+                        message: progress.message || 'Ready to capture',
+                        taskId: progress.taskId,
+                        thumbnailUrl: progress.thumbnailUrl,
+                        modelUrl: progress.modelUrl
+                      }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Mobile compact progress indicator */}
+            <CompactProgressIndicator
+              isGenerating={isGenerating}
+              progress={{
+                status: progress.status || 'idle',
+                progress: progress.progress || 0,
+                percentage: progress.percentage || 0,
+                message: progress.message || 'Ready to capture',
+                modelUrl: progress.modelUrl
+              }}
+            />
+          </div>
+        </div>
+      </SecurityEnforcedRoute>
+    );
+  }
+
+  // Desktop layout (keep existing)
   return (
     <SecurityEnforcedRoute requireVerification={true}>
       <div className="min-h-screen bg-figuro-dark">
