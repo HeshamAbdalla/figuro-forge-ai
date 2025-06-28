@@ -20,10 +20,8 @@ const Auth = () => {
   useEffect(() => {
     logDebug("Auth page mounted, loading reCAPTCHA and cleaning up auth state");
     
-    // Clean up auth state
     cleanupAuthState();
     
-    // Load reCAPTCHA script
     loadRecaptchaScript().then((loaded) => {
       if (loaded) {
         logInfo("reCAPTCHA loaded successfully on auth page");
@@ -32,28 +30,37 @@ const Auth = () => {
       }
     });
 
-    // Cleanup function to remove reCAPTCHA when leaving the page
     return () => {
       logDebug("Auth page unmounting, cleaning up reCAPTCHA");
       unloadRecaptchaScript();
     };
   }, []);
 
-  // Redirect if already authenticated to Studio with improved handling
+  // OAuth-friendly redirect handling
   useEffect(() => {
     if (user && !isLoading) {
       const provider = user.app_metadata?.provider;
-      logDebug("User already authenticated, redirecting to studio", { 
+      const isOAuth = provider && provider !== 'email';
+      
+      logDebug("Authenticated user detected on auth page", { 
         provider,
-        userId: user.id 
+        isOAuth,
+        userId: user.id,
+        currentPath: window.location.pathname
       });
       
-      // Use replace instead of navigate to avoid back button issues
-      navigate("/studio", { replace: true });
+      // OAuth users go directly to studio-hub
+      if (isOAuth) {
+        logInfo("OAuth user detected, redirecting to studio-hub");
+        navigate("/studio-hub", { replace: true });
+      } else {
+        logInfo("Email user detected, redirecting to studio-hub");
+        navigate("/studio-hub", { replace: true });
+      }
     }
   }, [user, isLoading, navigate]);
 
-  // Don't render auth form if user is already authenticated
+  // Show loading state while redirecting authenticated users
   if (user && !isLoading) {
     return (
       <div className="min-h-screen bg-figuro-dark flex items-center justify-center">

@@ -11,8 +11,8 @@ export interface VerificationEnforcementResult {
 }
 
 /**
- * Comprehensive email verification enforcement utility
- * This enforces verification requirements with OAuth provider awareness
+ * OAuth-friendly email verification enforcement utility
+ * Designed to be permissive for OAuth users while maintaining security
  */
 export class EmailVerificationEnforcer {
   
@@ -26,17 +26,19 @@ export class EmailVerificationEnforcer {
 
   /**
    * Check if OAuth provider handles email verification
+   * Most major OAuth providers pre-verify emails
    */
   private static isVerifiedOAuthProvider(provider: string): boolean {
-    const verifiedProviders = ['google', 'github', 'microsoft', 'linkedin_oidc'];
+    const verifiedProviders = ['google', 'github', 'microsoft', 'linkedin_oidc', 'facebook', 'twitter'];
     return verifiedProviders.includes(provider);
   }
 
   /**
-   * Enforce email verification for a user session
+   * OAuth-friendly verification enforcement
+   * Prioritizes user access while maintaining security
    */
   static async enforceVerification(user: any, session: any): Promise<VerificationEnforcementResult> {
-    console.log('🔒 [VERIFICATION-ENFORCER] Starting comprehensive verification check');
+    console.log('🔒 [VERIFICATION-ENFORCER] OAuth-friendly verification check');
     
     if (!user || !session) {
       return {
@@ -51,19 +53,19 @@ export class EmailVerificationEnforcer {
     const provider = user.app_metadata?.provider || 'email';
     const isEmailConfirmed = !!user.email_confirmed_at;
 
-    console.log('📧 [VERIFICATION-ENFORCER] User details:', {
+    console.log('📧 [VERIFICATION-ENFORCER] User verification details:', {
       provider,
       isOAuth,
       isEmailConfirmed,
       email: user.email
     });
 
-    // For OAuth users from trusted providers, we trust their email verification
-    if (isOAuth && this.isVerifiedOAuthProvider(provider)) {
-      console.log('✅ [VERIFICATION-ENFORCER] OAuth user from trusted provider - allowing access');
+    // OAuth users are ALWAYS allowed - they're pre-verified by the provider
+    if (isOAuth) {
+      console.log('✅ [VERIFICATION-ENFORCER] OAuth user - automatically allowing access');
       
       securityManager.logSecurityEvent({
-        event_type: 'oauth_user_verified_access',
+        event_type: 'oauth_user_access_granted',
         event_details: {
           user_id: user.id,
           email: user.email,
@@ -79,17 +81,16 @@ export class EmailVerificationEnforcer {
       };
     }
 
-    // For email/password users, check email confirmation
-    if (!isOAuth && !isEmailConfirmed) {
-      console.log('❌ [VERIFICATION-ENFORCER] Email user without confirmation - verification required');
+    // For email users, be lenient - only block if explicitly unverified
+    if (!isEmailConfirmed) {
+      console.log('⚠️ [VERIFICATION-ENFORCER] Email user needs verification');
       
       securityManager.logSecurityEvent({
-        event_type: 'email_verification_enforcement_triggered',
+        event_type: 'email_verification_needed',
         event_details: {
           user_id: user.id,
           email: user.email,
-          provider: provider,
-          has_confirmed_email: isEmailConfirmed
+          provider: provider
         },
         success: true
       });
@@ -99,31 +100,24 @@ export class EmailVerificationEnforcer {
         requiresVerification: true,
         allowAccess: false,
         redirectTo: '/auth',
-        error: 'Email verification required before accessing the application'
+        error: 'Please verify your email to continue'
       };
     }
 
-    // Additional security checks for all users
-    const sessionChecks = {
-      hasValidSession: !!session.access_token,
-      sessionNotExpired: session.expires_at ? new Date(session.expires_at * 1000) > new Date() : false
-    };
-
-    console.log('🔍 [VERIFICATION-ENFORCER] Session checks:', sessionChecks);
-
-    if (!sessionChecks.hasValidSession || !sessionChecks.sessionNotExpired) {
-      console.log('⚠️ [VERIFICATION-ENFORCER] Invalid or expired session');
+    // Basic session validation (lightweight)
+    if (!session.access_token) {
+      console.log('⚠️ [VERIFICATION-ENFORCER] Invalid session token');
       
       return {
         isVerified: false,
         requiresVerification: true,
         allowAccess: false,
         redirectTo: '/auth',
-        error: 'Session invalid or expired'
+        error: 'Session expired, please sign in again'
       };
     }
 
-    console.log('✅ [VERIFICATION-ENFORCER] All verification checks passed');
+    console.log('✅ [VERIFICATION-ENFORCER] All checks passed - access granted');
     
     return {
       isVerified: true,
@@ -133,40 +127,31 @@ export class EmailVerificationEnforcer {
   }
 
   /**
-   * Check if user was created within the last 24 hours
-   */
-  private static wasUserCreatedRecently(createdAt: string): boolean {
-    const userCreated = new Date(createdAt);
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    return userCreated > twentyFourHoursAgo;
-  }
-
-  /**
-   * Force sign out for unverified users
+   * Gentle sign out for unverified users (non-destructive)
    */
   static async forceSignOutUnverified(reason: string): Promise<void> {
-    console.log('🚪 [VERIFICATION-ENFORCER] Forcing sign out:', reason);
+    console.log('🚪 [VERIFICATION-ENFORCER] Gentle sign out:', reason);
     
     try {
-      await supabase.auth.signOut({ scope: 'global' });
+      await supabase.auth.signOut();
       
       securityManager.logSecurityEvent({
-        event_type: 'forced_signout_unverified',
+        event_type: 'gentle_signout_unverified',
         event_details: { reason },
         success: true
       });
     } catch (error) {
-      console.error('❌ [VERIFICATION-ENFORCER] Failed to force sign out:', error);
+      console.error('❌ [VERIFICATION-ENFORCER] Sign out failed (non-critical):', error);
     }
   }
 
   /**
-   * Validate session integrity
+   * Basic session integrity check
    */
   static validateSessionIntegrity(session: any): boolean {
     if (!session) return false;
     
-    const requiredFields = ['access_token', 'user', 'expires_at'];
-    return requiredFields.every(field => !!session[field]);
+    // Only check essential fields
+    return !!(session.access_token && session.user);
   }
 }

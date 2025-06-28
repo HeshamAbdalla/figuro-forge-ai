@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -112,56 +113,56 @@ function App() {
                     <Route path="/studio" element={<Navigate to="/studio-hub" replace />} />
                     <Route path="/studio-hub" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <StudioHub />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
                     <Route path="/studio/image-to-3d" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <ImageTo3D />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
                     <Route path="/studio/text-to-3d" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <TextTo3D />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
                     <Route path="/studio/camera" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <CameraCapture />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
                     <Route path="/studio/web-icons" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <WebIcons />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
                     <Route path="/studio/gallery" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <Navigate to="/profile/figurines" replace />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
                     <Route path="/profile" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <Profile />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
                     <Route path="/settings" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <Settings />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
@@ -171,7 +172,7 @@ function App() {
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/subscription" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <Subscription />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
@@ -186,21 +187,21 @@ function App() {
                     <Route path="/docs" element={<Docs />} />
                     <Route path="/complete-profile" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <CompleteProfile />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
                     <Route path="/profile/figurines" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <ProfileFigurines />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>
                     } />
                     <Route path="/profile/pictures" element={
                       <ErrorBoundary>
-                        <SecurityEnforcedRoute>
+                        <SecurityEnforcedRoute requireVerification={false}>
                           <ProfilePictures />
                         </SecurityEnforcedRoute>
                       </ErrorBoundary>

@@ -37,16 +37,17 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
   const [profile, setProfile] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [securityScore, setSecurityScore] = useState(0);
-  const [hasRedirected, setHasRedirected] = useState(false);
-  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
 
   // Enhanced security score calculation
   const calculateSecurityScore = (user: User | null, session: Session | null): number => {
     let score = 0;
     
-    if (user?.email_confirmed_at) score += 40; // Higher weight for verification
+    // OAuth users get higher base score
+    const isOAuth = user?.app_metadata?.provider !== 'email';
+    if (isOAuth) score += 60;
+    else if (user?.email_confirmed_at) score += 40;
+    
     if (session?.access_token) score += 30;
-    if (user?.app_metadata?.provider === 'google') score += 20;
     if (session?.expires_at) {
       const expiresAt = new Date(session.expires_at * 1000);
       const hoursUntilExpiry = (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60);
@@ -56,24 +57,18 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     return Math.max(0, Math.min(100, score));
   };
 
-  // Load reCAPTCHA when component mounts with improved handling
+  // Load reCAPTCHA when component mounts
   useEffect(() => {
     const loadRecaptcha = async () => {
       try {
         logDebug('Initializing reCAPTCHA...');
         
-        // Check if it's already ready
         if (isRecaptchaReady()) {
           logDebug('reCAPTCHA already ready');
-          setRecaptchaLoaded(true);
           return;
         }
         
-        // Try to initialize with improved timeout
         const loaded = await initializeRecaptcha();
-        
-        // Always set to true to allow the app to continue
-        setRecaptchaLoaded(true);
         
         if (loaded) {
           logDebug('reCAPTCHA loaded successfully');
@@ -82,57 +77,21 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         }
       } catch (error) {
         logError('reCAPTCHA initialization error', error);
-        setRecaptchaLoaded(true); // Allow app to continue
       }
     };
     
     loadRecaptcha();
   }, []);
 
-  // Enhanced auth refresh with improved OAuth handling
+  // Enhanced auth refresh
   const refreshAuth = async () => {
     try {
-      logDebug("Refreshing auth state with improved OAuth handling...");
+      logDebug("Refreshing auth state...");
       
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
         logError("Session error", error);
         return;
-      }
-      
-      // Apply verification enforcement with OAuth awareness
-      if (session?.user) {
-        const enforcementResult = await EmailVerificationEnforcer.enforceVerification(
-          session.user,
-          session
-        );
-
-        if (!enforcementResult.allowAccess) {
-          logWarn("Access denied due to verification enforcement", {
-            provider: session.user.app_metadata?.provider,
-            error: enforcementResult.error
-          });
-          
-          // Only force sign out for email users, not OAuth users
-          const isOAuth = session.user.app_metadata?.provider !== 'email';
-          if (!isOAuth) {
-            await EmailVerificationEnforcer.forceSignOutUnverified(
-              enforcementResult.error || 'Verification required'
-            );
-            
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-            setSecurityScore(0);
-            
-            if (window.location.pathname !== '/auth') {
-              window.location.href = '/auth';
-            }
-            return;
-          } else {
-            logInfo("OAuth user - allowing access despite enforcement result");
-          }
-        }
       }
       
       setSession(session);
@@ -142,13 +101,11 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       setSecurityScore(newSecurityScore);
       
       if (session?.user) {
-        // Load profile and trigger subscription refresh
         setTimeout(async () => {
           try {
             const profileData = await sessionManager.getProfile(session.user.id);
             setProfile(profileData);
             
-            // Trigger subscription refresh after successful auth
             window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
           } catch (error) {
             logError("Profile fetch failed", error);
@@ -163,11 +120,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced auth state management with improved OAuth handling
+  // Enhanced auth state management with OAuth-friendly approach
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener with improved OAuth handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -175,10 +131,11 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         logDebug("Auth state changed", { 
           event, 
           userEmail: session?.user?.email,
-          provider: session?.user?.app_metadata?.provider
+          provider: session?.user?.app_metadata?.provider,
+          currentPath: window.location.pathname
         });
         
-        // Log auth event (non-blocking)
+        // Log auth event
         securityManager.logSecurityEvent({
           event_type: `auth_${event.toLowerCase()}`,
           event_details: {
@@ -191,92 +148,54 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
           success: true
         });
         
-        // Apply verification enforcement with OAuth awareness
-        if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-          const enforcementResult = await EmailVerificationEnforcer.enforceVerification(
-            session.user,
-            session
-          );
-
-          if (!enforcementResult.allowAccess) {
-            const isOAuth = session.user.app_metadata?.provider !== 'email';
-            
-            logWarn("Access denied during auth state change", {
-              provider: session.user.app_metadata?.provider,
-              isOAuth,
-              error: enforcementResult.error
-            });
-            
-            // Only force sign out for email users, not OAuth users
-            if (!isOAuth) {
-              await EmailVerificationEnforcer.forceSignOutUnverified(
-                enforcementResult.error || 'Verification required'
-              );
-              
-              setSession(null);
-              setUser(null);
-              setProfile(null);
-              setSecurityScore(0);
-              
-              if (window.location.pathname !== '/auth') {
-                window.location.href = '/auth';
-              }
-              return;
-            } else {
-              logInfo("OAuth user - allowing access despite enforcement result");
-            }
-          }
-        }
-        
+        // Update state immediately
         setSession(session);
         setUser(session?.user ?? null);
         setSecurityScore(calculateSecurityScore(session?.user ?? null, session));
         
+        // Handle different auth events
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user && mounted) {
-            // Handle Google OAuth redirect with improved logic
-            if (session.user.app_metadata?.provider === 'google' && 
-                window.location.pathname === '/auth' && 
-                !hasRedirected) {
+            const provider = session.user.app_metadata?.provider;
+            const isOAuth = provider && provider !== 'email';
+            
+            logInfo(`User signed in via ${provider || 'email'}`);
+            
+            // OAuth users get fast-tracked to studio
+            if (isOAuth && window.location.pathname === '/auth') {
+              logInfo("OAuth sign-in successful, redirecting to studio");
               
-              logInfo("Google sign-in successful, redirecting to studio");
-              setHasRedirected(true);
-              
-              // Show success toast immediately
               toast({
-                title: "Welcome back! 🎉",
-                description: "Google sign-in successful. Redirecting to studio...",
+                title: "Welcome! 🎉",
+                description: `Signed in successfully with ${provider}`,
               });
               
-              // Load profile and redirect
+              // Load profile and redirect immediately
               setTimeout(async () => {
                 if (mounted) {
                   try {
                     const profileData = await sessionManager.getProfile(session.user.id);
                     setProfile(profileData);
                     
-                    // Trigger subscription refresh
                     window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
                     
-                    // Redirect to studio
-                    window.location.href = '/studio';
+                    // Redirect to studio for OAuth users
+                    window.location.href = '/studio-hub';
                   } catch (error) {
-                    logError("Profile fetch failed during Google OAuth", error);
-                    // Still redirect even if profile fetch fails
-                    window.location.href = '/studio';
+                    logError("Profile fetch failed during OAuth", error);
+                    window.location.href = '/studio-hub';
                   }
                 }
-              }, 500); // Slightly longer delay for better UX
+              }, 300);
             } else {
-              // Regular email/password sign-in
+              // Regular email sign-in
               setTimeout(async () => {
                 if (mounted) {
                   try {
                     let profileData = await sessionManager.getProfile(session.user.id);
                     
-                    // If no profile exists, create one for new user
                     if (!profileData) {
-                      logInfo("New user detected, creating profile with onboarding flag");
+                      logInfo("New user detected, creating profile");
                       
                       const { data: newProfile, error: createError } = await supabase
                         .from('profiles')
@@ -292,15 +211,11 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
                         logError("Failed to create profile", createError);
                       } else {
                         profileData = newProfile;
-                        logInfo("Created new profile for onboarding");
                       }
                     }
                     
                     setProfile(profileData);
-                    
-                    // Trigger subscription refresh
                     window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
-                    
                     setIsLoading(false);
                   } catch (error) {
                     logError("Profile fetch failed", error);
@@ -311,23 +226,20 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
             }
           }
         } else if (event === 'SIGNED_OUT') {
+          logInfo("User signed out");
           setProfile(null);
           setSecurityScore(0);
-          setHasRedirected(false);
           sessionManager.clearCache();
           setIsLoading(false);
         } else if (event === 'INITIAL_SESSION') {
           if (session?.user && mounted) {
-            // Defer profile loading
             setTimeout(async () => {
               if (mounted) {
                 try {
                   const profileData = await sessionManager.getProfile(session.user.id);
                   setProfile(profileData);
                   
-                  // Trigger subscription refresh on initial load
                   window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
-                  
                   setIsLoading(false);
                 } catch (error) {
                   logError("Initial profile fetch failed", error);
@@ -342,10 +254,9 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       }
     );
 
-    // Initialize auth with improved OAuth handling
     const initializeAuth = async () => {
       try {
-        logDebug("Initializing with improved OAuth handling...");
+        logDebug("Initializing OAuth-friendly auth...");
         
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
@@ -353,58 +264,18 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
         }
         
         if (mounted) {
-          // Apply verification enforcement with OAuth awareness
-          if (session?.user) {
-            const enforcementResult = await EmailVerificationEnforcer.enforceVerification(
-              session.user,
-              session
-            );
-
-            if (!enforcementResult.allowAccess) {
-              const isOAuth = session.user.app_metadata?.provider !== 'email';
-              
-              logWarn("Initial session denied due to verification", {
-                provider: session.user.app_metadata?.provider,
-                isOAuth
-              });
-              
-              // Only force sign out for email users, not OAuth users
-              if (!isOAuth) {
-                await EmailVerificationEnforcer.forceSignOutUnverified(
-                  enforcementResult.error || 'Verification required'
-                );
-                
-                setSession(null);
-                setUser(null);
-                setProfile(null);
-                setSecurityScore(0);
-                setIsLoading(false);
-                
-                if (window.location.pathname !== '/auth') {
-                  window.location.href = '/auth';
-                }
-                return;
-              } else {
-                logInfo("OAuth user during initialization - allowing access");
-              }
-            }
-          }
-          
           setSession(session);
           setUser(session?.user ?? null);
           setSecurityScore(calculateSecurityScore(session?.user ?? null, session));
           
           if (session?.user) {
-            // Defer profile loading
             setTimeout(async () => {
               if (mounted) {
                 try {
                   const profileData = await sessionManager.getProfile(session.user.id);
                   setProfile(profileData);
                   
-                  // Trigger subscription refresh on initial load
                   window.dispatchEvent(new CustomEvent('auth-subscription-refresh'));
-                  
                   setIsLoading(false);
                 } catch (error) {
                   logError("Profile load failed", error);
@@ -430,9 +301,8 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [hasRedirected]);
+  }, []);
 
-  // Enhanced sign up with Supabase's built-in reCAPTCHA
   const signUp = async (email: string, password: string) => {
     try {
       logDebug("Starting secure signup process", { email });
@@ -612,7 +482,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced sign in with Supabase's built-in reCAPTCHA
   const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
     logDebug("Starting secure sign-in...");
     
@@ -736,7 +605,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Password reset with Supabase's built-in reCAPTCHA
   const resetPassword = async (email: string) => {
     try {
       if (!securityManager.validateEmail(email)) {
@@ -803,7 +671,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Resend verification email with Supabase's built-in reCAPTCHA
   const resendVerificationEmail = async (email: string) => {
     try {
       // Get reCAPTCHA token for Supabase auth
@@ -875,7 +742,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     }
   };
 
-  // Enhanced secure sign out with advanced toast feedback
   const signOut = async () => {
     const signOutStart = performance.now();
     
@@ -923,7 +789,6 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
       setUser(null);
       setProfile(null);
       setSecurityScore(0);
-      setHasRedirected(false);
       
       // Step 5: Clear any remaining auth-related data
       logDebug("Final cleanup...");
@@ -999,11 +864,10 @@ export function EnhancedAuthProvider({ children }: EnhancedAuthProviderProps) {
     try {
       cleanupAuthState();
       
-      const redirectTo = `${window.location.origin}/studio`;
+      const redirectTo = `${window.location.origin}/studio-hub`;
       
       logDebug("Starting Google sign-in", { redirectTo });
       
-      // Try to execute reCAPTCHA for logging purposes (but don't block)
       let recaptchaToken: string | null = null;
       if (isRecaptchaReady()) {
         recaptchaToken = await executeRecaptcha("login");
