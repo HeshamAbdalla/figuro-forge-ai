@@ -363,21 +363,30 @@ export type Database = {
           created_at: string | null
           details: Json | null
           id: string
+          resolved_at: string | null
+          severity: string | null
           status: string
+          user_id: string | null
         }
         Insert: {
           check_type: string
           created_at?: string | null
           details?: Json | null
           id?: string
+          resolved_at?: string | null
+          severity?: string | null
           status: string
+          user_id?: string | null
         }
         Update: {
           check_type?: string
           created_at?: string | null
           details?: Json | null
           id?: string
+          resolved_at?: string | null
+          severity?: string | null
           status?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -474,6 +483,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -511,12 +544,20 @@ export type Database = {
         Args: { feature_type: string; user_id_param: string; amount?: number }
         Returns: boolean
       }
+      get_user_role: {
+        Args: { check_user_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
       increment_stat: {
         Args: { stat_id: string; inc_amount?: number }
         Returns: number
       }
       is_admin: {
         Args: { user_id: string }
+        Returns: boolean
+      }
+      is_admin_user: {
+        Args: { check_user_id?: string }
         Returns: boolean
       }
       log_security_event: {
@@ -527,6 +568,14 @@ export type Database = {
           p_ip_address?: unknown
           p_user_agent?: string
           p_success?: boolean
+        }
+        Returns: undefined
+      }
+      log_security_violation: {
+        Args: {
+          violation_type: string
+          violation_details?: Json
+          user_id_param?: string
         }
         Returns: undefined
       }
@@ -562,6 +611,7 @@ export type Database = {
         | "cyberpunk"
         | "realistic"
         | "chibi"
+      user_role: "admin" | "user" | "moderator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -687,6 +737,7 @@ export const Constants = {
         "realistic",
         "chibi",
       ],
+      user_role: ["admin", "user", "moderator"],
     },
   },
 } as const

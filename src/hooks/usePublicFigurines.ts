@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Figurine } from '@/types/figurine';
 import { useToast } from '@/hooks/use-toast';
 import { validateAndCleanUrl, prioritizeUrls } from '@/utils/urlValidationUtils';
+import { useSecureQuery } from '@/hooks/useSecureQuery';
 
 export const usePublicFigurines = () => {
   const [figurines, setFigurines] = useState<Figurine[]>([]);
@@ -11,10 +12,10 @@ export const usePublicFigurines = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchPublicFigurines = useCallback(async () => {
-    try {
-      setLoading(true);
-      
+  // Use secure query for fetching public figurines
+  const { data: publicData, isLoading, error: queryError, refetch } = useSecureQuery({
+    queryKey: ['public-figurines'],
+    queryFn: async () => {
       console.log('🔄 [PUBLIC-FIGURINES] Fetching public figurines and text-to-3D models...');
       
       // Fetch public traditional figurines (simplified query without joins)
@@ -42,6 +43,16 @@ export const usePublicFigurines = () => {
         figurines: figurinesData?.length || 0,
         conversions: conversionData?.length || 0
       });
+      
+      return { figurinesData, conversionData };
+    },
+    requireAuth: false, // Public data doesn't require auth
+    tableName: 'figurines'
+  });
+
+  useEffect(() => {
+    if (publicData) {
+      const { figurinesData, conversionData } = publicData;
       
       // Process traditional figurines with enhanced URL validation
       const processedFigurines = (figurinesData || []).map(figurine => {
@@ -103,65 +114,44 @@ export const usePublicFigurines = () => {
       
       // Combine and sort by creation date
       const allFigurines = [...processedFigurines, ...processedConversions];
-      allFigurines.sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      allFigurines.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       setFigurines(allFigurines);
+      setLoading(false);
       setError(null);
       
-      console.log(`✅ [PUBLIC-FIGURINES] Combined ${allFigurines.length} total public items`);
-      
-    } catch (err: any) {
-      console.error('Error fetching public figurines:', err);
-      setError('Failed to load public figurines');
-      toast({
-        title: "Error loading public gallery",
-        description: err.message || "Could not load the community gallery",
-        variant: "destructive"
+      console.log('✅ [PUBLIC-FIGURINES] Processing completed:', {
+        totalFigurines: allFigurines.length,
+        traditional: processedFigurines.length,
+        textTo3D: processedConversions.length
       });
-    } finally {
-      setLoading(false);
     }
-  }, [toast]);
-    
-  useEffect(() => {
-    fetchPublicFigurines();
-    
-    // Subscribe to changes in both tables for real-time updates
-    const figurinesSubscription = supabase
-      .channel('public-figurines-channel')
-      .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'figurines' }, 
-          (payload: { new?: any; old?: any; eventType?: string }) => {
-            // Only refresh if a public figurine is added/updated
-            if (payload.new && payload.new.is_public) {
-              console.log("Public figurine changed, refreshing data");
-              fetchPublicFigurines();
-            }
-          }
-      )
-      .subscribe();
-      
-    const conversionsSubscription = supabase
-      .channel('public-conversions-channel')
-      .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'conversion_tasks' }, 
-          (payload: { new?: any; old?: any; eventType?: string }) => {
-            // Only refresh when a task is completed with a model
-            if (payload.new && payload.new.status === 'SUCCEEDED' && payload.new.local_model_url) {
-              console.log("Public text-to-3D conversion completed, refreshing data");
-              fetchPublicFigurines();
-            }
-          }
-      )
-      .subscribe();
-      
-    return () => {
-      figurinesSubscription.unsubscribe();
-      conversionsSubscription.unsubscribe();
-    };
-  }, [fetchPublicFigurines]);
+  }, [publicData]);
 
-  return { figurines, loading, error, refreshFigurines: fetchPublicFigurines };
+  useEffect(() => {
+    setLoading(isLoading);
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (queryError) {
+      console.error('❌ [PUBLIC-FIGURINES] Query error:', queryError);
+      setError(queryError.message);
+      toast({
+        title: "Error loading figurines",
+        description: "Failed to load public figurines. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  }, [queryError, toast]);
+
+  const refetchFigurines = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  return {
+    figurines,
+    loading,
+    error,
+    refetch: refetchFigurines
+  };
 };

@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useGalleryFiles } from "@/components/gallery/useGalleryFiles";
@@ -7,11 +8,14 @@ import { useImageViewer } from "@/components/gallery/useImageViewer";
 import { useToast } from "@/hooks/use-toast";
 import { deleteFigurine } from "@/services/deletionService";
 import { BucketImage } from "@/components/gallery/types";
+import { SecurityWrapper } from "@/components/security/SecurityWrapper";
+import { RLSValidator } from "@/components/security/RLSValidator";
 import HomepageEnhancedGalleryHeader from "@/components/homepage/HomepageEnhancedGalleryHeader";
 import HomepageGalleryLoading from "@/components/homepage/HomepageGalleryLoading";
 import HomepageGalleryEmpty from "@/components/homepage/HomepageGalleryEmpty";
 import HomepageEnhancedGalleryGrid from "@/components/homepage/HomepageEnhancedGalleryGrid";
 import HomepageGalleryModals from "@/components/homepage/HomepageGalleryModals";
+
 const HomepageGallery: React.FC = () => {
   const {
     files,
@@ -50,9 +54,11 @@ const HomepageGallery: React.FC = () => {
     setAuthPromptOpen,
     isAuthenticated
   } = useSecureDownload();
+  
   const navigateToGallery = () => {
     navigate("/gallery");
   };
+  
   const navigateToStudio = () => {
     navigate("/studio");
   };
@@ -66,7 +72,7 @@ const HomepageGallery: React.FC = () => {
     }
   };
 
-  // Handle delete functionality
+  // Handle delete functionality with enhanced security
   const handleDelete = async (file: BucketImage): Promise<void> => {
     if (!isAuthenticated) {
       toast({
@@ -76,8 +82,9 @@ const HomepageGallery: React.FC = () => {
       });
       return;
     }
+    
     try {
-      console.log('🗑️ [HOMEPAGE-GALLERY] Starting delete process for file:', file.name);
+      console.log('🗑️ [HOMEPAGE-GALLERY] Starting secure delete process for file:', file.name);
 
       // Extract figurine ID from the file path or metadata
       let figurineId: string | null = null;
@@ -99,6 +106,7 @@ const HomepageGallery: React.FC = () => {
           figurineId = idMatch[1];
         }
       }
+      
       if (!figurineId) {
         console.error('❌ [HOMEPAGE-GALLERY] Could not extract figurine ID from file:', file);
         toast({
@@ -108,8 +116,10 @@ const HomepageGallery: React.FC = () => {
         });
         return;
       }
+      
       console.log('🔍 [HOMEPAGE-GALLERY] Extracted figurine ID:', figurineId);
       const result = await deleteFigurine(figurineId);
+      
       if (result.success) {
         toast({
           title: "Item Deleted",
@@ -131,17 +141,54 @@ const HomepageGallery: React.FC = () => {
       });
     }
   };
-  return <section className="py-20 px-4 relative overflow-hidden">
-      {/* Enhanced background with animated gradients */}
-      
-      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-figuro-accent/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{
-      animationDelay: '1s'
-    }} />
-      
-      
-      
-      <HomepageGalleryModals modelViewerOpen={modelViewerOpen} setModelViewerOpen={setModelViewerOpen} viewingModel={viewingModel} onCloseModelViewer={onCloseModelViewer} imageViewerOpen={imageViewerOpen} setImageViewerOpen={setImageViewerOpen} viewingImage={viewingImage} viewingImageName={viewingImageName} onCloseImageViewer={onCloseImageViewer} authPromptOpen={authPromptOpen} setAuthPromptOpen={setAuthPromptOpen} />
-    </section>;
+
+  return (
+    <SecurityWrapper requireAuth={false} minSecurityScore={30}>
+      <section className="py-20 px-4 relative overflow-hidden">
+        {/* Enhanced background with animated gradients */}
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-figuro-accent/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl animate-pulse" 
+             style={{ animationDelay: '1s' }} />
+        
+        <RLSValidator tableName="figurines">
+          <div className="container mx-auto relative z-10">
+            <HomepageEnhancedGalleryHeader 
+              navigateToGallery={navigateToGallery}
+              navigateToStudio={navigateToStudio}
+            />
+            
+            {isLoading ? (
+              <HomepageGalleryLoading />
+            ) : files.length === 0 ? (
+              <HomepageGalleryEmpty />
+            ) : (
+              <HomepageEnhancedGalleryGrid 
+                files={files}
+                onView={handleView}
+                onDelete={handleDelete}
+                secureDownload={secureDownload}
+                isDownloading={isDownloading}
+              />
+            )}
+          </div>
+        </RLSValidator>
+        
+        <HomepageGalleryModals 
+          modelViewerOpen={modelViewerOpen}
+          setModelViewerOpen={setModelViewerOpen}
+          viewingModel={viewingModel}
+          onCloseModelViewer={onCloseModelViewer}
+          imageViewerOpen={imageViewerOpen}
+          setImageViewerOpen={setImageViewerOpen}
+          viewingImage={viewingImage}
+          viewingImageName={viewingImageName}
+          onCloseImageViewer={onCloseImageViewer}
+          authPromptOpen={authPromptOpen}
+          setAuthPromptOpen={setAuthPromptOpen}
+        />
+      </section>
+    </SecurityWrapper>
+  );
 };
+
 export default HomepageGallery;
