@@ -3,7 +3,8 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, User, LogOut, Shield } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Menu, User, LogOut } from "lucide-react";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +49,19 @@ const Header = () => {
     { href: "/docs", label: "Docs" }
   ];
 
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (user?.email) {
+      return user.email.substring(0, 2).toUpperCase();
+    }
+    return "U";
+  };
+
+  // Get user avatar URL from user metadata or profile
+  const getUserAvatarUrl = () => {
+    return user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+  };
+
   return (
     <header className="fixed top-0 w-full z-50 bg-figuro-dark/95 backdrop-blur-sm border-b border-white/10">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -77,14 +91,19 @@ const Header = () => {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <User className="h-4 w-4 text-white" />
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={getUserAvatarUrl()} alt={user.email || "User"} />
+                    <AvatarFallback className="bg-figuro-accent text-white text-xs">
+                      {getUserInitials()}
+                    </AvatarFallback>
+                  </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuContent className="w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg" align="end" forceMount>
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{user.email}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{user.email}</p>
                   </div>
                 </div>
                 <DropdownMenuSeparator />
@@ -92,12 +111,6 @@ const Header = () => {
                   <Link to="/profile" className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/security" className="cursor-pointer">
-                    <Shield className="mr-2 h-4 w-4" />
-                    Security
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -144,20 +157,21 @@ const Header = () => {
                 {user ? (
                   <>
                     <div className="border-t border-white/10 pt-4">
-                      <p className="text-white/60 text-sm mb-4">{user.email}</p>
+                      <div className="flex items-center gap-3 mb-4">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={getUserAvatarUrl()} alt={user.email || "User"} />
+                          <AvatarFallback className="bg-figuro-accent text-white text-xs">
+                            {getUserInitials()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <p className="text-white/60 text-sm">{user.email}</p>
+                      </div>
                       <Link
                         to="/profile"
                         className="text-white/80 hover:text-white transition-colors py-2 block"
                         onClick={() => setIsOpen(false)}
                       >
                         Profile
-                      </Link>
-                      <Link
-                        to="/security"
-                        className="text-white/80 hover:text-white transition-colors py-2 block"
-                        onClick={() => setIsOpen(false)}
-                      >
-                        Security
                       </Link>
                       <button
                         onClick={() => {
