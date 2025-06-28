@@ -12,6 +12,8 @@ import StudioHub from "./pages/StudioHub";
 import Gallery from "./pages/Gallery";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
+import ProfilePictures from "./pages/ProfilePictures";
+import ProfileFigurines from "./pages/ProfileFigurines";
 import Pricing from "./pages/Pricing";
 import Docs from "./pages/Docs";
 import Solutions from "./pages/Solutions";
@@ -51,6 +53,8 @@ const App = () => (
                 <Route path="/gallery" element={<Gallery />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/profile/pictures" element={<ProfilePictures />} />
+                <Route path="/profile/figurines" element={<ProfileFigurines />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/docs" element={<Docs />} />
                 
