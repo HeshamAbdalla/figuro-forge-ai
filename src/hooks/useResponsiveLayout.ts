@@ -7,6 +7,8 @@ interface ResponsiveBreakpoints {
   isDesktop: boolean;
   screenWidth: number;
   screenHeight: number;
+  isSmallMobile: boolean;
+  isLargeMobile: boolean;
 }
 
 export const useResponsiveLayout = (): ResponsiveBreakpoints => {
@@ -16,6 +18,8 @@ export const useResponsiveLayout = (): ResponsiveBreakpoints => {
     isDesktop: true,
     screenWidth: typeof window !== 'undefined' ? window.innerWidth : 1024,
     screenHeight: typeof window !== 'undefined' ? window.innerHeight : 768,
+    isSmallMobile: false,
+    isLargeMobile: false,
   });
 
   useEffect(() => {
@@ -23,12 +27,20 @@ export const useResponsiveLayout = (): ResponsiveBreakpoints => {
       const width = window.innerWidth;
       const height = window.innerHeight;
       
+      const isMobile = width < 768;
+      const isTablet = width >= 768 && width < 1024;
+      const isDesktop = width >= 1024;
+      const isSmallMobile = width < 480;
+      const isLargeMobile = width >= 480 && width < 768;
+      
       setBreakpoints({
-        isMobile: width < 768,
-        isTablet: width >= 768 && width < 1024,
-        isDesktop: width >= 1024,
+        isMobile,
+        isTablet,
+        isDesktop,
         screenWidth: width,
         screenHeight: height,
+        isSmallMobile,
+        isLargeMobile,
       });
     };
 
@@ -39,4 +51,18 @@ export const useResponsiveLayout = (): ResponsiveBreakpoints => {
   }, []);
 
   return breakpoints;
+};
+
+// Utility function for responsive spacing
+export const getResponsiveSpacing = (mobile: string, tablet: string, desktop: string, currentBreakpoint: ResponsiveBreakpoints) => {
+  if (currentBreakpoint.isMobile) return mobile;
+  if (currentBreakpoint.isTablet) return tablet;
+  return desktop;
+};
+
+// Utility function for responsive heights
+export const getResponsiveHeight = (mobile: number, tablet: number, desktop: number, currentBreakpoint: ResponsiveBreakpoints) => {
+  if (currentBreakpoint.isMobile) return mobile;
+  if (currentBreakpoint.isTablet) return tablet;
+  return desktop;
 };

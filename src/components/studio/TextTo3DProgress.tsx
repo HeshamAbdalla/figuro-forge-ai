@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Loader2, CheckCircle, AlertCircle, Download, CloudDownload, Eye, FolderOpen, RefreshCw } from "lucide-react";
@@ -22,13 +21,13 @@ interface TextTo3DProgressProps {
 const getStatusIcon = (status: string, downloadStatus?: string) => {
   if (status === 'completed' || status === 'succeeded' || status === 'SUCCEEDED') {
     if (downloadStatus === 'downloading') {
-      return <CloudDownload className="animate-pulse text-figuro-accent" size={20} />;
+      return <CloudDownload className="animate-pulse text-figuro-accent flex-shrink-0" size={20} />;
     }
     if (downloadStatus === 'completed') {
-      return <CheckCircle className="text-green-400" size={20} />;
+      return <CheckCircle className="text-green-400 flex-shrink-0" size={20} />;
     }
     if (downloadStatus === 'failed') {
-      return <AlertCircle className="text-yellow-400" size={20} />;
+      return <AlertCircle className="text-yellow-400 flex-shrink-0" size={20} />;
     }
   }
   
@@ -38,17 +37,17 @@ const getStatusIcon = (status: string, downloadStatus?: string) => {
     case 'IN_PROGRESS':
     case 'PENDING':
     case 'starting':
-      return <Loader2 className="animate-spin text-figuro-accent" size={20} />;
+      return <Loader2 className="animate-spin text-figuro-accent flex-shrink-0" size={20} />;
     case 'completed':
     case 'succeeded':
     case 'SUCCEEDED':
-      return <CheckCircle className="text-green-400" size={20} />;
+      return <CheckCircle className="text-green-400 flex-shrink-0" size={20} />;
     case 'failed':
     case 'error':
     case 'FAILED':
-      return <AlertCircle className="text-red-400" size={20} />;
+      return <AlertCircle className="text-red-400 flex-shrink-0" size={20} />;
     default:
-      return <Loader2 className="animate-spin text-figuro-accent" size={20} />;
+      return <Loader2 className="animate-spin text-figuro-accent flex-shrink-0" size={20} />;
   }
 };
 
@@ -167,21 +166,21 @@ const TextTo3DProgress = ({
   };
 
   return (
-    <Card className="glass-panel border-white/20 backdrop-blur-sm p-6">
+    <Card className="glass-panel border-white/20 backdrop-blur-sm p-4 sm:p-6">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             {getStatusIcon(status, downloadStatus)}
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-white">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base sm:text-lg font-semibold text-white break-words">
                 {getStatusText(status, downloadStatus)}
               </h3>
               {taskId && (
-                <p className="text-sm text-white/70">Task ID: {taskId.substring(0, 8)}...</p>
+                <p className="text-sm text-white/70 break-all">Task ID: {taskId.substring(0, 8)}...</p>
               )}
               {isProcessing && (
                 <p className="text-xs text-white/50">
@@ -189,7 +188,7 @@ const TextTo3DProgress = ({
                 </p>
               )}
               {downloadStatus && downloadStatus !== 'pending' && (
-                <p className="text-xs text-white/50">
+                <p className="text-xs text-white/50 break-words">
                   Storage: {downloadStatus === 'completed' ? 'Saved to your collection' : 
                            downloadStatus === 'downloading' ? 'Saving to collection...' : 
                            downloadStatus === 'failed' ? 'Save failed' : downloadStatus}
@@ -201,53 +200,60 @@ const TextTo3DProgress = ({
           {isProcessing && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-white/70">
-                <span>{getProgressDescription(progress, status)}</span>
-                <span>{Math.round(progress)}%</span>
+                <span className="truncate pr-2">{getProgressDescription(progress, status)}</span>
+                <span className="flex-shrink-0">{Math.round(progress)}%</span>
               </div>
               <Progress 
                 value={isDownloading ? 95 : progress} 
                 className="bg-white/10" 
               />
-              <p className="text-xs text-center text-white/50">
+              <p className="text-xs text-center text-white/50 px-2">
                 Please keep this tab open while generation is in progress
               </p>
             </div>
           )}
 
           {isCompleted && downloadUrl && !isDownloading && (
-            <div className="flex gap-2 pt-2">
+            <div className="space-y-3">
+              {/* Primary action button - always full width on mobile */}
               <Button
                 onClick={onViewModel}
-                className="flex-1 bg-figuro-accent hover:bg-figuro-accent-hover"
+                className="w-full bg-figuro-accent hover:bg-figuro-accent-hover min-h-[44px]"
               >
-                <Eye size={16} className="mr-2" />
-                View 3D Model
+                <Eye size={16} className="mr-2 flex-shrink-0" />
+                <span className="truncate">View 3D Model</span>
               </Button>
               
-              {isSavedToCollection && (
+              {/* Secondary actions - responsive layout */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                {isSavedToCollection && (
+                  <Button
+                    onClick={handleViewCollection}
+                    variant="outline"
+                    className="flex-1 border-white/20 hover:border-white/40 bg-white/5 min-h-[44px]"
+                  >
+                    <FolderOpen size={16} className="mr-2 flex-shrink-0" />
+                    <span className="truncate">View Collection</span>
+                  </Button>
+                )}
+                
                 <Button
-                  onClick={handleViewCollection}
+                  onClick={handleDownload}
                   variant="outline"
-                  className="border-white/20 hover:border-white/40 bg-white/5"
+                  className={`${isSavedToCollection ? 'sm:w-auto' : 'flex-1'} border-white/20 hover:border-white/40 bg-white/5 min-h-[44px]`}
                 >
-                  <FolderOpen size={16} className="mr-2" />
-                  View Collection
+                  <Download size={16} className={isSavedToCollection ? '' : 'mr-2 flex-shrink-0'} />
+                  <span className={`${isSavedToCollection ? 'sr-only sm:not-sr-only sm:ml-2' : 'truncate'}`}>
+                    Download
+                  </span>
                 </Button>
-              )}
-              
-              <Button
-                onClick={handleDownload}
-                variant="outline"
-                className="border-white/20 hover:border-white/40 bg-white/5"
-              >
-                <Download size={16} />
-              </Button>
+              </div>
             </div>
           )}
 
           {isFailed && (
             <div className="space-y-3">
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <div className="p-3 sm:p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
                 <p className="text-sm text-red-400 mb-2">
                   Something went wrong while creating your 3D model. This could be due to:
                 </p>
@@ -262,10 +268,10 @@ const TextTo3DProgress = ({
                 <Button
                   onClick={onRetry}
                   variant="outline"
-                  className="w-full border-white/20 hover:border-white/40 bg-white/5"
+                  className="w-full border-white/20 hover:border-white/40 bg-white/5 min-h-[44px]"
                 >
-                  <RefreshCw size={16} className="mr-2" />
-                  Try Again
+                  <RefreshCw size={16} className="mr-2 flex-shrink-0" />
+                  <span className="truncate">Try Again</span>
                 </Button>
               )}
             </div>
@@ -273,28 +279,28 @@ const TextTo3DProgress = ({
 
           {downloadStatus === 'failed' && downloadUrl && (
             <div className="space-y-3">
-              <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                <p className="text-sm text-yellow-400">
+              <div className="p-3 sm:p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <p className="text-sm text-yellow-400 break-words">
                   Model created successfully but couldn't be saved to your collection. You can still view and download it, but the link may expire.
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   onClick={onViewModel}
                   size="sm"
-                  className="bg-figuro-accent hover:bg-figuro-accent-hover"
+                  className="flex-1 bg-figuro-accent hover:bg-figuro-accent-hover min-h-[40px]"
                 >
-                  <Eye size={14} className="mr-2" />
-                  View Model
+                  <Eye size={14} className="mr-2 flex-shrink-0" />
+                  <span className="truncate">View Model</span>
                 </Button>
                 <Button
                   onClick={handleDownload}
                   size="sm"
                   variant="outline"
-                  className="border-white/20 hover:border-white/40 bg-white/5"
+                  className="flex-1 border-white/20 hover:border-white/40 bg-white/5 min-h-[40px]"
                 >
-                  <Download size={14} className="mr-2" />
-                  Download
+                  <Download size={14} className="mr-2 flex-shrink-0" />
+                  <span className="truncate">Download</span>
                 </Button>
               </div>
             </div>

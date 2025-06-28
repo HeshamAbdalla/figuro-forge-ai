@@ -136,15 +136,17 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
   const isNearLimit = characterCount > 800;
   const isAtLimit = characterCount >= 1000;
 
+  const isFormValid = prompt.trim() && !validationError && prompt.trim().length >= 3;
+
   return (
-    <Card className="glass-panel border-white/20 backdrop-blur-sm p-6">
+    <Card className="glass-panel border-white/20 backdrop-blur-sm p-4 sm:p-6">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="text-figuro-accent" size={20} />
+          <Sparkles className="text-figuro-accent flex-shrink-0" size={20} />
           <h3 className="text-lg font-semibold text-white">Text to 3D</h3>
         </div>
         
@@ -157,7 +159,7 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
                 value={prompt}
                 onChange={handlePromptChange}
                 placeholder="A cute cartoon dragon sitting on a rock..."
-                className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[100px] resize-none pr-16 ${
+                className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[80px] sm:min-h-[100px] resize-none pr-16 ${
                   validationError ? 'border-red-400 focus:border-red-400' : ''
                 } ${isAtLimit ? 'border-red-500' : isNearLimit ? 'border-yellow-400' : ''}`}
                 disabled={isGenerating}
@@ -176,27 +178,28 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center gap-2 text-red-400 text-sm"
               >
-                <AlertCircle size={14} />
-                {validationError}
+                <AlertCircle size={14} className="flex-shrink-0" />
+                <span className="break-words">{validationError}</span>
               </motion.div>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Mobile-first responsive button layout */}
+          <div className="flex flex-col sm:flex-row gap-3">
             <Button
               type="submit"
-              disabled={!prompt.trim() || isGenerating || !!validationError || prompt.trim().length < 3}
-              className="bg-figuro-accent hover:bg-figuro-accent-hover disabled:opacity-50"
+              disabled={!isFormValid || isGenerating}
+              className="w-full sm:flex-1 bg-figuro-accent hover:bg-figuro-accent-hover disabled:opacity-50 min-h-[44px]"
             >
               {isGenerating ? (
                 <>
-                  <Loader2 size={16} className="animate-spin mr-2" />
-                  Generating...
+                  <Loader2 size={16} className="animate-spin mr-2 flex-shrink-0" />
+                  <span className="truncate">Generating...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles size={16} className="mr-2" />
-                  Quick Generate
+                  <Sparkles size={16} className="mr-2 flex-shrink-0" />
+                  <span className="truncate">Quick Generate</span>
                 </>
               )}
             </Button>
@@ -204,20 +207,20 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
             <Button
               type="button"
               onClick={handleAdvancedGenerate}
-              disabled={!prompt.trim() || isGenerating || !!validationError || prompt.trim().length < 3}
+              disabled={!isFormValid || isGenerating}
               variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 disabled:opacity-50"
+              className="w-full sm:flex-1 border-white/20 text-white hover:bg-white/10 disabled:opacity-50 min-h-[44px]"
             >
-              <Settings size={16} className="mr-2" />
-              Advanced Options
+              <Settings size={16} className="mr-2 flex-shrink-0" />
+              <span className="truncate">Advanced Options</span>
             </Button>
           </div>
           
-          {prompt.trim() && !validationError && prompt.trim().length >= 3 && (
+          {isFormValid && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-xs text-white/50 text-center"
+              className="text-xs text-white/50 text-center px-2"
             >
               Generation typically takes 2-5 minutes
             </motion.p>
