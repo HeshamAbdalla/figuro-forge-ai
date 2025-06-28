@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,9 +32,9 @@ export const SecurityHealthMonitor: React.FC = () => {
       
       if (error) throw error;
       
-      // Type guard to check if data is valid SecurityHealthData
+      // Properly type-cast the response data
       if (data && typeof data === 'object' && !Array.isArray(data)) {
-        const typedData = data as SecurityHealthData;
+        const typedData = data as unknown as SecurityHealthData;
         setHealthData(typedData);
         
         if (showToast) {
@@ -134,7 +133,7 @@ export const SecurityHealthMonitor: React.FC = () => {
       {/* Critical Issues */}
       {healthData.critical_issues.length > 0 && (
         <Alert className="border-red-500 bg-red-50">
-          <AlertTriangle className="w-4 w-4 text-red-600" />
+          <AlertTriangle className="w-4 h-4 text-red-600" />
           <AlertDescription>
             <div className="space-y-2">
               <strong className="text-red-800">Critical Security Issues:</strong>

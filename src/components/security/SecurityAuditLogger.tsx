@@ -28,13 +28,18 @@ export const SecurityAuditLogger: React.FC = () => {
   // Log page navigation events for security monitoring
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (user) {
+      if (user && session) {
+        // Calculate session duration using expires_at if available
+        const sessionDuration = session.expires_at 
+          ? (session.expires_at * 1000) - Date.now() 
+          : 0;
+        
         securityManager.logSecurityEvent({
           event_type: 'user_session_end',
           event_details: {
             userId: user.id,
             currentPath: window.location.pathname,
-            sessionDuration: session ? Date.now() - new Date(session.created_at || Date.now()).getTime() : 0
+            sessionDuration: Math.abs(sessionDuration)
           },
           success: true
         });
