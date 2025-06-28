@@ -34,6 +34,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/studio" element={<StudioHub />} />
+                <Route path="/studio-hub" element={<StudioHub />} />
                 <Route path="/studio/image-to-3d" element={<ImageTo3D />} />
                 <Route path="/studio/text-to-3d" element={<TextTo3D />} />
                 <Route path="/studio/web-icons" element={<WebIcons />} />
