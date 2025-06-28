@@ -21,6 +21,14 @@ import TextTo3D from "./pages/studio/TextTo3D";
 import WebIcons from "./pages/studio/WebIcons";
 import CameraCapture from "./pages/studio/CameraCapture";
 
+// Documentation page imports
+import Introduction from "./pages/docs/Introduction";
+import CreatingYourFirstFigurine from "./pages/docs/CreatingYourFirstFigurine";
+import UnderstandingArtStyles from "./pages/docs/UnderstandingArtStyles";
+import PromptEngineeringTips from "./pages/docs/PromptEngineeringTips";
+import CombiningMultipleStyles from "./pages/docs/CombiningMultipleStyles";
+import PreparingModelsForPrinting from "./pages/docs/PreparingModelsForPrinting";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -45,6 +53,15 @@ const App = () => (
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/docs" element={<Docs />} />
+                
+                {/* Documentation sub-pages */}
+                <Route path="/docs/introduction" element={<Introduction />} />
+                <Route path="/docs/creating-your-first-figurine" element={<CreatingYourFirstFigurine />} />
+                <Route path="/docs/understanding-art-styles" element={<UnderstandingArtStyles />} />
+                <Route path="/docs/prompt-engineering-tips" element={<PromptEngineeringTips />} />
+                <Route path="/docs/combining-multiple-styles" element={<CombiningMultipleStyles />} />
+                <Route path="/docs/preparing-models-for-printing" element={<PreparingModelsForPrinting />} />
+                
                 <Route path="/solutions" element={<Solutions />} />
                 <Route path="/security" element={<SecurityDashboard />} />
               </Routes>
