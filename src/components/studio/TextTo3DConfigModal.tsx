@@ -11,6 +11,7 @@ import { Sparkles, Settings, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { TextTo3DConfig } from "./types/textTo3DConfig";
 import { artStyles, modelModes, topologyTypes } from "./types/textTo3DConfig";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 
 interface TextTo3DConfigModalProps {
   open: boolean;
@@ -27,6 +28,7 @@ const TextTo3DConfigModal = ({
   isGenerating,
   initialPrompt = ""
 }: TextTo3DConfigModalProps) => {
+  const { isMobile, isTablet } = useResponsiveLayout();
   const [config, setConfig] = useState<TextTo3DConfig>({
     prompt: initialPrompt,
     artStyle: "realistic",
@@ -59,12 +61,23 @@ const TextTo3DConfigModal = ({
     setConfig(prev => ({ ...prev, ...updates }));
   };
 
+  // Mobile-optimized modal sizing
+  const getModalClasses = () => {
+    if (isMobile) {
+      return "w-full max-w-[95vw] h-[95vh] max-h-[95vh] m-2";
+    }
+    if (isTablet) {
+      return "w-full max-w-[90vw] max-h-[90vh] mx-4";
+    }
+    return "sm:max-w-2xl max-h-[90vh]";
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl glass-panel border-white/20 bg-figuro-darker text-white max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <Settings className="text-figuro-accent" size={24} />
+      <DialogContent className={`${getModalClasses()} glass-panel border-white/20 bg-figuro-darker text-white overflow-y-auto`}>
+        <DialogHeader className={isMobile ? "pb-2" : ""}>
+          <DialogTitle className={`flex items-center gap-2 ${isMobile ? "text-lg" : "text-xl"}`}>
+            <Settings className="text-figuro-accent" size={isMobile ? 20 : 24} />
             Text to 3D Configuration
           </DialogTitle>
         </DialogHeader>
@@ -73,35 +86,47 @@ const TextTo3DConfigModal = ({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="space-y-6 py-4"
+          className={`space-y-4 ${isMobile ? "py-2" : "py-4"}`}
         >
           {/* Prompt */}
           <div className="space-y-2">
-            <Label className="text-white/90 font-medium">Describe your 3D model</Label>
+            <Label className={`text-white/90 font-medium ${isMobile ? "text-sm" : ""}`}>
+              Describe your 3D model
+            </Label>
             <Textarea
               value={config.prompt}
               onChange={(e) => updateConfig({ prompt: e.target.value })}
               placeholder="A cute cartoon dragon sitting on a rock..."
-              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[100px] resize-none"
+              className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 resize-none ${
+                isMobile ? "min-h-[80px] text-sm" : "min-h-[100px]"
+              }`}
               disabled={isGenerating}
             />
           </div>
 
-          {/* Art Style and Mode */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Art Style and Mode - Stack on mobile */}
+          <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "grid-cols-2"}`}>
             <div className="space-y-2">
-              <Label className="text-white/90 font-medium">Art Style</Label>
+              <Label className={`text-white/90 font-medium ${isMobile ? "text-sm" : ""}`}>
+                Art Style
+              </Label>
               <Select 
                 value={config.artStyle} 
                 onValueChange={(value) => updateConfig({ artStyle: value })}
                 disabled={isGenerating}
               >
-                <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                <SelectTrigger className={`bg-white/10 border-white/20 text-white ${
+                  isMobile ? "h-12 text-sm" : ""
+                }`}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-figuro-darker border-white/20">
+                <SelectContent className="bg-figuro-darker border-white/20 z-[100]">
                   {artStyles.map((style) => (
-                    <SelectItem key={style.value} value={style.value}>
+                    <SelectItem 
+                      key={style.value} 
+                      value={style.value}
+                      className={`text-white hover:bg-white/10 ${isMobile ? "py-3" : ""}`}
+                    >
                       {style.label}
                     </SelectItem>
                   ))}
@@ -110,21 +135,31 @@ const TextTo3DConfigModal = ({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-white/90 font-medium">Generation Mode</Label>
+              <Label className={`text-white/90 font-medium ${isMobile ? "text-sm" : ""}`}>
+                Generation Mode
+              </Label>
               <Select 
                 value={config.mode} 
                 onValueChange={(value: "preview" | "refine") => updateConfig({ mode: value })}
                 disabled={isGenerating}
               >
-                <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                <SelectTrigger className={`bg-white/10 border-white/20 text-white ${
+                  isMobile ? "h-12 text-sm" : ""
+                }`}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-figuro-darker border-white/20">
+                <SelectContent className="bg-figuro-darker border-white/20 z-[100]">
                   {modelModes.map((mode) => (
-                    <SelectItem key={mode.value} value={mode.value}>
+                    <SelectItem 
+                      key={mode.value} 
+                      value={mode.value}
+                      className={`text-white hover:bg-white/10 ${isMobile ? "py-3" : ""}`}
+                    >
                       <div>
-                        <div>{mode.label}</div>
-                        <div className="text-xs text-white/60">{mode.description}</div>
+                        <div className={isMobile ? "text-sm" : ""}>{mode.label}</div>
+                        <div className={`text-white/60 ${isMobile ? "text-xs" : "text-xs"}`}>
+                          {mode.description}
+                        </div>
                       </div>
                     </SelectItem>
                   ))}
@@ -133,9 +168,13 @@ const TextTo3DConfigModal = ({
             </div>
           </div>
 
-          {/* Advanced Settings */}
-          <div className="space-y-4 p-4 rounded-lg bg-white/5 border border-white/10">
-            <h3 className="text-sm font-medium text-white/90 flex items-center gap-2">
+          {/* Advanced Settings - Enhanced mobile layout */}
+          <div className={`space-y-4 p-4 rounded-lg bg-white/5 border border-white/10 ${
+            isMobile ? "p-3" : ""
+          }`}>
+            <h3 className={`font-medium text-white/90 flex items-center gap-2 ${
+              isMobile ? "text-sm" : "text-sm"
+            }`}>
               <Settings size={16} />
               Advanced Settings
             </h3>
@@ -143,8 +182,12 @@ const TextTo3DConfigModal = ({
             {/* Target Polycount */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <Label className="text-white/80 text-sm">Target Polycount</Label>
-                <span className="text-figuro-accent text-sm">{config.targetPolycount?.toLocaleString()}</span>
+                <Label className={`text-white/80 ${isMobile ? "text-xs" : "text-sm"}`}>
+                  Target Polycount
+                </Label>
+                <span className={`text-figuro-accent ${isMobile ? "text-xs" : "text-sm"}`}>
+                  {config.targetPolycount?.toLocaleString()}
+                </span>
               </div>
               <Slider
                 value={[config.targetPolycount || 10000]}
@@ -159,19 +202,27 @@ const TextTo3DConfigModal = ({
 
             {/* Topology Type */}
             <div className="space-y-2">
-              <Label className="text-white/80 text-sm">Topology Type</Label>
+              <Label className={`text-white/80 ${isMobile ? "text-xs" : "text-sm"}`}>
+                Topology Type
+              </Label>
               <Select 
                 value={config.topologyType} 
                 onValueChange={(value: "quad" | "triangle") => updateConfig({ topologyType: value })}
                 disabled={isGenerating}
               >
-                <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                <SelectTrigger className={`bg-white/10 border-white/20 text-white ${
+                  isMobile ? "h-10 text-sm" : ""
+                }`}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-figuro-darker border-white/20">
+                <SelectContent className="bg-figuro-darker border-white/20 z-[100]">
                   {topologyTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
+                    <SelectItem 
+                      key={type.value} 
+                      value={type.value}
+                      className={`text-white hover:bg-white/10 ${isMobile ? "py-2" : ""}`}
+                    >
+                      <span className={isMobile ? "text-sm" : ""}>{type.label}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -180,13 +231,17 @@ const TextTo3DConfigModal = ({
 
             {/* Seed Value */}
             <div className="space-y-2">
-              <Label className="text-white/80 text-sm">Seed (Optional)</Label>
+              <Label className={`text-white/80 ${isMobile ? "text-xs" : "text-sm"}`}>
+                Seed (Optional)
+              </Label>
               <Input
                 type="number"
                 value={config.seedValue || ""}
                 onChange={(e) => updateConfig({ seedValue: e.target.value ? parseInt(e.target.value) : undefined })}
                 placeholder="Random seed for reproducible results"
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 ${
+                  isMobile ? "h-10 text-sm" : ""
+                }`}
                 disabled={isGenerating}
               />
             </div>
@@ -194,22 +249,28 @@ const TextTo3DConfigModal = ({
 
           {/* Negative Prompt */}
           <div className="space-y-2">
-            <Label className="text-white/90 font-medium">Negative Prompt (Optional)</Label>
+            <Label className={`text-white/90 font-medium ${isMobile ? "text-sm" : ""}`}>
+              Negative Prompt (Optional)
+            </Label>
             <Textarea
               value={config.negativePrompt}
               onChange={(e) => updateConfig({ negativePrompt: e.target.value })}
               placeholder="What you don't want in the model (low quality, blurry, etc.)"
-              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[80px] resize-none"
+              className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 resize-none ${
+                isMobile ? "min-h-[60px] text-sm" : "min-h-[80px]"
+              }`}
               disabled={isGenerating}
             />
           </div>
 
-          {/* Generate Button */}
-          <div className="flex gap-3 pt-4">
+          {/* Generate Button - Enhanced mobile layout */}
+          <div className={`flex gap-3 pt-4 ${isMobile ? "flex-col" : ""}`}>
             <Button
               onClick={() => onOpenChange(false)}
               variant="outline"
-              className="flex-1 border-white/20 text-white hover:bg-white/10"
+              className={`border-white/20 text-white hover:bg-white/10 ${
+                isMobile ? "w-full h-12" : "flex-1"
+              }`}
               disabled={isGenerating}
             >
               Cancel
@@ -217,7 +278,9 @@ const TextTo3DConfigModal = ({
             <Button
               onClick={handleGenerate}
               disabled={!config.prompt.trim() || isGenerating}
-              className="flex-1 bg-figuro-accent hover:bg-figuro-accent-hover"
+              className={`bg-figuro-accent hover:bg-figuro-accent-hover ${
+                isMobile ? "w-full h-12" : "flex-1"
+              }`}
             >
               {isGenerating ? (
                 <>
@@ -233,8 +296,10 @@ const TextTo3DConfigModal = ({
             </Button>
           </div>
 
-          {/* Info */}
-          <div className="text-center text-sm text-white/60 border-t border-white/10 pt-4">
+          {/* Info - Condensed on mobile */}
+          <div className={`text-center text-white/60 border-t border-white/10 pt-4 ${
+            isMobile ? "text-xs" : "text-sm"
+          }`}>
             <p>Generation uses Meshy-5 AI model with content moderation enabled.</p>
             <p>Typically takes 2-5 minutes depending on quality settings.</p>
           </div>
