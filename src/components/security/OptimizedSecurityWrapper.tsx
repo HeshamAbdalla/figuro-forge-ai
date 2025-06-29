@@ -55,13 +55,17 @@ export const OptimizedSecurityWrapper: React.FC<OptimizedSecurityWrapperProps> =
           try {
             const { data: performanceData, error } = await supabase.rpc('rls_performance_check');
             if (!error && performanceData) {
-              // Type-safe access to performance data
-              const typedData = performanceData as RLSPerformanceData;
-              logInfo('RLS performance check completed', {
-                activePolicies: typedData.active_policies,
-                securityFunctions: typedData.security_functions,
-                optimizationStatus: typedData.optimization_status
-              });
+              // Safely cast to the expected type
+              const typedData = performanceData as unknown as RLSPerformanceData;
+              
+              // Validate that we have the expected structure
+              if (typedData && typeof typedData === 'object' && 'active_policies' in typedData) {
+                logInfo('RLS performance check completed', {
+                  activePolicies: typedData.active_policies,
+                  securityFunctions: typedData.security_functions,
+                  optimizationStatus: typedData.optimization_status
+                });
+              }
             }
           } catch (error) {
             logError('Performance monitoring failed', error);

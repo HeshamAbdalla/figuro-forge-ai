@@ -75,7 +75,7 @@ export class OptimizedSecurityManager {
     success: boolean;
     performance_metrics: {
       query_time: number;
-      policies_evaluated: number;
+      policy_evaluations: number;
       functions_called: number;
     };
     security_status: string;
@@ -101,15 +101,15 @@ export class OptimizedSecurityManager {
 
       const queryTime = performance.now() - startTime;
 
-      // Type-safe access to the data
-      const typedHealthData = healthData as SecurityHealthData;
-      const typedPerformanceData = performanceData as RLSPerformanceData;
+      // Safely cast to expected types
+      const typedHealthData = healthData as unknown as SecurityHealthData;
+      const typedPerformanceData = performanceData as unknown as RLSPerformanceData;
 
       const result = {
         success: true,
         performance_metrics: {
           query_time: queryTime,
-          policies_evaluated: typedPerformanceData?.active_policies || 0,
+          policy_evaluations: typedPerformanceData?.active_policies || 0,
           functions_called: typedPerformanceData?.security_functions || 0
         },
         security_status: typedHealthData?.status || 'UNKNOWN'
@@ -121,7 +121,7 @@ export class OptimizedSecurityManager {
       await this.logOptimizedSecurityEvent({
         event_type: 'optimized_rls_health_check',
         event_details: {
-          security_score: typedHealthData?.security_score,
+          security_score: (typedHealthData as any)?.security_score,
           status: typedHealthData?.status
         },
         success: true,
@@ -138,12 +138,12 @@ export class OptimizedSecurityManager {
       await this.logOptimizedSecurityEvent({
         event_type: 'optimized_rls_health_check_failed',
         event_details: {
-          error: error.message
+          error: (error as Error).message
         },
         success: false,
         performance_context: {
           query_time: queryTime,
-          policies_evaluated: 0,
+          policy_evaluations: 0,
           functions_called: 0
         }
       });
@@ -152,7 +152,7 @@ export class OptimizedSecurityManager {
         success: false,
         performance_metrics: {
           query_time: queryTime,
-          policies_evaluated: 0,
+          policy_evaluations: 0,
           functions_called: 0
         },
         security_status: 'ERROR'

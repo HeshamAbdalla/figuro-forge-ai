@@ -31,10 +31,16 @@ export const useRLSPerformance = () => {
         throw rpcError;
       }
 
-      // Type cast the response data properly
-      const typedData = data as RLSPerformanceData;
-      setPerformanceData(typedData);
-      console.log('🚀 [RLS-PERFORMANCE] Performance check completed:', typedData);
+      // Safely cast the response data with proper validation
+      const typedData = data as unknown as RLSPerformanceData;
+      
+      // Validate that we have the expected structure
+      if (typedData && typeof typedData === 'object' && 'active_policies' in typedData) {
+        setPerformanceData(typedData);
+        console.log('🚀 [RLS-PERFORMANCE] Performance check completed:', typedData);
+      } else {
+        throw new Error('Invalid response format from RLS performance check');
+      }
       
     } catch (err: any) {
       console.error('❌ [RLS-PERFORMANCE] Error checking performance:', err);
