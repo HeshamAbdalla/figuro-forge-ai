@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,10 +9,12 @@ import { formatDate } from "@/lib/utils";
 import { PLANS } from "@/config/plans";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 
 export const PlanSummary = () => {
   const { subscription, openCustomerPortal, isLoading } = useSubscription();
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
+  const { isMobile, isTablet } = useResponsiveLayout();
   
   const getPlanColor = (plan: string | undefined): string => {
     switch (plan) {
@@ -73,14 +76,18 @@ export const PlanSummary = () => {
 
   if (isLoading) {
     return (
-      <Card className="bg-figuro-darker/50 border-white/10 mb-6">
-        <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <Card className={`bg-figuro-darker/50 border-white/10 ${isMobile ? 'mb-4' : 'mb-6'}`}>
+        <CardContent className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+          isMobile ? 'p-4' : 'p-6'
+        }`}>
           <div className="animate-pulse flex flex-col gap-2 w-full">
             <div className="h-6 bg-figuro-darker rounded w-1/3"></div>
             <div className="h-4 bg-figuro-darker rounded w-2/3 mt-2"></div>
             <div className="h-4 bg-figuro-darker rounded w-1/2 mt-1"></div>
           </div>
-          <div className="animate-pulse h-10 bg-figuro-darker rounded w-full sm:w-40"></div>
+          <div className={`animate-pulse h-10 bg-figuro-darker rounded ${
+            isMobile ? 'w-full' : 'w-40'
+          }`}></div>
         </CardContent>
       </Card>
     );
@@ -96,32 +103,48 @@ export const PlanSummary = () => {
     Math.min(100, ((subscription?.converted_3d_this_month || 0) / currentPlan.limits.modelConversionsPerMonth) * 100);
 
   return (
-    <div className="space-y-6">
+    <div className={isMobile ? 'space-y-4' : 'space-y-6'}>
       <Card className="bg-figuro-darker/50 border-white/10">
-        <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-4">
-                <h3 className="text-xl font-semibold text-white">Current Plan</h3>
-                <Badge className={`${getPlanColor(subscription?.plan)} text-white capitalize`}>
+        <CardContent className={isMobile ? 'p-4' : 'p-6'}>
+          <div className={`flex items-start justify-between gap-4 ${
+            isMobile ? 'flex-col' : 'flex-col lg:flex-row lg:items-center'
+          }`}>
+            <div className="flex-1 w-full">
+              <div className={`flex items-center gap-2 mb-4 ${
+                isMobile ? 'flex-wrap' : 'gap-3'
+              }`}>
+                <h3 className={`font-semibold text-white ${
+                  isMobile ? 'text-lg' : 'text-xl'
+                }`}>Current Plan</h3>
+                <Badge className={`${getPlanColor(subscription?.plan)} text-white capitalize ${
+                  isMobile ? 'text-xs px-2 py-1' : ''
+                }`}>
                   {subscription?.plan || "Free"}
                 </Badge>
                 {subscription?.status && (
-                  <Badge variant="outline" className={getStatusColor(subscription.status)}>
+                  <Badge variant="outline" className={`${getStatusColor(subscription.status)} ${
+                    isMobile ? 'text-xs px-2 py-1' : ''
+                  }`}>
                     {subscription.status.replace('_', ' ')}
                   </Badge>
                 )}
               </div>
               
               {subscription?.valid_until && subscription.is_active && (
-                <p className="text-white/70 flex items-center gap-2 mb-2">
-                  <CalendarClock className="h-4 w-4" />
-                  Renews on {formatDate(subscription.valid_until)}
+                <p className={`text-white/70 flex items-center gap-2 mb-2 ${
+                  isMobile ? 'text-sm' : ''
+                }`}>
+                  <CalendarClock className="h-4 w-4 flex-shrink-0" />
+                  <span className={isMobile ? 'break-words' : ''}>
+                    Renews on {formatDate(subscription.valid_until)}
+                  </span>
                 </p>
               )}
               
               {subscription?.commercial_license && (
-                <Badge variant="outline" className="text-yellow-400 border-yellow-400/30">
+                <Badge variant="outline" className={`text-yellow-400 border-yellow-400/30 ${
+                  isMobile ? 'text-xs' : ''
+                }`}>
                   Commercial License
                 </Badge>
               )}
@@ -129,7 +152,9 @@ export const PlanSummary = () => {
             
             <Button 
               variant="outline" 
-              className="border-white/20 text-white hover:bg-figuro-accent hover:text-white"
+              className={`border-white/20 text-white hover:bg-figuro-accent hover:text-white ${
+                isMobile ? 'w-full mt-4 py-3' : ''
+              }`}
               onClick={handleManagePlan}
               disabled={isOpeningPortal}
             >
@@ -153,18 +178,26 @@ export const PlanSummary = () => {
 
       {/* Usage Breakdown */}
       <Card className="bg-figuro-darker/50 border-white/10">
-        <CardContent className="p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">Usage Overview</h3>
+        <CardContent className={isMobile ? 'p-4' : 'p-6'}>
+          <h3 className={`font-semibold text-white mb-4 ${
+            isMobile ? 'text-lg' : 'text-xl'
+          }`}>Usage Overview</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className={`grid gap-6 ${
+            isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'
+          }`}>
             {/* Monthly Image Generations */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-green-400" />
-                  <span className="text-white font-medium">Images This Month</span>
+                <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                  <Calendar className="h-4 w-4 text-green-400 flex-shrink-0" />
+                  <span className={`text-white font-medium ${
+                    isMobile ? 'text-sm truncate' : ''
+                  }`}>Images This Month</span>
                 </div>
-                <span className="text-white/70 text-sm">
+                <span className={`text-white/70 flex-shrink-0 ${
+                  isMobile ? 'text-xs' : 'text-sm'
+                }`}>
                   {subscription?.generation_count_this_month || 0} / {currentPlan.limits.isUnlimited ? '∞' : currentPlan.limits.imageGenerationsPerMonth}
                 </span>
               </div>
@@ -176,8 +209,10 @@ export const PlanSummary = () => {
                 />
               )}
               {monthlyImageProgress >= 90 && !currentPlan.limits.isUnlimited && (
-                <div className="flex items-center gap-1 text-amber-400 text-sm">
-                  <TrendingUp className="h-3 w-3" />
+                <div className={`flex items-center gap-1 text-amber-400 ${
+                  isMobile ? 'text-xs' : 'text-sm'
+                }`}>
+                  <TrendingUp className="h-3 w-3 flex-shrink-0" />
                   <span>Approaching monthly limit</span>
                 </div>
               )}
@@ -186,11 +221,15 @@ export const PlanSummary = () => {
             {/* Monthly 3D Conversions */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Box className="h-4 w-4 text-purple-400" />
-                  <span className="text-white font-medium">3D Models This Month</span>
+                <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                  <Box className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                  <span className={`text-white font-medium ${
+                    isMobile ? 'text-sm truncate' : ''
+                  }`}>3D Models This Month</span>
                 </div>
-                <span className="text-white/70 text-sm">
+                <span className={`text-white/70 flex-shrink-0 ${
+                  isMobile ? 'text-xs' : 'text-sm'
+                }`}>
                   {subscription?.converted_3d_this_month || 0} / {currentPlan.limits.isUnlimited ? '∞' : currentPlan.limits.modelConversionsPerMonth}
                 </span>
               </div>
@@ -202,8 +241,10 @@ export const PlanSummary = () => {
                 />
               )}
               {monthlyModelProgress >= 90 && !currentPlan.limits.isUnlimited && (
-                <div className="flex items-center gap-1 text-amber-400 text-sm">
-                  <TrendingUp className="h-3 w-3" />
+                <div className={`flex items-center gap-1 text-amber-400 ${
+                  isMobile ? 'text-xs' : 'text-sm'
+                }`}>
+                  <TrendingUp className="h-3 w-3 flex-shrink-0" />
                   <span>Approaching monthly limit</span>
                 </div>
               )}

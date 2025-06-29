@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { User, Crown, Shield, Calendar, Mail, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 
 interface ProfileHeroProps {
   user: any;
@@ -15,6 +16,7 @@ interface ProfileHeroProps {
 
 const ProfileHero: React.FC<ProfileHeroProps> = ({ user, profile, onDataRefresh }) => {
   const navigate = useNavigate();
+  const { isMobile, isTablet } = useResponsiveLayout();
 
   // Generate initials for avatar
   const getInitials = () => {
@@ -69,7 +71,9 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({ user, profile, onDataRefresh 
   const PlanIcon = planInfo.icon;
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-figuro-dark via-gray-900 to-purple-900/20 py-20">
+    <section className={`relative overflow-hidden bg-gradient-to-br from-figuro-dark via-gray-900 to-purple-900/20 ${
+      isMobile ? 'py-12' : 'py-20'
+    }`}>
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-figuro-accent/10 rounded-full blur-3xl animate-pulse" />
@@ -77,14 +81,16 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({ user, profile, onDataRefresh 
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
-      <div className="container mx-auto px-4 relative z-10">
+      <div className={`container mx-auto relative z-10 ${isMobile ? 'px-4' : 'px-4'}`}>
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="max-w-4xl mx-auto"
+          className={isMobile ? 'max-w-full' : 'max-w-4xl mx-auto'}
         >
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-8 text-center md:text-left">
+          <div className={`flex items-center gap-6 text-center ${
+            isMobile ? 'flex-col' : 'md:flex-row md:items-start md:text-left'
+          }`}>
             {/* Enhanced Avatar */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -93,43 +99,57 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({ user, profile, onDataRefresh 
               className="relative group"
             >
               <div className="absolute -inset-1 bg-gradient-to-r from-figuro-accent via-purple-500 to-figuro-accent rounded-full blur opacity-30 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
-              <Avatar className="relative h-32 w-32 border-4 border-white/20 shadow-glow">
+              <Avatar className={`relative border-4 border-white/20 shadow-glow ${
+                isMobile ? 'h-24 w-24' : 'h-32 w-32'
+              }`}>
                 <AvatarImage 
                   src={getUserAvatarUrl()} 
                   alt={profile?.full_name || user?.email || "User"} 
                 />
-                <AvatarFallback className="bg-figuro-accent text-white text-4xl font-bold">
+                <AvatarFallback className={`bg-figuro-accent text-white font-bold ${
+                  isMobile ? 'text-2xl' : 'text-4xl'
+                }`}>
                   {getInitials()}
                 </AvatarFallback>
               </Avatar>
             </motion.div>
             
             {/* Profile Information */}
-            <div className="flex-1 space-y-4">
+            <div className={`flex-1 space-y-3 ${isMobile ? 'w-full' : ''}`}>
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <h1 className="text-4xl md:text-5xl font-bold text-gradient bg-gradient-to-r from-white via-figuro-accent to-purple-400 bg-clip-text text-transparent mb-2">
+                <h1 className={`font-bold text-gradient bg-gradient-to-r from-white via-figuro-accent to-purple-400 bg-clip-text text-transparent mb-3 ${
+                  isMobile ? 'text-2xl' : 'text-4xl md:text-5xl'
+                }`}>
                   {profile?.full_name || user?.email}
                 </h1>
                 
-                <div className="flex flex-wrap justify-center md:justify-start gap-3 mb-4">
-                  <Badge className={`glass-panel px-3 py-1 text-sm font-medium ${planInfo.color}`}>
-                    <PlanIcon className="w-4 h-4 mr-2" />
+                <div className={`flex flex-wrap gap-2 mb-4 ${
+                  isMobile ? 'justify-center' : 'justify-center md:justify-start'
+                }`}>
+                  <Badge className={`glass-panel px-3 py-1 font-medium ${planInfo.color} ${
+                    isMobile ? 'text-xs' : 'text-sm'
+                  }`}>
+                    <PlanIcon className="w-3 h-3 mr-1" />
                     {(profile?.plan || 'free').charAt(0).toUpperCase() + (profile?.plan || 'free').slice(1)} Plan
                   </Badge>
                   
-                  <Badge className="glass-panel px-3 py-1 text-sm font-medium bg-white/10 text-white/80 border-white/20">
-                    <Calendar className="w-4 h-4 mr-2" />
+                  <Badge className={`glass-panel px-3 py-1 font-medium bg-white/10 text-white/80 border-white/20 ${
+                    isMobile ? 'text-xs' : 'text-sm'
+                  }`}>
+                    <Calendar className="w-3 h-3 mr-1" />
                     Since {formatDate(user?.created_at || "")}
                   </Badge>
                 </div>
 
-                <div className="flex items-center justify-center md:justify-start gap-2 text-white/70 mb-6">
+                <div className={`flex items-center gap-2 text-white/70 mb-4 ${
+                  isMobile ? 'justify-center text-sm' : 'justify-center md:justify-start'
+                }`}>
                   <Mail className="w-4 h-4" />
-                  <span>{user?.email}</span>
+                  <span className={isMobile ? 'text-sm truncate max-w-xs' : ''}>{user?.email}</span>
                 </div>
               </motion.div>
 
@@ -138,11 +158,19 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({ user, profile, onDataRefresh 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="flex flex-wrap justify-center md:justify-start gap-3"
+                className={`flex flex-wrap gap-2 ${
+                  isMobile 
+                    ? 'flex-col w-full space-y-2' 
+                    : 'justify-center md:justify-start'
+                }`}
               >
                 <Button 
                   onClick={() => navigate("/profile/pictures")}
-                  className="bg-figuro-accent hover:bg-figuro-accent-hover text-white px-6 py-2 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-glow"
+                  className={`bg-figuro-accent hover:bg-figuro-accent-hover text-white transition-all duration-300 transform hover:scale-105 shadow-glow ${
+                    isMobile 
+                      ? 'w-full py-3 text-sm' 
+                      : 'px-6 py-2 rounded-xl'
+                  }`}
                 >
                   <User className="w-4 h-4 mr-2" />
                   Manage Avatar
@@ -151,7 +179,11 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({ user, profile, onDataRefresh 
                 <Button 
                   onClick={() => navigate("/profile/figurines")}
                   variant="outline"
-                  className="glass-panel border-white/20 text-white hover:bg-white/10 hover:border-figuro-accent/50 px-6 py-2 rounded-xl transition-all duration-300"
+                  className={`glass-panel border-white/20 text-white hover:bg-white/10 hover:border-figuro-accent/50 transition-all duration-300 ${
+                    isMobile 
+                      ? 'w-full py-3 text-sm' 
+                      : 'px-6 py-2 rounded-xl'
+                  }`}
                 >
                   My Figurines
                 </Button>
@@ -159,7 +191,11 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({ user, profile, onDataRefresh 
                 <Button 
                   onClick={onDataRefresh}
                   variant="outline"
-                  className="glass-panel border-white/20 text-white hover:bg-white/10 hover:border-figuro-accent/50 px-6 py-2 rounded-xl transition-all duration-300"
+                  className={`glass-panel border-white/20 text-white hover:bg-white/10 hover:border-figuro-accent/50 transition-all duration-300 ${
+                    isMobile 
+                      ? 'w-full py-3 text-sm' 
+                      : 'px-6 py-2 rounded-xl'
+                  }`}
                 >
                   Refresh Data
                 </Button>
