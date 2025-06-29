@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
@@ -6,19 +7,21 @@ import { useGallery3DGeneration } from "@/components/gallery/useGallery3DGenerat
 import { useUpgradeNotifications } from "@/hooks/useUpgradeNotifications";
 import { useToast } from "@/hooks/use-toast";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import StudioBreadcrumb from "@/components/studio/StudioBreadcrumb";
 import EnhancedCameraWorkflow from "@/components/studio/camera/EnhancedCameraWorkflow";
 import ModelViewer from "@/components/model-viewer";
 import CompactProgressIndicator from "@/components/studio/camera/CompactProgressIndicator";
 import DebugUpgradeButtons from "@/components/upgrade/DebugUpgradeButtons";
-import { Camera, Sparkles, AlertCircle, ArrowLeft } from "lucide-react";
+import { Camera, Sparkles, AlertCircle, ArrowLeft, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const CameraCapture = () => {
   const { user } = useEnhancedAuth();
   const { toast } = useToast();
   const { isMobile } = useResponsiveLayout();
+  const navigate = useNavigate();
   
   const { showUpgradeNotification } = useUpgradeNotifications();
 
@@ -116,8 +119,20 @@ const CameraCapture = () => {
             <div className="sticky top-16 z-40 bg-figuro-dark/95 backdrop-blur-sm border-b border-white/10 px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Camera className="w-5 h-5 text-figuro-accent" />
-                  <h1 className="text-lg font-semibold text-white">Camera Capture</h1>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/studio')}
+                    className="text-white/60 hover:text-white p-1 h-auto"
+                  >
+                    <Home className="w-4 h-4 mr-1" />
+                    <span className="text-sm">Hub</span>
+                  </Button>
+                  <span className="text-white/40 text-sm">/</span>
+                  <div className="flex items-center gap-2">
+                    <Camera className="w-5 h-5 text-figuro-accent" />
+                    <h1 className="text-lg font-semibold text-white">Camera Capture</h1>
+                  </div>
                 </div>
                 {progress.modelUrl && (
                   <Button
