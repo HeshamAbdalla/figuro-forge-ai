@@ -115,23 +115,23 @@ const CameraCapture = () => {
         <div className="min-h-screen bg-figuro-dark">
           <Header />
           <div className="pt-16">
-            {/* Mobile header */}
+            {/* Mobile header with proper button styling */}
             <div className="sticky top-16 z-40 bg-figuro-dark/95 backdrop-blur-sm border-b border-white/10 px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => navigate('/studio')}
-                    className="text-white/60 hover:text-white p-1 h-auto"
+                    className="text-white/70 hover:text-white hover:bg-white/10 px-2 py-1 h-8 text-xs flex-shrink-0 border border-white/20"
                   >
-                    <Home className="w-4 h-4 mr-1" />
-                    <span className="text-sm">Hub</span>
+                    <Home className="w-3 h-3 mr-1" />
+                    Hub
                   </Button>
-                  <span className="text-white/40 text-sm">/</span>
-                  <div className="flex items-center gap-2">
-                    <Camera className="w-5 h-5 text-figuro-accent" />
-                    <h1 className="text-lg font-semibold text-white">Camera Capture</h1>
+                  <span className="text-white/40 text-sm flex-shrink-0">/</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Camera className="w-4 h-4 text-figuro-accent flex-shrink-0" />
+                    <h1 className="text-base font-semibold text-white truncate">Camera Capture</h1>
                   </div>
                 </div>
                 {progress.modelUrl && (
@@ -139,7 +139,7 @@ const CameraCapture = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => setShowMobilePreview(!showMobilePreview)}
-                    className="bg-white/10 border-white/20 text-white"
+                    className="bg-white/10 border-white/20 text-white flex-shrink-0 ml-2"
                   >
                     {showMobilePreview ? 'Camera' : 'Preview'}
                   </Button>
