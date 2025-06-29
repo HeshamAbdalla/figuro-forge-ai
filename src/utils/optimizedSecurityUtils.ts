@@ -30,6 +30,7 @@ export class OptimizedSecurityManager {
     performance_context?: {
       query_time?: number;
       policy_evaluations?: number;
+      functions_called?: number;
     };
   }) {
     try {
