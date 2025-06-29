@@ -18,6 +18,9 @@ import Pricing from "./pages/Pricing";
 import Docs from "./pages/Docs";
 import Solutions from "./pages/Solutions";
 import SecurityDashboard from "./pages/SecurityDashboard";
+import Settings from "./pages/Settings";
+import Subscription from "./pages/Subscription";
+import Support from "./pages/Support";
 import ImageTo3D from "./pages/studio/ImageTo3D";
 import TextTo3D from "./pages/studio/TextTo3D";
 import WebIcons from "./pages/studio/WebIcons";
@@ -57,6 +60,9 @@ const App = () => (
                 <Route path="/profile/figurines" element={<ProfileFigurines />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/docs" element={<Docs />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/subscription" element={<Subscription />} />
+                <Route path="/support" element={<Support />} />
                 
                 {/* Documentation sub-pages */}
                 <Route path="/docs/introduction" element={<Introduction />} />
