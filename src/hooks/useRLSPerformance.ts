@@ -7,6 +7,7 @@ interface RLSPerformanceData {
   timestamp: string;
   active_policies: number;
   security_functions: number;
+  duplicate_policies: number;
   optimization_status: string;
   performance_improvements: string[];
 }
@@ -30,8 +31,10 @@ export const useRLSPerformance = () => {
         throw rpcError;
       }
 
-      setPerformanceData(data);
-      console.log('🚀 [RLS-PERFORMANCE] Performance check completed:', data);
+      // Type cast the response data properly
+      const typedData = data as RLSPerformanceData;
+      setPerformanceData(typedData);
+      console.log('🚀 [RLS-PERFORMANCE] Performance check completed:', typedData);
       
     } catch (err: any) {
       console.error('❌ [RLS-PERFORMANCE] Error checking performance:', err);

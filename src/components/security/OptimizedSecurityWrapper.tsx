@@ -12,6 +12,12 @@ interface OptimizedSecurityWrapperProps {
   enablePerformanceMonitoring?: boolean;
 }
 
+interface RLSPerformanceData {
+  active_policies: number;
+  security_functions: number;
+  optimization_status: string;
+}
+
 /**
  * OptimizedSecurityWrapper provides enhanced security checks with performance monitoring
  * Takes advantage of the new optimized RLS policies and security functions
@@ -49,10 +55,12 @@ export const OptimizedSecurityWrapper: React.FC<OptimizedSecurityWrapperProps> =
           try {
             const { data: performanceData, error } = await supabase.rpc('rls_performance_check');
             if (!error && performanceData) {
+              // Type-safe access to performance data
+              const typedData = performanceData as RLSPerformanceData;
               logInfo('RLS performance check completed', {
-                activePolicies: performanceData.active_policies,
-                securityFunctions: performanceData.security_functions,
-                optimizationStatus: performanceData.optimization_status
+                activePolicies: typedData.active_policies,
+                securityFunctions: typedData.security_functions,
+                optimizationStatus: typedData.optimization_status
               });
             }
           } catch (error) {

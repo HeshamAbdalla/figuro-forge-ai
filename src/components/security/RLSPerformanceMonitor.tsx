@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useRLSPerformance } from '@/hooks/useRLSPerformance';
-import { Activity, Shield, Zap, CheckCircle, RefreshCw } from 'lucide-react';
+import { Activity, Shield, Zap, CheckCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 
 export const RLSPerformanceMonitor: React.FC = () => {
   const { performanceData, loading, error, refreshPerformance } = useRLSPerformance();
@@ -56,6 +56,17 @@ export const RLSPerformanceMonitor: React.FC = () => {
     return null;
   }
 
+  const getOptimizationBadgeColor = (status: string) => {
+    switch (status) {
+      case 'fully_optimized':
+        return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'completed':
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      default:
+        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+    }
+  };
+
   return (
     <Card className="bg-figuro-darker/50 border-white/10">
       <CardHeader>
@@ -63,13 +74,9 @@ export const RLSPerformanceMonitor: React.FC = () => {
           <Activity className="w-5 h-5" />
           RLS Performance Monitor
           <Badge 
-            className={`ml-auto ${
-              performanceData.optimization_status === 'completed' 
-                ? 'bg-green-500/20 text-green-400 border-green-500/30' 
-                : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-            }`}
+            className={`ml-auto ${getOptimizationBadgeColor(performanceData.optimization_status)}`}
           >
-            {performanceData.optimization_status}
+            {performanceData.optimization_status === 'fully_optimized' ? 'Optimized' : performanceData.optimization_status}
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -96,6 +103,28 @@ export const RLSPerformanceMonitor: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Duplicate Policies Check */}
+        {performanceData.duplicate_policies !== undefined && (
+          <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg">
+            <div className="flex items-center gap-2">
+              {performanceData.duplicate_policies === 0 ? (
+                <CheckCircle className="w-4 h-4 text-green-400" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-yellow-400" />
+              )}
+              <span className="text-sm text-white/70">Duplicate Policies</span>
+            </div>
+            <Badge 
+              className={performanceData.duplicate_policies === 0 
+                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+              }
+            >
+              {performanceData.duplicate_policies}
+            </Badge>
+          </div>
+        )}
 
         {/* Performance Improvements */}
         <div className="space-y-2">

@@ -2,6 +2,17 @@
 import { supabase } from '@/integrations/supabase/client';
 import { logError, logInfo } from '@/utils/productionLogger';
 
+interface RLSPerformanceData {
+  active_policies: number;
+  security_functions: number;
+  optimization_status: string;
+}
+
+interface SecurityHealthData {
+  status: string;
+  security_score: number;
+}
+
 /**
  * Optimized security utilities that take advantage of the new RLS performance improvements
  */
@@ -90,14 +101,18 @@ export class OptimizedSecurityManager {
 
       const queryTime = performance.now() - startTime;
 
+      // Type-safe access to the data
+      const typedHealthData = healthData as SecurityHealthData;
+      const typedPerformanceData = performanceData as RLSPerformanceData;
+
       const result = {
         success: true,
         performance_metrics: {
           query_time: queryTime,
-          policies_evaluated: performanceData?.active_policies || 0,
-          functions_called: performanceData?.security_functions || 0
+          policies_evaluated: typedPerformanceData?.active_policies || 0,
+          functions_called: typedPerformanceData?.security_functions || 0
         },
-        security_status: healthData?.status || 'UNKNOWN'
+        security_status: typedHealthData?.status || 'UNKNOWN'
       };
 
       logInfo('Optimized RLS check completed', result);
@@ -106,8 +121,8 @@ export class OptimizedSecurityManager {
       await this.logOptimizedSecurityEvent({
         event_type: 'optimized_rls_health_check',
         event_details: {
-          security_score: healthData?.security_score,
-          status: healthData?.status
+          security_score: typedHealthData?.security_score,
+          status: typedHealthData?.status
         },
         success: true,
         performance_context: result.performance_metrics
