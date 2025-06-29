@@ -25,6 +25,8 @@ export const useRLSPerformance = () => {
       setLoading(true);
       setError(null);
 
+      console.log('🔍 [RLS-PERFORMANCE] Checking fully optimized RLS performance...');
+
       const { data, error: rpcError } = await supabase.rpc('rls_performance_check');
       
       if (rpcError) {
@@ -37,13 +39,22 @@ export const useRLSPerformance = () => {
       // Validate that we have the expected structure
       if (typedData && typeof typedData === 'object' && 'active_policies' in typedData) {
         setPerformanceData(typedData);
-        console.log('🚀 [RLS-PERFORMANCE] Performance check completed:', typedData);
+        
+        const isOptimized = typedData.optimization_status === 'fully_optimized';
+        const duplicatesEliminated = typedData.duplicate_policies === 0;
+        
+        console.log('🚀 [RLS-PERFORMANCE] Performance check completed:', {
+          ...typedData,
+          fully_optimized: isOptimized,
+          duplicates_eliminated: duplicatesEliminated,
+          performance_score: isOptimized && duplicatesEliminated ? 'EXCELLENT' : 'NEEDS_ATTENTION'
+        });
       } else {
         throw new Error('Invalid response format from RLS performance check');
       }
       
     } catch (err: any) {
-      console.error('❌ [RLS-PERFORMANCE] Error checking performance:', err);
+      console.error('❌ [RLS-PERFORMANCE] Error checking optimized performance:', err);
       setError(err.message || 'Failed to check RLS performance');
     } finally {
       setLoading(false);
