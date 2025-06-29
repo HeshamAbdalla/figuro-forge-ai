@@ -32,6 +32,7 @@ export class OptimizedSecurityManager {
       query_time?: number;
       policy_evaluations?: number;
       functions_called?: number;
+      duplicate_policies?: number;
     };
   }) {
     try {
