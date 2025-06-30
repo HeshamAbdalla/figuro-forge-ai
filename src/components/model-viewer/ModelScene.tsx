@@ -106,7 +106,7 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
     shadows: !isPreview && !shouldReduceQuality,
     gl: {
       powerPreference: (isPreview || shouldReduceQuality) ? "low-power" as const : "high-performance" as const,
-      antialias: !isPreview && !shouldReduceQuality && !isFullscreen, // Reduce antialiasing in fullscreen for better performance
+      antialias: !isPreview && !shouldReduceQuality && !isFullscreen,
       alpha: true,
       depth: true,
       stencil: false,
@@ -117,71 +117,78 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
     frameloop: (autoRotate ? "always" : "demand") as "always" | "demand" | "never",
     performance: {
       min: (isPreview || shouldReduceQuality) ? 0.2 : 0.5,
-      max: shouldReduceQuality ? 0.7 : (isFullscreen ? 0.9 : 1), // Slightly reduce max performance in fullscreen
-      debounce: isFullscreen ? 100 : 200 // Faster debounce in fullscreen
+      max: shouldReduceQuality ? 0.7 : (isFullscreen ? 0.9 : 1),
+      debounce: isFullscreen ? 100 : 200
     }
   };
 
   const lightIntensity = isPreview || shouldReduceQuality ? 0.5 : (isFullscreen ? 0.8 : 1);
   const shadowMapSize = (isPreview || shouldReduceQuality) ? 512 : (isFullscreen ? 1024 : 2048);
 
-  return (
+  // Create the main 3D scene content as a single component
+  const SceneContent = () => (
     <>
-      <Canvas key={loadKey} {...canvasSettings}>
-        <ambientLight intensity={lightIntensity * 0.5} />
-        <directionalLight 
-          position={[10, 10, 5]} 
-          intensity={lightIntensity}
-          castShadow={!isPreview && !shouldReduceQuality}
-          shadow-mapSize-width={shadowMapSize}
-          shadow-mapSize-height={shadowMapSize}
-        />
-        <PerspectiveCamera 
-          makeDefault 
-          position={[0, 0, isFullscreen ? 4 : 5]}
-          near={0.1}
-          far={isPreview ? 100 : (isFullscreen ? 1500 : 1000)}
-        />
-        
-        <Suspense fallback={<LoadingSpinner />}>
-          {(stableSource || stableBlob) ? (
-            <ErrorBoundary 
-              fallback={<DummyBox />} 
+      <ambientLight intensity={lightIntensity * 0.5} />
+      <directionalLight 
+        position={[10, 10, 5]} 
+        intensity={lightIntensity}
+        castShadow={!isPreview && !shouldReduceQuality}
+        shadow-mapSize-width={shadowMapSize}
+        shadow-mapSize-height={shadowMapSize}
+      />
+      <PerspectiveCamera 
+        makeDefault 
+        position={[0, 0, isFullscreen ? 4 : 5]}
+        near={0.1}
+        far={isPreview ? 100 : (isFullscreen ? 1500 : 1000)}
+      />
+      
+      <Suspense fallback={<LoadingSpinner />}>
+        {(stableSource || stableBlob) ? (
+          <ErrorBoundary 
+            fallback={<DummyBox />} 
+            onError={handleModelError}
+          >
+            <Model3D 
+              modelSource={stableSource} 
+              modelBlob={stableBlob}
               onError={handleModelError}
-            >
-              <Model3D 
-                modelSource={stableSource} 
-                modelBlob={stableBlob}
-                onError={handleModelError}
-                isPreview={isPreview}
-              />
-            </ErrorBoundary>
-          ) : (
-            <DummyBox />
-          )}
-        </Suspense>
-        
-        <OrbitControls 
-          ref={orbitControlsRef}
-          autoRotate={autoRotate}
-          autoRotateSpeed={isPreview ? 1 : (isFullscreen ? 1.5 : 2)}
-          enablePan={!isPreview}
-          enableZoom={true}
-          enableRotate={true}
-          enableDamping={!isPreview && !shouldReduceQuality}
-          dampingFactor={isFullscreen ? 0.03 : 0.05}
-          maxDistance={isPreview ? 50 : (isFullscreen ? 150 : 100)}
-          minDistance={isFullscreen ? 0.5 : 1}
-        />
-        <Environment 
-          preset="sunset" 
-          resolution={isPreview || shouldReduceQuality ? 64 : (isFullscreen ? 128 : 256)}
-        />
+              isPreview={isPreview}
+            />
+          </ErrorBoundary>
+        ) : (
+          <DummyBox />
+        )}
+      </Suspense>
+      
+      <OrbitControls 
+        ref={orbitControlsRef}
+        autoRotate={autoRotate}
+        autoRotateSpeed={isPreview ? 1 : (isFullscreen ? 1.5 : 2)}
+        enablePan={!isPreview}
+        enableZoom={true}
+        enableRotate={true}
+        enableDamping={!isPreview && !shouldReduceQuality}
+        dampingFactor={isFullscreen ? 0.03 : 0.05}
+        maxDistance={isPreview ? 50 : (isFullscreen ? 150 : 100)}
+        minDistance={isFullscreen ? 0.5 : 1}
+      />
+      <Environment 
+        preset="sunset" 
+        resolution={isPreview || shouldReduceQuality ? 64 : (isFullscreen ? 128 : 256)}
+      />
+    </>
+  );
+
+  return (
+    <div className="relative w-full h-full">
+      <Canvas key={loadKey} {...canvasSettings}>
+        <SceneContent />
       </Canvas>
       
-      {/* Performance overlay for development */}
+      {/* Performance overlay moved outside Canvas and only shown in development */}
       {enablePerformanceMonitoring && process.env.NODE_ENV === 'development' && (
-        <div className="absolute top-2 left-2 bg-black/80 text-white text-xs p-2 rounded font-mono">
+        <div className="absolute top-2 left-2 bg-black/80 text-white text-xs p-2 rounded font-mono pointer-events-none z-10">
           <div>FPS: {metrics.fps.toFixed(1)}</div>
           <div>Memory: {metrics.memoryUsage.toFixed(1)}MB</div>
           <div>Contexts: {metrics.webglContexts}</div>
@@ -194,7 +201,7 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 });
 
