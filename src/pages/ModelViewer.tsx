@@ -14,11 +14,10 @@ const ModelViewer: React.FC = () => {
   const [fileName, setFileName] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   console.log('ModelViewer: Component mounted', { modelId, searchParams: Object.fromEntries(searchParams) });
 
-  // Extract parameters from URL with better error handling
+  // Extract and validate parameters from URL
   useEffect(() => {
     console.log('ModelViewer: Processing URL parameters...');
     
@@ -30,7 +29,6 @@ const ModelViewer: React.FC = () => {
     if (!url) {
       console.warn('ModelViewer: No model URL provided in search params');
       setError('No model URL provided');
-      setIsInitialized(true);
       return;
     }
 
@@ -42,11 +40,9 @@ const ModelViewer: React.FC = () => {
       setFileName(name);
       setIsModalOpen(true);
       setError(null);
-      setIsInitialized(true);
     } catch (err) {
       console.error('ModelViewer: Failed to decode model URL:', err);
       setError('Invalid model URL format');
-      setIsInitialized(true);
     }
   }, [searchParams]);
 
@@ -82,24 +78,16 @@ const ModelViewer: React.FC = () => {
     }
   }, [isModalOpen]);
 
-  // Don't render anything until we've processed the URL parameters
-  if (!isInitialized) {
-    console.log('ModelViewer: Still initializing...');
-    return (
-      <PageTransition>
-        <div className="min-h-screen bg-figuro-dark flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-8 h-8 border-2 border-figuro-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-white/70">Loading model viewer...</p>
-          </div>
-        </div>
-      </PageTransition>
-    );
-  }
-
-  // If there's an error after initialization, show error state but don't redirect immediately
-  if (error && !modelUrl) {
+  // If there's an error, show error state and redirect after a delay
+  if (error) {
     console.log('ModelViewer: Showing error state', { error });
+    
+    // Auto-redirect after showing error
+    setTimeout(() => {
+      const returnUrl = searchParams.get('return') || '/gallery';
+      navigate(returnUrl, { replace: true });
+    }, 3000);
+
     return (
       <PageTransition>
         <Helmet>
@@ -112,11 +100,12 @@ const ModelViewer: React.FC = () => {
             </div>
             <h2 className="text-xl font-semibold text-white mb-2">Unable to Load Model</h2>
             <p className="text-white/70 mb-4">{error}</p>
+            <p className="text-white/50 text-sm">Redirecting to gallery in a few seconds...</p>
             <button
               onClick={() => navigate('/gallery')}
-              className="px-4 py-2 bg-figuro-accent text-white rounded-lg hover:bg-figuro-accent/80 transition-colors"
+              className="mt-4 px-4 py-2 bg-figuro-accent text-white rounded-lg hover:bg-figuro-accent/80 transition-colors"
             >
-              Return to Gallery
+              Return to Gallery Now
             </button>
           </div>
         </div>
@@ -136,6 +125,7 @@ const ModelViewer: React.FC = () => {
         <meta name="robots" content="index, follow" />
       </Helmet>
 
+      {/* Render the enhanced modal dialog */}
       <VisuallyEnhancedModelDialog
         open={isModalOpen}
         onOpenChange={handleModalOpenChange}

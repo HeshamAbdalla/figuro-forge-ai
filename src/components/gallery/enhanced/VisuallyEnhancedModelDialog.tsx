@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Maximize2, Minimize2, RotateCcw, Download, Info, Camera, Settings, Loader2 } from "lucide-react";
@@ -6,7 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import ModelScene, { ModelSceneRef } from "@/components/model-viewer/ModelScene";
+import SimpleModelScene, { SimpleModelSceneRef } from "@/components/model-viewer/SimpleModelScene";
 import LoadingView from "@/components/model-viewer/LoadingView";
 import ErrorView from "@/components/model-viewer/ErrorView";
 
@@ -36,7 +35,7 @@ const VisuallyEnhancedModelDialog: React.FC<VisuallyEnhancedModelDialogProps> = 
   const [loadingProgress, setLoadingProgress] = useState(0);
   
   const dialogRef = useRef<HTMLDivElement>(null);
-  const modelSceneRef = useRef<ModelSceneRef>(null);
+  const modelSceneRef = useRef<SimpleModelSceneRef>(null);
   const { toast } = useToast();
 
   console.log('VisuallyEnhancedModelDialog: Props', { open, modelUrl, fileName });
@@ -84,7 +83,6 @@ const VisuallyEnhancedModelDialog: React.FC<VisuallyEnhancedModelDialogProps> = 
     
     if (!open) {
       console.log('VisuallyEnhancedModelDialog: Dialog closed, resetting state');
-      // Don't reset stableModelUrl immediately to prevent flashing
       setIsFullscreen(false);
       setIsInfoVisible(false);
       setIsSettingsVisible(false);
@@ -102,7 +100,6 @@ const VisuallyEnhancedModelDialog: React.FC<VisuallyEnhancedModelDialogProps> = 
       setIsInfoVisible(false);
       setIsSettingsVisible(false);
       setModelError(null);
-      // Reset stable URL after a delay to prevent flashing
       setTimeout(() => setStableModelUrl(null), 300);
     }
     onOpenChange(newOpen);
@@ -443,13 +440,11 @@ const VisuallyEnhancedModelDialog: React.FC<VisuallyEnhancedModelDialogProps> = 
               transition={{ delay: 0.2 }}
               className="w-full h-full"
             >
-              <ModelScene 
+              <SimpleModelScene 
                 ref={modelSceneRef}
                 modelUrl={stableModelUrl}
                 autoRotate={autoRotate}
                 onModelError={handleModelError}
-                isPreview={performanceMode}
-                enablePerformanceMonitoring={true}
               />
             </motion.div>
           ) : (
