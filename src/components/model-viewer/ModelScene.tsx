@@ -18,6 +18,7 @@ interface ModelSceneProps {
   onModelError: (error: any) => void;
   isPreview?: boolean;
   enablePerformanceMonitoring?: boolean;
+  isFullscreen?: boolean;
 }
 
 export interface ModelSceneRef {
@@ -31,7 +32,8 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
   autoRotate, 
   onModelError, 
   isPreview = false,
-  enablePerformanceMonitoring = false
+  enablePerformanceMonitoring = false,
+  isFullscreen = false
 }, ref) => {
   const currentSourceRef = useRef<string | Blob | null>(null);
   const [stableSource, setStableSource] = useState<string | null>(modelUrl);
@@ -99,29 +101,29 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
     onModelError(error);
   };
 
-  // Dynamic canvas settings based on performance
+  // Dynamic canvas settings based on performance and fullscreen mode
   const canvasSettings = {
     shadows: !isPreview && !shouldReduceQuality,
     gl: {
       powerPreference: (isPreview || shouldReduceQuality) ? "low-power" as const : "high-performance" as const,
-      antialias: !isPreview && !shouldReduceQuality,
+      antialias: !isPreview && !shouldReduceQuality && !isFullscreen, // Reduce antialiasing in fullscreen for better performance
       alpha: true,
       depth: true,
       stencil: false,
       preserveDrawingBuffer: false,
       failIfMajorPerformanceCaveat: isPreview || shouldReduceQuality
     },
-    dpr: (isPreview || shouldReduceQuality) ? [0.5, 1] as [number, number] : [1, 2] as [number, number],
+    dpr: (isPreview || shouldReduceQuality) ? [0.5, 1] as [number, number] : (isFullscreen ? [1, 1.5] as [number, number] : [1, 2] as [number, number]),
     frameloop: (autoRotate ? "always" : "demand") as "always" | "demand" | "never",
     performance: {
       min: (isPreview || shouldReduceQuality) ? 0.2 : 0.5,
-      max: shouldReduceQuality ? 0.7 : 1,
-      debounce: 200
+      max: shouldReduceQuality ? 0.7 : (isFullscreen ? 0.9 : 1), // Slightly reduce max performance in fullscreen
+      debounce: isFullscreen ? 100 : 200 // Faster debounce in fullscreen
     }
   };
 
-  const lightIntensity = isPreview || shouldReduceQuality ? 0.5 : 1;
-  const shadowMapSize = (isPreview || shouldReduceQuality) ? 512 : 1024;
+  const lightIntensity = isPreview || shouldReduceQuality ? 0.5 : (isFullscreen ? 0.8 : 1);
+  const shadowMapSize = (isPreview || shouldReduceQuality) ? 512 : (isFullscreen ? 1024 : 2048);
 
   return (
     <>
@@ -136,9 +138,9 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
         />
         <PerspectiveCamera 
           makeDefault 
-          position={[0, 0, 5]}
+          position={[0, 0, isFullscreen ? 4 : 5]}
           near={0.1}
-          far={isPreview ? 100 : 1000}
+          far={isPreview ? 100 : (isFullscreen ? 1500 : 1000)}
         />
         
         <Suspense fallback={<LoadingSpinner />}>
@@ -162,18 +164,18 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
         <OrbitControls 
           ref={orbitControlsRef}
           autoRotate={autoRotate}
-          autoRotateSpeed={isPreview ? 1 : 2}
+          autoRotateSpeed={isPreview ? 1 : (isFullscreen ? 1.5 : 2)}
           enablePan={!isPreview}
           enableZoom={true}
           enableRotate={true}
           enableDamping={!isPreview && !shouldReduceQuality}
-          dampingFactor={0.05}
-          maxDistance={isPreview ? 50 : 100}
-          minDistance={1}
+          dampingFactor={isFullscreen ? 0.03 : 0.05}
+          maxDistance={isPreview ? 50 : (isFullscreen ? 150 : 100)}
+          minDistance={isFullscreen ? 0.5 : 1}
         />
         <Environment 
           preset="sunset" 
-          resolution={isPreview || shouldReduceQuality ? 64 : 256}
+          resolution={isPreview || shouldReduceQuality ? 64 : (isFullscreen ? 128 : 256)}
         />
       </Canvas>
       
@@ -183,6 +185,7 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
           <div>FPS: {metrics.fps.toFixed(1)}</div>
           <div>Memory: {metrics.memoryUsage.toFixed(1)}MB</div>
           <div>Contexts: {metrics.webglContexts}</div>
+          <div>Mode: {isFullscreen ? 'FULLSCREEN' : 'NORMAL'}</div>
           <div className={cn(
             "mt-1 px-1 rounded text-xs",
             isPerformanceOptimal ? "bg-green-600" : "bg-red-600"
