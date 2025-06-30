@@ -22,22 +22,45 @@ export const useModelViewerNavigation = () => {
     returnUrl,
     useModal = true // Default to modal behavior
   }: NavigateToModelViewerParams) => {
-    // Create URL parameters for modal navigation
-    const params = new URLSearchParams();
-    params.set('url', encodeURIComponent(modelUrl));
-    params.set('name', fileName);
-    params.set('autoRotate', autoRotate.toString());
-    
-    if (returnUrl) {
-      params.set('return', returnUrl);
-    } else {
-      // Set current location as return URL
-      params.set('return', window.location.pathname);
+    console.log('useModelViewerNavigation: Navigating to model viewer', {
+      modelUrl,
+      fileName,
+      modelId,
+      autoRotate,
+      returnUrl,
+      useModal
+    });
+
+    // Validate model URL before navigation
+    if (!modelUrl || typeof modelUrl !== 'string') {
+      console.error('useModelViewerNavigation: Invalid model URL provided', { modelUrl });
+      return;
     }
 
-    // Navigate to the model viewer page which will show as a modal
-    const modelPath = modelId ? `/model-viewer/${modelId}` : '/model-viewer';
-    navigate(`${modelPath}?${params.toString()}`);
+    // Create URL parameters for modal navigation
+    const params = new URLSearchParams();
+    
+    try {
+      params.set('url', encodeURIComponent(modelUrl));
+      params.set('name', fileName);
+      params.set('autoRotate', autoRotate.toString());
+      
+      if (returnUrl) {
+        params.set('return', returnUrl);
+      } else {
+        // Set current location as return URL
+        params.set('return', window.location.pathname);
+      }
+
+      // Navigate to the model viewer page which will show as a modal
+      const modelPath = modelId ? `/model-viewer/${modelId}` : '/model-viewer';
+      const fullPath = `${modelPath}?${params.toString()}`;
+      
+      console.log('useModelViewerNavigation: Navigating to path', { fullPath });
+      navigate(fullPath);
+    } catch (error) {
+      console.error('useModelViewerNavigation: Error during navigation', error);
+    }
   }, [navigate]);
 
   const navigateToModelViewerInNewTab = useCallback(({
@@ -47,20 +70,41 @@ export const useModelViewerNavigation = () => {
     autoRotate = true,
     returnUrl
   }: NavigateToModelViewerParams) => {
-    // Create URL parameters
-    const params = new URLSearchParams();
-    params.set('url', encodeURIComponent(modelUrl));
-    params.set('name', fileName);
-    params.set('autoRotate', autoRotate.toString());
-    
-    if (returnUrl) {
-      params.set('return', returnUrl);
+    console.log('useModelViewerNavigation: Opening model viewer in new tab', {
+      modelUrl,
+      fileName,
+      modelId,
+      autoRotate,
+      returnUrl
+    });
+
+    // Validate model URL before navigation
+    if (!modelUrl || typeof modelUrl !== 'string') {
+      console.error('useModelViewerNavigation: Invalid model URL provided for new tab', { modelUrl });
+      return;
     }
 
-    // Open in new tab
-    const modelPath = modelId ? `/model-viewer/${modelId}` : '/model-viewer';
-    const fullUrl = `${window.location.origin}${modelPath}?${params.toString()}`;
-    window.open(fullUrl, '_blank');
+    // Create URL parameters
+    const params = new URLSearchParams();
+    
+    try {
+      params.set('url', encodeURIComponent(modelUrl));
+      params.set('name', fileName);
+      params.set('autoRotate', autoRotate.toString());
+      
+      if (returnUrl) {
+        params.set('return', returnUrl);
+      }
+
+      // Open in new tab
+      const modelPath = modelId ? `/model-viewer/${modelId}` : '/model-viewer';
+      const fullUrl = `${window.location.origin}${modelPath}?${params.toString()}`;
+      
+      console.log('useModelViewerNavigation: Opening URL in new tab', { fullUrl });
+      window.open(fullUrl, '_blank');
+    } catch (error) {
+      console.error('useModelViewerNavigation: Error opening new tab', error);
+    }
   }, []);
 
   return {
