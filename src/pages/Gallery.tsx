@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
-import { SecurityEnforcedRoute } from "@/components/auth/SecurityEnforcedRoute";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
 import { usePublicFigurines } from "@/hooks/usePublicFigurines";
 import { Figurine } from "@/types/figurine";
@@ -23,7 +22,7 @@ interface FilterState {
   viewMode: "grid" | "list";
 }
 
-const GalleryContent = () => {
+const Gallery = () => {
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     search: "",
@@ -37,7 +36,7 @@ const GalleryContent = () => {
   const { figurines, loading, refetch } = usePublicFigurines();
   const navigate = useNavigate();
 
-  console.log('🔍 [GALLERY] Gallery state:', {
+  console.log('🔍 [GALLERY] Public gallery state:', {
     user: !!user,
     authLoading,
     figurinesCount: figurines.length,
@@ -131,21 +130,61 @@ const GalleryContent = () => {
     console.log('👁️ [GALLERY] Viewing model:', figurine.id);
   };
 
-  // If still loading authentication, show loading state
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-figuro-dark">
-        <Header />
-        <div className="container mx-auto pt-32 pb-24 flex justify-center items-center">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-figuro-accent" />
-            <p className="text-white/70">Loading gallery...</p>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
+  const handlePublicDownload = async (figurine: Figurine) => {
+    console.log('📥 [GALLERY] Public download started for:', figurine.id);
+    
+    try {
+      // Determine what to download based on figurine type
+      const isTextTo3D = figurine.style === 'text-to-3d' || figurine.title.startsWith('Text-to-3D:');
+      const downloadUrl = isTextTo3D && figurine.model_url ? figurine.model_url : figurine.image_url;
+      const fileName = isTextTo3D && figurine.model_url 
+        ? `${figurine.title.replace(/\s+/g, '-')}-${figurine.id.substring(0, 8)}.glb`
+        : `${figurine.title.replace(/\s+/g, '-')}-${figurine.id.substring(0, 8)}.png`;
+
+      if (!downloadUrl) {
+        toast({
+          title: "Download Error",
+          description: "No download URL available for this item.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Direct download without authentication
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Clean up
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+
+      toast({
+        title: "Download Started",
+        description: `Downloading ${fileName}`,
+        variant: "default"
+      });
+
+      console.log('✅ [GALLERY] Public download completed successfully');
+    } catch (error) {
+      console.error('❌ [GALLERY] Public download failed:', error);
+      toast({
+        title: "Download Failed",
+        description: "There was a problem downloading the file. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-figuro-dark">
@@ -193,12 +232,13 @@ const GalleryContent = () => {
               </Button>
             </div>
             
-            {/* Futuristic Gallery Grid */}
+            {/* Futuristic Gallery Grid with Public Download */}
             <FuturisticGalleryGrid
               figurines={filteredFigurines}
               loading={loading}
               viewMode={filters.viewMode}
               onViewModel={handleViewModel}
+              onDownload={handlePublicDownload}
             />
           </motion.div>
         </div>
@@ -212,15 +252,6 @@ const GalleryContent = () => {
         onOpenChange={setAuthPromptOpen}
       />
     </div>
-  );
-};
-
-// Wrap the Gallery component with SecurityEnforcedRoute
-const Gallery = () => {
-  return (
-    <SecurityEnforcedRoute requireVerification={false}>
-      <GalleryContent />
-    </SecurityEnforcedRoute>
   );
 };
 

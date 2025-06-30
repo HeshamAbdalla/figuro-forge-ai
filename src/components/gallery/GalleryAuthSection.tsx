@@ -8,13 +8,15 @@ import CallToAction from "@/components/gallery/CallToAction";
 import PageTransition from "@/components/PageTransition";
 import { Helmet } from "react-helmet-async";
 import { BucketImage } from "@/components/gallery/types";
+import { usePublicDownload } from "@/hooks/usePublicDownload";
+import { useToast } from "@/hooks/use-toast";
 
 interface GalleryAuthSectionProps {
   images: BucketImage[];
   isLoading: boolean;
   authPromptOpen: boolean;
   onAuthPromptChange: (open: boolean) => void;
-  onDownload: (url: string, name: string) => void;
+  onDownload?: (url: string, name: string) => void;
   onView: (url: string, fileName: string, fileType: 'image' | '3d-model' | 'web-icon') => void;
   onGenerate3D: (url: string, name: string) => void;
   onNavigateToStudio: () => void;
@@ -32,6 +34,15 @@ const GalleryAuthSection: React.FC<GalleryAuthSectionProps> = ({
   onNavigateToStudio,
   onUploadClick
 }) => {
+  const { publicDownload } = usePublicDownload();
+  const { toast } = useToast();
+
+  // Use public download if no download handler is provided
+  const handleDownload = onDownload || ((url: string, name: string) => {
+    console.log('📥 [GALLERY-AUTH-SECTION] Using public download');
+    publicDownload(url, name);
+  });
+
   return (
     <>
       <Header />
@@ -52,7 +63,7 @@ const GalleryAuthSection: React.FC<GalleryAuthSectionProps> = ({
             <GalleryGrid 
               images={images}
               isLoading={isLoading}
-              onDownload={onDownload}
+              onDownload={handleDownload}
               onView={onView}
               onGenerate3D={onGenerate3D}
             />
