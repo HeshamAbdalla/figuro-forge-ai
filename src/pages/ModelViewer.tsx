@@ -113,7 +113,7 @@ const ModelViewer: React.FC = () => {
     );
   }
 
-  console.log('ModelViewer: Rendering dialog', { modelUrl, fileName, isModalOpen });
+  console.log('ModelViewer: Rendering enhanced dialog', { modelUrl, fileName, isModalOpen });
 
   return (
     <PageTransition>
