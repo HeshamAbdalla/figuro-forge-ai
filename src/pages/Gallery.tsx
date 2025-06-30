@@ -14,6 +14,7 @@ import { Figurine } from "@/types/figurine";
 import EnhancedGalleryHero from "@/components/gallery/enhanced/EnhancedGalleryHero";
 import EnhancedGalleryFilters from "@/components/gallery/enhanced/EnhancedGalleryFilters";
 import FuturisticGalleryGrid from "@/components/gallery/enhanced/FuturisticGalleryGrid";
+import { useModelViewerNavigation } from "@/hooks/useModelViewerNavigation";
 
 interface FilterState {
   search: string;
@@ -35,6 +36,7 @@ const Gallery = () => {
   const { user, isLoading: authLoading } = useEnhancedAuth();
   const { figurines, loading, refetch } = usePublicFigurines();
   const navigate = useNavigate();
+  const { navigateToModelViewer } = useModelViewerNavigation();
 
   console.log('🔍 [GALLERY] Public gallery state:', {
     user: !!user,
@@ -118,16 +120,22 @@ const Gallery = () => {
   };
 
   const handleViewModel = (figurine: Figurine) => {
-    if (!figurine.model_url) {
+    if (figurine.model_url) {
+      // Use dedicated model viewer for 3D models
+      navigateToModelViewer({
+        modelUrl: figurine.model_url,
+        fileName: figurine.title,
+        modelId: figurine.id,
+        returnUrl: '/gallery'
+      });
+    } else {
       console.warn('⚠️ [GALLERY] No model URL for figurine:', figurine.id);
       toast({
         title: "No 3D Model Available",
         description: "This model doesn't have a 3D preview yet.",
         variant: "destructive"
       });
-      return;
     }
-    console.log('👁️ [GALLERY] Viewing model:', figurine.id);
   };
 
   const handlePublicDownload = async (figurine: Figurine) => {
@@ -232,7 +240,7 @@ const Gallery = () => {
               </Button>
             </div>
             
-            {/* Futuristic Gallery Grid with Public Download */}
+            {/* Futuristic Gallery Grid with Enhanced Model Viewing */}
             <FuturisticGalleryGrid
               figurines={filteredFigurines}
               loading={loading}

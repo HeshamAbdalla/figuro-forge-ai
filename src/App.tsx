@@ -10,6 +10,7 @@ import { SecurityAuditLogger } from "@/components/security/SecurityAuditLogger";
 import Index from "./pages/Index";
 import StudioHub from "./pages/StudioHub";
 import Gallery from "./pages/Gallery";
+import ModelViewer from "./pages/ModelViewer";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import ProfilePictures from "./pages/ProfilePictures";
@@ -54,6 +55,7 @@ const App = () => (
                 <Route path="/studio/camera" element={<CameraCapture />} />
                 <Route path="/studio/gallery" element={<Gallery />} />
                 <Route path="/gallery" element={<Gallery />} />
+                <Route path="/model-viewer/:modelId?" element={<ModelViewer />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/profile/pictures" element={<ProfilePictures />} />

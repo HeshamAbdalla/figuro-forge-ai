@@ -3,9 +3,10 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Figurine } from "@/types/figurine";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Loader2, Trash2 } from "lucide-react";
+import { Download, Eye, Loader2, Trash2, ExternalLink } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import DeleteConfirmationModal from "@/components/common/DeleteConfirmationModal";
+import { useModelViewerNavigation } from "@/hooks/useModelViewerNavigation";
 
 interface FuturisticGalleryGridProps {
   figurines: Figurine[];
@@ -27,6 +28,7 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [figurineToDelete, setFigurineToDelete] = useState<Figurine | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { navigateToModelViewer, navigateToModelViewerInNewTab } = useModelViewerNavigation();
 
   const handleDeleteClick = (figurine: Figurine) => {
     setFigurineToDelete(figurine);
@@ -46,6 +48,22 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleViewInDedicatedViewer = (figurine: Figurine, openInNewTab = false) => {
+    if (!figurine.model_url) {
+      console.warn('No model URL available for figurine:', figurine.id);
+      return;
+    }
+
+    const navigationFn = openInNewTab ? navigateToModelViewerInNewTab : navigateToModelViewer;
+    
+    navigationFn({
+      modelUrl: figurine.model_url,
+      fileName: figurine.title,
+      modelId: figurine.id,
+      returnUrl: '/gallery'
+    });
   };
 
   if (loading) {
@@ -113,15 +131,40 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
                 
                 {/* Overlay with actions */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => onViewModel(figurine)}
-                    className="bg-white/20 hover:bg-white/30 text-white border-none"
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
-                  </Button>
+                  {figurine.model_url ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleViewInDedicatedViewer(figurine)}
+                        className="bg-white/20 hover:bg-white/30 text-white border-none"
+                        title="View in dedicated viewer"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View 3D
+                      </Button>
+                      
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleViewInDedicatedViewer(figurine, true)}
+                        className="bg-blue-600/80 hover:bg-blue-600 text-white border-none"
+                        title="Open in new tab"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => onViewModel(figurine)}
+                      className="bg-white/20 hover:bg-white/30 text-white border-none"
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
+                  )}
                   
                   {onDownload && (
                     <Button
