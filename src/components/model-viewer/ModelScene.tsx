@@ -35,11 +35,15 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
   enablePerformanceMonitoring = false,
   isFullscreen = false
 }, ref) => {
-  const currentSourceRef = useRef<string | Blob | null>(null);
+  // Stable source management with better change detection
   const [stableSource, setStableSource] = useState<string | null>(modelUrl);
   const [stableBlob, setStableBlob] = useState<Blob | null>(modelBlob || null);
   const [loadKey, setLoadKey] = useState<string>(`load-${Date.now()}`);
   const orbitControlsRef = useRef<any>(null);
+  
+  // Track previous values to prevent unnecessary updates
+  const previousUrlRef = useRef<string | null>(modelUrl);
+  const previousBlobRef = useRef<Blob | null>(modelBlob || null);
   
   // Performance monitoring
   const { 
@@ -58,43 +62,39 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
     getPerformanceMetrics: () => metrics
   }));
   
-  // Stabilize URL changes
+  // Improved URL change detection and stabilization
   useEffect(() => {
-    if (modelUrl !== currentSourceRef.current) {
-      console.log("ModelScene: URL source changed to", modelUrl);
+    const hasUrlChanged = modelUrl !== previousUrlRef.current;
+    const hasBlobChanged = modelBlob !== previousBlobRef.current;
+    
+    if (hasUrlChanged || hasBlobChanged) {
+      console.log("ModelScene: Source changed", { 
+        oldUrl: previousUrlRef.current, 
+        newUrl: modelUrl,
+        hasBlobChanged 
+      });
       
-      const current = currentSourceRef.current;
-      currentSourceRef.current = modelUrl;
+      // Update refs
+      previousUrlRef.current = modelUrl;
+      previousBlobRef.current = modelBlob || null;
       
-      if (modelUrl || (current !== null && modelUrl !== current)) {
-        setLoadKey(`load-${Date.now()}`);
-        
-        const timer = setTimeout(() => {
-          setStableSource(modelUrl);
-          if (modelUrl) setStableBlob(null);
-        }, 100);
-        
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [modelUrl]);
-  
-  // Stabilize blob changes
-  useEffect(() => {
-    if (modelBlob && modelBlob !== currentSourceRef.current) {
-      console.log("ModelScene: Blob source changed");
-      
+      // Generate new load key to force re-render
       setLoadKey(`load-${Date.now()}`);
-      currentSourceRef.current = modelBlob;
       
+      // Debounced update to prevent rapid changes
       const timer = setTimeout(() => {
-        setStableBlob(modelBlob);
-        if (modelBlob) setStableSource(null);
+        if (modelBlob) {
+          setStableBlob(modelBlob);
+          setStableSource(null); // Clear URL when using blob
+        } else {
+          setStableSource(modelUrl);
+          setStableBlob(null); // Clear blob when using URL
+        }
       }, 100);
       
       return () => clearTimeout(timer);
     }
-  }, [modelBlob]);
+  }, [modelUrl, modelBlob]);
 
   const handleModelError = (error: any) => {
     console.error("ModelScene: Error in 3D model:", error);

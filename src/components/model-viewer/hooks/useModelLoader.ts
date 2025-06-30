@@ -33,9 +33,10 @@ export const useModelLoader = ({
     providedModelId || `modelloader-${Math.random().toString(36).substring(2, 10)}`
   );
   
-  // Add refs to track current source to prevent infinite loops
+  // Track current source to prevent infinite loops - FIXED: Remove model dependency
   const currentSourceRef = useRef<string | Blob | null>(null);
   const loadAttemptRef = useRef<number>(0);
+  const lastLoadedSourceRef = useRef<string | Blob | null>(null);
 
   useEffect(() => {
     console.log(`useModelLoader: Effect triggered for ${modelIdRef.current}`);
@@ -47,35 +48,37 @@ export const useModelLoader = ({
       return;
     }
     
-    // Check if the same source is being loaded again to prevent infinite loops
+    // Determine the new source
     const newSource = modelBlob || modelSource;
-    const sourceKey = modelBlob ? 'blob-source' : modelSource;
+    const sourceKey = modelBlob ? `blob-${Date.now()}` : modelSource;
     
-    if (sourceKey === currentSourceRef.current && model) {
-      console.log(`Same model source detected for ${modelIdRef.current}, skipping reload`);
+    // CRITICAL FIX: Check against lastLoadedSourceRef instead of model state
+    if (sourceKey === lastLoadedSourceRef.current) {
+      console.log(`Same model source already loaded for ${modelIdRef.current}, skipping reload`);
       return;
     }
     
+    // Reset load attempts for new source
+    if (sourceKey !== currentSourceRef.current) {
+      loadAttemptRef.current = 0;
+      currentSourceRef.current = sourceKey;
+    }
+    
     // Limit load attempts to prevent infinite loops
-    if (loadAttemptRef.current > 3) {
-      console.log(`Too many load attempts for ${modelIdRef.current}, aborting`);
+    if (loadAttemptRef.current >= 3) {
+      console.error(`Too many load attempts for ${modelIdRef.current}, aborting`);
       setLoading(false);
-      onError(new Error("Too many load attempts"));
+      onError(new Error("Too many load attempts - please try refreshing the page"));
       return;
     }
     
     loadAttemptRef.current += 1;
     console.log(`Load attempt ${loadAttemptRef.current} for ${modelIdRef.current}`);
     
-    // Update current source reference
-    currentSourceRef.current = sourceKey;
-    
     // Abort previous load if in progress
     if (controllerRef.current) {
       console.log(`Aborting previous load operation for ${modelIdRef.current}`);
       controllerRef.current.abort();
-      
-      // Also abort any queued load
       modelQueueManager.abortModelLoad(modelIdRef.current);
     }
     
@@ -86,11 +89,10 @@ export const useModelLoader = ({
       previousModelRef.current = null;
     }
     
-    // Clean up previous model resources
-    if (model) {
-      console.log(`Cleaning up previous model resources for ${modelIdRef.current}`);
-      cleanupResources(model, objectUrlRef.current, controllerRef.current);
-      setModel(null);
+    // Clean up previous model resources without disposing current model
+    if (objectUrlRef.current && modelBlob) {
+      revokeObjectUrl(objectUrlRef.current);
+      objectUrlRef.current = null;
     }
     
     // Create a new abort controller for this load operation
@@ -146,7 +148,11 @@ export const useModelLoader = ({
         setModel(loadedModel);
         setLoading(false);
         isLoadingRef.current = false;
+        
+        // CRITICAL: Mark this source as successfully loaded
+        lastLoadedSourceRef.current = sourceKey;
         loadAttemptRef.current = 0; // Reset counter on success
+        
         console.log(`Model ${modelIdRef.current} loaded successfully`);
         
       } catch (error) {
@@ -177,7 +183,7 @@ export const useModelLoader = ({
         objectUrlRef.current = null;
       }
     };
-  }, [modelSource, modelBlob, onError, model]);
+  }, [modelSource, modelBlob, onError]); // REMOVED model dependency to prevent infinite loops
   
   // Clean up all resources when unmounting
   useEffect(() => {
@@ -198,7 +204,7 @@ export const useModelLoader = ({
       cleanupResources(model, objectUrlRef.current, controllerRef.current);
       console.log(`Cleaned up resources on unmount for ${modelIdRef.current}`);
     };
-  }, []);
+  }, []); // Empty dependency array for cleanup
   
   return { loading, model };
 };

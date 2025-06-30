@@ -89,6 +89,12 @@ export const useModelLoader = (): ModelLoaderResult => {
       return;
     }
 
+    // Prevent loading the same URL multiple times
+    if (loading) {
+      console.log('🔄 [MODEL-LOADER] Already loading, skipping duplicate request');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setModel(null);
@@ -198,7 +204,7 @@ export const useModelLoader = (): ModelLoaderResult => {
       setError(errorMessage);
       setLoading(false);
     }
-  }, []);
+  }, [loading]); // Add loading dependency to prevent duplicate calls
 
   return {
     loading,
