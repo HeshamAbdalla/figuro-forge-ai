@@ -156,7 +156,7 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
                         variant="secondary"
                         onClick={() => handleViewInModal(figurine)}
                         className="bg-figuro-accent/80 hover:bg-figuro-accent text-white border-none"
-                        title="View in enhanced modal"
+                        title="View in quick modal"
                       >
                         <Maximize className="w-4 h-4 mr-1" />
                         Quick View
@@ -167,7 +167,7 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
                         variant="secondary"
                         onClick={() => handleViewInDedicatedViewer(figurine)}
                         className="bg-white/20 hover:bg-white/30 text-white border-none"
-                        title="View in dedicated viewer"
+                        title="View in full modal viewer"
                       >
                         <Eye className="w-4 h-4 mr-1" />
                         Full View
@@ -258,7 +258,7 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
         ))}
       </motion.div>
 
-      {/* Enhanced Modal Viewer */}
+      {/* Enhanced Modal Viewer for quick preview */}
       <VisuallyEnhancedModelDialog
         open={modalViewerOpen}
         onOpenChange={setModalViewerOpen}

@@ -1,19 +1,19 @@
 
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import PageTransition from "@/components/PageTransition";
 import VisuallyEnhancedModelDialog from "@/components/gallery/enhanced/VisuallyEnhancedModelDialog";
 
-const ModelViewer: React.FC = () => {
+const ModalModelViewer: React.FC = () => {
   const { modelId } = useParams<{ modelId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Extract parameters from URL
   useEffect(() => {
@@ -26,14 +26,11 @@ const ModelViewer: React.FC = () => {
         setModelUrl(decodedUrl);
         setFileName(name);
         setIsModalOpen(true);
-        setError(null);
       } catch (err) {
         console.error('Failed to decode model URL:', err);
-        setError('Invalid model URL');
         handleClose();
       }
     } else {
-      setError('No model URL provided');
       handleClose();
     }
   }, [searchParams]);
@@ -54,24 +51,13 @@ const ModelViewer: React.FC = () => {
 
   // Handle browser back button
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      event.preventDefault();
+    const handlePopState = () => {
       setIsModalOpen(false);
-      handleClose();
     };
 
-    if (isModalOpen) {
-      window.addEventListener('popstate', handlePopState);
-      return () => window.removeEventListener('popstate', handlePopState);
-    }
-  }, [isModalOpen]);
-
-  // If there's an error, redirect immediately
-  if (error && !modelUrl) {
-    const returnUrl = searchParams.get('return') || '/gallery';
-    navigate(returnUrl, { replace: true });
-    return null;
-  }
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   return (
     <PageTransition>
@@ -94,4 +80,4 @@ const ModelViewer: React.FC = () => {
   );
 };
 
-export default ModelViewer;
+export default ModalModelViewer;

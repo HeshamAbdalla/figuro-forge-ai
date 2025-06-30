@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Environment } from "@react-three/drei";
@@ -125,8 +124,8 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
   const lightIntensity = isPreview || shouldReduceQuality ? 0.5 : (isFullscreen ? 0.8 : 1);
   const shadowMapSize = (isPreview || shouldReduceQuality) ? 512 : (isFullscreen ? 1024 : 2048);
 
-  // Create the main 3D scene content as a single component
-  const SceneContent = () => (
+  // Create the main 3D scene content as a memoized component to prevent Canvas issues
+  const SceneContent = React.useMemo(() => (
     <>
       <ambientLight intensity={lightIntensity * 0.5} />
       <directionalLight 
@@ -178,12 +177,22 @@ const ModelScene = forwardRef<ModelSceneRef, ModelSceneProps>(({
         resolution={isPreview || shouldReduceQuality ? 64 : (isFullscreen ? 128 : 256)}
       />
     </>
-  );
+  ), [
+    lightIntensity, 
+    shadowMapSize, 
+    isFullscreen, 
+    isPreview, 
+    shouldReduceQuality, 
+    stableSource, 
+    stableBlob, 
+    autoRotate, 
+    handleModelError
+  ]);
 
   return (
     <div className="relative w-full h-full">
       <Canvas key={loadKey} {...canvasSettings}>
-        <SceneContent />
+        {SceneContent}
       </Canvas>
       
       {/* Performance overlay moved outside Canvas and only shown in development */}
