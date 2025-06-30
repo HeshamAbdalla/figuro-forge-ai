@@ -3,10 +3,11 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Figurine } from "@/types/figurine";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Loader2, Trash2, ExternalLink } from "lucide-react";
+import { Download, Eye, Loader2, Trash2, ExternalLink, Maximize } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import DeleteConfirmationModal from "@/components/common/DeleteConfirmationModal";
 import { useModelViewerNavigation } from "@/hooks/useModelViewerNavigation";
+import VisuallyEnhancedModelDialog from "./VisuallyEnhancedModelDialog";
 
 interface FuturisticGalleryGridProps {
   figurines: Figurine[];
@@ -28,6 +29,8 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [figurineToDelete, setFigurineToDelete] = useState<Figurine | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [modalViewerOpen, setModalViewerOpen] = useState(false);
+  const [selectedFigurine, setSelectedFigurine] = useState<Figurine | null>(null);
   const { navigateToModelViewer, navigateToModelViewerInNewTab } = useModelViewerNavigation();
 
   const handleDeleteClick = (figurine: Figurine) => {
@@ -64,6 +67,21 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
       modelId: figurine.id,
       returnUrl: '/gallery'
     });
+  };
+
+  const handleViewInModal = (figurine: Figurine) => {
+    if (!figurine.model_url) {
+      console.warn('No model URL available for figurine:', figurine.id);
+      return;
+    }
+
+    setSelectedFigurine(figurine);
+    setModalViewerOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalViewerOpen(false);
+    setSelectedFigurine(null);
   };
 
   if (loading) {
@@ -129,10 +147,21 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
                   }}
                 />
                 
-                {/* Overlay with actions */}
+                {/* Overlay with enhanced actions */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
                   {figurine.model_url ? (
                     <>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleViewInModal(figurine)}
+                        className="bg-figuro-accent/80 hover:bg-figuro-accent text-white border-none"
+                        title="View in enhanced modal"
+                      >
+                        <Maximize className="w-4 h-4 mr-1" />
+                        Quick View
+                      </Button>
+                      
                       <Button
                         size="sm"
                         variant="secondary"
@@ -141,7 +170,7 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
                         title="View in dedicated viewer"
                       >
                         <Eye className="w-4 h-4 mr-1" />
-                        View 3D
+                        Full View
                       </Button>
                       
                       <Button
@@ -171,7 +200,7 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
                       size="sm"
                       variant="secondary"
                       onClick={() => onDownload(figurine)}
-                      className="bg-figuro-accent/80 hover:bg-figuro-accent text-white border-none"
+                      className="bg-green-600/80 hover:bg-green-600 text-white border-none"
                     >
                       <Download className="w-4 h-4 mr-1" />
                       Download
@@ -228,6 +257,15 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Enhanced Modal Viewer */}
+      <VisuallyEnhancedModelDialog
+        open={modalViewerOpen}
+        onOpenChange={setModalViewerOpen}
+        modelUrl={selectedFigurine?.model_url || null}
+        fileName={selectedFigurine?.title}
+        onClose={handleCloseModal}
+      />
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal

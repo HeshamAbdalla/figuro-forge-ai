@@ -8,6 +8,7 @@ interface NavigateToModelViewerParams {
   modelId?: string;
   autoRotate?: boolean;
   returnUrl?: string;
+  useModal?: boolean; // New option for modal vs page navigation
 }
 
 export const useModelViewerNavigation = () => {
@@ -18,9 +19,22 @@ export const useModelViewerNavigation = () => {
     fileName = 'Model',
     modelId,
     autoRotate = true,
-    returnUrl
+    returnUrl,
+    useModal = false
   }: NavigateToModelViewerParams) => {
-    // Create URL parameters
+    // If useModal is true, return the modal data instead of navigating
+    if (useModal) {
+      return {
+        type: 'modal' as const,
+        modelUrl,
+        fileName,
+        modelId,
+        autoRotate,
+        returnUrl
+      };
+    }
+
+    // Create URL parameters for page navigation
     const params = new URLSearchParams();
     params.set('url', encodeURIComponent(modelUrl));
     params.set('name', fileName);
