@@ -22,11 +22,13 @@ const ModelWorkspaceRelated: React.FC<ModelWorkspaceRelatedProps> = ({ figurine 
 
   const fetchRelatedModels = async () => {
     try {
-      // Fetch related models based on style or similar prompts
+      // Only fetch traditional figurines with compatible styles (not text-to-3d from DB)
+      const dbCompatibleStyle = figurine.style === 'text-to-3d' ? 'isometric' : figurine.style;
+      
       const { data: figurinesData } = await supabase
         .from('figurines')
         .select('*')
-        .eq('style', figurine.style)
+        .eq('style', dbCompatibleStyle)
         .eq('is_public', true)
         .neq('id', figurine.id)
         .limit(3);
@@ -34,7 +36,6 @@ const ModelWorkspaceRelated: React.FC<ModelWorkspaceRelatedProps> = ({ figurine 
       const { data: conversionsData } = await supabase
         .from('conversion_tasks')
         .select('*')
-        .eq('art_style', figurine.style)
         .eq('status', 'SUCCEEDED')
         .neq('id', figurine.id)
         .limit(2);
@@ -43,10 +44,10 @@ const ModelWorkspaceRelated: React.FC<ModelWorkspaceRelatedProps> = ({ figurine 
         // Valid art styles from the Figurine type
         const validStyles: Figurine['style'][] = ['isometric', 'anime', 'pixar', 'steampunk', 'lowpoly', 'cyberpunk', 'realistic', 'chibi', 'text-to-3d'];
         
-        // Ensure art_style matches allowed values or fallback to isometric
+        // Ensure art_style matches allowed values or fallback to text-to-3d for conversions
         const validStyle = validStyles.includes(conversion.art_style as Figurine['style']) 
           ? conversion.art_style as Figurine['style']
-          : 'isometric' as const;
+          : 'text-to-3d' as const;
 
         return {
           id: conversion.id,
