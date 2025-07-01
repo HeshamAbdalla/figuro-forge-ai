@@ -63,8 +63,11 @@ const ModelWorkspace = () => {
           .single();
 
         if (conversionData) {
+          // Valid art styles from the Figurine type
+          const validStyles: Figurine['style'][] = ['isometric', 'anime', 'pixar', 'steampunk', 'lowpoly', 'cyberpunk', 'realistic', 'chibi'];
+          
           // Ensure art_style matches allowed values or fallback to isometric
-          const validStyle = (['isometric', 'anime', 'pixar', 'steampunk', 'lowpoly', 'cyberpunk', 'realistic', 'chibi'].includes(conversionData.art_style)) 
+          const validStyle = validStyles.includes(conversionData.art_style as Figurine['style']) 
             ? conversionData.art_style as Figurine['style']
             : 'isometric' as const;
 

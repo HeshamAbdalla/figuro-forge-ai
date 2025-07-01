@@ -13,7 +13,7 @@ export interface Figurine {
   id: string;
   title: string;
   prompt: string;
-  style: string;
+  style: 'isometric' | 'anime' | 'pixar' | 'steampunk' | 'lowpoly' | 'cyberpunk' | 'realistic' | 'chibi';
   image_url: string;
   saved_image_url: string | null;
   model_url: string | null;
