@@ -93,6 +93,35 @@ export type Database = {
         }
         Relationships: []
       }
+      figurine_likes: {
+        Row: {
+          created_at: string | null
+          figurine_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          figurine_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          figurine_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "figurine_likes_figurine_id_fkey"
+            columns: ["figurine_id"]
+            isOneToOne: false
+            referencedRelation: "figurines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       figurines: {
         Row: {
           created_at: string | null
@@ -100,6 +129,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_public: boolean | null
+          like_count: number | null
           metadata: Json | null
           model_url: string | null
           prompt: string
@@ -115,6 +145,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_public?: boolean | null
+          like_count?: number | null
           metadata?: Json | null
           model_url?: string | null
           prompt: string
@@ -130,6 +161,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_public?: boolean | null
+          like_count?: number | null
           metadata?: Json | null
           model_url?: string | null
           prompt?: string

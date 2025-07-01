@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles, Box } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
@@ -13,7 +13,7 @@ import { usePublicFigurines } from "@/hooks/usePublicFigurines";
 import { Figurine } from "@/types/figurine";
 import EnhancedGalleryHero from "@/components/gallery/enhanced/EnhancedGalleryHero";
 import EnhancedGalleryFilters from "@/components/gallery/enhanced/EnhancedGalleryFilters";
-import FuturisticGalleryGrid from "@/components/gallery/enhanced/FuturisticGalleryGrid";
+import Enhanced3DGalleryGrid from "@/components/gallery/enhanced/Enhanced3DGalleryGrid";
 import OnDemand3DPreviewModal from "@/components/gallery/components/OnDemand3DPreviewModal";
 
 interface FilterState {
@@ -39,7 +39,7 @@ const Gallery = () => {
   const { figurines, loading, refetch } = usePublicFigurines();
   const navigate = useNavigate();
 
-  console.log('🔍 [GALLERY] Public gallery state:', {
+  console.log('🔍 [GALLERY] Enhanced 3D gallery state:', {
     user: !!user,
     authLoading,
     figurinesCount: figurines.length,
@@ -60,7 +60,7 @@ const Gallery = () => {
     return filtered;
   }, [figurines]);
 
-  // Filter and sort figurines based on current filters (now only 3D models)
+  // Filter and sort figurines based on current filters
   const filteredFigurines = useMemo(() => {
     let filtered = [...modelsOnlyFigurines];
 
@@ -75,7 +75,7 @@ const Gallery = () => {
       );
     }
 
-    // Category filter (simplified since we only have 3D models now)
+    // Category filter
     switch (filters.category) {
       case "text-to-3d":
         filtered = filtered.filter(f => f.metadata?.conversion_type === 'text-to-3d');
@@ -83,7 +83,12 @@ const Gallery = () => {
       case "traditional":
         filtered = filtered.filter(f => f.metadata?.conversion_type !== 'text-to-3d');
         break;
-      // Remove "with-model" and "images-only" categories since we only show models
+      case "liked":
+        // This would require user authentication and checking likes
+        if (user) {
+          // For now, show all - we'll implement user-specific likes later
+        }
+        break;
     }
 
     // Sort
@@ -94,16 +99,16 @@ const Gallery = () => {
       case "oldest":
         filtered.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         break;
+      case "popular":
+        filtered.sort((a, b) => (b.like_count || 0) - (a.like_count || 0));
+        break;
       case "title":
         filtered.sort((a, b) => a.title.localeCompare(b.title));
-        break;
-      case "popular":
-        filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
     }
 
     return filtered;
-  }, [modelsOnlyFigurines, filters]);
+  }, [modelsOnlyFigurines, filters, user]);
 
   const handleCreateNew = () => {
     if (!user) {
@@ -149,7 +154,6 @@ const Gallery = () => {
     console.log('📥 [GALLERY] Public download started for:', figurine.id);
     
     try {
-      // Since we only show 3D models now, always download the model
       const downloadUrl = figurine.model_url;
       const fileName = `${figurine.title.replace(/\s+/g, '-')}-${figurine.id.substring(0, 8)}.glb`;
 
@@ -209,10 +213,48 @@ const Gallery = () => {
       <Header />
       
       {/* Enhanced Hero Section */}
-      <EnhancedGalleryHero 
-        totalModels={modelsOnlyFigurines.length}
-        onCreateNew={handleCreateNew}
-      />
+      <section className="relative py-20 px-4 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-figuro-accent/10 via-purple-500/5 to-transparent" />
+        <div className="absolute top-20 left-10 w-32 h-32 bg-figuro-accent/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl animate-pulse delay-1000" />
+        
+        <div className="container mx-auto relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center max-w-4xl mx-auto"
+          >
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <Box className="w-8 h-8 text-figuro-accent" />
+              <h1 className="text-4xl md:text-6xl font-bold text-white">
+                3D Model Gallery
+              </h1>
+              <Sparkles className="w-8 h-8 text-purple-400" />
+            </div>
+            
+            <p className="text-xl text-white/80 mb-8 leading-relaxed">
+              Discover amazing 3D models created by our community. Download, view, and get inspired 
+              by the creativity of fellow creators.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Button
+                onClick={handleCreateNew}
+                size="lg"
+                className="bg-figuro-accent hover:bg-figuro-accent/80 text-white px-8 py-3 text-lg"
+              >
+                <Sparkles className="w-5 h-5 mr-2" />
+                Create Your Own
+              </Button>
+              
+              <div className="text-white/60 text-sm">
+                {modelsOnlyFigurines.length} 3D models available
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
       
       {/* Main Gallery Content */}
       <section className="py-16">
@@ -250,12 +292,11 @@ const Gallery = () => {
               </Button>
             </div>
             
-            {/* Futuristic Gallery Grid with Public Download */}
-            <FuturisticGalleryGrid
+            {/* Enhanced 3D Gallery Grid */}
+            <Enhanced3DGalleryGrid
               figurines={filteredFigurines}
               loading={loading}
-              viewMode={filters.viewMode}
-              onViewModel={handleViewModel}
+              onView={handleViewModel}
               onDownload={handlePublicDownload}
             />
           </motion.div>

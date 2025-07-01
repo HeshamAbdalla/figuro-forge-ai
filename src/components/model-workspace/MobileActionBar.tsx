@@ -5,13 +5,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ShareModelModal from "./ShareModelModal";
 import { Figurine } from "@/types/figurine";
+import { useFigurineLikes } from "@/hooks/useFigurineLikes";
 
 interface MobileActionBarProps {
   figurine: Figurine;
   onDownload: () => void;
   onShare: () => void;
-  onLike: () => void;
-  isLiked: boolean;
   className?: string;
 }
 
@@ -19,14 +18,20 @@ const MobileActionBar: React.FC<MobileActionBarProps> = ({
   figurine,
   onDownload,
   onShare,
-  onLike,
-  isLiked,
   className
 }) => {
   const [showShareModal, setShowShareModal] = useState(false);
+  const { isLiked, likeCount, toggleLike, isLoading: isLiking } = useFigurineLikes(
+    figurine.id, 
+    figurine.like_count || 0
+  );
 
   const handleShareClick = () => {
     setShowShareModal(true);
+  };
+
+  const handleLike = async () => {
+    await toggleLike();
   };
 
   return (
@@ -37,7 +42,8 @@ const MobileActionBar: React.FC<MobileActionBarProps> = ({
       )}>
         <div className="flex items-center justify-around max-w-md mx-auto">
           <Button
-            onClick={onLike}
+            onClick={handleLike}
+            disabled={isLiking}
             variant="ghost"
             className={cn(
               "flex-col space-y-1 h-auto py-2 px-4 transition-all duration-200",
@@ -47,7 +53,7 @@ const MobileActionBar: React.FC<MobileActionBarProps> = ({
             )}
           >
             <Heart className={cn("w-5 h-5", isLiked && "fill-current")} />
-            <span className="text-xs">Like</span>
+            <span className="text-xs">Like ({likeCount})</span>
           </Button>
 
           <Button

@@ -5,26 +5,31 @@ import { Button } from "@/components/ui/button";
 import { Download, Share2, Heart, Eye, Copy, Edit } from "lucide-react";
 import { Figurine } from "@/types/figurine";
 import ShareModelModal from "./ShareModelModal";
+import { useFigurineLikes } from "@/hooks/useFigurineLikes";
 
 interface ModelWorkspaceActionsProps {
   figurine: Figurine;
-  isLiked: boolean;
   onDownload: () => void;
   onShare: () => void;
-  onLike: () => void;
 }
 
 const ModelWorkspaceActions: React.FC<ModelWorkspaceActionsProps> = ({
   figurine,
-  isLiked,
   onDownload,
-  onShare,
-  onLike
+  onShare
 }) => {
   const [showShareModal, setShowShareModal] = useState(false);
+  const { isLiked, likeCount, toggleLike, isLoading: isLiking } = useFigurineLikes(
+    figurine.id, 
+    figurine.like_count || 0
+  );
 
   const handleShareClick = () => {
     setShowShareModal(true);
+  };
+
+  const handleLike = async () => {
+    await toggleLike();
   };
 
   return (
@@ -57,7 +62,8 @@ const ModelWorkspaceActions: React.FC<ModelWorkspaceActionsProps> = ({
 
             <Button
               variant="outline"
-              onClick={onLike}
+              onClick={handleLike}
+              disabled={isLiking}
               className={`border-white/20 ${
                 isLiked 
                   ? 'text-red-400 border-red-400/50 hover:bg-red-400/10' 
@@ -65,7 +71,7 @@ const ModelWorkspaceActions: React.FC<ModelWorkspaceActionsProps> = ({
               }`}
             >
               <Heart className={`w-4 h-4 mr-1 ${isLiked ? 'fill-current' : ''}`} />
-              {isLiked ? 'Liked' : 'Like'}
+              {isLiked ? `Liked (${likeCount})` : `Like (${likeCount})`}
             </Button>
           </div>
 
