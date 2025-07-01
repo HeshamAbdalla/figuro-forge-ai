@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { RotateCcw, Maximize2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -29,7 +29,6 @@ const ResponsiveModelViewer: React.FC<ResponsiveModelViewerProps> = ({
   const [autoRotate, setAutoRotate] = useState(true);
   const [showWireframe, setShowWireframe] = useState(false);
   const [brightness, setBrightness] = useState([1]);
-  const viewerRef = useRef<any>(null);
 
   const resetCamera = () => {
     // This would integrate with the actual ModelViewer component's reset functionality
@@ -131,7 +130,6 @@ const ResponsiveModelViewer: React.FC<ResponsiveModelViewerProps> = ({
       <div className="w-full h-full">
         {modelUrl ? (
           <ModelViewer
-            ref={viewerRef}
             modelUrl={modelUrl}
             isLoading={false}
             variant="gallery"
