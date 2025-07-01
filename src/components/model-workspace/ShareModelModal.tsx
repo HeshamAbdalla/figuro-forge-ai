@@ -82,59 +82,16 @@ const ShareModelModal: React.FC<ShareModelModalProps> = ({
 
       console.log('📋 Share configuration:', shareConfig);
 
-      // Step 3: Test database function directly first
-      console.log('🧪 Step 3: Testing database function directly...');
-      try {
-        const { data: dbTestResult, error: dbTestError } = await supabase
-          .rpc('create_shared_model', {
-            p_figurine_id: figurine.id,
-            p_password: shareConfig.password,
-            p_expires_hours: shareConfig.expiresHours,
-            p_max_views: shareConfig.maxViews
-          });
-
-        if (dbTestError) {
-          console.error('❌ Database function error:', dbTestError);
-          throw new Error(`Database function failed: ${dbTestError.message}`);
-        }
-
-        console.log('✅ Database function test successful:', dbTestResult);
-        
-        // If database function works, create the share URL directly
-        const baseUrl = window.location.origin;
-        const fullShareUrl = `${baseUrl}/shared/${dbTestResult}`;
-        setShareUrl(fullShareUrl);
-        
-        toast({
-          title: "Share Created!",
-          description: "Your model share link has been generated successfully."
-        });
-        
-        console.log('✅ Share created successfully via database function');
-        return;
-        
-      } catch (dbError) {
-        console.error('❌ Database function failed, trying edge function...', dbError);
-      }
-
-      // Step 4: Try edge function if database function fails
-      console.log('🌐 Step 4: Calling edge function...');
-      console.log('🔗 Edge function URL being called: create-model-share');
-      console.log('📤 Request payload:', shareConfig);
-      console.log('🎫 Auth token (first 20 chars):', session.access_token.substring(0, 20) + '...');
-
-      const startTime = Date.now();
+      // Step 3: Call edge function with proper headers and body
+      console.log('🌐 Calling edge function...');
       
       const { data, error } = await supabase.functions.invoke('create-model-share', {
-        body: shareConfig,
+        body: JSON.stringify(shareConfig),
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         }
       });
-
-      const endTime = Date.now();
-      console.log(`⏱️ Edge function call took ${endTime - startTime}ms`);
 
       console.log('📥 Edge function response:', { data, error });
 

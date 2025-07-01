@@ -11,6 +11,7 @@ serve(async (req) => {
   console.log(`🔗 create-model-share function called - Method: ${req.method}`)
   console.log('📍 Request URL:', req.url)
   console.log('🎫 Auth header present:', req.headers.get('Authorization') ? 'YES' : 'NO')
+  console.log('📦 Content-Type:', req.headers.get('Content-Type'))
   
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -58,8 +59,39 @@ serve(async (req) => {
 
     console.log('✅ User authenticated:', user.id)
 
+    // Parse request body with better error handling
     console.log('📋 Parsing request body...')
-    const { figurineId, password, expiresHours, maxViews } = await req.json()
+    let requestBody;
+    
+    try {
+      const bodyText = await req.text();
+      console.log('📝 Raw body text:', bodyText.length > 0 ? `${bodyText.substring(0, 100)}...` : 'EMPTY');
+      
+      if (!bodyText || bodyText.trim() === '') {
+        console.error('❌ Empty request body received')
+        return new Response(
+          JSON.stringify({ error: 'Request body is required' }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      requestBody = JSON.parse(bodyText);
+      console.log('✅ Successfully parsed request body');
+    } catch (parseError) {
+      console.error('❌ Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+    
+    const { figurineId, password, expiresHours, maxViews } = requestBody;
     
     console.log('📝 Request data:', {
       figurineId,
