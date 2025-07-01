@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -252,8 +253,6 @@ const ModelWorkspace = () => {
           figurine={figurine}
           onDownload={handleDownload}
           onShare={handleShare}
-          onLike={handleLike}
-          isLiked={isLiked}
         />
       </div>
     );
@@ -285,10 +284,8 @@ const ModelWorkspace = () => {
               <ModelWorkspaceInfo figurine={figurine} />
               <ModelWorkspaceActions 
                 figurine={figurine}
-                isLiked={isLiked}
                 onDownload={handleDownload}
                 onShare={handleShare}
-                onLike={handleLike}
               />
               <ModelWorkspaceSpecs figurine={figurine} />
             </div>
@@ -348,10 +345,8 @@ const ModelWorkspace = () => {
           <div className="lg:col-span-1 space-y-4 overflow-y-auto">
             <ModelWorkspaceActions 
               figurine={figurine}
-              isLiked={isLiked}
               onDownload={handleDownload}
               onShare={handleShare}
-              onLike={handleLike}
             />
             <ModelWorkspaceRelated figurine={figurine} />
           </div>
