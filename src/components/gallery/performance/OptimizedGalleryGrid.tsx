@@ -1,13 +1,15 @@
+
 import React, { useMemo, useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BucketImage } from "../types";
-import OptimizedModelPreview from "./OptimizedModelPreview";
+import ContextAwareModelPreview from "@/components/model-viewer/context/ContextAwareModelPreview";
 import GalleryItemFooter from "../components/GalleryItemFooter";
 import GalleryItemOverlay from "../components/GalleryItemOverlay";
 import { useSecureDownload } from "@/hooks/useSecureDownload";
 import { useGalleryItemState } from "../hooks/useGalleryItemState";
 import ComprehensivePerformanceMonitor from "./ComprehensivePerformanceMonitor";
-import { enhancedResourcePool } from "./EnhancedResourcePool";
+import { smartWebGLManager } from "@/components/model-viewer/context/SmartWebGLManager";
+import { smartBatchLoader } from "@/components/model-viewer/context/SmartBatchLoader";
 
 interface OptimizedGalleryGridProps {
   images: BucketImage[];
@@ -43,6 +45,22 @@ const OptimizedGalleryItem: React.FC<{
   const isImage = file.type === 'image';
   const is3DModel = file.type === '3d-model';
   const isWebIcon = file.type === 'web-icon';
+
+  // Calculate priority based on file type and position
+  const priority = useMemo(() => {
+    let basePriority = 0.5;
+    
+    // Higher priority for 3D models
+    if (is3DModel) basePriority += 0.3;
+    
+    // Higher priority for text-to-3D files
+    if (isTextTo3DFile) basePriority += 0.2;
+    
+    // Higher priority for items earlier in the list
+    basePriority += Math.max(0, (20 - index) * 0.01);
+    
+    return Math.min(1, basePriority);
+  }, [is3DModel, isTextTo3DFile, index]);
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -82,9 +100,13 @@ const OptimizedGalleryItem: React.FC<{
       <div className="relative">
         <div className="aspect-square relative overflow-hidden bg-white/5">
           {is3DModel ? (
-            <OptimizedModelPreview 
+            <ContextAwareModelPreview 
               modelUrl={file.url} 
               fileName={file.name}
+              priority={priority}
+              onError={(error) => {
+                console.error(`Gallery item ${file.name} error:`, error);
+              }}
             />
           ) : (
             !imageError ? (
@@ -152,6 +174,19 @@ const OptimizedGalleryGrid: React.FC<OptimizedGalleryGridProps> = ({
     imageItems: 0
   });
 
+  const [contextStats, setContextStats] = useState(smartWebGLManager.getStats());
+  const [batchStats, setBatchStats] = useState(smartBatchLoader.getStats());
+
+  // Monitor context and batch stats
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setContextStats(smartWebGLManager.getStats());
+      setBatchStats(smartBatchLoader.getStats());
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Memoize the sorted images with enhanced sorting logic
   const sortedImages = useMemo(() => {
     const sorted = [...images].sort((a, b) => {
@@ -181,24 +216,12 @@ const OptimizedGalleryGrid: React.FC<OptimizedGalleryGridProps> = ({
     return sorted;
   }, [images]);
 
-  // Monitor resource usage and provide cleanup
+  // Cleanup on unmount
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const checkResourceUsage = () => {
-        const stats = enhancedResourcePool.getPerformanceStats();
-        
-        if (stats.hitRatio < 0.5 && stats.cacheHits > 20) {
-          console.warn('Gallery: Low cache hit ratio detected, consider cache optimization');
-        }
-        
-        if (stats.geometries > 50) {
-          console.warn('Gallery: High geometry count, consider cleanup');
-        }
-      };
-
-      const interval = setInterval(checkResourceUsage, 10000);
-      return () => clearInterval(interval);
-    }
+    return () => {
+      smartWebGLManager.reset();
+      smartBatchLoader.clear();
+    };
   }, []);
 
   if (isLoading) {
@@ -242,10 +265,18 @@ const OptimizedGalleryGrid: React.FC<OptimizedGalleryGridProps> = ({
 
   return (
     <>
-      {/* Grid metrics for development */}
+      {/* Grid metrics and context stats for development */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="mb-4 text-white/60 text-sm">
-          Gallery: {gridMetrics.totalItems} items ({gridMetrics.modelItems} models, {gridMetrics.imageItems} images)
+        <div className="mb-4 space-y-2">
+          <div className="text-white/60 text-sm">
+            Gallery: {gridMetrics.totalItems} items ({gridMetrics.modelItems} models, {gridMetrics.imageItems} images)
+          </div>
+          <div className="text-white/60 text-sm">
+            WebGL: {contextStats.active}/{contextStats.max} active, {contextStats.queued} queued
+          </div>
+          <div className="text-white/60 text-sm">
+            Batch: {batchStats.pending} pending, {batchStats.active} active, {batchStats.processing ? 'processing' : 'idle'}
+          </div>
         </div>
       )}
       
