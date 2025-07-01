@@ -162,7 +162,7 @@ class ModelQueueManager {
   /**
    * Process the loading queue
    */
-  private async processQueue(): void {
+  private async processQueue(): Promise<void> {
     if (this.processingQueue || this.queue.length === 0) {
       return;
     }
