@@ -41,7 +41,7 @@ const ModelWorkspaceRelated: React.FC<ModelWorkspaceRelatedProps> = ({ figurine 
 
       const processedConversions = (conversionsData || []).map(conversion => {
         // Valid art styles from the Figurine type
-        const validStyles: Figurine['style'][] = ['isometric', 'anime', 'pixar', 'steampunk', 'lowpoly', 'cyberpunk', 'realistic', 'chibi'];
+        const validStyles: Figurine['style'][] = ['isometric', 'anime', 'pixar', 'steampunk', 'lowpoly', 'cyberpunk', 'realistic', 'chibi', 'text-to-3d'];
         
         // Ensure art_style matches allowed values or fallback to isometric
         const validStyle = validStyles.includes(conversion.art_style as Figurine['style']) 

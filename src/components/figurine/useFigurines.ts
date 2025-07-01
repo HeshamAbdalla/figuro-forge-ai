@@ -64,17 +64,25 @@ export const useFigurines = () => {
           console.warn(`Invalid model URL for figurine ${figurine.id}:`, modelValidation.error);
         }
         
+        // Valid art styles from the Figurine type
+        const validStyles: Figurine['style'][] = ['isometric', 'anime', 'pixar', 'steampunk', 'lowpoly', 'cyberpunk', 'realistic', 'chibi', 'text-to-3d'];
+        const validStyle = validStyles.includes(figurine.style as Figurine['style']) 
+          ? figurine.style as Figurine['style']
+          : 'isometric' as const;
+        
         return {
           id: figurine.id,
           title: figurine.title || "Untitled Figurine",
           prompt: figurine.prompt || "",
-          style: figurine.style || "",
+          style: validStyle,
           image_url: imageValidation.isValid ? imageValidation.cleanUrl : (figurine.image_url || ""),
           saved_image_url: savedImageValidation.isValid ? savedImageValidation.cleanUrl : figurine.saved_image_url,
           model_url: modelValidation.isValid ? modelValidation.cleanUrl : figurine.model_url,
           created_at: figurine.created_at || new Date().toISOString(),
           user_id: figurine.user_id,
-          is_public: figurine.is_public || false
+          is_public: figurine.is_public || false,
+          file_type: (figurine.file_type as Figurine['file_type']) || 'image',
+          metadata: (figurine.metadata as Record<string, any>) || {}
         };
       });
       
@@ -100,17 +108,30 @@ export const useFigurines = () => {
           prioritized_thumbnail_url: prioritizedThumbnailUrl
         });
         
+        // Valid art styles from the Figurine type
+        const validStyles: Figurine['style'][] = ['isometric', 'anime', 'pixar', 'steampunk', 'lowpoly', 'cyberpunk', 'realistic', 'chibi', 'text-to-3d'];
+        const validStyle = validStyles.includes(conversion.art_style as Figurine['style'])
+          ? conversion.art_style as Figurine['style']
+          : 'text-to-3d' as const;
+        
         return {
           id: conversion.id,
           title: `Text-to-3D: ${conversion.prompt?.substring(0, 30) || 'Generated Model'}${conversion.prompt && conversion.prompt.length > 30 ? '...' : ''}`,
           prompt: conversion.prompt || "",
-          style: conversion.art_style || "text-to-3d",
+          style: validStyle,
           image_url: prioritizedThumbnailUrl || "",
           saved_image_url: prioritizedThumbnailUrl,
           model_url: prioritizedModelUrl,
           created_at: conversion.created_at || new Date().toISOString(),
           user_id: conversion.user_id,
-          is_public: false
+          is_public: false,
+          file_type: '3d-model' as const,
+          metadata: {
+            conversion_type: 'text-to-3d',
+            art_style: conversion.art_style,
+            generation_mode: conversion.generation_mode,
+            topology_type: conversion.topology_type
+          }
         };
       });
       
