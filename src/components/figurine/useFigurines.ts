@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Figurine } from '@/types/figurine';
@@ -88,16 +87,16 @@ export const useFigurines = () => {
       
       // Process text-to-3D conversions with enhanced URL prioritization and validation
       const processedConversions = (conversionData || []).map(conversion => {
-        // Enhanced URL prioritization: local URLs first, then validate
+        // Enhanced URL prioritization: local URLs first, then validate - extract just the URL string
         const prioritizedModelUrl = prioritizeUrls([
           conversion.local_model_url,
           conversion.model_url
-        ]);
+        ].filter(Boolean));
         
         const prioritizedThumbnailUrl = prioritizeUrls([
           conversion.local_thumbnail_url,
           conversion.thumbnail_url
-        ]);
+        ].filter(Boolean));
         
         console.log(`Processing conversion ${conversion.id}:`, {
           local_model_url: conversion.local_model_url,

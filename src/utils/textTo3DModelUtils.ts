@@ -27,7 +27,7 @@ export const resolveTextTo3DModelUrl = async (
     throw new Error('No model URLs available');
   }
   
-  // Use URL prioritization to select the best URL
+  // Use URL prioritization to select the best URL - extract just the URL string
   const selectedUrl = prioritizeUrls(availableUrls);
   if (!selectedUrl) {
     throw new Error('Failed to select a valid model URL');

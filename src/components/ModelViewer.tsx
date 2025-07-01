@@ -68,7 +68,7 @@ const Model = ({ url, onError }: { url: string; onError: (error: any) => void })
       previousModelRef.current = null;
     }
     
-    // Prioritize URLs if multiple options available
+    // Prioritize URLs if multiple options available - extract just the URL string
     const prioritizedUrl = prioritizeUrls([url]);
     const finalUrl = prioritizedUrl || url;
     

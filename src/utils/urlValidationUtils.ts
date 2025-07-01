@@ -106,7 +106,14 @@ export const validateAndCleanUrl = (url: string | null | undefined): UrlValidati
   }
 };
 
-export const prioritizeUrls = (urls: string[]): { url: string | null; info: UrlInfo | null } => {
+// Updated function to return just the URL string for backward compatibility
+export const prioritizeUrls = (urls: string[]): string | null => {
+  const result = prioritizeUrlsWithInfo(urls);
+  return result.url;
+};
+
+// New function that returns the object with URL and info
+export const prioritizeUrlsWithInfo = (urls: string[]): { url: string | null; info: UrlInfo | null } => {
   if (!urls || urls.length === 0) {
     return { url: null, info: null };
   }

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { tryLoadWithCorsProxies } from '@/utils/corsProxy';
-import { validateAndCleanUrl, prioritizeUrls } from '@/utils/urlValidationUtils';
+import { validateAndCleanUrl, prioritizeUrlsWithInfo } from '@/utils/urlValidationUtils';
 
 interface ModelLoaderResult {
   loading: boolean;
@@ -72,7 +72,7 @@ export const useModelLoader = (): ModelLoaderResult => {
           if (conversionTask) {
             // Use URL prioritization to select best available URL
             const availableUrls = [conversionTask.local_model_url, conversionTask.model_url].filter(Boolean);
-            const prioritization = prioritizeUrls(availableUrls);
+            const prioritization = prioritizeUrlsWithInfo(availableUrls);
             
             if (prioritization.url) {
               console.log('✅ [MODEL-LOADER] Found alternative URL via database:', prioritization.url.substring(0, 50) + '...');
@@ -103,7 +103,7 @@ export const useModelLoader = (): ModelLoaderResult => {
         console.warn('⚠️ [MODEL-LOADER] Error checking for local version:', error);
         
         // If original URL is expired, throw a more specific error
-        if (error.message?.includes('expired')) {
+        if (error instanceof Error && error.message?.includes('expired')) {
           throw error;
         }
       }
@@ -169,13 +169,13 @@ export const useModelLoader = (): ModelLoaderResult => {
                     undefined,
                     (proxyError) => {
                       console.error('❌ [MODEL-LOADER] Proxy GLTFLoader error:', proxyError);
-                      reject(this.createSpecificError(proxyError, resolvedUrl));
+                      reject(createSpecificError(proxyError, resolvedUrl));
                     }
                   );
                 },
                 (proxyError) => {
                   console.error('❌ [MODEL-LOADER] All loading attempts failed:', proxyError);
-                  reject(this.createSpecificError(proxyError, resolvedUrl));
+                  reject(createSpecificError(proxyError, resolvedUrl));
                 }
               );
             }
@@ -205,13 +205,13 @@ export const useModelLoader = (): ModelLoaderResult => {
                 },
                 (error) => {
                   console.error('❌ [MODEL-LOADER] GLTFLoader error:', error);
-                  reject(this.createSpecificError(error, workingUrl));
+                  reject(createSpecificError(error, workingUrl));
                 }
               );
             },
             (error: Error) => {
               console.error('❌ [MODEL-LOADER] All CORS proxy attempts failed:', error);
-              reject(this.createSpecificError(error, resolvedUrl));
+              reject(createSpecificError(error, resolvedUrl));
             }
           );
         }
@@ -219,7 +219,7 @@ export const useModelLoader = (): ModelLoaderResult => {
 
     } catch (error) {
       console.error('❌ [MODEL-LOADER] Model loading failed:', error);
-      const errorMessage = this.createSpecificError(error, url);
+      const errorMessage = createSpecificError(error, url);
       setError(errorMessage);
       setLoading(false);
     }
