@@ -121,7 +121,7 @@ const EnhancedGalleryFilters: React.FC<EnhancedGalleryFiltersProps> = ({
         </div>
       </div>
 
-      {/* Results Info */}
+      {/* Results Info with Enhanced Status */}
       <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/10">
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="border-figuro-accent/30 text-figuro-accent">
@@ -130,6 +130,11 @@ const EnhancedGalleryFilters: React.FC<EnhancedGalleryFiltersProps> = ({
           {filters.search && (
             <Badge variant="secondary" className="bg-white/10 text-white/80">
               Search: "{filters.search}"
+            </Badge>
+          )}
+          {totalResults === 0 && !isLoading && (
+            <Badge variant="outline" className="border-orange-500/30 text-orange-400">
+              No models found
             </Badge>
           )}
         </div>

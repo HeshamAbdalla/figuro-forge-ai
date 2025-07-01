@@ -84,36 +84,58 @@ export const usePublicFigurines = () => {
       // Process text-to-3D conversions with enhanced URL prioritization and validation
       const processedConversions = (conversionData || []).map(conversion => {
         // Enhanced URL prioritization: local URLs first, then validate
-        const prioritizedModelUrl = prioritizeUrls([
+        const modelUrls = [
           conversion.local_model_url,
           conversion.model_url
-        ]);
+        ].filter(Boolean);
         
-        const prioritizedThumbnailUrl = prioritizeUrls([
+        const thumbnailUrls = [
           conversion.local_thumbnail_url,
           conversion.thumbnail_url
-        ]);
+        ].filter(Boolean);
+        
+        const modelPrioritization = prioritizeUrls(modelUrls);
+        const thumbnailPrioritization = prioritizeUrls(thumbnailUrls);
+        
+        console.log('🔍 [PUBLIC-FIGURINES] URL prioritization for conversion:', conversion.id, {
+          modelUrls: modelUrls.length,
+          selectedModel: modelPrioritization.url ? 'Found' : 'None',
+          isExpired: modelPrioritization.info?.isExpired || false,
+          thumbnailUrls: thumbnailUrls.length,
+          selectedThumbnail: thumbnailPrioritization.url ? 'Found' : 'None'
+        });
         
         return {
           id: conversion.id,
           title: `Text-to-3D: ${conversion.prompt?.substring(0, 30) || 'Generated Model'}${conversion.prompt && conversion.prompt.length > 30 ? '...' : ''}`,
           prompt: conversion.prompt || "",
           style: conversion.art_style || "text-to-3d",
-          image_url: prioritizedThumbnailUrl || "",
-          saved_image_url: prioritizedThumbnailUrl,
-          model_url: prioritizedModelUrl,
+          image_url: thumbnailPrioritization.url || "",
+          saved_image_url: thumbnailPrioritization.url,
+          model_url: modelPrioritization.url,
           created_at: conversion.created_at || new Date().toISOString(),
           user_id: conversion.user_id,
           is_public: true, // Text-to-3D models are considered public for community gallery
           metadata: {
             creator_name: 'Community Member', // Default name since we can't join with profiles
-            conversion_type: 'text-to-3d'
+            conversion_type: 'text-to-3d',
+            url_info: modelPrioritization.info, // Add URL info for better error handling
+            fallback_urls: modelUrls // Keep all URLs for fallback
           }
         };
       });
       
+      // Filter out conversions without valid model URLs for 3D preview
+      const validConversions = processedConversions.filter(conversion => {
+        const hasValidModel = conversion.model_url && conversion.model_url.trim() !== '';
+        if (!hasValidModel) {
+          console.warn('⚠️ [PUBLIC-FIGURINES] Skipping conversion without valid model URL:', conversion.id);
+        }
+        return hasValidModel;
+      });
+      
       // Combine and sort by creation date
-      const allFigurines = [...processedFigurines, ...processedConversions];
+      const allFigurines = [...processedFigurines, ...validConversions];
       allFigurines.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       setFigurines(allFigurines);
@@ -123,7 +145,8 @@ export const usePublicFigurines = () => {
       console.log('✅ [PUBLIC-FIGURINES] Processing completed:', {
         totalFigurines: allFigurines.length,
         traditional: processedFigurines.length,
-        textTo3D: processedConversions.length
+        textTo3D: validConversions.length,
+        filteredOut: processedConversions.length - validConversions.length
       });
     }
   }, [publicData]);

@@ -11,6 +11,7 @@ interface UrlValidationResult {
   cleanUrl: string;
   isLocal: boolean;
   error?: string;
+  canFallback?: boolean;
 }
 
 const analyzeUrl = (url: string): UrlInfo => {
@@ -40,7 +41,7 @@ const analyzeUrl = (url: string): UrlInfo => {
   } else if (isMeshyUrl && !isExpired) {
     priority = 50;  // Medium priority
   } else if (isMeshyUrl && isExpired) {
-    priority = 10;  // Low priority but still usable
+    priority = 5;   // Very low priority but still available for download
   } else {
     priority = 25;  // Other URLs
   }
@@ -78,19 +79,22 @@ export const validateAndCleanUrl = (url: string | null | undefined): UrlValidati
     const isLocal = urlObj.hostname.includes('supabase.co');
     const info = analyzeUrl(trimmedUrl);
     
+    // Mark expired Meshy URLs as valid but with fallback capability
     if (info.isMeshyUrl && info.isExpired) {
       return {
-        isValid: false,
+        isValid: true, // Changed: Allow expired URLs but mark them
         cleanUrl: trimmedUrl,
         isLocal,
-        error: 'Meshy URL has expired'
+        error: 'URL expired but available for download',
+        canFallback: true
       };
     }
     
     return {
       isValid: true,
       cleanUrl: trimmedUrl,
-      isLocal
+      isLocal,
+      canFallback: info.isMeshyUrl // Meshy URLs can use fallback strategies
     };
   } catch (e) {
     return {
@@ -102,21 +106,28 @@ export const validateAndCleanUrl = (url: string | null | undefined): UrlValidati
   }
 };
 
-export const prioritizeUrls = (urls: string[]): string | null => {
+export const prioritizeUrls = (urls: string[]): { url: string | null; info: UrlInfo | null } => {
   if (!urls || urls.length === 0) {
-    return null;
+    return { url: null, info: null };
   }
   
-  // Filter out null/undefined URLs
-  const validUrls = urls.filter(url => url && typeof url === 'string' && url.trim().length > 0);
+  // Filter out null/undefined URLs and validate them
+  const validUrls = urls
+    .filter(url => url && typeof url === 'string' && url.trim().length > 0)
+    .map(url => {
+      const validation = validateAndCleanUrl(url);
+      return validation.isValid ? validation.cleanUrl : null;
+    })
+    .filter(Boolean);
   
   if (validUrls.length === 0) {
-    return null;
+    return { url: null, info: null };
   }
   
   // If only one URL, return it
   if (validUrls.length === 1) {
-    return validUrls[0];
+    const info = analyzeUrl(validUrls[0]);
+    return { url: validUrls[0], info };
   }
   
   // Analyze and sort URLs by priority
@@ -125,15 +136,26 @@ export const prioritizeUrls = (urls: string[]): string | null => {
     info: analyzeUrl(url)
   }));
   
-  // Sort by priority (highest first)
-  urlsWithInfo.sort((a, b) => b.info.priority - a.info.priority);
+  // Sort by priority (highest first), exclude expired URLs from preview loading
+  const nonExpiredUrls = urlsWithInfo.filter(item => !item.info.isExpired);
+  const expiredUrls = urlsWithInfo.filter(item => item.info.isExpired);
   
-  const selectedUrl = urlsWithInfo[0].url;
-  const selectedInfo = urlsWithInfo[0].info;
+  // Prioritize non-expired URLs first
+  const sortedUrls = [
+    ...nonExpiredUrls.sort((a, b) => b.info.priority - a.info.priority),
+    ...expiredUrls.sort((a, b) => b.info.priority - a.info.priority)
+  ];
   
-  console.log('🎯 [URL-PRIORITIZATION] Selected URL:', selectedUrl, 'Info:', selectedInfo);
+  const selected = sortedUrls[0];
   
-  return selectedUrl;
+  console.log('🎯 [URL-PRIORITIZATION] Selected URL:', selected.url.substring(0, 50) + '...', 'Info:', {
+    isSupabaseStorage: selected.info.isSupabaseStorage,
+    isMeshyUrl: selected.info.isMeshyUrl,
+    isExpired: selected.info.isExpired,
+    priority: selected.info.priority
+  });
+  
+  return { url: selected.url, info: selected.info };
 };
 
 export const isUrlAccessible = async (url: string, timeout = 5000): Promise<boolean> => {
@@ -157,21 +179,24 @@ export const isUrlAccessible = async (url: string, timeout = 5000): Promise<bool
       return true; // If no error thrown, assume accessible
     } catch (error) {
       clearTimeout(timeoutId);
-      console.warn('⚠️ [URL-VALIDATION] URL not accessible:', url, error);
+      console.warn('⚠️ [URL-VALIDATION] URL not accessible:', url.substring(0, 50) + '...', error);
       return false;
     }
   } catch (error) {
-    console.warn('⚠️ [URL-VALIDATION] URL accessibility check failed:', url, error);
+    console.warn('⚠️ [URL-VALIDATION] URL accessibility check failed:', url.substring(0, 50) + '...', error);
     return false;
   }
 };
 
-export const validateModelUrl = (url: string): { valid: boolean; reason?: string } => {
+export const validateModelUrl = (url: string): { valid: boolean; reason?: string; canFallback?: boolean } => {
   const validation = validateAndCleanUrl(url);
   
   if (!validation.isValid) {
     return { valid: false, reason: validation.error };
   }
   
-  return { valid: true };
+  return { 
+    valid: true, 
+    canFallback: validation.canFallback 
+  };
 };

@@ -4,17 +4,19 @@ import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
 import SimpleModelPreview from "../SimpleModelPreview";
 import ModelPlaceholder from "../ModelPlaceholder";
 import ModelErrorHandler from "./ModelErrorHandler";
-import { validateAndCleanUrl } from "@/utils/urlValidationUtils";
+import { validateAndCleanUrl, validateModelUrl } from "@/utils/urlValidationUtils";
 import { logModelDebugInfo } from "@/utils/modelDebugUtils";
 
 interface SimplifiedModelPreviewProps {
   modelUrl: string;
   fileName: string;
+  metadata?: any; // For URL info and fallback URLs
 }
 
 const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
   modelUrl,
-  fileName
+  fileName,
+  metadata
 }) => {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -27,9 +29,10 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
     once: false
   });
 
-  // Validate URL and generate stable model ID
-  const { validatedUrl, modelId } = useMemo(() => {
+  // Enhanced URL validation with metadata
+  const { validatedUrl, modelId, canRetry } = useMemo(() => {
     const validation = validateAndCleanUrl(modelUrl);
+    const modelValidation = validateModelUrl(modelUrl);
     
     // Generate stable model ID
     let id: string;
@@ -44,11 +47,18 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
       id = `simplified-${fileName.replace(/\W/g, '')}-${urlHash}`;
     }
     
+    // Determine if retry is possible based on URL info and available fallbacks
+    const urlInfo = metadata?.url_info;
+    const fallbackUrls = metadata?.fallback_urls || [];
+    const hasAlternatives = fallbackUrls.length > 1;
+    const isExpiredMeshy = urlInfo?.isMeshyUrl && urlInfo?.isExpired;
+    
     return {
       validatedUrl: validation,
-      modelId: id
+      modelId: id,
+      canRetry: modelValidation.canFallback || hasAlternatives || !isExpiredMeshy
     };
-  }, [modelUrl, fileName]);
+  }, [modelUrl, fileName, metadata]);
 
   const handleError = (error: any) => {
     console.error(`SimplifiedModelPreview error for ${fileName}:`, error);
@@ -64,26 +74,35 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
         saved_image_url: null,
         prompt: '',
         created_at: new Date().toISOString(),
-        is_public: false
+        is_public: false,
+        metadata
       });
     }
     
-    // Provide more specific error messages
+    // Enhanced error message handling based on URL info
     let message = "Model failed to load";
     if (error?.message) {
       if (error.message.includes('expired')) {
         message = "Model URL expired";
-      } else if (error.message.includes('not accessible')) {
+      } else if (error.message.includes('not accessible') || error.message.includes('not found')) {
         message = "Model not accessible";
-      } else if (error.message.includes('CORS')) {
+      } else if (error.message.includes('CORS') || error.message.includes('blocked')) {
         message = "Access blocked";
       } else if (error.message.includes('404') || error.message.includes('Not Found')) {
         message = "Model not found";
-      } else if (error.message.includes('network')) {
+      } else if (error.message.includes('network') || error.message.includes('Failed to fetch')) {
         message = "Network error";
       } else if (error.message.includes('invalid') || error.message.includes('empty')) {
         message = "Invalid model";
+      } else {
+        message = error.message;
       }
+    }
+    
+    // Check if this is an expired Meshy URL with potential fallbacks
+    const urlInfo = metadata?.url_info;
+    if (urlInfo?.isMeshyUrl && urlInfo?.isExpired) {
+      message = "Model URL expired - download may still work";
     }
     
     setErrorMessage(message);
@@ -91,7 +110,7 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
   };
 
   const handleRetry = () => {
-    console.log(`SimplifiedModelPreview: Retrying load for ${fileName}`);
+    console.log(`SimplifiedModelPreview: Retrying load for ${fileName} (attempt ${retryCount + 1})`);
     setHasError(false);
     setErrorMessage("");
     setShouldShowPreview(false);
@@ -112,7 +131,7 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
     setRetryCount(0);
   }, [modelUrl, fileName]);
 
-  // Validate URL on mount and when it changes
+  // Enhanced URL validation on mount
   useEffect(() => {
     if (!validatedUrl.isValid) {
       console.warn(`SimplifiedModelPreview: Invalid URL for ${fileName}:`, validatedUrl.error);
@@ -120,11 +139,19 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
       setHasError(true);
       return;
     }
+    
+    // Check for expired URLs with specific handling
+    if (validatedUrl.error?.includes('expired')) {
+      console.warn(`SimplifiedModelPreview: Expired URL for ${fileName}, showing with download option`);
+      setErrorMessage("Model URL expired - download available");
+      setHasError(true);
+      return;
+    }
   }, [validatedUrl, fileName]);
 
-  // Show preview when intersecting with debouncing
+  // Show preview when intersecting with enhanced conditions
   useEffect(() => {
-    if (isIntersecting && !hasError && validatedUrl.isValid) {
+    if (isIntersecting && !hasError && validatedUrl.isValid && !validatedUrl.error?.includes('expired')) {
       console.log(`SimplifiedModelPreview: Starting preview for ${fileName}`);
       const timer = setTimeout(() => {
         setShouldShowPreview(true);
@@ -133,7 +160,7 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
     } else if (!isIntersecting) {
       setShouldShowPreview(false);
     }
-  }, [isIntersecting, hasError, fileName, validatedUrl.isValid]);
+  }, [isIntersecting, hasError, fileName, validatedUrl.isValid, validatedUrl.error]);
 
   // Don't render preview if no model URL or invalid URL
   if (!modelUrl || !validatedUrl.isValid) {
@@ -144,7 +171,7 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
         <ModelErrorHandler
           error={errorMsg}
           fileName={fileName}
-          onRetry={validatedUrl.error?.includes('network') ? handleRetry : undefined}
+          onRetry={canRetry && validatedUrl.error?.includes('network') ? handleRetry : undefined}
           modelUrl={modelUrl}
         />
       </div>
@@ -158,8 +185,9 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
         <ModelErrorHandler
           error={errorMessage}
           fileName={fileName}
-          onRetry={errorMessage.includes('network') ? handleRetry : undefined}
+          onRetry={canRetry && (errorMessage.includes('network') || errorMessage.includes('failed')) ? handleRetry : undefined}
           modelUrl={modelUrl}
+          showDetails={retryCount > 0} // Show more details after first retry
         />
       </div>
     );
@@ -170,7 +198,8 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
     shouldShowPreview,
     hasError,
     hasValidUrl: validatedUrl.isValid,
-    retryCount
+    retryCount,
+    canRetry
   });
 
   return (
