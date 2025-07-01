@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ import { disposeModel, handleObjectUrl } from "@/components/model-viewer/utils/m
 import { useModelLoader } from "@/hooks/useModelLoader";
 import { prioritizeUrls, validateModelUrl } from "@/utils/urlValidationUtils";
 import { logModelDebugInfo } from "@/utils/modelDebugUtils";
+import GenericModelViewer from "@/components/model-viewer/GenericModelViewer";
 
 interface ModelViewerProps {
   modelUrl: string | null;
@@ -26,6 +26,11 @@ interface ModelViewerProps {
   progress?: number;
   errorMessage?: string | null;
   onCustomModelLoad?: (url: string) => void;
+  variant?: 'standard' | 'compact' | 'gallery';
+  showControls?: boolean;
+  autoRotate?: boolean;
+  className?: string;
+  fillHeight?: boolean;
 }
 
 // Enhanced loading component
@@ -133,10 +138,15 @@ const ModelViewer = ({
   isLoading, 
   progress = 0, 
   errorMessage = null,
-  onCustomModelLoad
+  onCustomModelLoad,
+  variant = 'standard',
+  showControls = true,
+  autoRotate: initialAutoRotate = true,
+  className,
+  fillHeight = false
 }: ModelViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [autoRotate, setAutoRotate] = useState(true);
+  const [autoRotate, setAutoRotate] = useState(initialAutoRotate);
   const [modelError, setModelError] = useState<string | null>(null);
   const [modelLoadAttempted, setModelLoadAttempted] = useState(false);
   const [customFile, setCustomFile] = useState<File | null>(null);
@@ -223,6 +233,26 @@ const ModelViewer = ({
 
   if (!modelUrl && !customModelUrl && !isLoading) {
     return null;
+  }
+
+  // If we have a model URL, use the GenericModelViewer for better performance and features
+  if (modelUrl || customModelUrl) {
+    return (
+      <GenericModelViewer
+        modelInfo={{
+          modelUrl: customModelUrl || modelUrl || '',
+          fileName: customFile?.name || 'Model'
+        }}
+        isLoading={isLoading}
+        progress={progress}
+        errorMessage={errorMessage}
+        onCustomModelLoad={onCustomModelLoad}
+        variant={variant}
+        showControls={showControls}
+        className={className}
+        fillHeight={fillHeight}
+      />
+    );
   }
 
   const handleDownload = () => {

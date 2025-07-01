@@ -14,6 +14,7 @@ import { UrlModelInfo, BaseModelViewerProps } from './types/ModelViewerTypes';
 
 interface GenericModelViewerProps extends BaseModelViewerProps {
   modelInfo: UrlModelInfo;
+  fillHeight?: boolean; // New prop to control height behavior
 }
 
 const GenericModelViewer: React.FC<GenericModelViewerProps> = ({
@@ -25,7 +26,8 @@ const GenericModelViewer: React.FC<GenericModelViewerProps> = ({
   variant = 'standard',
   showControls = true,
   className,
-  onModelError
+  onModelError,
+  fillHeight = false // Default to false for backward compatibility
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const orbitControlsRef = useRef<any>(null);
@@ -64,7 +66,16 @@ const GenericModelViewer: React.FC<GenericModelViewerProps> = ({
 
   const currentModelError = errorMessage || modelError;
   const isCompact = variant === 'compact' || variant === 'gallery';
-  const heightClass = isCompact ? 'h-[300px]' : 'h-[500px]';
+  
+  // Determine height class based on fillHeight prop and variant
+  const getHeightClass = () => {
+    if (fillHeight) {
+      return 'h-full';
+    }
+    return isCompact ? 'h-[300px]' : 'h-[500px]';
+  };
+  
+  const heightClass = getHeightClass();
 
   // Don't render if no model URL and not loading
   if (!modelInfo.modelUrl && !customFile && !isLoading) {
@@ -79,12 +90,13 @@ const GenericModelViewer: React.FC<GenericModelViewerProps> = ({
       transition={{ duration: 0.5 }}
       className={cn(
         "glass-panel rounded-2xl overflow-hidden border border-white/10 shadow-glow",
+        fillHeight ? "h-full flex flex-col" : "",
         className
       )}
     >
       {/* Header */}
       {showControls && (
-        <div className="p-4 border-b border-white/10 bg-gradient-to-r from-white/5 to-white/10">
+        <div className="p-4 border-b border-white/10 bg-gradient-to-r from-white/5 to-white/10 flex-shrink-0">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
               <h3 className="text-lg font-semibold text-gradient">
@@ -149,7 +161,10 @@ const GenericModelViewer: React.FC<GenericModelViewerProps> = ({
       />
 
       {/* 3D Scene */}
-      <div className={cn("relative", heightClass)}>
+      <div className={cn(
+        "relative",
+        fillHeight ? "flex-1" : heightClass
+      )}>
         <Canvas
           shadows
           gl={{

@@ -229,7 +229,8 @@ const ModelWorkspace = () => {
                     variant="gallery"
                     showControls={true}
                     autoRotate={true}
-                    className="w-full h-full [&_.glass-panel]:bg-transparent [&_.glass-panel]:border-0"
+                    fillHeight={true}
+                    className="w-full h-full [&_.glass-panel]:bg-transparent [&_.glass-panel]:border-0 [&_.glass-panel]:rounded-none"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
