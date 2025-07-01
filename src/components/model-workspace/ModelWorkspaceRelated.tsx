@@ -39,25 +39,33 @@ const ModelWorkspaceRelated: React.FC<ModelWorkspaceRelatedProps> = ({ figurine 
         .neq('id', figurine.id)
         .limit(2);
 
-      const processedConversions = (conversionsData || []).map(conversion => ({
-        id: conversion.id,
-        title: `Text-to-3D: ${conversion.prompt?.substring(0, 30) || 'Generated'}...`,
-        prompt: conversion.prompt || "",
-        style: conversion.art_style || "isometric",
-        image_url: conversion.local_thumbnail_url || conversion.thumbnail_url || "",
-        saved_image_url: conversion.local_thumbnail_url || conversion.thumbnail_url,
-        model_url: conversion.local_model_url || conversion.model_url,
-        created_at: conversion.created_at,
-        user_id: conversion.user_id,
-        is_public: true,
-        file_type: '3d-model' as const,
-        metadata: { conversion_type: 'text-to-3d' }
-      })) as Figurine[];
+      const processedConversions = (conversionsData || []).map(conversion => {
+        // Ensure art_style matches allowed values or fallback to isometric
+        const validStyle = (['isometric', 'anime', 'pixar', 'steampunk', 'lowpoly', 'cyberpunk', 'realistic', 'chibi'].includes(conversion.art_style)) 
+          ? conversion.art_style as Figurine['style']
+          : 'isometric' as const;
+
+        return {
+          id: conversion.id,
+          title: `Text-to-3D: ${conversion.prompt?.substring(0, 30) || 'Generated'}...`,
+          prompt: conversion.prompt || "",
+          style: validStyle,
+          image_url: conversion.local_thumbnail_url || conversion.thumbnail_url || "",
+          saved_image_url: conversion.local_thumbnail_url || conversion.thumbnail_url,
+          model_url: conversion.local_model_url || conversion.model_url,
+          created_at: conversion.created_at,
+          user_id: conversion.user_id,
+          is_public: true,
+          file_type: '3d-model' as const,
+          metadata: { conversion_type: 'text-to-3d' }
+        } as Figurine;
+      });
 
       // Process figurines data to ensure proper typing
       const processedFigurines = (figurinesData || []).map(fig => ({
         ...fig,
-        file_type: (fig.file_type as Figurine['file_type']) || 'image'
+        file_type: (fig.file_type as Figurine['file_type']) || 'image',
+        metadata: (fig.metadata as Record<string, any>) || {}
       })) as Figurine[];
 
       const allRelated = [...processedFigurines, ...processedConversions];

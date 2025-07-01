@@ -50,7 +50,8 @@ const ModelWorkspace = () => {
         // Ensure proper typing for figurine data
         const processedFigurine: Figurine = {
           ...figurineData,
-          file_type: (figurineData.file_type as Figurine['file_type']) || 'image'
+          file_type: (figurineData.file_type as Figurine['file_type']) || 'image',
+          metadata: (figurineData.metadata as Record<string, any>) || {}
         };
         setFigurine(processedFigurine);
       } else {
@@ -62,12 +63,17 @@ const ModelWorkspace = () => {
           .single();
 
         if (conversionData) {
+          // Ensure art_style matches allowed values or fallback to isometric
+          const validStyle = (['isometric', 'anime', 'pixar', 'steampunk', 'lowpoly', 'cyberpunk', 'realistic', 'chibi'].includes(conversionData.art_style)) 
+            ? conversionData.art_style as Figurine['style']
+            : 'isometric' as const;
+
           // Transform conversion task to figurine format
           const transformedFigurine: Figurine = {
             id: conversionData.id,
             title: `Text-to-3D: ${conversionData.prompt?.substring(0, 50) || 'Generated Model'}`,
             prompt: conversionData.prompt || "",
-            style: (conversionData.art_style as Figurine['style']) || "isometric",
+            style: validStyle,
             image_url: conversionData.local_thumbnail_url || conversionData.thumbnail_url || "",
             saved_image_url: conversionData.local_thumbnail_url || conversionData.thumbnail_url,
             model_url: conversionData.local_model_url || conversionData.model_url,
