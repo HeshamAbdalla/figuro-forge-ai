@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -45,9 +46,23 @@ const Gallery = () => {
     loading
   });
 
-  // Filter and sort figurines based on current filters
+  // Filter figurines to only show those with 3D models
+  const modelsOnlyFigurines = useMemo(() => {
+    const filtered = figurines.filter(figurine => 
+      figurine.model_url && figurine.model_url.trim() !== ''
+    );
+    
+    console.log('🎯 [GALLERY] Filtered to 3D models only:', {
+      original: figurines.length,
+      withModels: filtered.length
+    });
+    
+    return filtered;
+  }, [figurines]);
+
+  // Filter and sort figurines based on current filters (now only 3D models)
   const filteredFigurines = useMemo(() => {
-    let filtered = [...figurines];
+    let filtered = [...modelsOnlyFigurines];
 
     // Search filter
     if (filters.search) {
@@ -60,7 +75,7 @@ const Gallery = () => {
       );
     }
 
-    // Category filter
+    // Category filter (simplified since we only have 3D models now)
     switch (filters.category) {
       case "text-to-3d":
         filtered = filtered.filter(f => f.metadata?.conversion_type === 'text-to-3d');
@@ -68,12 +83,7 @@ const Gallery = () => {
       case "traditional":
         filtered = filtered.filter(f => f.metadata?.conversion_type !== 'text-to-3d');
         break;
-      case "with-model":
-        filtered = filtered.filter(f => !!f.model_url);
-        break;
-      case "images-only":
-        filtered = filtered.filter(f => !f.model_url);
-        break;
+      // Remove "with-model" and "images-only" categories since we only show models
     }
 
     // Sort
@@ -93,7 +103,7 @@ const Gallery = () => {
     }
 
     return filtered;
-  }, [figurines, filters]);
+  }, [modelsOnlyFigurines, filters]);
 
   const handleCreateNew = () => {
     if (!user) {
@@ -139,17 +149,14 @@ const Gallery = () => {
     console.log('📥 [GALLERY] Public download started for:', figurine.id);
     
     try {
-      // Determine what to download based on figurine type
-      const isTextTo3D = figurine.style === 'text-to-3d' || figurine.title.startsWith('Text-to-3D:');
-      const downloadUrl = isTextTo3D && figurine.model_url ? figurine.model_url : figurine.image_url;
-      const fileName = isTextTo3D && figurine.model_url 
-        ? `${figurine.title.replace(/\s+/g, '-')}-${figurine.id.substring(0, 8)}.glb`
-        : `${figurine.title.replace(/\s+/g, '-')}-${figurine.id.substring(0, 8)}.png`;
+      // Since we only show 3D models now, always download the model
+      const downloadUrl = figurine.model_url;
+      const fileName = `${figurine.title.replace(/\s+/g, '-')}-${figurine.id.substring(0, 8)}.glb`;
 
       if (!downloadUrl) {
         toast({
           title: "Download Error",
-          description: "No download URL available for this item.",
+          description: "No download URL available for this model.",
           variant: "destructive"
         });
         return;
@@ -203,7 +210,7 @@ const Gallery = () => {
       
       {/* Enhanced Hero Section */}
       <EnhancedGalleryHero 
-        totalModels={figurines.length}
+        totalModels={modelsOnlyFigurines.length}
         onCreateNew={handleCreateNew}
       />
       
@@ -228,7 +235,7 @@ const Gallery = () => {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-4">
                 <h2 className="text-2xl font-semibold text-white">
-                  {filters.search ? "Search Results" : "Latest Models"}
+                  {filters.search ? "3D Model Search Results" : "Latest 3D Models"}
                 </h2>
               </div>
               
