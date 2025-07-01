@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, Download, Eye, Share2, Box, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -28,6 +29,7 @@ const Enhanced3DModelCard: React.FC<Enhanced3DModelCardProps> = ({
   const [likeCount, setLikeCount] = useState(figurine.like_count || 0);
   const [isLiking, setIsLiking] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   React.useEffect(() => {
     checkIfLiked();
@@ -107,6 +109,11 @@ const Enhanced3DModelCard: React.FC<Enhanced3DModelCardProps> = ({
     }
   };
 
+  const handleViewClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/model/${figurine.id}`);
+  };
+
   const creatorName = figurine.metadata?.creator_name || 'Anonymous';
   const isTextTo3D = figurine.style === 'text-to-3d' || figurine.title.startsWith('Text-to-3D:');
 
@@ -138,7 +145,7 @@ const Enhanced3DModelCard: React.FC<Enhanced3DModelCardProps> = ({
           <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
             <Button
               size="sm"
-              onClick={() => onView(figurine)}
+              onClick={handleViewClick}
               className="bg-figuro-accent/90 hover:bg-figuro-accent text-white border-none shadow-lg"
             >
               <Eye className="w-4 h-4 mr-1" />
@@ -148,7 +155,10 @@ const Enhanced3DModelCard: React.FC<Enhanced3DModelCardProps> = ({
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => onDownload(figurine)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownload(figurine);
+              }}
               className="bg-white/20 hover:bg-white/30 text-white border-none backdrop-blur-sm"
             >
               <Download className="w-4 h-4 mr-1" />
@@ -209,7 +219,10 @@ const Enhanced3DModelCard: React.FC<Enhanced3DModelCardProps> = ({
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => onShare(figurine)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onShare(figurine);
+                    }}
                     className="text-white/60 hover:text-white p-1"
                   >
                     <Share2 className="w-4 h-4" />
