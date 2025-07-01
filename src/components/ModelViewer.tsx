@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -240,6 +241,7 @@ const ModelViewer = ({
     return (
       <GenericModelViewer
         modelInfo={{
+          type: 'url',
           modelUrl: customModelUrl || modelUrl || '',
           fileName: customFile?.name || 'Model'
         }}
