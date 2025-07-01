@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +13,7 @@ import { Figurine } from "@/types/figurine";
 import EnhancedGalleryHero from "@/components/gallery/enhanced/EnhancedGalleryHero";
 import EnhancedGalleryFilters from "@/components/gallery/enhanced/EnhancedGalleryFilters";
 import FuturisticGalleryGrid from "@/components/gallery/enhanced/FuturisticGalleryGrid";
+import OnDemand3DPreviewModal from "@/components/gallery/components/OnDemand3DPreviewModal";
 
 interface FilterState {
   search: string;
@@ -24,6 +24,8 @@ interface FilterState {
 
 const Gallery = () => {
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
+  const [modelViewerOpen, setModelViewerOpen] = useState(false);
+  const [selectedFigurine, setSelectedFigurine] = useState<Figurine | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     search: "",
     category: "all",
@@ -127,7 +129,10 @@ const Gallery = () => {
       });
       return;
     }
-    console.log('👁️ [GALLERY] Viewing model:', figurine.id);
+    
+    console.log('👁️ [GALLERY] Opening 3D model viewer for:', figurine.id);
+    setSelectedFigurine(figurine);
+    setModelViewerOpen(true);
   };
 
   const handlePublicDownload = async (figurine: Figurine) => {
@@ -183,6 +188,12 @@ const Gallery = () => {
         description: "There was a problem downloading the file. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleModalDownload = () => {
+    if (selectedFigurine) {
+      handlePublicDownload(selectedFigurine);
     }
   };
 
@@ -250,6 +261,15 @@ const Gallery = () => {
       <AuthPromptModal
         open={authPromptOpen}
         onOpenChange={setAuthPromptOpen}
+      />
+
+      {/* 3D Model Viewer Modal */}
+      <OnDemand3DPreviewModal
+        open={modelViewerOpen}
+        onOpenChange={setModelViewerOpen}
+        modelUrl={selectedFigurine?.model_url || null}
+        modelName={selectedFigurine?.title || null}
+        onDownload={handleModalDownload}
       />
     </div>
   );
