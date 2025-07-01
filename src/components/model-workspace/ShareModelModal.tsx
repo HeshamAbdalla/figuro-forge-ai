@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Share2, Copy, Lock, Clock, Eye, Users, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -82,14 +81,13 @@ const ShareModelModal: React.FC<ShareModelModalProps> = ({
 
       console.log('📋 Share configuration:', shareConfig);
 
-      // Step 3: Call edge function with proper headers and body
+      // Step 3: Call edge function - Fix the body parameter
       console.log('🌐 Calling edge function...');
       
       const { data, error } = await supabase.functions.invoke('create-model-share', {
-        body: JSON.stringify(shareConfig),
+        body: shareConfig, // Remove JSON.stringify - supabase client handles this
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Content-Type': 'application/json'
         }
       });
 

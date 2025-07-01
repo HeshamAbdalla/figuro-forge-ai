@@ -59,27 +59,25 @@ serve(async (req) => {
 
     console.log('✅ User authenticated:', user.id)
 
-    // Parse request body with better error handling
+    // Parse request body - handle both JSON string and object
     console.log('📋 Parsing request body...')
     let requestBody;
     
     try {
-      const bodyText = await req.text();
-      console.log('📝 Raw body text:', bodyText.length > 0 ? `${bodyText.substring(0, 100)}...` : 'EMPTY');
+      // Try to get the raw body first
+      const rawBody = await req.json();
+      console.log('📝 Raw request body type:', typeof rawBody);
+      console.log('📝 Raw request body:', rawBody);
       
-      if (!bodyText || bodyText.trim() === '') {
-        console.error('❌ Empty request body received')
-        return new Response(
-          JSON.stringify({ error: 'Request body is required' }),
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
+      // If it's already an object, use it directly
+      if (typeof rawBody === 'object' && rawBody !== null) {
+        requestBody = rawBody;
+        console.log('✅ Using body as object directly');
+      } else {
+        // If it's a string, try to parse it
+        requestBody = JSON.parse(rawBody);
+        console.log('✅ Parsed body from string');
       }
-
-      requestBody = JSON.parse(bodyText);
-      console.log('✅ Successfully parsed request body');
     } catch (parseError) {
       console.error('❌ Failed to parse request body:', parseError);
       return new Response(
