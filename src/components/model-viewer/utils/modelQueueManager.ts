@@ -1,10 +1,7 @@
 
 /**
  * Enhanced manager class to limit concurrent 3D model loading with priority support
- * Now integrated with SmartWebGLManager for better resource coordination
  */
-import { smartWebGLManager } from '../context/SmartWebGLManager';
-
 class ModelQueueManager {
   private static instance: ModelQueueManager;
   private loadingCount = 0;
@@ -60,12 +57,6 @@ class ModelQueueManager {
         }
       }
       
-      // Coordinate with WebGL manager
-      const webglStats = smartWebGLManager.getStats();
-      if (!webglStats.canCreate) {
-        this.maxConcurrent = Math.min(1, this.maxConcurrent);
-      }
-      
       // Clean up old load history
       const now = Date.now();
       for (const [id, history] of this.loadHistory.entries()) {
@@ -117,85 +108,173 @@ class ModelQueueManager {
           this.loadingCount--;
         }
         
-        // Process queue after delay
-        setTimeout(() => this.processQueue(), 100);
+        // Process queue in case there are pending items with a delay
+        setTimeout(() => this.processQueue(), 200);
       } catch (error) {
-        console.error(`[Queue] Error aborting model load ${modelId}:`, error);
+        console.error(`Error aborting model load for ${modelId}:`, error);
       }
     }
   }
 
   /**
-   * Add a model loading task to the queue
+   * Queue a model to be loaded with priority support
    */
   public async queueModelLoad<T>(
     modelId: string,
-    loader: () => Promise<T>,
-    priority: number = 0.5
+    loadFunction: () => Promise<T>,
+    priority: number = 0
   ): Promise<T> {
     return new Promise((resolve, reject) => {
-      // Update load history
-      const history = this.loadHistory.get(modelId) || { attempts: 0, failures: 0, lastAttempt: 0 };
-      history.attempts++;
-      history.lastAttempt = Date.now();
-      this.loadHistory.set(modelId, history);
-
-      // Add to queue
-      this.queue.push({
-        id: modelId,
-        priority,
-        loader: loader as () => Promise<unknown>,
-        resolve: resolve as (value: unknown) => void,
-        reject
-      });
-
-      // Sort by priority (higher first)
-      this.queue.sort((a, b) => b.priority - a.priority);
-
-      console.log(`[Queue] Added model to queue: ${modelId}, priority: ${priority}, queue length: ${this.queue.length}`);
+      // Check load history for circuit breaking
+      const history = this.getLoadHistory(modelId);
+      const now = Date.now();
       
-      // Process queue
-      this.processQueue();
+      // Circuit breaker: if too many recent failures, delay the load
+      if (history.failures > 2 && (now - history.lastAttempt) < 10000) {
+        console.warn(`[Queue] Circuit breaker active for ${modelId}, delaying load`);
+        setTimeout(() => {
+          this.queueModelLoad(modelId, loadFunction, priority).then(resolve).catch(reject);
+        }, 5000);
+        return;
+      }
+      
+      // Update load history
+      this.loadHistory.set(modelId, {
+        attempts: history.attempts + 1,
+        failures: history.failures,
+        lastAttempt: now
+      });
+      
+      // If already loading this model, reject duplicate request
+      if (this.activeLoaders.has(modelId)) {
+        reject(new Error(`Model ${modelId} is already being loaded`));
+        return;
+      }
+
+      const executeLoad = async () => {
+        if (this.loadingCount >= this.maxConcurrent) {
+          // Add to priority queue
+          console.log(`[Queue] Queuing model: ${modelId} with priority ${priority}, queue length: ${this.queue.length + 1}`);
+          
+          // Insert into queue based on priority (higher priority first)
+          let insertIndex = this.queue.length;
+          for (let i = 0; i < this.queue.length; i++) {
+            if (this.queue[i].priority < priority) {
+              insertIndex = i;
+              break;
+            }
+          }
+          
+          this.queue.splice(insertIndex, 0, {
+            id: modelId,
+            priority,
+            loader: executeLoad,
+            resolve,
+            reject
+          });
+          return;
+        }
+
+        // Create a new abort controller for this load
+        const controller = new AbortController();
+        this.abortControllers.set(modelId, controller);
+
+        try {
+          this.loadingCount++;
+          this.activeLoaders.add(modelId);
+          console.log(`[Queue] Loading model: ${modelId} (priority: ${priority}), Active: ${this.loadingCount}/${this.maxConcurrent}`);
+          
+          const result = await loadFunction();
+          
+          // Update success in history
+          const currentHistory = this.getLoadHistory(modelId);
+          this.loadHistory.set(modelId, {
+            ...currentHistory,
+            failures: 0 // Reset failures on success
+          });
+          
+          resolve(result);
+        } catch (error) {
+          // Update failure in history
+          const currentHistory = this.getLoadHistory(modelId);
+          this.loadHistory.set(modelId, {
+            ...currentHistory,
+            failures: currentHistory.failures + 1
+          });
+          
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            console.log(`[Queue] Loading of model ${modelId} was aborted`);
+          } else {
+            console.error(`[Queue] Error loading model ${modelId}:`, error);
+          }
+          reject(error);
+        } finally {
+          this.loadingCount--;
+          this.activeLoaders.delete(modelId);
+          this.abortControllers.delete(modelId);
+          
+          // Add a delay before processing the next item to prevent overload
+          this.lastProcessTime = Date.now();
+          setTimeout(() => this.processQueue(), 1000); // Increased delay for stability
+        }
+      };
+
+      // Start loading or queue
+      if (this.loadingCount < this.maxConcurrent) {
+        executeLoad();
+      } else {
+        // Add to priority queue
+        console.log(`[Queue] Queuing model: ${modelId} with priority ${priority}, queue length: ${this.queue.length + 1}`);
+        
+        // Insert into queue based on priority (higher priority first)
+        let insertIndex = this.queue.length;
+        for (let i = 0; i < this.queue.length; i++) {
+          if (this.queue[i].priority < priority) {
+            insertIndex = i;
+            break;
+          }
+        }
+        
+        this.queue.splice(insertIndex, 0, {
+          id: modelId,
+          priority,
+          loader: executeLoad,
+          resolve,
+          reject
+        });
+      }
     });
   }
 
   /**
-   * Process the loading queue
+   * Process the next item in the queue with enhanced stability
    */
-  private async processQueue(): Promise<void> {
-    if (this.processingQueue || this.queue.length === 0) {
+  private processQueue(): void {
+    // Prevent queue thrashing by enforcing minimum time between processes
+    const now = Date.now();
+    const timeSinceLastProcess = now - this.lastProcessTime;
+    if (timeSinceLastProcess < 500) {
+      console.log(`[Queue] Throttling queue processing - only ${timeSinceLastProcess}ms since last process`);
+      setTimeout(() => this.processQueue(), 500 - timeSinceLastProcess);
       return;
     }
-
-    // Check if we can load more models
-    if (this.loadingCount >= this.maxConcurrent) {
-      return;
-    }
-
+    
+    if (this.processingQueue) return;
     this.processingQueue = true;
-    this.lastProcessTime = Date.now();
-
+    
     try {
-      while (this.queue.length > 0 && this.loadingCount < this.maxConcurrent) {
-        const item = this.queue.shift()!;
-        
-        // Skip if already loading
-        if (this.activeLoaders.has(item.id)) {
-          continue;
+      if (this.queue.length > 0 && this.loadingCount < this.maxConcurrent) {
+        // Get highest priority item
+        const nextItem = this.queue.shift();
+        if (nextItem) {
+          console.log(`[Queue] Processing next in queue: ${nextItem.id} (priority: ${nextItem.priority}), remaining: ${this.queue.length}`);
+          this.lastProcessTime = now;
+          
+          // Execute with delay to prevent race conditions
+          setTimeout(() => {
+            nextItem.loader().then(nextItem.resolve).catch(nextItem.reject);
+          }, 300);
         }
-
-        // Start loading
-        this.loadingCount++;
-        this.activeLoaders.add(item.id);
-        
-        // Create abort controller
-        const abortController = new AbortController();
-        this.abortControllers.set(item.id, abortController);
-
-        console.log(`[Queue] Starting model load: ${item.id}, concurrent: ${this.loadingCount}/${this.maxConcurrent}`);
-
-        // Load model asynchronously
-        this.loadModel(item, abortController);
       }
     } finally {
       this.processingQueue = false;
@@ -203,90 +282,76 @@ class ModelQueueManager {
   }
 
   /**
-   * Load a single model
+   * Get current queue status
    */
-  private async loadModel(
-    item: { id: string; priority: number; loader: () => Promise<unknown>; resolve: (value: unknown) => void; reject: (error: any) => void },
-    abortController: AbortController
-  ): Promise<void> {
-    try {
-      const result = await item.loader();
-      
-      if (!abortController.signal.aborted) {
-        item.resolve(result);
-      }
-    } catch (error) {
-      if (!abortController.signal.aborted) {
-        // Update failure count
-        const history = this.loadHistory.get(item.id);
-        if (history) {
-          history.failures++;
-          this.loadHistory.set(item.id, history);
-        }
-
-        console.error(`[Queue] Model load failed: ${item.id}`, error);
-        item.reject(error);
-      }
-    } finally {
-      // Cleanup
-      this.loadingCount--;
-      this.activeLoaders.delete(item.id);
-      this.abortControllers.delete(item.id);
-      
-      console.log(`[Queue] Model load completed: ${item.id}, remaining: ${this.loadingCount}`);
-      
-      // Process next items in queue
-      setTimeout(() => this.processQueue(), 100);
-    }
-  }
-
-  /**
-   * Get queue statistics
-   */
-  public getQueueStats(): {
-    loading: number;
-    queued: number;
+  public getStatus(): { 
+    loading: number; 
+    queued: number; 
     maxConcurrent: number;
-    activeLoaders: string[];
+    totalHistory: number;
+    averageFailureRate: number;
   } {
+    const histories = Array.from(this.loadHistory.values());
+    const totalAttempts = histories.reduce((sum, h) => sum + h.attempts, 0);
+    const totalFailures = histories.reduce((sum, h) => sum + h.failures, 0);
+    
     return {
       loading: this.loadingCount,
       queued: this.queue.length,
       maxConcurrent: this.maxConcurrent,
-      activeLoaders: Array.from(this.activeLoaders)
+      totalHistory: this.loadHistory.size,
+      averageFailureRate: totalAttempts > 0 ? totalFailures / totalAttempts : 0
     };
   }
 
   /**
-   * Clear the queue and abort all loads
+   * Clear the queue and reset loading state
    */
-  public clearQueue(): void {
-    // Abort all active loads
-    for (const [id, controller] of this.abortControllers.entries()) {
+  public reset(): void {
+    // Abort all in-progress loads
+    this.abortControllers.forEach((controller, modelId) => {
       try {
+        console.log(`[Queue] Aborting model load during reset: ${modelId}`);
         controller.abort();
       } catch (error) {
-        console.error(`[Queue] Error aborting ${id}:`, error);
+        console.error(`Error aborting model load for ${modelId}:`, error);
       }
-    }
-
-    // Clear all state
+    });
+    
+    // Reject all queued items
+    this.queue.forEach(item => {
+      item.reject(new Error('Queue was reset'));
+    });
+    
     this.queue = [];
+    this.loadingCount = 0;
     this.activeLoaders.clear();
     this.abortControllers.clear();
-    this.loadingCount = 0;
-    this.processingQueue = false;
-    
-    console.log('[Queue] Queue cleared');
+    this.loadHistory.clear();
+    console.log("[Queue] Queue manager reset");
   }
 
   /**
-   * Reset the queue manager
+   * Get performance statistics
    */
-  public reset(): void {
-    this.clearQueue();
-    this.loadHistory.clear();
-    console.log('[Queue] Queue manager reset');
+  public getPerformanceStats(): {
+    memoryUsage?: number;
+    activeContexts: number;
+    queueEfficiency: number;
+  } {
+    const memoryUsage = this.hasMemoryInfo() ? 
+      performance.memory!.usedJSHeapSize / (1024 * 1024) : undefined;
+    
+    const histories = Array.from(this.loadHistory.values());
+    const totalAttempts = histories.reduce((sum, h) => sum + h.attempts, 0);
+    const totalFailures = histories.reduce((sum, h) => sum + h.failures, 0);
+    const queueEfficiency = totalAttempts > 0 ? 1 - (totalFailures / totalAttempts) : 1;
+    
+    return {
+      memoryUsage,
+      activeContexts: this.loadingCount,
+      queueEfficiency
+    };
   }
 }
 
