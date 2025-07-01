@@ -1,6 +1,6 @@
-
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { Figurine } from "@/types/figurine";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Loader2, Trash2 } from "lucide-react";
@@ -27,6 +27,7 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [figurineToDelete, setFigurineToDelete] = useState<Figurine | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const navigate = useNavigate();
 
   const handleDeleteClick = (figurine: Figurine) => {
     setFigurineToDelete(figurine);
@@ -46,6 +47,11 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleViewClick = (figurine: Figurine) => {
+    // Navigate to the dedicated model workspace page
+    navigate(`/model/${figurine.id}`);
   };
 
   if (loading) {
@@ -116,7 +122,7 @@ const FuturisticGalleryGrid: React.FC<FuturisticGalleryGridProps> = ({
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => onViewModel(figurine)}
+                    onClick={() => handleViewClick(figurine)}
                     className="bg-white/20 hover:bg-white/30 text-white border-none"
                   >
                     <Eye className="w-4 h-4 mr-1" />

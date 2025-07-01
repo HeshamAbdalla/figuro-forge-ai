@@ -25,6 +25,7 @@ import ImageTo3D from "./pages/studio/ImageTo3D";
 import TextTo3D from "./pages/studio/TextTo3D";
 import WebIcons from "./pages/studio/WebIcons";
 import CameraCapture from "./pages/studio/CameraCapture";
+import ModelWorkspace from "./pages/ModelWorkspace";
 
 // Documentation page imports
 import Introduction from "./pages/docs/Introduction";
@@ -54,6 +55,7 @@ const App = () => (
                 <Route path="/studio/camera" element={<CameraCapture />} />
                 <Route path="/studio/gallery" element={<Gallery />} />
                 <Route path="/gallery" element={<Gallery />} />
+                <Route path="/model/:id" element={<ModelWorkspace />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/profile/pictures" element={<ProfilePictures />} />
