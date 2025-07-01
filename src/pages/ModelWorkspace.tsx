@@ -1,25 +1,35 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Download, Share2, Heart, MoreVertical } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Figurine } from "@/types/figurine";
-import ModelViewer from "@/components/model-viewer";
+import { useResponsiveMobile } from "@/hooks/useResponsiveMobile";
+
+// Desktop Components
 import ModelWorkspaceHeader from "@/components/model-workspace/ModelWorkspaceHeader";
 import ModelWorkspaceInfo from "@/components/model-workspace/ModelWorkspaceInfo";
 import ModelWorkspaceActions from "@/components/model-workspace/ModelWorkspaceActions";
 import ModelWorkspaceSpecs from "@/components/model-workspace/ModelWorkspaceSpecs";
 import ModelWorkspaceRelated from "@/components/model-workspace/ModelWorkspaceRelated";
 
+// Mobile Components  
+import MobileModelWorkspaceHeader from "@/components/model-workspace/MobileModelWorkspaceHeader";
+import ResponsiveModelViewer from "@/components/model-workspace/ResponsiveModelViewer";
+import MobileModelInfo from "@/components/model-workspace/MobileModelInfo";
+import MobileActionBar from "@/components/model-workspace/MobileActionBar";
+
+// Shared Components
+import ModelViewer from "@/components/model-viewer";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+
 const ModelWorkspace = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isMobile, isTablet } = useResponsiveMobile();
   
   const [figurine, setFigurine] = useState<Figurine | null>(null);
   const [loading, setLoading] = useState(true);
@@ -178,6 +188,8 @@ const ModelWorkspace = () => {
     });
   };
 
+  const handleBack = () => navigate('/gallery');
+
   if (loading) {
     return (
       <div className="min-h-screen bg-figuro-dark flex items-center justify-center">
@@ -195,7 +207,7 @@ const ModelWorkspace = () => {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-white mb-4">Model Not Found</h2>
           <p className="text-white/70 mb-6">{error || "The requested model could not be found."}</p>
-          <Button onClick={() => navigate('/gallery')} variant="outline">
+          <Button onClick={handleBack} variant="outline">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Gallery
           </Button>
@@ -204,11 +216,93 @@ const ModelWorkspace = () => {
     );
   }
 
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-figuro-dark">
+        <MobileModelWorkspaceHeader 
+          figurine={figurine}
+          onBack={handleBack}
+          onDownload={handleDownload}
+          onShare={handleShare}
+          onLike={handleLike}
+          isLiked={isLiked}
+        />
+        
+        <div className="pb-20"> {/* Bottom padding for action bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-4 p-4"
+          >
+            {/* 3D/2D Viewer */}
+            <ResponsiveModelViewer
+              modelUrl={figurine.model_url}
+              imageUrl={figurine.image_url}
+              title={figurine.title}
+            />
+            
+            {/* Model Information */}
+            <MobileModelInfo figurine={figurine} />
+          </motion.div>
+        </div>
+
+        <MobileActionBar
+          onDownload={handleDownload}
+          onShare={handleShare}
+          onLike={handleLike}
+          isLiked={isLiked}
+        />
+      </div>
+    );
+  }
+
+  // Tablet Layout (hybrid approach)
+  if (isTablet) {
+    return (
+      <div className="min-h-screen bg-figuro-dark">
+        <ModelWorkspaceHeader 
+          figurine={figurine}
+          onBack={handleBack}
+        />
+        
+        <div className="container mx-auto px-4 py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
+            {/* Main 3D Viewer - Full width on tablet */}
+            <div className="lg:col-span-2">
+              <ResponsiveModelViewer
+                modelUrl={figurine.model_url}
+                imageUrl={figurine.image_url}
+                title={figurine.title}
+                className="h-[60vh] lg:h-full"
+              />
+            </div>
+
+            {/* Sidebar - Info and Actions */}
+            <div className="lg:col-span-1 space-y-4 overflow-y-auto">
+              <ModelWorkspaceInfo figurine={figurine} />
+              <ModelWorkspaceActions 
+                figurine={figurine}
+                isLiked={isLiked}
+                onDownload={handleDownload}
+                onShare={handleShare}
+                onLike={handleLike}
+              />
+              <ModelWorkspaceSpecs figurine={figurine} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop Layout (existing layout)
   return (
     <div className="min-h-screen bg-figuro-dark">
       <ModelWorkspaceHeader 
         figurine={figurine}
-        onBack={() => navigate('/gallery')}
+        onBack={handleBack}
       />
       
       <div className="container mx-auto px-4 py-6">
