@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -48,7 +47,12 @@ const ModelWorkspace = () => {
         .single();
 
       if (figurineData) {
-        setFigurine(figurineData);
+        // Ensure proper typing for figurine data
+        const processedFigurine: Figurine = {
+          ...figurineData,
+          file_type: (figurineData.file_type as Figurine['file_type']) || 'image'
+        };
+        setFigurine(processedFigurine);
       } else {
         // If not found in figurines, try conversion_tasks
         const { data: conversionData, error: conversionError } = await supabase
@@ -63,13 +67,14 @@ const ModelWorkspace = () => {
             id: conversionData.id,
             title: `Text-to-3D: ${conversionData.prompt?.substring(0, 50) || 'Generated Model'}`,
             prompt: conversionData.prompt || "",
-            style: conversionData.art_style || "text-to-3d",
+            style: (conversionData.art_style as Figurine['style']) || "isometric",
             image_url: conversionData.local_thumbnail_url || conversionData.thumbnail_url || "",
             saved_image_url: conversionData.local_thumbnail_url || conversionData.thumbnail_url,
             model_url: conversionData.local_model_url || conversionData.model_url,
             created_at: conversionData.created_at,
             user_id: conversionData.user_id,
             is_public: true,
+            file_type: '3d-model' as const,
             metadata: {
               conversion_type: 'text-to-3d',
               art_style: conversionData.art_style,

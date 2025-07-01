@@ -43,17 +43,24 @@ const ModelWorkspaceRelated: React.FC<ModelWorkspaceRelatedProps> = ({ figurine 
         id: conversion.id,
         title: `Text-to-3D: ${conversion.prompt?.substring(0, 30) || 'Generated'}...`,
         prompt: conversion.prompt || "",
-        style: conversion.art_style || "text-to-3d",
+        style: conversion.art_style || "isometric",
         image_url: conversion.local_thumbnail_url || conversion.thumbnail_url || "",
         saved_image_url: conversion.local_thumbnail_url || conversion.thumbnail_url,
         model_url: conversion.local_model_url || conversion.model_url,
         created_at: conversion.created_at,
         user_id: conversion.user_id,
         is_public: true,
+        file_type: '3d-model' as const,
         metadata: { conversion_type: 'text-to-3d' }
-      }));
+      })) as Figurine[];
 
-      const allRelated = [...(figurinesData || []), ...processedConversions];
+      // Process figurines data to ensure proper typing
+      const processedFigurines = (figurinesData || []).map(fig => ({
+        ...fig,
+        file_type: (fig.file_type as Figurine['file_type']) || 'image'
+      })) as Figurine[];
+
+      const allRelated = [...processedFigurines, ...processedConversions];
       setRelatedModels(allRelated.slice(0, 4));
     } catch (error) {
       console.error('Error fetching related models:', error);
