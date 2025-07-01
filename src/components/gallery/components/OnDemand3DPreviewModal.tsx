@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X, Download, Eye, Maximize2, Minimize2 } from "lucide-react";
 import { motion } from "framer-motion";
-import ModelViewer from "@/components/ModelViewer";
+import ModelViewer from "@/components/model-viewer";
 
 interface OnDemand3DPreviewModalProps {
   open: boolean;
