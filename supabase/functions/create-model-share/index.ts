@@ -8,12 +8,18 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log(`🔗 create-model-share function called - Method: ${req.method}`)
+  console.log('📍 Request URL:', req.url)
+  console.log('🎫 Auth header present:', req.headers.get('Authorization') ? 'YES' : 'NO')
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
+    console.log('✅ Handling CORS preflight request')
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    console.log('🏗️ Creating Supabase client...')
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -21,7 +27,10 @@ serve(async (req) => {
 
     // Get user from Authorization header
     const authHeader = req.headers.get('Authorization')
+    console.log('🔐 Auth header:', authHeader ? `Bearer ${authHeader.substring(7, 27)}...` : 'MISSING')
+    
     if (!authHeader) {
+      console.error('❌ No authorization header provided')
       return new Response(
         JSON.stringify({ error: 'Authorization required' }),
         { 
@@ -31,11 +40,13 @@ serve(async (req) => {
       )
     }
 
+    console.log('👤 Validating user token...')
     const { data: { user }, error: authError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     )
 
     if (authError || !user) {
+      console.error('❌ Authentication failed:', authError?.message || 'No user')
       return new Response(
         JSON.stringify({ error: 'Invalid authentication' }),
         { 
@@ -45,9 +56,20 @@ serve(async (req) => {
       )
     }
 
+    console.log('✅ User authenticated:', user.id)
+
+    console.log('📋 Parsing request body...')
     const { figurineId, password, expiresHours, maxViews } = await req.json()
     
+    console.log('📝 Request data:', {
+      figurineId,
+      hasPassword: !!password,
+      expiresHours,
+      maxViews
+    })
+    
     if (!figurineId) {
+      console.error('❌ Missing figurine ID')
       return new Response(
         JSON.stringify({ error: 'Figurine ID is required' }),
         { 
@@ -60,11 +82,13 @@ serve(async (req) => {
     console.log(`🔗 Creating share for figurine: ${figurineId}`)
 
     // Create share using service role client for function access
+    console.log('🔧 Creating service role client...')
     const serviceSupabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    console.log('🎯 Calling create_shared_model RPC function...')
     const { data: shareToken, error } = await serviceSupabase.rpc('create_shared_model', {
       p_figurine_id: figurineId,
       p_password: password || null,
@@ -74,6 +98,7 @@ serve(async (req) => {
 
     if (error) {
       console.error('❌ Error creating share:', error)
+      console.error('💾 Error details:', JSON.stringify(error, null, 2))
       return new Response(
         JSON.stringify({ error: error.message || 'Failed to create share' }),
         { 
@@ -83,7 +108,7 @@ serve(async (req) => {
       )
     }
 
-    console.log('✅ Share created successfully')
+    console.log('✅ Share created successfully:', shareToken)
     
     return new Response(
       JSON.stringify({ shareToken }),
@@ -95,6 +120,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Edge function error:', error)
+    console.error('💀 Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { 

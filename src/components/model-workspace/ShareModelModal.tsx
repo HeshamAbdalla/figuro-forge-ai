@@ -37,18 +37,27 @@ const ShareModelModal: React.FC<ShareModelModalProps> = ({
   const [maxViews, setMaxViews] = useState("100");
 
   const createShare = async () => {
+    console.log('🚀 Starting createShare function');
+    console.log('📝 Figurine data:', {
+      id: figurine.id,
+      title: figurine.title,
+      user_id: figurine.user_id
+    });
+
     try {
       setLoading(true);
       
-      const shareConfig = {
-        figurineId: figurine.id,
-        password: requirePassword ? password || null : null,
-        expiresHours: setExpiration ? parseInt(expirationTime) : null,
-        maxViews: limitViews ? parseInt(maxViews) : null
-      };
+      // Step 1: Check session
+      console.log('🔍 Step 1: Checking user session...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError);
+        throw new Error(`Session error: ${sessionError.message}`);
+      }
 
-      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        console.error('❌ No session found');
         toast({
           title: "Authentication Required",
           description: "Please sign in to create shares.",
@@ -57,20 +66,94 @@ const ShareModelModal: React.FC<ShareModelModalProps> = ({
         return;
       }
 
+      console.log('✅ Session found:', {
+        userId: session.user.id,
+        tokenLength: session.access_token.length,
+        expiresAt: session.expires_at
+      });
+
+      // Step 2: Prepare share configuration
+      const shareConfig = {
+        figurineId: figurine.id,
+        password: requirePassword ? password || null : null,
+        expiresHours: setExpiration ? parseInt(expirationTime) : null,
+        maxViews: limitViews ? parseInt(maxViews) : null
+      };
+
+      console.log('📋 Share configuration:', shareConfig);
+
+      // Step 3: Test database function directly first
+      console.log('🧪 Step 3: Testing database function directly...');
+      try {
+        const { data: dbTestResult, error: dbTestError } = await supabase
+          .rpc('create_shared_model', {
+            p_figurine_id: figurine.id,
+            p_password: shareConfig.password,
+            p_expires_hours: shareConfig.expiresHours,
+            p_max_views: shareConfig.maxViews
+          });
+
+        if (dbTestError) {
+          console.error('❌ Database function error:', dbTestError);
+          throw new Error(`Database function failed: ${dbTestError.message}`);
+        }
+
+        console.log('✅ Database function test successful:', dbTestResult);
+        
+        // If database function works, create the share URL directly
+        const baseUrl = window.location.origin;
+        const fullShareUrl = `${baseUrl}/shared/${dbTestResult}`;
+        setShareUrl(fullShareUrl);
+        
+        toast({
+          title: "Share Created!",
+          description: "Your model share link has been generated successfully."
+        });
+        
+        console.log('✅ Share created successfully via database function');
+        return;
+        
+      } catch (dbError) {
+        console.error('❌ Database function failed, trying edge function...', dbError);
+      }
+
+      // Step 4: Try edge function if database function fails
+      console.log('🌐 Step 4: Calling edge function...');
+      console.log('🔗 Edge function URL being called: create-model-share');
+      console.log('📤 Request payload:', shareConfig);
+      console.log('🎫 Auth token (first 20 chars):', session.access_token.substring(0, 20) + '...');
+
+      const startTime = Date.now();
+      
       const { data, error } = await supabase.functions.invoke('create-model-share', {
         body: shareConfig,
         headers: {
-          Authorization: `Bearer ${session.access_token}`
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
         }
       });
 
+      const endTime = Date.now();
+      console.log(`⏱️ Edge function call took ${endTime - startTime}ms`);
+
+      console.log('📥 Edge function response:', { data, error });
+
       if (error) {
-        throw error;
+        console.error('❌ Edge function error:', error);
+        throw new Error(`Edge function error: ${error.message}`);
       }
 
-      if (data.error) {
+      if (data?.error) {
+        console.error('❌ Edge function returned error:', data.error);
         throw new Error(data.error);
       }
+
+      if (!data?.shareToken) {
+        console.error('❌ No share token in response:', data);
+        throw new Error('No share token received from server');
+      }
+
+      console.log('✅ Share token received:', data.shareToken);
 
       const baseUrl = window.location.origin;
       const fullShareUrl = `${baseUrl}/shared/${data.shareToken}`;
@@ -80,15 +163,25 @@ const ShareModelModal: React.FC<ShareModelModalProps> = ({
         title: "Share Created!",
         description: "Your model share link has been generated successfully."
       });
+
+      console.log('🎉 Share creation completed successfully');
+      
     } catch (error) {
-      console.error('❌ Error creating share:', error);
+      console.error('💥 Critical error in createShare:', error);
+      console.error('🔍 Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
       toast({
         title: "Share Failed",
-        description: error instanceof Error ? error.message : "Failed to create share link.",
+        description: error instanceof Error ? error.message : "Failed to create share link. Check console for details.",
         variant: "destructive"
       });
     } finally {
       setLoading(false);
+      console.log('🏁 createShare function completed');
     }
   };
 
