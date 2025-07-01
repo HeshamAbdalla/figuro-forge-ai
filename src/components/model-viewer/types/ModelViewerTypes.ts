@@ -51,6 +51,7 @@ export interface BaseModelViewerProps {
   showControls?: boolean;
   className?: string;
   onModelError?: (error: any) => void;
+  fillHeight?: boolean;
 }
 
 // Enhanced model viewer props with discriminated union

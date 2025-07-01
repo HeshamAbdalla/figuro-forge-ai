@@ -1,60 +1,21 @@
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Environment, ContactShadows, Html } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
 import { motion } from 'framer-motion';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, EyeOff, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Download, Upload, RotateCcw, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import EnhancedModelScene from './EnhancedModelScene';
-import ModelViewerControls from './components/ModelViewerControls';
-import ModelInfoPanel from './components/ModelInfoPanel';
-import ModelViewerOverlay from './components/ModelViewerOverlay';
 import { useModelViewerState } from './useModelViewerState';
-import { useTextTo3DModelLoader } from '@/hooks/useTextTo3DModelLoader';
-import { useModelViewerPerformance } from './hooks/useModelViewerPerformance';
 import { TextTo3DModelInfo, BaseModelViewerProps } from './types/ModelViewerTypes';
 
 interface Text3DModelViewerProps extends BaseModelViewerProps {
   modelInfo: TextTo3DModelInfo;
+  fillHeight?: boolean;
 }
-
-const Text3DLoadingView = React.memo(({ progress = 0, modelInfo }: { progress: number; modelInfo: TextTo3DModelInfo }) => {
-  return (
-    <Html center>
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="glass-panel p-6 rounded-2xl backdrop-blur-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30"
-      >
-        <div className="flex flex-col items-center space-y-4">
-          <div className="relative">
-            <Sparkles className="w-8 h-8 text-blue-400 animate-pulse" />
-          </div>
-          <div className="text-center">
-            <p className="text-white font-medium mb-2">
-              {modelInfo.status === 'processing' ? 'Generating 3D Model' : 'Loading Model'}
-            </p>
-            <Progress 
-              value={progress} 
-              className="w-40 h-2 bg-white/20" 
-            />
-            <p className="text-white/70 text-sm mt-2">{Math.round(progress)}%</p>
-            {modelInfo.prompt && (
-              <p className="text-blue-300 text-xs mt-2 max-w-[200px] truncate">
-                "{modelInfo.prompt}"
-              </p>
-            )}
-          </div>
-        </div>
-      </motion.div>
-    </Html>
-  );
-});
-
-Text3DLoadingView.displayName = 'Text3DLoadingView';
 
 const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
   modelInfo,
@@ -65,30 +26,16 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
   variant = 'standard',
   showControls = true,
   className,
-  onModelError
+  onModelError,
+  fillHeight = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const orbitControlsRef = useRef<any>(null);
+  const [autoRotate, setAutoRotate] = useState(true);
   const [showEnvironment, setShowEnvironment] = useState(true);
-  const [showModelInfo, setShowModelInfo] = useState(false);
   const { toast } = useToast();
 
-  // Performance monitoring for development
-  const { metrics, shouldReduceQuality } = useModelViewerPerformance(
-    process.env.NODE_ENV === 'development'
-  );
-
   const {
-    loading: textTo3DLoading,
-    model: textTo3DModel,
-    error: textTo3DError,
-    loadModel: loadTextTo3DModel,
-    progress: textTo3DProgress
-  } = useTextTo3DModelLoader(modelInfo);
-
-  const {
-    autoRotate,
-    setAutoRotate,
     modelError,
     customFile,
     fileInputRef,
@@ -99,7 +46,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
     triggerFileInputClick,
     handleDownload,
     handleModelError: handleModelErrorState
-  } = useModelViewerState(modelInfo.modelUrl, onCustomModelLoad);
+  } = useModelViewerState(modelInfo.modelUrl || modelInfo.localModelUrl, onCustomModelLoad);
 
   const handleModelLoadError = useCallback((error: any) => {
     handleModelErrorState(error);
@@ -116,60 +63,25 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
     }
   }, [toast]);
 
-  const handleShare = useCallback(async () => {
-    try {
-      const shareData = {
-        title: `3D Model: ${modelInfo.prompt || 'Generated Model'}`,
-        text: `Check out this AI-generated 3D model: "${modelInfo.prompt}"`,
-        url: modelInfo.modelUrl
-      };
-      
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(modelInfo.modelUrl);
-        toast({
-          title: "Link Copied",
-          description: "Model URL copied to clipboard"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Share Failed",
-        description: "Could not share model",
-        variant: "destructive"
-      });
-    }
-  }, [modelInfo, toast]);
-
-  // Memory cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (customModelBlob) {
-        URL.revokeObjectURL(URL.createObjectURL(customModelBlob));
-      }
-    };
-  }, [customModelBlob]);
-
-  // Determine loading and error states
-  const isModelLoading = isLoading || textTo3DLoading;
-  const modelLoadingProgress = Math.max(progress, textTo3DProgress);
-  const currentModelError = errorMessage || textTo3DError || modelError;
-  const shouldShowModelError = shouldShowError || !!textTo3DError;
-
+  const currentModelError = errorMessage || modelError;
   const isCompact = variant === 'compact' || variant === 'gallery';
-  const heightClass = isCompact ? 'h-[300px]' : 'h-[500px]';
-
-  // Adjust quality based on performance
-  const canvasSettings = {
-    shadows: !shouldReduceQuality,
-    gl: {
-      powerPreference: shouldReduceQuality ? "low-power" as const : "high-performance" as const,
-      antialias: !shouldReduceQuality,
-      alpha: true
-    },
-    dpr: shouldReduceQuality ? [0.5, 1] as [number, number] : [1, 2] as [number, number]
+  const isProcessing = modelInfo.status === 'processing';
+  const currentModelUrl = displayModelUrl || modelInfo.modelUrl || modelInfo.localModelUrl;
+  
+  // Determine height class based on fillHeight prop and variant
+  const getHeightClass = () => {
+    if (fillHeight) {
+      return 'h-full';
+    }
+    return isCompact ? 'h-[300px]' : 'h-[500px]';
   };
+  
+  const heightClass = getHeightClass();
+
+  // Don't render if no model URL available and not processing
+  if (!currentModelUrl && !isProcessing && !customFile && !isLoading) {
+    return null;
+  }
 
   return (
     <motion.div
@@ -178,93 +90,133 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
       className={cn(
-        "glass-panel rounded-2xl overflow-hidden border border-blue-500/20 shadow-glow",
+        "glass-panel rounded-2xl overflow-hidden border border-white/10 shadow-glow",
+        fillHeight ? "h-full flex flex-col" : "",
         className
       )}
     >
-      <ModelViewerControls
-        showControls={showControls}
-        modelType="text-to-3d"
-        modelStatus={modelInfo.status}
-        autoRotate={autoRotate}
-        showEnvironment={showEnvironment}
-        showModelInfo={showModelInfo}
-        onAutoRotateToggle={() => setAutoRotate(!autoRotate)}
-        onEnvironmentToggle={() => setShowEnvironment(!showEnvironment)}
-        onModelInfoToggle={() => setShowModelInfo(!showModelInfo)}
-        onResetCamera={resetCamera}
-        onShare={handleShare}
-        onUpload={triggerFileInputClick}
-        onDownload={handleDownload}
-      />
+      {/* Header */}
+      {showControls && (
+        <div className="p-4 border-b border-white/10 bg-gradient-to-r from-white/5 to-white/10 flex-shrink-0">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-3">
+              <h3 className="text-lg font-semibold text-gradient">
+                Text-to-3D Model Preview
+              </h3>
+              {customFile && (
+                <Badge className="bg-figuro-accent/20 text-figuro-accent border-figuro-accent/30">
+                  Custom Upload
+                </Badge>
+              )}
+              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                {modelInfo.artStyle || 'Text-to-3D'}
+              </Badge>
+              {isProcessing && (
+                <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  Processing
+                </Badge>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              {currentModelUrl && !isProcessing && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAutoRotate(!autoRotate)}
+                    className="hover:bg-white/10"
+                  >
+                    <RotateCcw className={cn(
+                      "w-4 h-4",
+                      autoRotate && "animate-spin"
+                    )} />
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetCamera}
+                    className="hover:bg-white/10"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={triggerFileInputClick}
+                className="hover:bg-white/10"
+              >
+                <Upload className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      <ModelInfoPanel 
-        show={showModelInfo} 
-        modelInfo={modelInfo} 
-      />
-
+      {/* Hidden file input */}
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
         accept=".glb,.gltf"
         className="hidden"
-        aria-label="Upload 3D model file"
       />
 
-      <div className={cn("relative", heightClass)}>
-        <Canvas {...canvasSettings}>
+      {/* 3D Scene */}
+      <div className={cn(
+        "relative",
+        fillHeight ? "flex-1" : heightClass
+      )}>
+        <Canvas
+          shadows
+          gl={{
+            powerPreference: "high-performance",
+            antialias: true,
+            alpha: true
+          }}
+          dpr={[1, 2]}
+          camera={{ position: [0, 0, 5], fov: 45 }}
+        >
           <ambientLight intensity={0.4} />
           <directionalLight 
             position={[10, 10, 5]} 
             intensity={1}
-            castShadow={!shouldReduceQuality}
-            shadow-mapSize-width={shouldReduceQuality ? 512 : 2048}
-            shadow-mapSize-height={shouldReduceQuality ? 512 : 2048}
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
           />
           <pointLight position={[-10, -10, -5]} intensity={0.3} color="#4f46e5" />
           
           <PerspectiveCamera makeDefault position={[0, 0, 5]} />
           
-          {isModelLoading ? (
-            <Text3DLoadingView progress={modelLoadingProgress} modelInfo={modelInfo} />
-          ) : shouldShowModelError ? (
-            <Html center>
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="glass-panel p-6 rounded-2xl backdrop-blur-xl bg-red-500/10 border border-red-500/20 max-w-sm text-center"
-              >
-                <div className="text-red-400 mb-4">
-                  <EyeOff className="w-8 h-8 mx-auto mb-2" />
-                  <p className="font-medium">Failed to Load 3D Model</p>
-                  <p className="text-sm text-red-300 mt-1">{currentModelError}</p>
-                </div>
-                <Button 
-                  onClick={loadTextTo3DModel}
-                  variant="outline"
-                  size="sm"
-                  className="border-red-400/50 text-red-400 hover:bg-red-400/10"
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Retry
-                </Button>
-              </motion.div>
-            </Html>
+          {isLoading || isProcessing ? (
+            <mesh>
+              <boxGeometry args={[1, 1, 1]} />
+              <meshStandardMaterial color="#9b87f5" opacity={0.5} transparent />
+            </mesh>
+          ) : shouldShowError || currentModelError ? (
+            <mesh>
+              <boxGeometry args={[1, 1, 1]} />
+              <meshStandardMaterial color="#ef4444" opacity={0.5} transparent />
+            </mesh>
           ) : (
             <EnhancedModelScene
-              modelUrl={customModelBlob ? null : displayModelUrl}
+              modelUrl={customModelBlob ? null : currentModelUrl}
               modelBlob={customModelBlob}
               autoRotate={autoRotate}
               showWireframe={false}
               onModelError={handleModelLoadError}
-              preloadedModel={textTo3DModel}
             />
           )}
           
           <OrbitControls
             ref={orbitControlsRef}
-            autoRotate={autoRotate}
+            autoRotate={autoRotate && !isProcessing}
             autoRotateSpeed={1}
             enablePan={true}
             enableZoom={true}
@@ -283,7 +235,7 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
                 scale={10} 
                 blur={1} 
                 far={10} 
-                resolution={shouldReduceQuality ? 128 : 256} 
+                resolution={256} 
               />
             </>
           )}
@@ -291,14 +243,45 @@ const Text3DModelViewer: React.FC<Text3DModelViewerProps> = ({
           <gridHelper args={[20, 20, '#ffffff20', '#ffffff10']} position={[0, -2, 0]} />
         </Canvas>
         
-        <ModelViewerOverlay
-          modelInfo={modelInfo}
-          showControls={showControls}
-          showEnvironment={showEnvironment}
-          isLoading={isModelLoading}
-          onEnvironmentToggle={() => setShowEnvironment(!showEnvironment)}
-          onDownload={handleDownload}
-        />
+        {/* Overlay controls */}
+        {currentModelUrl && showControls && !isLoading && !isProcessing && (
+          <div className="absolute bottom-4 left-4 right-4">
+            <div className="glass-panel p-3 rounded-xl backdrop-blur-xl bg-white/10 border border-white/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Badge variant="outline" className="border-white/30 text-white/70">
+                    {customFile?.name || modelInfo.prompt?.substring(0, 30) + '...' || 'Text-to-3D Model'}
+                  </Badge>
+                  {modelInfo.progress && modelInfo.progress < 100 && (
+                    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                      {modelInfo.progress}%
+                    </Badge>
+                  )}
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowEnvironment(!showEnvironment)}
+                    className="hover:bg-white/10 text-white/70"
+                  >
+                    {showEnvironment ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                  
+                  <Button
+                    onClick={handleDownload}
+                    size="sm"
+                    className="bg-figuro-accent hover:bg-figuro-accent-hover text-white"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
