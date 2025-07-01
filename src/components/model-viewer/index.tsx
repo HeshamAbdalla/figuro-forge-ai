@@ -13,11 +13,13 @@ interface ModelViewerProps {
   showControls?: boolean;
   autoRotate?: boolean;
   className?: string;
+  fillHeight?: boolean;
 }
 
 const ModelViewer: React.FC<ModelViewerProps> = ({
   modelUrl,
   autoRotate,
+  fillHeight,
   ...restProps
 }) => {
   // Convert legacy props to new ModelInfo format
@@ -26,6 +28,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   return (
     <EnhancedModelViewer 
       modelInfo={modelInfo}
+      fillHeight={fillHeight}
       {...restProps}
     />
   );
