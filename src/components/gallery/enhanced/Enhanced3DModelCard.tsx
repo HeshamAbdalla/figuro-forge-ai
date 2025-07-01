@@ -118,9 +118,9 @@ const Enhanced3DModelCard: React.FC<Enhanced3DModelCardProps> = ({
       transition={{ duration: 0.3 }}
       className={`${className}`}
     >
-      <Card className="bg-gradient-to-br from-gray-900/80 via-gray-800/60 to-gray-900/80 border border-white/10 hover:border-figuro-accent/40 transition-all duration-300 overflow-hidden group backdrop-blur-sm">
-        {/* Image Preview */}
-        <div className="relative aspect-square overflow-hidden bg-gray-900/50">
+      <Card className="bg-gradient-to-br from-gray-900/80 via-gray-800/60 to-gray-900/80 border border-white/10 hover:border-figuro-accent/40 transition-all duration-300 overflow-hidden group backdrop-blur-sm h-[400px] flex flex-col">
+        {/* Full Height Image Preview */}
+        <div className="relative flex-1 overflow-hidden bg-gray-900/50">
           <img
             src={figurine.image_url}
             alt={figurine.title}
@@ -185,51 +185,38 @@ const Enhanced3DModelCard: React.FC<Enhanced3DModelCardProps> = ({
               }`} 
             />
           </Button>
-        </div>
 
-        {/* Content */}
-        <div className="p-4 space-y-3">
-          {/* Title */}
-          <h3 className="font-semibold text-white text-lg line-clamp-2 group-hover:text-figuro-accent transition-colors">
-            {figurine.title}
-          </h3>
-          
-          {/* Creator */}
-          <div className="flex items-center gap-2 text-white/60 text-sm">
-            <User className="w-3 h-3" />
-            <span>by {creatorName}</span>
-          </div>
-          
-          {/* Prompt preview */}
-          {figurine.prompt && (
-            <p className="text-white/70 text-sm line-clamp-2">
-              {figurine.prompt}
-            </p>
-          )}
-
-          {/* Stats and Actions */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/10">
-            <div className="flex items-center gap-4 text-white/60 text-sm">
-              <span className="flex items-center gap-1">
-                <Heart className="w-3 h-3" />
-                {likeCount}
-              </span>
-              <span className="flex items-center gap-1">
-                <Eye className="w-3 h-3" />
-                {figurine.metadata?.view_count || 0}
-              </span>
-            </div>
+          {/* Bottom overlay with minimal info */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4">
+            {/* Title */}
+            <h3 className="font-semibold text-white text-lg line-clamp-1 mb-1">
+              {figurine.title}
+            </h3>
             
-            {onShare && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onShare(figurine)}
-                className="text-white/60 hover:text-white p-1"
-              >
-                <Share2 className="w-4 h-4" />
-              </Button>
-            )}
+            {/* Stats */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-white/60 text-sm">
+                <User className="w-3 h-3" />
+                <span>by {creatorName}</span>
+              </div>
+              
+              <div className="flex items-center gap-4 text-white/60 text-sm">
+                <span className="flex items-center gap-1">
+                  <Heart className="w-3 h-3" />
+                  {likeCount}
+                </span>
+                {onShare && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onShare(figurine)}
+                    className="text-white/60 hover:text-white p-1"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </Card>

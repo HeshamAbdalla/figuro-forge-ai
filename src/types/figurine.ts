@@ -23,4 +23,5 @@ export interface Figurine {
   is_public?: boolean;
   file_type?: 'image' | 'web-icon' | '3d-model';
   metadata?: Record<string, any>;
+  like_count?: number;
 }
