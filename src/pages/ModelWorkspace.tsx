@@ -249,6 +249,7 @@ const ModelWorkspace = () => {
         </div>
 
         <MobileActionBar
+          figurine={figurine}
           onDownload={handleDownload}
           onShare={handleShare}
           onLike={handleLike}

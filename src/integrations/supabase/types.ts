@@ -390,6 +390,62 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_models: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          figurine_id: string
+          id: string
+          last_accessed_at: string | null
+          max_views: number | null
+          password_hash: string | null
+          share_token: string
+          status: Database["public"]["Enums"]["share_status"] | null
+          updated_at: string | null
+          user_id: string
+          view_count: number | null
+          viewer_info: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          figurine_id: string
+          id?: string
+          last_accessed_at?: string | null
+          max_views?: number | null
+          password_hash?: string | null
+          share_token: string
+          status?: Database["public"]["Enums"]["share_status"] | null
+          updated_at?: string | null
+          user_id: string
+          view_count?: number | null
+          viewer_info?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          figurine_id?: string
+          id?: string
+          last_accessed_at?: string | null
+          max_views?: number | null
+          password_hash?: string | null
+          share_token?: string
+          status?: Database["public"]["Enums"]["share_status"] | null
+          updated_at?: string | null
+          user_id?: string
+          view_count?: number | null
+          viewer_info?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_models_figurine_id_fkey"
+            columns: ["figurine_id"]
+            isOneToOne: false
+            referencedRelation: "figurines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stats: {
         Row: {
           count: number
@@ -552,9 +608,22 @@ export type Database = {
         Args: { feature_type: string; user_id_param: string; amount?: number }
         Returns: boolean
       }
+      create_shared_model: {
+        Args: {
+          p_figurine_id: string
+          p_password?: string
+          p_expires_hours?: number
+          p_max_views?: number
+        }
+        Returns: string
+      }
       enhanced_security_health_check: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      generate_share_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_current_user_id: {
         Args: Record<PropertyKey, never>
@@ -615,6 +684,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      revoke_share: {
+        Args: { p_share_token: string }
+        Returns: boolean
+      }
       rls_performance_check: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -640,6 +713,10 @@ export type Database = {
           security_status: string
         }[]
       }
+      validate_share_access: {
+        Args: { p_share_token: string; p_password?: string }
+        Returns: Json
+      }
       validate_subscription_upgrade: {
         Args: {
           target_user_id: string
@@ -660,6 +737,7 @@ export type Database = {
         | "cyberpunk"
         | "realistic"
         | "chibi"
+      share_status: "active" | "revoked" | "expired"
       user_role: "admin" | "user" | "moderator"
     }
     CompositeTypes: {
@@ -786,6 +864,7 @@ export const Constants = {
         "realistic",
         "chibi",
       ],
+      share_status: ["active", "revoked", "expired"],
       user_role: ["admin", "user", "moderator"],
     },
   },
