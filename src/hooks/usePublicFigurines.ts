@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Figurine } from '@/types/figurine';
 import { useToast } from '@/hooks/use-toast';
-import { validateAndCleanUrl, prioritizeUrls } from '@/utils/urlValidationUtils';
+import { validateAndCleanUrl, prioritizeUrlsWithInfo } from '@/utils/urlValidationUtils';
 import { useSecureQuery } from '@/hooks/useSecureQuery';
 
 export const usePublicFigurines = () => {
@@ -60,6 +60,12 @@ export const usePublicFigurines = () => {
         const savedImageValidation = validateAndCleanUrl(figurine.saved_image_url);
         const modelValidation = validateAndCleanUrl(figurine.model_url);
         
+        // Valid art styles from the Figurine type
+        const validStyles: Figurine['style'][] = ['isometric', 'anime', 'pixar', 'steampunk', 'lowpoly', 'cyberpunk', 'realistic', 'chibi', 'text-to-3d'];
+        const validStyle = validStyles.includes(figurine.style as Figurine['style']) 
+          ? figurine.style as Figurine['style']
+          : 'isometric' as const;
+        
         // Safely handle metadata object
         const existingMetadata = figurine.metadata && typeof figurine.metadata === 'object' ? figurine.metadata : {};
         
@@ -67,13 +73,14 @@ export const usePublicFigurines = () => {
           id: figurine.id,
           title: figurine.title || "Untitled Figurine",
           prompt: figurine.prompt || "",
-          style: figurine.style || "",
+          style: validStyle,
           image_url: imageValidation.isValid ? imageValidation.cleanUrl : (figurine.image_url || ""),
           saved_image_url: savedImageValidation.isValid ? savedImageValidation.cleanUrl : figurine.saved_image_url,
           model_url: modelValidation.isValid ? modelValidation.cleanUrl : figurine.model_url,
           created_at: figurine.created_at || new Date().toISOString(),
           user_id: figurine.user_id,
           is_public: figurine.is_public || false,
+          file_type: 'image' as const,
           metadata: {
             ...existingMetadata,
             creator_name: 'Community Member' // Default name since we can't join with profiles
@@ -94,8 +101,8 @@ export const usePublicFigurines = () => {
           conversion.thumbnail_url
         ].filter(Boolean);
         
-        const modelPrioritization = prioritizeUrls(modelUrls);
-        const thumbnailPrioritization = prioritizeUrls(thumbnailUrls);
+        const modelPrioritization = prioritizeUrlsWithInfo(modelUrls);
+        const thumbnailPrioritization = prioritizeUrlsWithInfo(thumbnailUrls);
         
         console.log('🔍 [PUBLIC-FIGURINES] URL prioritization for conversion:', conversion.id, {
           modelUrls: modelUrls.length,
@@ -105,17 +112,24 @@ export const usePublicFigurines = () => {
           selectedThumbnail: thumbnailPrioritization.url ? 'Found' : 'None'
         });
         
+        // Valid art styles from the Figurine type
+        const validStyles: Figurine['style'][] = ['isometric', 'anime', 'pixar', 'steampunk', 'lowpoly', 'cyberpunk', 'realistic', 'chibi', 'text-to-3d'];
+        const validStyle = validStyles.includes(conversion.art_style as Figurine['style'])
+          ? conversion.art_style as Figurine['style']
+          : 'text-to-3d' as const;
+        
         return {
           id: conversion.id,
           title: `Text-to-3D: ${conversion.prompt?.substring(0, 30) || 'Generated Model'}${conversion.prompt && conversion.prompt.length > 30 ? '...' : ''}`,
           prompt: conversion.prompt || "",
-          style: conversion.art_style || "text-to-3d",
+          style: validStyle,
           image_url: thumbnailPrioritization.url || "",
           saved_image_url: thumbnailPrioritization.url,
           model_url: modelPrioritization.url,
           created_at: conversion.created_at || new Date().toISOString(),
           user_id: conversion.user_id,
-          is_public: true, // Text-to-3D models are considered public for community gallery
+          is_public: true,
+          file_type: '3d-model' as const,
           metadata: {
             creator_name: 'Community Member', // Default name since we can't join with profiles
             conversion_type: 'text-to-3d',

@@ -6,6 +6,7 @@ import ModelPlaceholder from "../ModelPlaceholder";
 import ModelErrorHandler from "./ModelErrorHandler";
 import { validateAndCleanUrl, validateModelUrl } from "@/utils/urlValidationUtils";
 import { logModelDebugInfo } from "@/utils/modelDebugUtils";
+import { Figurine } from "@/types/figurine";
 
 interface SimplifiedModelPreviewProps {
   modelUrl: string;
@@ -69,12 +70,14 @@ const SimplifiedModelPreview: React.FC<SimplifiedModelPreviewProps> = ({
         id: modelId,
         title: fileName,
         model_url: modelUrl,
-        style: '',
+        style: 'isometric' as Figurine['style'], // Use valid style instead of empty string
         image_url: '',
         saved_image_url: null,
         prompt: '',
         created_at: new Date().toISOString(),
+        user_id: '',
         is_public: false,
+        file_type: '3d-model' as const,
         metadata
       });
     }
