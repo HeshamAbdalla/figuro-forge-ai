@@ -7,48 +7,48 @@ import ShowcaseControls from './ShowcaseControls';
 
 const Floating3DShowcase: React.FC = () => {
   return (
-    <div className="fixed inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
-      {/* Enhanced 3D Canvas with better visibility settings */}
+    <div className="w-full h-full pointer-events-none">
+      {/* 3D Canvas that fills its container */}
       <Canvas
-        dpr={[1, 1.8]} // Slightly increased quality for better visibility
-        performance={{ min: 0.4, max: 0.9 }} // Improved performance range
+        dpr={[1, 1.5]}
+        performance={{ min: 0.5, max: 0.8 }}
         className="w-full h-full"
         gl={{
-          powerPreference: "high-performance", // Better performance for visibility
-          antialias: true, // Enable antialiasing for cleaner visuals
+          powerPreference: "high-performance",
+          antialias: true,
           alpha: true,
           preserveDrawingBuffer: false
         }}
-        frameloop="always" // Always render for smooth animations
+        frameloop="always"
       >
         <PerspectiveCamera 
           makeDefault 
-          position={[0, 0, 12]} 
-          fov={55} // Slightly wider FOV for better showcase
+          position={[0, 0, 10]} 
+          fov={50}
           near={0.1}
           far={100}
         />
         
-        {/* Enhanced lighting for better visibility */}
-        <ambientLight intensity={0.5} />
+        {/* Ambient lighting for the scene */}
+        <ambientLight intensity={0.4} />
         <directionalLight
           position={[5, 5, 5]}
-          intensity={1.2} // Increased intensity
+          intensity={1.0}
           castShadow
           shadow-mapSize-width={1024}
           shadow-mapSize-height={1024}
         />
-        <pointLight position={[-5, -5, -5]} intensity={0.6} color="#9b87f5" />
+        <pointLight position={[-5, -5, -5]} intensity={0.5} color="#9b87f5" />
         
-        {/* Environment for enhanced depth with better visibility */}
-        <Environment preset="city" resolution={1024} />
+        {/* Environment for enhanced depth */}
+        <Environment preset="city" resolution={512} />
         
         {/* Main Scene */}
         <Suspense fallback={null}>
           <FloatingModelsScene />
         </Suspense>
         
-        {/* Enhanced controls */}
+        {/* Controls for the 3D scene */}
         <ShowcaseControls />
       </Canvas>
     </div>
