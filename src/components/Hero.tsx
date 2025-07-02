@@ -32,7 +32,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="min-h-screen flex items-center justify-center relative overflow-hidden">
+    <section className="h-screen flex items-center justify-center relative overflow-hidden">
       {/* Subtle overlay to enhance text readability against 3D background */}
       <div className="absolute inset-0 bg-gradient-to-b from-figuro-dark/40 via-figuro-dark/30 to-figuro-dark/50" />
       

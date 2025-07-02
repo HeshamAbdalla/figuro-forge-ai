@@ -1,6 +1,7 @@
 
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
+import HomepageGallery from "@/components/HomepageGallery";
 import Floating3DShowcase from "@/components/homepage/Floating3DShowcase";
 import SEO from "@/components/SEO";
 import { pageSEO } from "@/config/seo";
@@ -19,12 +20,15 @@ const Index = () => {
       <Floating3DShowcase />
       
       {/* Main Content Layer */}
-      <div className="min-h-screen relative" style={{ zIndex: 10 }}>
+      <div className="relative" style={{ zIndex: 10 }}>
         {/* Header */}
         <Header />
         
         {/* Hero Section - Full Height */}
         <Hero />
+        
+        {/* Gallery Section */}
+        <HomepageGallery />
       </div>
     </>
   );
