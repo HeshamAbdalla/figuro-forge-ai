@@ -7,56 +7,48 @@ import ShowcaseControls from './ShowcaseControls';
 
 const Floating3DShowcase: React.FC = () => {
   return (
-    <div className="fixed inset-0 w-full h-full pointer-events-none" style={{ zIndex: 100 }}>
-      {/* 3D Canvas optimized for dramatic foreground showcase */}
+    <div className="fixed inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
+      {/* 3D Canvas positioned as background */}
       <Canvas
-        dpr={[1, 2]} // Higher quality for foreground effect
-        performance={{ min: 0.5, max: 1 }} 
+        dpr={[1, 1.5]} // Reduced quality for background
+        performance={{ min: 0.3, max: 0.8 }} 
         className="w-full h-full"
         gl={{
-          powerPreference: "high-performance",
-          antialias: true,
+          powerPreference: "default",
+          antialias: false,
           alpha: true,
           preserveDrawingBuffer: false
         }}
-        frameloop="always"
+        frameloop="demand"
       >
         <PerspectiveCamera 
           makeDefault 
-          position={[0, 0, 8]} 
-          fov={65} // Wider FOV for more dramatic "popping out" effect
+          position={[0, 0, 12]} 
+          fov={50} // Narrower FOV for background effect
           near={0.1}
           far={100}
         />
         
-        {/* Enhanced lighting for dramatic showcase */}
-        <ambientLight intensity={0.4} />
+        {/* Softer lighting for background */}
+        <ambientLight intensity={0.3} />
         <directionalLight
-          position={[10, 10, 5]}
-          intensity={1.2}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-        />
-        <pointLight position={[-10, -10, -5]} intensity={0.6} color="#9b87f5" />
-        <spotLight
-          position={[0, 15, 0]}
-          angle={0.4}
-          penumbra={1}
+          position={[5, 5, 5]}
           intensity={0.8}
-          color="#ffffff"
           castShadow
+          shadow-mapSize-width={1024}
+          shadow-mapSize-height={1024}
         />
+        <pointLight position={[-5, -5, -5]} intensity={0.4} color="#9b87f5" />
         
-        {/* High-resolution environment for quality */}
-        <Environment preset="city" resolution={1024} />
+        {/* Environment for background depth */}
+        <Environment preset="city" resolution={512} />
         
         {/* Main Scene */}
         <Suspense fallback={null}>
           <FloatingModelsScene />
         </Suspense>
         
-        {/* Interactive controls optimized for showcase */}
+        {/* Background controls */}
         <ShowcaseControls />
       </Canvas>
     </div>

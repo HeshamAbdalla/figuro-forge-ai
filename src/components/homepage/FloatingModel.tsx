@@ -35,7 +35,6 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
 }) => {
   const groupRef = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
-  const [clicked, setClicked] = useState(false);
   const [model, setModel] = useState<THREE.Group | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,16 +45,16 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
       setLoading(true);
       setError(null);
       
-      console.log('🔄 [SHOWCASE-MODEL] Loading model:', title, id);
+      console.log('🔄 [BACKGROUND-MODEL] Loading model:', title, id);
       
       modelManager.loadModel(modelPath)
         .then((loadedModel) => {
           setModel(loadedModel);
           setLoading(false);
-          console.log('✅ [SHOWCASE-MODEL] Model loaded successfully:', title);
+          console.log('✅ [BACKGROUND-MODEL] Model loaded successfully:', title);
         })
         .catch((err) => {
-          console.error('❌ [SHOWCASE-MODEL] Failed to load model:', title, err);
+          console.error('❌ [BACKGROUND-MODEL] Failed to load model:', title, err);
           setError(err instanceof Error ? err.message : 'Unknown error');
           setLoading(false);
         });
@@ -70,52 +69,41 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
 
   const handlePointerOver = useCallback(() => setHovered(true), []);
   const handlePointerOut = useCallback(() => setHovered(false), []);
-  const handleClick = useCallback(() => {
-    setClicked(!clicked);
-    if (figurineData) {
-      console.log('🎯 [SHOWCASE-MODEL] Interactive model clicked:', figurineData.title || title);
-    }
-  }, [clicked, figurineData, title]);
 
-  // Enhanced animation for dramatic "popping out" effect
+  // Subtle background animation
   useFrame((state) => {
     if (!groupRef.current) return;
 
     const time = state.clock.elapsedTime;
     
-    // Enhanced floating motion with more dramatic Z movement
+    // Gentle floating motion
     groupRef.current.position.y = position[1] + Math.sin(time * floatSpeed) * floatAmplitude;
-    groupRef.current.position.z = position[2] + Math.sin(time * floatSpeed * 0.7) * 1.2; // More pronounced forward/backward
-    groupRef.current.position.x = position[0] + Math.cos(time * floatSpeed * 0.3) * 0.3; // Slight side movement
+    groupRef.current.position.x = position[0] + Math.cos(time * floatSpeed * 0.5) * 0.2;
     
-    // More dynamic rotation
+    // Slow rotation
     groupRef.current.rotation.y += rotationSpeed * 0.016;
-    groupRef.current.rotation.x = Math.sin(time * 0.7) * 0.15;
-    groupRef.current.rotation.z = Math.cos(time * 0.4) * 0.08;
+    groupRef.current.rotation.x = Math.sin(time * 0.3) * 0.1;
     
-    // Enhanced breathing and interaction effects
-    const breathScale = 1 + Math.sin(time * 2.5) * 0.12; // More pronounced breathing
-    const hoverScale = hovered ? 1.5 : 1; // Bigger hover effect
-    const clickScale = clicked ? 0.8 : 1;
-    const finalScale = scale * breathScale * hoverScale * clickScale;
+    // Subtle breathing effect
+    const breathScale = 1 + Math.sin(time * 1.5) * 0.05;
+    const hoverScale = hovered ? 1.1 : 1; // Subtle hover effect
+    const finalScale = scale * breathScale * hoverScale;
     
     groupRef.current.scale.setScalar(finalScale);
   });
 
-  // Render model with enhanced fallbacks
+  // Render model with background-appropriate materials
   const renderModel = () => {
     if (isLoading || loading) {
       return (
         <mesh castShadow receiveShadow>
-          <dodecahedronGeometry args={[1.4]} />
+          <dodecahedronGeometry args={[1]} />
           <meshStandardMaterial
             color={color}
-            metalness={0.6}
-            roughness={0.2}
+            metalness={0.3}
+            roughness={0.6}
             transparent
-            opacity={0.8}
-            emissive={color}
-            emissiveIntensity={0.1}
+            opacity={0.6}
           />
         </mesh>
       );
@@ -125,23 +113,23 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
       return (
         <primitive
           object={model}
-          scale={1.5}
+          scale={1.2}
           castShadow
           receiveShadow
         />
       );
     }
 
-    // Enhanced fallback geometry
+    // Background fallback geometry
     return (
       <mesh castShadow receiveShadow>
-        <icosahedronGeometry args={[1.2]} />
+        <icosahedronGeometry args={[1]} />
         <meshStandardMaterial
-          color={error ? '#ff4444' : color}
-          metalness={0.5}
-          roughness={0.3}
-          emissive={error ? '#ff2222' : color}
-          emissiveIntensity={0.15}
+          color={error ? '#ff6666' : color}
+          metalness={0.2}
+          roughness={0.7}
+          transparent
+          opacity={0.7}
         />
       </mesh>
     );
@@ -153,45 +141,20 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
       position={position}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
-      onClick={handleClick}
     >
       {renderModel()}
       
-      {/* Enhanced glow effect */}
+      {/* Subtle glow effect for background */}
       {hovered && (
-        <mesh scale={2.2}>
+        <mesh scale={1.5}>
           <sphereGeometry args={[1, 16, 16]} />
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.2}
+            opacity={0.1}
           />
         </mesh>
       )}
-      
-      {/* Enhanced particle trail */}
-      <points>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            array={new Float32Array([
-              0, 0, 0, 
-              0.8, 0.8, -0.8, 
-              -0.8, -0.8, 0.8,
-              0.5, -0.5, 0.5,
-              -0.5, 0.5, -0.5
-            ])}
-            count={5}
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <pointsMaterial
-          size={0.03}
-          color={color}
-          transparent
-          opacity={0.7}
-        />
-      </points>
     </group>
   );
 };

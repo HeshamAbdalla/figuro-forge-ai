@@ -22,28 +22,25 @@ const Index = () => {
         ogType={pageSEO.home.ogType}
       />
       
-      {/* 3D Showcase as Interactive Foreground Layer */}
+      {/* 3D Showcase as Background Layer */}
       <Floating3DShowcase />
       
-      {/* Main Content with optimized z-index layering */}
-      <div className="min-h-screen bg-figuro-dark relative" style={{ zIndex: 10 }}>
-        {/* Header with enhanced backdrop for readability */}
+      {/* Main Content with higher z-index to appear over background */}
+      <div className="min-h-screen bg-figuro-dark/95 relative" style={{ zIndex: 10 }}>
+        {/* Header without heavy backdrop */}
         <div className="relative">
-          <div className="absolute inset-0 bg-figuro-dark/60 backdrop-blur-md" />
-          <div className="relative z-20">
-            <Header />
-          </div>
+          <Header />
         </div>
         
-        {/* Hero Section with enhanced backdrop */}
+        {/* Hero Section with subtle backdrop */}
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-figuro-dark/70 via-figuro-dark/85 to-figuro-dark backdrop-blur-md" />
+          <div className="absolute inset-0 bg-gradient-to-b from-figuro-dark/30 via-figuro-dark/50 to-figuro-dark/70" />
           <div className="relative z-20">
             <Hero />
           </div>
         </div>
         
-        {/* Content sections with solid background for optimal readability */}
+        {/* Content sections with solid background for readability */}
         <div className="relative z-20 bg-figuro-dark">
           <FreeTierSpotlight />
           <InteractiveDemo />

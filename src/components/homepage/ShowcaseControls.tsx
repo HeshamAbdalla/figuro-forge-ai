@@ -6,18 +6,15 @@ const ShowcaseControls: React.FC = () => {
   return (
     <OrbitControls
       enablePan={false}
-      enableZoom={true} // Enable zoom for interactivity
+      enableZoom={false} // Disable zoom for background
       enableRotate={true}
-      rotateSpeed={0.2} // Slightly more responsive
-      zoomSpeed={0.6}
-      minDistance={5} // Allow closer viewing
-      maxDistance={20} // Allow further viewing
-      minPolarAngle={Math.PI / 6} // More flexible viewing angles
-      maxPolarAngle={Math.PI - Math.PI / 6}
+      rotateSpeed={0.1} // Slower rotation for background
       autoRotate={true}
-      autoRotateSpeed={0.5} // Slightly faster for more dynamic effect
-      dampingFactor={0.08} // Smoother damping
+      autoRotateSpeed={0.2} // Slower auto-rotation
+      dampingFactor={0.05} // Smoother damping
       enableDamping={true}
+      minPolarAngle={Math.PI / 4} // Limit vertical rotation
+      maxPolarAngle={Math.PI - Math.PI / 4}
     />
   );
 };

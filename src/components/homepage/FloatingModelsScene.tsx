@@ -11,67 +11,66 @@ const FloatingModelsScene: React.FC = () => {
   const sceneRef = useRef<Group>(null);
   const { models, loading, error } = useShowcaseModels();
 
-  // Enhanced foreground positioning for dramatic "popping out" effect
+  // Background positioning for subtle effect
   const showcaseConfigs = useMemo(() => [
     {
       id: 'showcase1',
-      position: [-6, 4, 6] as [number, number, number], // Far left, high, very close
-      scale: 1.8,
-      rotationSpeed: 0.3,
-      floatAmplitude: 0.6,
-      floatSpeed: 1.0,
+      position: [-4, 2, -5] as [number, number, number], // Further back
+      scale: 1.2,
+      rotationSpeed: 0.2,
+      floatAmplitude: 0.4,
+      floatSpeed: 0.8,
       color: '#9b87f5'
     },
     {
       id: 'showcase2',
-      position: [6, -3, 8] as [number, number, number], // Far right, low, closest
-      scale: 2.2,
-      rotationSpeed: -0.4,
-      floatAmplitude: 0.8,
-      floatSpeed: 0.8,
+      position: [4, -2, -8] as [number, number, number], // Much further back
+      scale: 1.5,
+      rotationSpeed: -0.25,
+      floatAmplitude: 0.5,
+      floatSpeed: 0.6,
       color: '#f59e0b'
     },
     {
       id: 'showcase3',
-      position: [0, -4, 5] as [number, number, number], // Center, very low, close
-      scale: 1.5,
-      rotationSpeed: 0.5,
-      floatAmplitude: 0.4,
-      floatSpeed: 1.4,
+      position: [0, -3, -6] as [number, number, number], // Background center
+      scale: 1.0,
+      rotationSpeed: 0.3,
+      floatAmplitude: 0.3,
+      floatSpeed: 1.0,
       color: '#ef4444'
     },
     {
       id: 'showcase4',
-      position: [-4, -1, 3] as [number, number, number], // Left, center, medium close
-      scale: 1.3,
-      rotationSpeed: -0.6,
-      floatAmplitude: 0.7,
-      floatSpeed: 1.1,
+      position: [-3, 0, -7] as [number, number, number], // Background left
+      scale: 0.9,
+      rotationSpeed: -0.35,
+      floatAmplitude: 0.4,
+      floatSpeed: 0.9,
       color: '#10b981'
     },
     {
       id: 'showcase5',
-      position: [4, 3, 4] as [number, number, number], // Right, high, close
-      scale: 1.6,
-      rotationSpeed: 0.8,
-      floatAmplitude: 0.5,
-      floatSpeed: 1.3,
+      position: [3, 2, -4] as [number, number, number], // Background right
+      scale: 1.1,
+      rotationSpeed: 0.4,
+      floatAmplitude: 0.35,
+      floatSpeed: 1.1,
       color: '#8b5cf6'
     }
   ], []);
 
-  // Enhanced global scene animation for dynamic effect
+  // Gentle scene animation for background effect
   useFrame((state) => {
     if (sceneRef.current) {
       const time = state.clock.elapsedTime;
-      // More pronounced scene movement for dramatic effect
-      sceneRef.current.rotation.y = Math.sin(time * 0.1) * 0.05;
-      sceneRef.current.rotation.x = Math.cos(time * 0.08) * 0.03;
-      sceneRef.current.position.z = Math.sin(time * 0.15) * 0.3; // Forward/backward movement
+      // Subtle scene movement
+      sceneRef.current.rotation.y = Math.sin(time * 0.05) * 0.02;
+      sceneRef.current.rotation.x = Math.cos(time * 0.04) * 0.015;
     }
   });
 
-  // Render models with enhanced showcase positioning
+  // Render models with background positioning
   const renderModels = useMemo(() => {
     if (loading) {
       return showcaseConfigs.map((config) => (
@@ -92,7 +91,7 @@ const FloatingModelsScene: React.FC = () => {
     }
 
     if (error || models.length === 0) {
-      console.warn('⚠️ [SHOWCASE-SCENE] Using enhanced fallback models:', error || 'No models available');
+      console.warn('⚠️ [SHOWCASE-SCENE] Using background fallback models:', error || 'No models available');
       return showcaseConfigs.map((config) => (
         <FloatingModel
           key={`showcase-${config.id}`}
@@ -109,7 +108,7 @@ const FloatingModelsScene: React.FC = () => {
       ));
     }
 
-    // Render real models with dramatic positioning
+    // Render real models in background positions
     return models.slice(0, 3).map((model, index) => {
       const config = showcaseConfigs[index];
       return (
@@ -132,13 +131,13 @@ const FloatingModelsScene: React.FC = () => {
 
   return (
     <group ref={sceneRef}>
-      {/* Enhanced atmospheric effects */}
+      {/* Background atmospheric effects */}
       <AtmosphericEffects />
       
-      {/* Enhanced particle system */}
+      {/* Subtle particle system */}
       <ParticleSystem />
       
-      {/* Showcase models positioned for dramatic foreground effect */}
+      {/* Background models */}
       {renderModels}
     </group>
   );
