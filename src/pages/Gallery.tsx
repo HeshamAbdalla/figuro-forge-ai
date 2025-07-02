@@ -1,17 +1,16 @@
-
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, Sparkles, Box } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
 import { usePublicFigurines } from "@/hooks/usePublicFigurines";
 import { Figurine } from "@/types/figurine";
-import EnhancedGalleryHero from "@/components/gallery/enhanced/EnhancedGalleryHero";
+import EnhancedGalleryHero from "@/components/gallery/EnhancedGalleryHero";
 import EnhancedGalleryFilters from "@/components/gallery/enhanced/EnhancedGalleryFilters";
 import Enhanced3DGalleryGrid from "@/components/gallery/enhanced/Enhanced3DGalleryGrid";
 import OnDemand3DPreviewModal from "@/components/gallery/components/OnDemand3DPreviewModal";
@@ -134,6 +133,17 @@ const Gallery = () => {
     });
   };
 
+  const handleCategorySelect = (category: string) => {
+    console.log('🏷️ [GALLERY] Category selected:', category);
+    setFilters(prev => ({ ...prev, category }));
+    
+    // Scroll to the gallery grid section
+    const gallerySection = document.getElementById('gallery-grid');
+    if (gallerySection) {
+      gallerySection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const handleViewModel = (figurine: Figurine) => {
     if (!figurine.model_url) {
       console.warn('⚠️ [GALLERY] No model URL for figurine:', figurine.id);
@@ -212,52 +222,15 @@ const Gallery = () => {
     <div className="min-h-screen bg-figuro-dark">
       <Header />
       
-      {/* Enhanced Hero Section */}
-      <section className="relative py-20 px-4 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-figuro-accent/10 via-purple-500/5 to-transparent" />
-        <div className="absolute top-20 left-10 w-32 h-32 bg-figuro-accent/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 right-10 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl animate-pulse delay-1000" />
-        
-        <div className="container mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center max-w-4xl mx-auto"
-          >
-            <div className="flex items-center justify-center gap-3 mb-6">
-              <Box className="w-8 h-8 text-figuro-accent" />
-              <h1 className="text-4xl md:text-6xl font-bold text-white">
-                3D Model Gallery
-              </h1>
-              <Sparkles className="w-8 h-8 text-purple-400" />
-            </div>
-            
-            <p className="text-xl text-white/80 mb-8 leading-relaxed">
-              Discover amazing 3D models created by our community. Download, view, and get inspired 
-              by the creativity of fellow creators.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button
-                onClick={handleCreateNew}
-                size="lg"
-                className="bg-figuro-accent hover:bg-figuro-accent/80 text-white px-8 py-3 text-lg"
-              >
-                <Sparkles className="w-5 h-5 mr-2" />
-                Create Your Own
-              </Button>
-              
-              <div className="text-white/60 text-sm">
-                {modelsOnlyFigurines.length} 3D models available
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      {/* Enhanced Hero Section with Category Cards */}
+      <EnhancedGalleryHero
+        onCategorySelect={handleCategorySelect}
+        onCreateNew={handleCreateNew}
+        totalModels={modelsOnlyFigurines.length}
+      />
       
       {/* Main Gallery Content */}
-      <section className="py-16">
+      <section className="py-16" id="gallery-grid">
         <div className="container mx-auto px-4 max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -277,7 +250,9 @@ const Gallery = () => {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-4">
                 <h2 className="text-2xl font-semibold text-white">
-                  {filters.search ? "3D Model Search Results" : "Latest 3D Models"}
+                  {filters.search ? "3D Model Search Results" : 
+                   filters.category !== "all" ? `${filters.category.charAt(0).toUpperCase() + filters.category.slice(1)} Models` :
+                   "Latest 3D Models"}
                 </h2>
               </div>
               
