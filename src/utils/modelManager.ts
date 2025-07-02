@@ -13,8 +13,8 @@ class ModelManager {
   private cache = new Map<string, ModelCacheEntry>();
   private loader = new GLTFLoader();
   private loadingPromises = new Map<string, Promise<THREE.Group>>();
-  private readonly CACHE_MAX_SIZE = 10;
-  private readonly CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutes
+  private readonly CACHE_MAX_SIZE = 12;
+  private readonly CACHE_MAX_AGE = 8 * 60 * 1000; // 8 minutes
 
   static getInstance(): ModelManager {
     if (!ModelManager.instance) {
@@ -135,7 +135,8 @@ class ModelManager {
         undefined,
         (error) => {
           console.error('❌ [MODEL-MANAGER] Load failed:', error);
-          reject(new Error(`Failed to load model: ${error.message || 'Unknown error'}`));
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+          reject(new Error(`Failed to load model: ${errorMessage}`));
         }
       );
     });
@@ -149,12 +150,14 @@ class ModelManager {
           if (Array.isArray(child.material)) {
             child.material.forEach(mat => {
               if (mat instanceof THREE.MeshStandardMaterial) {
-                mat.envMapIntensity = 0.5;
+                mat.envMapIntensity = 0.6;
+                mat.metalness = Math.min(mat.metalness + 0.1, 1);
                 mat.needsUpdate = true;
               }
             });
           } else if (child.material instanceof THREE.MeshStandardMaterial) {
-            child.material.envMapIntensity = 0.5;
+            child.material.envMapIntensity = 0.6;
+            child.material.metalness = Math.min(child.material.metalness + 0.1, 1);
             child.material.needsUpdate = true;
           }
         }
@@ -165,7 +168,7 @@ class ModelManager {
       }
     });
 
-    // Center and scale model
+    // Center and scale model for better showcase presentation
     const box = new THREE.Box3().setFromObject(model);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -173,7 +176,7 @@ class ModelManager {
     
     model.position.sub(center);
     if (maxDim > 0) {
-      model.scale.setScalar(2 / maxDim);
+      model.scale.setScalar(2.2 / maxDim); // Slightly larger scale for foreground effect
     }
   }
 

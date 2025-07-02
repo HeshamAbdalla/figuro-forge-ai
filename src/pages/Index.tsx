@@ -20,27 +20,30 @@ const Index = () => {
         keywords={pageSEO.home.keywords}
         ogType={pageSEO.home.ogType}
       />
-      {/* Replace VantaBackground with direct 3D showcase as header background */}
-      <div className="min-h-screen bg-figuro-dark relative">
-        {/* 3D Showcase as Header Background */}
-        <div className="absolute inset-0 z-0">
-          <Floating3DShowcase />
-        </div>
-        
-        {/* Header and Hero overlaid on 3D background */}
-        <div className="relative z-10">
-          <Header />
-          <div className="relative">
-            {/* Semi-transparent overlay for better text readability */}
-            <div className="absolute inset-0 bg-figuro-dark/20 backdrop-blur-sm" />
-            <div className="relative z-10">
-              <Hero />
-            </div>
+      
+      {/* 3D Showcase as Foreground Element */}
+      <Floating3DShowcase />
+      
+      {/* Main Content with proper z-index layering */}
+      <div className="min-h-screen bg-figuro-dark relative" style={{ zIndex: 10 }}>
+        {/* Header with enhanced backdrop */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-figuro-dark/40 backdrop-blur-sm" />
+          <div className="relative z-20">
+            <Header />
           </div>
         </div>
         
-        {/* Rest of the content with solid background */}
-        <div className="relative z-10 bg-figuro-dark">
+        {/* Hero Section with enhanced backdrop */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-figuro-dark/60 via-figuro-dark/80 to-figuro-dark backdrop-blur-sm" />
+          <div className="relative z-20">
+            <Hero />
+          </div>
+        </div>
+        
+        {/* Rest of the content with solid background to ensure readability */}
+        <div className="relative z-20 bg-figuro-dark">
           <FreeTierSpotlight />
           <InteractiveDemo />
           <HomepageGallery />

@@ -8,9 +8,9 @@ const AtmosphericEffects: React.FC = () => {
   const { scene } = useThree();
   const fogRef = useRef<Fog>();
 
-  // Set up fog
+  // Enhanced fog setup for foreground effect
   React.useEffect(() => {
-    const fog = new Fog(new Color('#09090f'), 5, 15);
+    const fog = new Fog(new Color('#09090f'), 8, 25); // Adjusted for foreground
     scene.fog = fog;
     fogRef.current = fog;
 
@@ -19,42 +19,48 @@ const AtmosphericEffects: React.FC = () => {
     };
   }, [scene]);
 
-  // Animate fog intensity
+  // Enhanced fog animation
   useFrame((state) => {
     if (fogRef.current) {
       const time = state.clock.elapsedTime;
-      const fogIntensity = 5 + Math.sin(time * 0.5) * 2;
+      const fogIntensity = 8 + Math.sin(time * 0.3) * 2;
       fogRef.current.near = fogIntensity;
-      fogRef.current.far = fogIntensity + 10;
+      fogRef.current.far = fogIntensity + 17;
     }
   });
 
   return (
     <>
-      {/* Atmospheric lighting effects */}
+      {/* Enhanced atmospheric lighting for foreground showcase */}
       <pointLight
-        position={[0, 5, 0]}
-        intensity={0.2}
+        position={[0, 8, 5]}
+        intensity={0.3}
         color="#9b87f5"
-        distance={10}
+        distance={15}
         decay={2}
       />
       
-      {/* Rim lighting */}
+      {/* Multiple rim lighting for depth */}
       <directionalLight
-        position={[-5, 2, -5]}
-        intensity={0.3}
+        position={[-8, 3, -8]}
+        intensity={0.4}
         color="#3b82f6"
       />
       
-      {/* Background gradient sphere */}
-      <mesh scale={50}>
+      <directionalLight
+        position={[8, -3, 8]}
+        intensity={0.3}
+        color="#f59e0b"
+      />
+      
+      {/* Enhanced background gradient sphere */}
+      <mesh scale={80}>
         <sphereGeometry args={[1, 32, 32]} />
         <meshBasicMaterial
           color="#09090f"
           side={1} // BackSide
           transparent
-          opacity={0.8}
+          opacity={0.9}
         />
       </mesh>
     </>
