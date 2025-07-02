@@ -20,10 +20,10 @@ const Floating3DShowcase: React.FC = () => {
         className="relative z-10 pt-20 pb-10 text-center"
       >
         <h2 className="text-4xl md:text-6xl font-bold mb-6 text-gradient bg-gradient-to-br from-white via-white/90 to-figuro-accent bg-clip-text text-transparent">
-          Experience 3D Magic
+          Community 3D Showcase
         </h2>
         <p className="text-xl text-white/70 max-w-2xl mx-auto px-4">
-          Watch our AI-generated 3D models come to life with interactive animations and stunning visual effects
+          Explore real 3D models created by our community. Interactive animations showcase the creativity and quality possible with our AI platform.
         </p>
       </motion.div>
 
@@ -66,7 +66,7 @@ const Floating3DShowcase: React.FC = () => {
             transition={{ delay: 2, duration: 1 }}
             className="text-white/50 text-lg"
           >
-            Loading 3D Experience...
+            Loading Community Models...
           </motion.div>
         </div>
       </div>
@@ -81,6 +81,9 @@ const Floating3DShowcase: React.FC = () => {
         <h3 className="text-2xl font-semibold text-white mb-4">
           Ready to Create Your Own?
         </h3>
+        <p className="text-white/60 mb-6 max-w-lg mx-auto">
+          Join our community and start creating stunning 3D models with AI. Your creations could be featured in our showcase!
+        </p>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}

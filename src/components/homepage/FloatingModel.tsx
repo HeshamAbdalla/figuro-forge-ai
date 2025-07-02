@@ -1,9 +1,9 @@
 
 import React, { useRef, useState, useCallback } from 'react';
-import { useFrame, useLoader } from '@react-three/fiber';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { Group, Mesh, MeshStandardMaterial } from 'three';
-import { motion } from 'framer-motion-3d';
+import { useFrame } from '@react-three/fiber';
+import { Group } from 'three';
+import { useModelLoader } from '@/hooks/useModelLoader';
+import { Figurine } from '@/types/figurine';
 
 interface FloatingModelProps {
   id: string;
@@ -14,6 +14,9 @@ interface FloatingModelProps {
   floatSpeed: number;
   color: string;
   modelPath: string;
+  title: string;
+  figurineData?: Figurine;
+  isLoading?: boolean;
 }
 
 const FloatingModel: React.FC<FloatingModelProps> = ({
@@ -23,27 +26,40 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
   floatAmplitude,
   floatSpeed,
   color,
-  modelPath
+  modelPath,
+  title,
+  figurineData,
+  isLoading = false
 }) => {
   const groupRef = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
   const [clicked, setClicked] = useState(false);
+  
+  // Use the model loader hook only if we have a model path
+  const { loading: modelLoading, model, error } = useModelLoader();
 
-  // Try to load the model, fallback to a simple geometry if it fails
-  let gltf;
-  try {
-    gltf = useLoader(GLTFLoader, modelPath);
-  } catch (error) {
-    console.warn(`Failed to load model: ${modelPath}`, error);
-    gltf = null;
-  }
+  // Load model when component mounts and modelPath is available
+  React.useEffect(() => {
+    if (modelPath && modelPath.trim() !== '') {
+      console.log('🔄 [FLOATING-MODEL] Loading model:', title, modelPath.substring(0, 50) + '...');
+      loadModel(modelPath);
+    }
+  }, [modelPath]);
+
+  const { loadModel } = useModelLoader();
 
   const handlePointerOver = useCallback(() => setHovered(true), []);
   const handlePointerOut = useCallback(() => setHovered(false), []);
   const handleClick = useCallback(() => {
     setClicked(!clicked);
-    // Add click sound effect or other interactions here
-  }, [clicked]);
+    
+    // If we have figurine data, we could navigate to a detail view
+    if (figurineData) {
+      console.log('🎯 [FLOATING-MODEL] Clicked model:', figurineData.title || title);
+      // Could implement navigation to model viewer here
+      // Example: navigate(`/model/${figurineData.id}`);
+    }
+  }, [clicked, figurineData, title]);
 
   // Animation loop
   useFrame((state) => {
@@ -67,6 +83,51 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
     groupRef.current.scale.setScalar(finalScale);
   });
 
+  // Determine what to render
+  const renderModel = () => {
+    // Show loading state
+    if (isLoading || (modelPath && modelLoading)) {
+      return (
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial
+            color={color}
+            metalness={0.3}
+            roughness={0.4}
+            envMapIntensity={0.8}
+            transparent
+            opacity={0.5}
+          />
+        </mesh>
+      );
+    }
+
+    // Show loaded 3D model
+    if (model && !error) {
+      return (
+        <primitive
+          object={model.clone()}
+          scale={1}
+          castShadow
+          receiveShadow
+        />
+      );
+    }
+
+    // Fallback to colored geometry (for errors or no model path)
+    return (
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial
+          color={color}
+          metalness={0.3}
+          roughness={0.4}
+          envMapIntensity={0.8}
+        />
+      </mesh>
+    );
+  };
+
   return (
     <group
       ref={groupRef}
@@ -75,26 +136,7 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
       onPointerOut={handlePointerOut}
       onClick={handleClick}
     >
-      {gltf ? (
-        // Render the loaded GLTF model
-        <primitive
-          object={gltf.scene.clone()}
-          scale={1}
-          castShadow
-          receiveShadow
-        />
-      ) : (
-        // Fallback to a simple colored geometry
-        <mesh castShadow receiveShadow>
-          <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial
-            color={color}
-            metalness={0.3}
-            roughness={0.4}
-            envMapIntensity={0.8}
-          />
-        </mesh>
-      )}
+      {renderModel()}
       
       {/* Glow effect when hovered */}
       {hovered && (
@@ -104,6 +146,18 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
             color={color}
             transparent
             opacity={0.1}
+          />
+        </mesh>
+      )}
+      
+      {/* Loading indicator for model loading */}
+      {modelPath && modelLoading && (
+        <mesh position={[0, 1.5, 0]} scale={0.3}>
+          <sphereGeometry args={[0.1, 8, 8]} />
+          <meshBasicMaterial
+            color="#ffffff"
+            transparent
+            opacity={0.8}
           />
         </mesh>
       )}
