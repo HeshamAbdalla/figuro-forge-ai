@@ -1,3 +1,4 @@
+
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import FreeTierSpotlight from "@/components/FreeTierSpotlight";
@@ -21,14 +22,14 @@ const Index = () => {
         ogType={pageSEO.home.ogType}
       />
       
-      {/* 3D Showcase as Foreground Element */}
+      {/* 3D Showcase as Interactive Foreground Layer */}
       <Floating3DShowcase />
       
-      {/* Main Content with proper z-index layering */}
+      {/* Main Content with optimized z-index layering */}
       <div className="min-h-screen bg-figuro-dark relative" style={{ zIndex: 10 }}>
-        {/* Header with enhanced backdrop */}
+        {/* Header with enhanced backdrop for readability */}
         <div className="relative">
-          <div className="absolute inset-0 bg-figuro-dark/40 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-figuro-dark/60 backdrop-blur-md" />
           <div className="relative z-20">
             <Header />
           </div>
@@ -36,13 +37,13 @@ const Index = () => {
         
         {/* Hero Section with enhanced backdrop */}
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-figuro-dark/60 via-figuro-dark/80 to-figuro-dark backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-gradient-to-b from-figuro-dark/70 via-figuro-dark/85 to-figuro-dark backdrop-blur-md" />
           <div className="relative z-20">
             <Hero />
           </div>
         </div>
         
-        {/* Rest of the content with solid background to ensure readability */}
+        {/* Content sections with solid background for optimal readability */}
         <div className="relative z-20 bg-figuro-dark">
           <FreeTierSpotlight />
           <InteractiveDemo />

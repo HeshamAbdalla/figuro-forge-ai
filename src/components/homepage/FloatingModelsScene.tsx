@@ -11,70 +11,70 @@ const FloatingModelsScene: React.FC = () => {
   const sceneRef = useRef<Group>(null);
   const { models, loading, error } = useShowcaseModels();
 
-  // Enhanced fallback configurations for foreground effect
-  const fallbackConfigs = useMemo(() => [
+  // Enhanced foreground positioning for dramatic "popping out" effect
+  const showcaseConfigs = useMemo(() => [
     {
-      id: 'foreground1',
-      position: [-4, 3, 2] as [number, number, number], // Closer to camera
-      scale: 1.2,
-      rotationSpeed: 0.4,
-      floatAmplitude: 0.4,
-      floatSpeed: 1.1,
+      id: 'showcase1',
+      position: [-6, 4, 6] as [number, number, number], // Far left, high, very close
+      scale: 1.8,
+      rotationSpeed: 0.3,
+      floatAmplitude: 0.6,
+      floatSpeed: 1.0,
       color: '#9b87f5'
     },
     {
-      id: 'foreground2',
-      position: [4, -2, 3] as [number, number, number], // Even closer
-      scale: 1.4,
-      rotationSpeed: -0.3,
-      floatAmplitude: 0.5,
-      floatSpeed: 0.9,
+      id: 'showcase2',
+      position: [6, -3, 8] as [number, number, number], // Far right, low, closest
+      scale: 2.2,
+      rotationSpeed: -0.4,
+      floatAmplitude: 0.8,
+      floatSpeed: 0.8,
       color: '#f59e0b'
     },
     {
-      id: 'foreground3',
-      position: [0, -3, 4] as [number, number, number], // Closest
-      scale: 1.0,
-      rotationSpeed: 0.6,
-      floatAmplitude: 0.3,
+      id: 'showcase3',
+      position: [0, -4, 5] as [number, number, number], // Center, very low, close
+      scale: 1.5,
+      rotationSpeed: 0.5,
+      floatAmplitude: 0.4,
       floatSpeed: 1.4,
       color: '#ef4444'
     },
     {
-      id: 'foreground4',
-      position: [-3, -1, 1] as [number, number, number],
-      scale: 0.9,
-      rotationSpeed: -0.5,
-      floatAmplitude: 0.6,
-      floatSpeed: 1.2,
+      id: 'showcase4',
+      position: [-4, -1, 3] as [number, number, number], // Left, center, medium close
+      scale: 1.3,
+      rotationSpeed: -0.6,
+      floatAmplitude: 0.7,
+      floatSpeed: 1.1,
       color: '#10b981'
     },
     {
-      id: 'foreground5',
-      position: [3, 2, 1.5] as [number, number, number],
-      scale: 1.1,
-      rotationSpeed: 0.7,
-      floatAmplitude: 0.4,
+      id: 'showcase5',
+      position: [4, 3, 4] as [number, number, number], // Right, high, close
+      scale: 1.6,
+      rotationSpeed: 0.8,
+      floatAmplitude: 0.5,
       floatSpeed: 1.3,
       color: '#8b5cf6'
     }
   ], []);
 
-  // Enhanced global scene animation
+  // Enhanced global scene animation for dynamic effect
   useFrame((state) => {
     if (sceneRef.current) {
       const time = state.clock.elapsedTime;
-      // Subtle scene rotation for dynamic foreground effect
-      sceneRef.current.rotation.y = Math.sin(time * 0.08) * 0.03;
-      sceneRef.current.rotation.x = Math.cos(time * 0.06) * 0.02;
+      // More pronounced scene movement for dramatic effect
+      sceneRef.current.rotation.y = Math.sin(time * 0.1) * 0.05;
+      sceneRef.current.rotation.x = Math.cos(time * 0.08) * 0.03;
+      sceneRef.current.position.z = Math.sin(time * 0.15) * 0.3; // Forward/backward movement
     }
   });
 
-  // Memoized model rendering with enhanced configurations
+  // Render models with enhanced showcase positioning
   const renderModels = useMemo(() => {
     if (loading) {
-      // Show loading placeholders with foreground positioning
-      return fallbackConfigs.map((config) => (
+      return showcaseConfigs.map((config) => (
         <FloatingModel
           key={`loading-${config.id}`}
           id={`loading-${config.id}`}
@@ -85,19 +85,18 @@ const FloatingModelsScene: React.FC = () => {
           floatSpeed={config.floatSpeed}
           color={config.color}
           modelPath=""
-          title="Loading..."
+          title="Loading AI Model..."
           isLoading={true}
         />
       ));
     }
 
     if (error || models.length === 0) {
-      console.warn('⚠️ [FLOATING-MODELS-SCENE] Using fallback models:', error || 'No models available');
-      // Show enhanced fallback geometric shapes
-      return fallbackConfigs.map((config) => (
+      console.warn('⚠️ [SHOWCASE-SCENE] Using enhanced fallback models:', error || 'No models available');
+      return showcaseConfigs.map((config) => (
         <FloatingModel
-          key={`fallback-${config.id}`}
-          id={`fallback-${config.id}`}
+          key={`showcase-${config.id}`}
+          id={`showcase-${config.id}`}
           position={config.position}
           scale={config.scale}
           rotationSpeed={config.rotationSpeed}
@@ -110,15 +109,15 @@ const FloatingModelsScene: React.FC = () => {
       ));
     }
 
-    // Render real models with enhanced foreground positioning
-    return models.map((model, index) => {
-      const config = fallbackConfigs[index % fallbackConfigs.length];
+    // Render real models with dramatic positioning
+    return models.slice(0, 3).map((model, index) => {
+      const config = showcaseConfigs[index];
       return (
         <FloatingModel
-          key={`model-${model.id}`}
+          key={`showcase-model-${model.id}`}
           id={model.id}
-          position={config.position} // Use enhanced positions
-          scale={config.scale} // Use enhanced scales
+          position={config.position}
+          scale={config.scale}
           rotationSpeed={model.rotationSpeed}
           floatAmplitude={model.floatAmplitude}
           floatSpeed={model.floatSpeed}
@@ -129,17 +128,17 @@ const FloatingModelsScene: React.FC = () => {
         />
       );
     });
-  }, [loading, error, models, fallbackConfigs]);
+  }, [loading, error, models, showcaseConfigs]);
 
   return (
     <group ref={sceneRef}>
-      {/* Enhanced Atmospheric Effects for foreground */}
+      {/* Enhanced atmospheric effects */}
       <AtmosphericEffects />
       
-      {/* Enhanced Particle System */}
+      {/* Enhanced particle system */}
       <ParticleSystem />
       
-      {/* Floating Models positioned for foreground effect */}
+      {/* Showcase models positioned for dramatic foreground effect */}
       {renderModels}
     </group>
   );
