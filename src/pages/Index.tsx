@@ -25,30 +25,44 @@ const Index = () => {
       {/* 3D Showcase as Background Layer */}
       <Floating3DShowcase />
       
-      {/* Main Content with higher z-index to appear over background */}
-      <div className="min-h-screen bg-figuro-dark/95 relative" style={{ zIndex: 10 }}>
-        {/* Header without heavy backdrop */}
+      {/* Main Content with reduced opacity to show 3D background */}
+      <div className="min-h-screen bg-figuro-dark/60 relative" style={{ zIndex: 10 }}>
+        {/* Header with minimal backdrop */}
         <div className="relative">
           <Header />
         </div>
         
-        {/* Hero Section with subtle backdrop */}
+        {/* Hero Section with lighter backdrop */}
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-figuro-dark/30 via-figuro-dark/50 to-figuro-dark/70" />
+          <div className="absolute inset-0 bg-gradient-to-b from-figuro-dark/20 via-figuro-dark/30 to-figuro-dark/40" />
           <div className="relative z-20">
             <Hero />
           </div>
         </div>
         
-        {/* Content sections with solid background for readability */}
-        <div className="relative z-20 bg-figuro-dark">
-          <FreeTierSpotlight />
-          <InteractiveDemo />
-          <HomepageGallery />
-          <UseCaseExamples />
-          <Features />
-          <PricingCTA />
-          <Footer />
+        {/* Content sections with strategic semi-transparent backgrounds */}
+        <div className="relative z-20">
+          <div className="bg-figuro-dark/80">
+            <FreeTierSpotlight />
+          </div>
+          <div className="bg-figuro-dark/70">
+            <InteractiveDemo />
+          </div>
+          <div className="bg-figuro-dark/80">
+            <HomepageGallery />
+          </div>
+          <div className="bg-figuro-dark/70">
+            <UseCaseExamples />
+          </div>
+          <div className="bg-figuro-dark/80">
+            <Features />
+          </div>
+          <div className="bg-figuro-dark/90">
+            <PricingCTA />
+          </div>
+          <div className="bg-figuro-dark">
+            <Footer />
+          </div>
         </div>
       </div>
     </>
