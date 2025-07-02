@@ -1,9 +1,9 @@
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Group } from 'three';
-import { useModelLoader } from '@/hooks/useModelLoader';
 import { Figurine } from '@/types/figurine';
+import { modelManager } from '@/utils/modelManager';
 
 interface FloatingModelProps {
   id: string;
@@ -20,6 +20,7 @@ interface FloatingModelProps {
 }
 
 const FloatingModel: React.FC<FloatingModelProps> = ({
+  id,
   position,
   scale,
   rotationSpeed,
@@ -34,30 +35,46 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
   const groupRef = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
   const [clicked, setClicked] = useState(false);
+  const [model, setModel] = useState<THREE.Group | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  // Use the model loader hook only if we have a model path
-  const { loading: modelLoading, model, error } = useModelLoader();
-
   // Load model when component mounts and modelPath is available
-  React.useEffect(() => {
+  useEffect(() => {
     if (modelPath && modelPath.trim() !== '') {
-      console.log('🔄 [FLOATING-MODEL] Loading model:', title, modelPath.substring(0, 50) + '...');
-      loadModel(modelPath);
+      setLoading(true);
+      setError(null);
+      
+      console.log('🔄 [FLOATING-MODEL] Loading model:', title, id);
+      
+      modelManager.loadModel(modelPath)
+        .then((loadedModel) => {
+          setModel(loadedModel);
+          setLoading(false);
+          console.log('✅ [FLOATING-MODEL] Model loaded:', title, id);
+        })
+        .catch((err) => {
+          console.error('❌ [FLOATING-MODEL] Failed to load model:', title, id, err);
+          setError(err.message);
+          setLoading(false);
+        });
     }
-  }, [modelPath]);
-
-  const { loadModel } = useModelLoader();
+    
+    // Cleanup function to release model reference
+    return () => {
+      if (modelPath) {
+        modelManager.releaseModel(modelPath);
+      }
+    };
+  }, [modelPath, title, id]);
 
   const handlePointerOver = useCallback(() => setHovered(true), []);
   const handlePointerOut = useCallback(() => setHovered(false), []);
   const handleClick = useCallback(() => {
     setClicked(!clicked);
     
-    // If we have figurine data, we could navigate to a detail view
     if (figurineData) {
       console.log('🎯 [FLOATING-MODEL] Clicked model:', figurineData.title || title);
-      // Could implement navigation to model viewer here
-      // Example: navigate(`/model/${figurineData.id}`);
     }
   }, [clicked, figurineData, title]);
 
@@ -71,7 +88,7 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
     groupRef.current.position.y = position[1] + Math.sin(time * floatSpeed) * floatAmplitude;
     
     // Rotation
-    groupRef.current.rotation.y += rotationSpeed * 0.016; // ~60fps
+    groupRef.current.rotation.y += rotationSpeed * 0.016;
     groupRef.current.rotation.x = Math.sin(time * 0.5) * 0.1;
     
     // Breathing scale effect
@@ -86,7 +103,7 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
   // Determine what to render
   const renderModel = () => {
     // Show loading state
-    if (isLoading || (modelPath && modelLoading)) {
+    if (isLoading || loading) {
       return (
         <mesh castShadow receiveShadow>
           <boxGeometry args={[1, 1, 1]} />
@@ -94,7 +111,6 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
             color={color}
             metalness={0.3}
             roughness={0.4}
-            envMapIntensity={0.8}
             transparent
             opacity={0.5}
           />
@@ -106,7 +122,7 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
     if (model && !error) {
       return (
         <primitive
-          object={model.clone()}
+          object={model}
           scale={1}
           castShadow
           receiveShadow
@@ -114,15 +130,14 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
       );
     }
 
-    // Fallback to colored geometry (for errors or no model path)
+    // Fallback geometry for errors or no model path
     return (
       <mesh castShadow receiveShadow>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial
-          color={color}
+          color={error ? '#ff4444' : color}
           metalness={0.3}
           roughness={0.4}
-          envMapIntensity={0.8}
         />
       </mesh>
     );
@@ -146,18 +161,6 @@ const FloatingModel: React.FC<FloatingModelProps> = ({
             color={color}
             transparent
             opacity={0.1}
-          />
-        </mesh>
-      )}
-      
-      {/* Loading indicator for model loading */}
-      {modelPath && modelLoading && (
-        <mesh position={[0, 1.5, 0]} scale={0.3}>
-          <sphereGeometry args={[0.1, 8, 8]} />
-          <meshBasicMaterial
-            color="#ffffff"
-            transparent
-            opacity={0.8}
           />
         </mesh>
       )}

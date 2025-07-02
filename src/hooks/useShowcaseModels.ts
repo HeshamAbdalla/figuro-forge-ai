@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Figurine } from '@/types/figurine';
 import { validateAndCleanUrl } from '@/utils/urlValidationUtils';
+import { modelManager } from '@/utils/modelManager';
 
 interface ShowcaseModel extends Figurine {
   position: [number, number, number];
@@ -75,7 +76,7 @@ export const useShowcaseModels = () => {
           .eq('file_type', 'image')
           .not('model_url', 'is', null)
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(5); // Reduced limit for better performance
 
         if (figurinesError) {
           console.error('❌ [SHOWCASE-MODELS] Error fetching figurines:', figurinesError);
@@ -89,7 +90,7 @@ export const useShowcaseModels = () => {
           .eq('status', 'SUCCEEDED')
           .not('local_model_url', 'is', null)
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(5); // Reduced limit for better performance
 
         if (conversionsError) {
           console.warn('⚠️ [SHOWCASE-MODELS] Error fetching conversions:', conversionsError);
@@ -152,7 +153,7 @@ export const useShowcaseModels = () => {
         // Filter and limit to available models
         const validModels = allModels
           .filter(model => model.model_url && model.model_url.trim() !== '')
-          .slice(0, 5); // Limit to 5 models for performance
+          .slice(0, 3); // Further reduced to 3 models for optimal performance
 
         console.log('✅ [SHOWCASE-MODELS] Found valid models:', validModels.length);
 
@@ -173,6 +174,12 @@ export const useShowcaseModels = () => {
     };
 
     fetchShowcaseModels();
+
+    // Cleanup function to clear model cache when component unmounts
+    return () => {
+      console.log('🧹 [SHOWCASE-MODELS] Cleaning up model cache...');
+      modelManager.clearCache();
+    };
   }, []);
 
   return { models, loading, error };

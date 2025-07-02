@@ -8,14 +8,16 @@ const ShowcaseControls: React.FC = () => {
       enablePan={false}
       enableZoom={true}
       enableRotate={true}
-      zoomSpeed={0.5}
-      rotateSpeed={0.3}
+      zoomSpeed={0.3} // Reduced for smoother interaction
+      rotateSpeed={0.2} // Reduced for smoother interaction
       minDistance={4}
       maxDistance={12}
       minPolarAngle={Math.PI / 6}
       maxPolarAngle={Math.PI - Math.PI / 6}
       autoRotate={true}
-      autoRotateSpeed={0.5}
+      autoRotateSpeed={0.2} // Reduced auto-rotation speed
+      dampingFactor={0.1} // Add damping for smoother controls
+      enableDamping={true}
     />
   );
 };

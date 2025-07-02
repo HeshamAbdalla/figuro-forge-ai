@@ -1,50 +1,56 @@
 
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Points, PointsMaterial, BufferGeometry, BufferAttribute } from 'three';
+import { Points } from 'three';
 import * as THREE from 'three';
 
 const ParticleSystem: React.FC = () => {
   const pointsRef = useRef<Points>(null);
   
-  // Generate particle positions
-  const particleCount = 1000;
+  // Reduced particle count for better performance
+  const particleCount = 500;
+  
+  // Generate particle positions only once
   const positions = useMemo(() => {
     const pos = new Float32Array(particleCount * 3);
     
     for (let i = 0; i < particleCount; i++) {
       const i3 = i * 3;
-      pos[i3] = (Math.random() - 0.5) * 20;     // x
-      pos[i3 + 1] = (Math.random() - 0.5) * 20; // y
-      pos[i3 + 2] = (Math.random() - 0.5) * 20; // z
+      pos[i3] = (Math.random() - 0.5) * 15;     // x - reduced range
+      pos[i3 + 1] = (Math.random() - 0.5) * 15; // y - reduced range
+      pos[i3 + 2] = (Math.random() - 0.5) * 15; // z - reduced range
     }
     
     return pos;
-  }, []);
+  }, [particleCount]);
 
-  // Animate particles
+  // Optimize animation with reduced frequency updates
   useFrame((state) => {
     if (!pointsRef.current) return;
     
     const time = state.clock.elapsedTime;
-    const positions = pointsRef.current.geometry.attributes.position;
     
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
+    // Update only every 3rd frame for better performance
+    if (Math.floor(time * 60) % 3 === 0) {
+      const positions = pointsRef.current.geometry.attributes.position;
       
-      // Gentle floating motion
-      positions.array[i3 + 1] += Math.sin(time + i * 0.01) * 0.001;
-      
-      // Wrap particles that float too high
-      if (positions.array[i3 + 1] > 10) {
-        positions.array[i3 + 1] = -10;
+      for (let i = 0; i < particleCount; i++) {
+        const i3 = i * 3;
+        
+        // Gentle floating motion with reduced calculation
+        positions.array[i3 + 1] += Math.sin(time * 0.5 + i * 0.01) * 0.0005;
+        
+        // Wrap particles that float too high
+        if (positions.array[i3 + 1] > 7.5) {
+          positions.array[i3 + 1] = -7.5;
+        }
       }
+      
+      positions.needsUpdate = true;
     }
     
-    positions.needsUpdate = true;
-    
     // Rotate entire particle system slowly
-    pointsRef.current.rotation.y = time * 0.02;
+    pointsRef.current.rotation.y = time * 0.01;
   });
 
   return (
@@ -58,10 +64,10 @@ const ParticleSystem: React.FC = () => {
         />
       </bufferGeometry>
       <pointsMaterial
-        size={0.02}
+        size={0.015}
         color="#9b87f5"
         transparent
-        opacity={0.6}
+        opacity={0.4}
         sizeAttenuation
         blending={THREE.AdditiveBlending}
       />

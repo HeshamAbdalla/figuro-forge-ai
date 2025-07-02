@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Group } from 'three';
 import FloatingModel from './FloatingModel';
@@ -11,8 +11,8 @@ const FloatingModelsScene: React.FC = () => {
   const sceneRef = useRef<Group>(null);
   const { models, loading, error } = useShowcaseModels();
 
-  // Fallback model configurations for when no real models are available
-  const fallbackConfigs = [
+  // Memoized fallback configurations to prevent recreating on each render
+  const fallbackConfigs = useMemo(() => [
     {
       id: 'fallback1',
       position: [-3, 2, 0] as [number, number, number],
@@ -40,17 +40,17 @@ const FloatingModelsScene: React.FC = () => {
       floatSpeed: 1.5,
       color: '#ef4444'
     }
-  ];
+  ], []);
 
-  // Global scene rotation
+  // Global scene rotation with reduced frequency
   useFrame((state) => {
     if (sceneRef.current) {
-      sceneRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.1) * 0.1;
+      sceneRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.05) * 0.05;
     }
   });
 
-  // Determine what to render
-  const renderModels = () => {
+  // Memoized model rendering to prevent unnecessary re-renders
+  const renderModels = useMemo(() => {
     if (loading) {
       // Show loading placeholders
       return fallbackConfigs.map((config) => (
@@ -63,7 +63,7 @@ const FloatingModelsScene: React.FC = () => {
           floatAmplitude={config.floatAmplitude}
           floatSpeed={config.floatSpeed}
           color={config.color}
-          modelPath="" // Empty path will show fallback geometry
+          modelPath=""
           title="Loading..."
           isLoading={true}
         />
@@ -83,16 +83,16 @@ const FloatingModelsScene: React.FC = () => {
           floatAmplitude={config.floatAmplitude}
           floatSpeed={config.floatSpeed}
           color={config.color}
-          modelPath="" // Empty path will show fallback geometry
+          modelPath=""
           title="Sample 3D Model"
         />
       ));
     }
 
-    // Render real models
+    // Render real models with unique keys to prevent unnecessary re-renders
     return models.map((model) => (
       <FloatingModel
-        key={model.id}
+        key={`model-${model.id}`}
         id={model.id}
         position={model.position}
         scale={model.scale}
@@ -105,18 +105,18 @@ const FloatingModelsScene: React.FC = () => {
         figurineData={model}
       />
     ));
-  };
+  }, [loading, error, models, fallbackConfigs]);
 
   return (
     <group ref={sceneRef}>
       {/* Atmospheric Effects */}
       <AtmosphericEffects />
       
-      {/* Particle System */}
+      {/* Particle System with reduced particle count for better performance */}
       <ParticleSystem />
       
       {/* Floating Models */}
-      {renderModels()}
+      {renderModels}
     </group>
   );
 };

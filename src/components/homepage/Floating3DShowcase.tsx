@@ -27,34 +27,40 @@ const Floating3DShowcase: React.FC = () => {
         </p>
       </motion.div>
 
-      {/* 3D Canvas */}
+      {/* 3D Canvas with optimized settings */}
       <div className="relative h-[70vh] w-full">
         <Canvas
-          dpr={[1, 2]}
-          performance={{ min: 0.5 }}
+          dpr={[0.5, 1.5]} // Reduced DPR for better performance
+          performance={{ min: 0.1, max: 0.8 }} // More aggressive performance scaling
           className="w-full h-full"
+          gl={{
+            powerPreference: "low-power",
+            antialias: false,
+            alpha: true,
+            preserveDrawingBuffer: false
+          }}
+          frameloop="demand" // Only render when needed
         >
           <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={60} />
           
-          {/* Lighting Setup */}
-          <ambientLight intensity={0.3} />
+          {/* Simplified lighting setup */}
+          <ambientLight intensity={0.4} />
           <directionalLight
-            position={[10, 10, 5]}
-            intensity={0.8}
-            castShadow
-            shadow-mapSize={[1024, 1024]}
+            position={[5, 5, 2]}
+            intensity={0.6}
+            castShadow={false} // Disable shadows for better performance
           />
-          <pointLight position={[-10, -10, -5]} intensity={0.4} color="#9b87f5" />
+          <pointLight position={[-5, -5, -2]} intensity={0.3} color="#9b87f5" />
           
-          {/* Environment */}
-          <Environment preset="city" />
+          {/* Environment with lower resolution */}
+          <Environment preset="city" resolution={256} />
           
           {/* Main Scene */}
           <Suspense fallback={null}>
             <FloatingModelsScene />
           </Suspense>
           
-          {/* Controls */}
+          {/* Controls with reduced auto-rotation */}
           <ShowcaseControls />
         </Canvas>
         
