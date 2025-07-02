@@ -19,7 +19,7 @@ export const useShowcaseModels = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Predefined positions and animation settings for variety
+  // Expanded predefined positions and animation settings for 8 models total
   const modelConfigs = [
     {
       position: [-3, 2, 0] as [number, number, number],
@@ -60,6 +60,31 @@ export const useShowcaseModels = () => {
       floatAmplitude: 0.3,
       floatSpeed: 1.3,
       color: '#8b5cf6'
+    },
+    // New model configurations
+    {
+      position: [-4, 1, 3] as [number, number, number],
+      scale: 0.85,
+      rotationSpeed: -0.25,
+      floatAmplitude: 0.35,
+      floatSpeed: 0.9,
+      color: '#06b6d4'
+    },
+    {
+      position: [4, -3, 0] as [number, number, number],
+      scale: 1.1,
+      rotationSpeed: 0.45,
+      floatAmplitude: 0.4,
+      floatSpeed: 1.1,
+      color: '#ec4899'
+    },
+    {
+      position: [0, 3, -3] as [number, number, number],
+      scale: 0.75,
+      rotationSpeed: -0.35,
+      floatAmplitude: 0.25,
+      floatSpeed: 1.4,
+      color: '#f97316'
     }
   ];
 
@@ -68,7 +93,7 @@ export const useShowcaseModels = () => {
       try {
         console.log('🔄 [SHOWCASE-MODELS] Fetching models for 3D showcase...');
         
-        // Fetch figurines with 3D models
+        // Fetch figurines with 3D models - increased limit
         const { data: figurinesData, error: figurinesError } = await supabase
           .from('figurines')
           .select('*')
@@ -76,21 +101,21 @@ export const useShowcaseModels = () => {
           .eq('file_type', 'image')
           .not('model_url', 'is', null)
           .order('created_at', { ascending: false })
-          .limit(5); // Reduced limit for better performance
+          .limit(8); // Increased from 5 to 8
 
         if (figurinesError) {
           console.error('❌ [SHOWCASE-MODELS] Error fetching figurines:', figurinesError);
           throw figurinesError;
         }
 
-        // Fetch conversion tasks with completed 3D models
+        // Fetch conversion tasks with completed 3D models - increased limit
         const { data: conversionsData, error: conversionsError } = await supabase
           .from('conversion_tasks')
           .select('*')
           .eq('status', 'SUCCEEDED')
           .not('local_model_url', 'is', null)
           .order('created_at', { ascending: false })
-          .limit(5); // Reduced limit for better performance
+          .limit(8); // Increased from 5 to 8
 
         if (conversionsError) {
           console.warn('⚠️ [SHOWCASE-MODELS] Error fetching conversions:', conversionsError);
@@ -150,10 +175,10 @@ export const useShowcaseModels = () => {
           });
         }
 
-        // Filter and limit to available models
+        // Filter and limit to available models - increased to 6
         const validModels = allModels
           .filter(model => model.model_url && model.model_url.trim() !== '')
-          .slice(0, 3); // Further reduced to 3 models for optimal performance
+          .slice(0, 6); // Increased from 3 to 6 models
 
         console.log('✅ [SHOWCASE-MODELS] Found valid models:', validModels.length);
 
