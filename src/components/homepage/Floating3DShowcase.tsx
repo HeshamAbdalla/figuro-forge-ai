@@ -7,7 +7,7 @@ import ShowcaseControls from './ShowcaseControls';
 
 const Floating3DShowcase: React.FC = () => {
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full pointer-events-none">
       {/* 3D Canvas that fills its container */}
       <Canvas
         dpr={[1, 1.5]}

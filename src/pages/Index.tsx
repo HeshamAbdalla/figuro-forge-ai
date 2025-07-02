@@ -14,14 +14,21 @@ const Index = () => {
         ogType={pageSEO.home.ogType}
       />
       
-      {/* Main container with simplified layout */}
-      <div className="min-h-screen bg-figuro-dark flex flex-col">
-        {/* Header at the top */}
-        <Header />
-        
-        {/* 3D Canvas filling the remaining space */}
-        <div className="flex-1">
+      {/* Main container with header and 3D background */}
+      <div className="min-h-screen bg-figuro-dark relative">
+        {/* 3D Showcase positioned behind header */}
+        <div className="absolute inset-0 w-full h-full">
           <Floating3DShowcase />
+        </div>
+        
+        {/* Header with proper z-index to appear above 3D canvas */}
+        <div className="relative z-50">
+          <Header />
+        </div>
+        
+        {/* Optional content area if needed later */}
+        <div className="relative z-40 flex-1">
+          {/* Future content can go here */}
         </div>
       </div>
     </>
