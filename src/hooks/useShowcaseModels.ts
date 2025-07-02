@@ -106,7 +106,10 @@ export const useShowcaseModels = () => {
               allModels.push({
                 ...figurine,
                 model_url: modelValidation.cleanUrl,
-                file_type: 'image' as const
+                file_type: 'image' as const,
+                metadata: (figurine.metadata && typeof figurine.metadata === 'object' && !Array.isArray(figurine.metadata)) 
+                  ? figurine.metadata as Record<string, any>
+                  : {}
               });
             }
           });
