@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import FreeTierSpotlight from "@/components/FreeTierSpotlight";
 import InteractiveDemo from "@/components/InteractiveDemo";
+import Floating3DShowcase from "@/components/homepage/Floating3DShowcase";
 import HomepageGallery from "@/components/HomepageGallery";
 import UseCaseExamples from "@/components/UseCaseExamples";
 import Features from "@/components/Features";
@@ -27,6 +28,7 @@ const Index = () => {
           <Hero />
           <FreeTierSpotlight />
           <InteractiveDemo />
+          <Floating3DShowcase />
           <HomepageGallery />
           <UseCaseExamples />
           <Features />
