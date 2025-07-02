@@ -6,8 +6,6 @@ import Hero from "@/components/Hero";
 import Floating3DShowcase from "@/components/homepage/Floating3DShowcase";
 import SEO from "@/components/SEO";
 import { pageSEO } from "@/config/seo";
-import EnhancedGalleryHero from "@/components/gallery/EnhancedGalleryHero";
-import EnhancedGalleryFilters from "@/components/gallery/enhanced/EnhancedGalleryFilters";
 import Enhanced3DGalleryGrid from "@/components/gallery/enhanced/Enhanced3DGalleryGrid";
 import OnDemand3DPreviewModal from "@/components/gallery/components/OnDemand3DPreviewModal";
 import AuthPromptModal from "@/components/auth/AuthPromptModal";
@@ -15,13 +13,6 @@ import { usePublicFigurines } from "@/hooks/usePublicFigurines";
 import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { Figurine } from "@/types/figurine";
-
-interface FilterState {
-  search: string;
-  category: string;
-  sortBy: string;
-  viewMode: "grid" | "list";
-}
 
 const Index = () => {
   const navigate = useNavigate();
@@ -32,56 +23,11 @@ const Index = () => {
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [modelViewerOpen, setModelViewerOpen] = useState(false);
   const [selectedFigurine, setSelectedFigurine] = useState<Figurine | null>(null);
-  const [filters, setFilters] = useState<FilterState>({
-    search: "",
-    category: "all",
-    sortBy: "newest",
-    viewMode: "grid"
-  });
 
-  // Filter and sort figurines based on current filters
-  const filteredFigurines = useMemo(() => {
-    let filtered = [...figurines];
-
-    // Search filter
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(figurine =>
-        figurine.title.toLowerCase().includes(searchLower) ||
-        figurine.prompt?.toLowerCase().includes(searchLower) ||
-        figurine.style?.toLowerCase().includes(searchLower) ||
-        figurine.metadata?.creator_name?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Category filter
-    switch (filters.category) {
-      case "text-to-3d":
-        filtered = filtered.filter(f => f.metadata?.conversion_type === 'text-to-3d');
-        break;
-      case "traditional":
-        filtered = filtered.filter(f => f.metadata?.conversion_type !== 'text-to-3d');
-        break;
-    }
-
-    // Sort
-    switch (filters.sortBy) {
-      case "newest":
-        filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        break;
-      case "oldest":
-        filtered.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        break;
-      case "popular":
-        filtered.sort((a, b) => (b.like_count || 0) - (a.like_count || 0));
-        break;
-      case "title":
-        filtered.sort((a, b) => a.title.localeCompare(b.title));
-        break;
-    }
-
-    return filtered;
-  }, [figurines, filters]);
+  // Limit to first 12 figurines for homepage display
+  const displayedFigurines = useMemo(() => {
+    return figurines.slice(0, 12);
+  }, [figurines]);
 
   const handleCreateNew = () => {
     if (!user) {
@@ -89,16 +35,6 @@ const Index = () => {
       return;
     }
     navigate("/studio");
-  };
-
-  const handleCategorySelect = (category: string) => {
-    setFilters(prev => ({ ...prev, category }));
-    
-    // Scroll to the gallery section
-    const gallerySection = document.getElementById('gallery-section');
-    if (gallerySection) {
-      gallerySection.scrollIntoView({ behavior: 'smooth' });
-    }
   };
 
   const handleViewModel = (figurine: Figurine) => {
@@ -187,33 +123,41 @@ const Index = () => {
         {/* Hero Section - Full Height */}
         <Hero />
         
-        {/* Enhanced Gallery Section */}
-        <section id="gallery-section" className="py-16 bg-figuro-dark">
+        {/* Simplified Gallery Section */}
+        <section className="py-16 bg-figuro-dark">
           <div className="container mx-auto px-4 max-w-7xl">
-            {/* Enhanced Gallery Hero */}
-            <EnhancedGalleryHero
-              onCategorySelect={handleCategorySelect}
-              onCreateNew={handleCreateNew}
-              totalModels={figurines.length}
-            />
-            
-            {/* Enhanced Filters */}
-            <div className="mb-8">
-              <EnhancedGalleryFilters
-                filters={filters}
-                onFiltersChange={setFilters}
-                totalResults={filteredFigurines.length}
-                isLoading={loading}
-              />
+            {/* Simple Section Title */}
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                Community Creations
+              </h2>
+              <p className="text-lg text-white/70 max-w-2xl mx-auto">
+                Discover amazing 3D figurines created by our community using AI
+              </p>
             </div>
             
             {/* Enhanced 3D Gallery Grid */}
             <Enhanced3DGalleryGrid
-              figurines={filteredFigurines}
+              figurines={displayedFigurines}
               loading={loading}
               onView={handleViewModel}
               onDownload={handlePublicDownload}
             />
+
+            {/* View More Link */}
+            {figurines.length > 12 && (
+              <div className="text-center mt-12">
+                <button
+                  onClick={() => navigate('/gallery')}
+                  className="inline-flex items-center px-6 py-3 bg-figuro-accent hover:bg-figuro-accent-hover text-white font-medium rounded-lg transition-colors duration-200"
+                >
+                  View All {figurines.length} Models
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
         </section>
       </div>
