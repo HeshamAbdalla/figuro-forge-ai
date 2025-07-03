@@ -20,20 +20,16 @@ export const useImageGeneration = () => {
   const [generationProgress, setGenerationProgress] = useState<GenerationProgress | null>(null);
   const { toast } = useToast();
   
-  // Add subscription management and upgrade modal hooks
   const { canPerformAction, consumeAction } = useSubscription();
   const { showUpgradeModal } = useEnhancedUpgradeModal();
 
   const handleGenerate = useCallback(async (prompt: string, style: string): Promise<void> => {
-    console.log("🎨 [IMAGE-GENERATION] Starting image generation with enhanced error handling");
+    console.log("🎨 [IMAGE-GENERATION] Starting image generation");
     
     // Check if user can perform image generation
     if (!canPerformAction('image_generation')) {
       console.log("❌ [IMAGE-GENERATION] User has reached image generation limit");
-      
-      // Show upgrade modal for image generation limits
       showUpgradeModal('image_generation');
-      
       throw new Error("You've reached your daily limit for image generations. Please upgrade to continue.");
     }
     
@@ -81,17 +77,16 @@ export const useImageGeneration = () => {
 
       console.log("📊 [IMAGE-GENERATION] Generation result:", result);
 
-      // Check if generation was successful by checking if we have both blob and url
+      // Check if generation was successful
       if (!result.blob || !result.url || result.error) {
         throw new Error(result.error || 'Failed to generate image');
       }
 
-      // ONLY consume image generation credit AFTER successful generation
-      console.log("💳 [IMAGE-GENERATION] Consuming image generation credit after successful generation...");
+      // Consume image generation credit AFTER successful generation
+      console.log("💳 [IMAGE-GENERATION] Consuming image generation credit...");
       const consumptionResult = await consumeAction('image_generation');
       if (!consumptionResult) {
-        console.warn("⚠️ [IMAGE-GENERATION] Failed to consume image generation credit, but generation was successful");
-        // Don't fail the generation since it was successful
+        console.warn("⚠️ [IMAGE-GENERATION] Failed to consume credit, but generation was successful");
       } else {
         console.log("✅ [IMAGE-GENERATION] Successfully consumed image generation credit");
       }
@@ -107,7 +102,7 @@ export const useImageGeneration = () => {
 
       toast({
         title: "Image Generated",
-        description: `Your image has been created successfully!${result.retryAttempt && result.retryAttempt > 0 ? ` (Completed after ${result.retryAttempt + 1} attempts)` : ''}`,
+        description: "Your image has been created successfully!",
       });
 
       console.log("✅ [IMAGE-GENERATION] Image generation completed successfully");
@@ -125,13 +120,12 @@ export const useImageGeneration = () => {
       if (error instanceof Error) {
         if (error.message.includes('limit') || error.message.includes('quota')) {
           errorMessage = "You've reached your generation limit. Please upgrade to continue.";
-          // The upgrade modal is already shown by the generation service
         } else if (error.message.includes('authentication') || error.message.includes('JWT')) {
           errorMessage = "Authentication expired. Please refresh the page and try again.";
         } else if (error.message.includes('network')) {
           errorMessage = "Network error. Please check your connection and try again.";
         } else if (error.message.includes('timeout')) {
-          errorMessage = "Request timeout. The service might be experiencing high load. Please try again.";
+          errorMessage = "Request timeout. Please try again.";
         } else {
           errorMessage = error.message;
         }
