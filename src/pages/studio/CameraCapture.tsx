@@ -364,11 +364,8 @@ const CameraCapture = () => {
               {isMobile && <StudioBreadcrumb currentPage="Camera Capture" description="Capture photos directly and convert them to 3D models" />}
             </div>
           </div>
-        </VantaBackground>
-      </div>
-    </SecurityEnforcedRoute>
-  );
 
+          <div className="container mx-auto px-4 py-8 relative">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
               {/* Left Panel - Camera Interface */}
               <motion.div
@@ -486,7 +483,7 @@ const CameraCapture = () => {
               </motion.div>
             </div>
           </div>
-        </div>
+        </VantaBackground>
 
         {/* Debug Buttons - Remove in production */}
         {process.env.NODE_ENV === 'development' && <DebugUpgradeButtons />}
