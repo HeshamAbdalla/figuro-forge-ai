@@ -362,125 +362,126 @@ const CameraCapture = () => {
 
               {/* Mobile layout gets the original simpler version */}
               {isMobile && <StudioBreadcrumb currentPage="Camera Capture" description="Capture photos directly and convert them to 3D models" />}
-            </div>
-          </div>
 
-          <div className="container mx-auto px-4 py-8 relative">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-              {/* Left Panel - Camera Interface */}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                className="space-y-6"
-              >
-                <div className="bg-figuro-light/5 rounded-2xl p-6 border border-white/10">
-                  <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-                    <Camera className="w-6 h-6 text-figuro-accent" />
-                    Camera Capture
-                  </h2>
-                  <EnhancedCameraWorkflow
-                    onImageCapture={handleImageCapture}
-                    isProcessing={isGenerating}
-                    progress={{
-                      status: progress.status || 'idle',
-                      progress: progress.progress || 0,
-                      percentage: progress.percentage || 0,
-                      message: progress.message || 'Ready to capture',
-                      taskId: progress.taskId,
-                      thumbnailUrl: progress.thumbnailUrl,
-                      modelUrl: progress.modelUrl
-                    }}
-                  />
-                </div>
-
-                {/* Progress Section */}
-                {(isGenerating || progress.modelUrl) && (
-                  <div className="bg-figuro-light/5 rounded-2xl p-6 border border-white/10">
-                    <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-figuro-accent" />
-                      Generation Progress
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="w-full bg-white/10 rounded-full h-2">
-                        <div 
-                          className="bg-figuro-accent h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${progress.progress || 0}%` }}
-                        />
-                      </div>
-                      <p className="text-white/80 text-sm">{progress.message || 'Processing...'}</p>
-                      <p className="text-figuro-accent text-sm">{progress.progress || 0}% complete</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Debug info for development */}
-                {process.env.NODE_ENV === 'development' && conversionAttempts > 0 && (
-                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-                    <div className="flex items-center gap-2 text-yellow-400 mb-2">
-                      <AlertCircle size={16} />
-                      <span className="text-sm font-medium">Debug Info</span>
-                    </div>
-                    <p className="text-xs text-yellow-300">
-                      Conversion attempts: {conversionAttempts}
-                    </p>
-                    <p className="text-xs text-yellow-300">
-                      Progress status: {progress.status}
-                    </p>
-                    <p className="text-xs text-yellow-300">
-                      Is generating: {isGenerating ? 'Yes' : 'No'}
-                    </p>
-                  </div>
-                )}
-              </motion.div>
-
-              {/* Right Panel - 3D Model Preview */}
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="space-y-6"
-              >
-                <div className="bg-figuro-light/5 rounded-2xl p-6 border border-white/10 h-[600px]">
-                  <h2 className="text-2xl font-bold text-white mb-4">3D Model Preview</h2>
-                  
-                  {progress.modelUrl ? (
-                    <div className="h-[500px] rounded-lg overflow-hidden">
-                      <ModelViewer
-                        modelUrl={progress.modelUrl}
-                        isLoading={isGenerating}
-                        errorMessage={null}
-                        onCustomModelLoad={(url, file) => {}}
+              {/* Desktop grid layout - only show on desktop */}
+              {!isMobile && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                  {/* Left Panel - Camera Interface */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="space-y-6"
+                  >
+                    <div className="bg-figuro-light/5 rounded-2xl p-6 border border-white/10">
+                      <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                        <Camera className="w-6 h-6 text-figuro-accent" />
+                        Camera Capture
+                      </h2>
+                      <EnhancedCameraWorkflow
+                        onImageCapture={handleImageCapture}
+                        isProcessing={isGenerating}
+                        progress={{
+                          status: progress.status || 'idle',
+                          progress: progress.progress || 0,
+                          percentage: progress.percentage || 0,
+                          message: progress.message || 'Ready to capture',
+                          taskId: progress.taskId,
+                          thumbnailUrl: progress.thumbnailUrl,
+                          modelUrl: progress.modelUrl
+                        }}
                       />
                     </div>
-                  ) : (
-                    <div className="h-[500px] flex flex-col items-center justify-center text-white/50 border-2 border-dashed border-white/20 rounded-lg">
-                      {isGenerating ? (
-                        <div className="text-center">
-                          <div className="animate-spin w-8 h-8 border-2 border-figuro-accent border-t-transparent rounded-full mx-auto mb-4"></div>
-                          <p>Generating 3D model from photo...</p>
-                          <div className="w-64 bg-white/10 rounded-full h-2 mt-4">
+
+                    {/* Progress Section */}
+                    {(isGenerating || progress.modelUrl) && (
+                      <div className="bg-figuro-light/5 rounded-2xl p-6 border border-white/10">
+                        <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-figuro-accent" />
+                          Generation Progress
+                        </h3>
+                        <div className="space-y-3">
+                          <div className="w-full bg-white/10 rounded-full h-2">
                             <div 
                               className="bg-figuro-accent h-2 rounded-full transition-all duration-300"
                               style={{ width: `${progress.progress || 0}%` }}
                             />
                           </div>
-                          <p className="text-sm mt-2">{progress.progress || 0}% complete</p>
-                          <p className="text-xs mt-1 text-white/40">{progress.message}</p>
+                          <p className="text-white/80 text-sm">{progress.message || 'Processing...'}</p>
+                          <p className="text-figuro-accent text-sm">{progress.progress || 0}% complete</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Debug info for development */}
+                    {process.env.NODE_ENV === 'development' && conversionAttempts > 0 && (
+                      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-yellow-400 mb-2">
+                          <AlertCircle size={16} />
+                          <span className="text-sm font-medium">Debug Info</span>
+                        </div>
+                        <p className="text-xs text-yellow-300">
+                          Conversion attempts: {conversionAttempts}
+                        </p>
+                        <p className="text-xs text-yellow-300">
+                          Progress status: {progress.status}
+                        </p>
+                        <p className="text-xs text-yellow-300">
+                          Is generating: {isGenerating ? 'Yes' : 'No'}
+                        </p>
+                      </div>
+                    )}
+                  </motion.div>
+
+                  {/* Right Panel - 3D Model Preview */}
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="space-y-6"
+                  >
+                    <div className="bg-figuro-light/5 rounded-2xl p-6 border border-white/10 h-[600px]">
+                      <h2 className="text-2xl font-bold text-white mb-4">3D Model Preview</h2>
+                      
+                      {progress.modelUrl ? (
+                        <div className="h-[500px] rounded-lg overflow-hidden">
+                          <ModelViewer
+                            modelUrl={progress.modelUrl}
+                            isLoading={isGenerating}
+                            errorMessage={null}
+                            onCustomModelLoad={(url, file) => {}}
+                          />
                         </div>
                       ) : (
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center mb-4">
-                            <Camera className="w-8 h-8" />
-                          </div>
-                          <p>Capture a photo to create your 3D model</p>
-                          <p className="text-sm mt-2">Your generated model will appear here</p>
+                        <div className="h-[500px] flex flex-col items-center justify-center text-white/50 border-2 border-dashed border-white/20 rounded-lg">
+                          {isGenerating ? (
+                            <div className="text-center">
+                              <div className="animate-spin w-8 h-8 border-2 border-figuro-accent border-t-transparent rounded-full mx-auto mb-4"></div>
+                              <p>Generating 3D model from photo...</p>
+                              <div className="w-64 bg-white/10 rounded-full h-2 mt-4">
+                                <div 
+                                  className="bg-figuro-accent h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${progress.progress || 0}%` }}
+                                />
+                              </div>
+                              <p className="text-sm mt-2">{progress.progress || 0}% complete</p>
+                              <p className="text-xs mt-1 text-white/40">{progress.message}</p>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <div className="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center mb-4">
+                                <Camera className="w-8 h-8" />
+                              </div>
+                              <p>Capture a photo to create your 3D model</p>
+                              <p className="text-sm mt-2">Your generated model will appear here</p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
+                  </motion.div>
                 </div>
-              </motion.div>
+              )}
             </div>
           </div>
         </VantaBackground>
