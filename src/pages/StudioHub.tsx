@@ -118,7 +118,7 @@ const StudioHub = () => {
 
   return (
     <SecurityEnforcedRoute requireVerification={true}>
-      <div className="min-h-screen relative overflow-hidden">
+      <div className="min-h-screen relative overflow-x-hidden overflow-y-auto">
         {/* Floating Particles */}
         <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 5 }}>
           {particles.map((particle) => (
