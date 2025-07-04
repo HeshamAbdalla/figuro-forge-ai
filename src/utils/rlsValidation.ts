@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { securityManager } from '@/utils/securityUtils';
 import { logError, logInfo } from '@/utils/productionLogger';
+import { EnhancedRLSAudit } from '@/utils/enhancedRLSAudit';
 
 /**
  * Validates that RLS policies are working correctly for user data access
@@ -98,21 +99,37 @@ export class RLSValidation {
 
   /**
    * Comprehensive RLS health check across all critical tables
+   * Enhanced with integration to the new audit system
    */
   static async performHealthCheck(userId: string): Promise<{
     overall: boolean;
     results: Record<string, boolean>;
+    enhancedAudit?: any;
   }> {
     const criticalTables = ['figurines', 'subscriptions', 'conversion_tasks'];
     const results: Record<string, boolean> = {};
 
     console.log('🔒 [RLS-VALIDATION] Starting comprehensive RLS health check');
 
+    // Run traditional validation
     for (const table of criticalTables) {
       results[table] = await this.validateUserDataAccess(table, userId);
     }
 
     const overall = Object.values(results).every(result => result === true);
+
+    // Run enhanced audit for additional insights
+    let enhancedAudit;
+    try {
+      enhancedAudit = await EnhancedRLSAudit.performComprehensiveAudit();
+      
+      logInfo('Enhanced RLS audit integrated with health check', {
+        overallScore: enhancedAudit.overallScore,
+        criticalIssues: enhancedAudit.criticalIssues.length
+      });
+    } catch (error) {
+      logError('Enhanced RLS audit failed during health check', error);
+    }
 
     securityManager.logSecurityEvent({
       event_type: 'rls_health_check_completed',
@@ -120,13 +137,19 @@ export class RLSValidation {
         userId,
         overall,
         results,
+        enhancedAuditScore: enhancedAudit?.overallScore,
+        criticalIssues: enhancedAudit?.criticalIssues?.length || 0,
         timestamp: new Date().toISOString()
       },
       success: overall
     });
 
-    console.log('🔒 [RLS-VALIDATION] Health check completed', { overall, results });
+    console.log('🔒 [RLS-VALIDATION] Enhanced health check completed', { 
+      overall, 
+      results,
+      enhancedScore: enhancedAudit?.overallScore 
+    });
 
-    return { overall, results };
+    return { overall, results, enhancedAudit };
   }
 }

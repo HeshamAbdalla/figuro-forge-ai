@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { RLSPerformanceMonitor } from "@/components/security/RLSPerformanceMonitor";
 import { OptimizedSecurityWrapper } from "@/components/security/OptimizedSecurityWrapper";
+import { EnhancedRLSAuditDashboard } from "@/components/security/EnhancedRLSAuditDashboard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const SecurityDashboard = () => {
   const { user, profile, isLoading } = useEnhancedAuth();
@@ -145,7 +147,7 @@ const SecurityDashboard = () => {
               <div className="mb-10 flex justify-between items-center">
                 <div>
                   <h1 className="text-3xl font-bold text-white mb-2">Security Dashboard</h1>
-                  <p className="text-white/70">Enhanced monitoring with optimized RLS policies</p>
+                  <p className="text-white/70">Enhanced monitoring with comprehensive RLS audit and optimization</p>
                 </div>
                 <Button 
                   onClick={fetchSecurityHealth}
@@ -156,125 +158,97 @@ const SecurityDashboard = () => {
                 </Button>
               </div>
 
-              {securityHealth && (
-                <div className="grid gap-6">
-                  {/* Security Overview */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <Card className="bg-figuro-darker/50 border-white/10">
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-white/70">Security Score</p>
-                            <p className={`text-2xl font-bold ${getSecurityScoreColor(securityHealth.security_score)}`}>
-                              {securityHealth.security_score}
-                            </p>
-                          </div>
-                          <TrendingUp className={`h-8 w-8 ${getSecurityScoreColor(securityHealth.security_score)}`} />
-                        </div>
-                      </CardContent>
-                    </Card>
+              {/* Security Dashboard Tabs */}
+              <Tabs defaultValue="overview" className="space-y-6">
+                <TabsList className="bg-figuro-darker/50 border-white/10">
+                  <TabsTrigger value="overview" className="text-white data-[state=active]:bg-figuro-accent">
+                    Overview
+                  </TabsTrigger>
+                  <TabsTrigger value="rls-audit" className="text-white data-[state=active]:bg-figuro-accent">
+                    Enhanced RLS Audit
+                  </TabsTrigger>
+                  <TabsTrigger value="performance" className="text-white data-[state=active]:bg-figuro-accent">
+                    Performance
+                  </TabsTrigger>
+                </TabsList>
 
-                    <Card className="bg-figuro-darker/50 border-white/10">
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-white/70">Admin Users</p>
-                            <p className="text-2xl font-bold text-white">{securityHealth.admin_count}</p>
-                          </div>
-                          <Users className="h-8 w-8 text-figuro-accent" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                <TabsContent value="overview" className="space-y-6">
+                  {securityHealth && (
+                    <div className="grid gap-6">
+                      {/* Security Overview */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <Card className="bg-figuro-darker/50 border-white/10">
+                          <CardContent className="pt-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-white/70">Security Score</p>
+                                <p className={`text-2xl font-bold ${getSecurityScoreColor(securityHealth.security_score)}`}>
+                                  {securityHealth.security_score}
+                                </p>
+                              </div>
+                              <TrendingUp className={`h-8 w-8 ${getSecurityScoreColor(securityHealth.security_score)}`} />
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                    <Card className="bg-figuro-darker/50 border-white/10">
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-white/70">Recent Failures</p>
-                            <p className="text-2xl font-bold text-white">{securityHealth.recent_failures}</p>
-                          </div>
-                          <AlertTriangle className="h-8 w-8 text-yellow-400" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                        <Card className="bg-figuro-darker/50 border-white/10">
+                          <CardContent className="pt-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-white/70">Admin Users</p>
+                                <p className="text-2xl font-bold text-white">{securityHealth.admin_count}</p>
+                              </div>
+                              <Users className="h-8 w-8 text-figuro-accent" />
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                    <Card className="bg-figuro-darker/50 border-white/10">
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-white/70">Status</p>
-                            <Badge className={getStatusColor(securityHealth.status)}>
-                              {securityHealth.status}
-                            </Badge>
-                          </div>
-                          <Shield className="h-8 w-8 text-white/70" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                        <Card className="bg-figuro-darker/50 border-white/10">
+                          <CardContent className="pt-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-white/70">Recent Failures</p>
+                                <p className="text-2xl font-bold text-white">{securityHealth.recent_failures}</p>
+                              </div>
+                              <AlertTriangle className="h-8 w-8 text-yellow-400" />
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                  {/* RLS Performance Monitor */}
+                        <Card className="bg-figuro-darker/50 border-white/10">
+                          <CardContent className="pt-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-white/70">Status</p>
+                                <Badge className={getStatusColor(securityHealth.status)}>
+                                  {securityHealth.status}
+                                </Badge>
+                              </div>
+                              <Shield className="h-8 w-8 text-white/70" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Enhanced RLS Audit Tab */}
+                <TabsContent value="rls-audit" className="space-y-6">
+                  <EnhancedRLSAuditDashboard />
+                </TabsContent>
+
+                {/* Performance Tab */}
+                <TabsContent value="performance" className="space-y-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <RLSPerformanceMonitor />
                     
-                    {/* Critical Issues */}
-                    <Card className="bg-figuro-darker/50 border-white/10">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-white">
-                          <AlertTriangle className="w-5 h-5" />
-                          Critical Issues
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {securityHealth.critical_issues?.length > 0 ? (
-                          <div className="space-y-2">
-                            {securityHealth.critical_issues.map((issue: string, index: number) => (
-                              <div key={index} className="flex items-center gap-2 p-2 bg-red-500/10 rounded border-l-2 border-red-500">
-                                <AlertTriangle className="w-4 h-4 text-red-400" />
-                                <span className="text-red-400 text-sm">{issue.replace(/_/g, ' ')}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-green-400">
-                            <CheckCircle className="w-4 h-4" />
-                            <span>No critical issues detected</span>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Enhanced Metrics */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card className="bg-figuro-darker/50 border-white/10">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-white">
-                          <Database className="w-5 h-5" />
-                          Database Security
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-white/70">Expired Sessions</span>
-                          <span className="text-white">{securityHealth.expired_sessions || 0}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-white/70">Suspicious Users</span>
-                          <span className="text-white">{securityHealth.suspicious_unlimited_users || 0}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-white/70">High Rate Limit Users</span>
-                          <span className="text-white">{securityHealth.high_rate_limit_users || 0}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-
+                    {/* Performance Metrics */}
                     <Card className="bg-figuro-darker/50 border-white/10">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-white">
                           <Activity className="w-5 h-5" />
-                          System Health
+                          Performance Metrics
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
@@ -294,14 +268,14 @@ const SecurityDashboard = () => {
                         <div className="flex items-center justify-between">
                           <span className="text-white/70">Last Check</span>
                           <span className="text-white/70">
-                            {new Date(securityHealth.timestamp).toLocaleString()}
+                            {new Date(securityHealth?.timestamp || new Date()).toLocaleString()}
                           </span>
                         </div>
                       </CardContent>
                     </Card>
                   </div>
-                </div>
-              )}
+                </TabsContent>
+              </Tabs>
             </motion.div>
           </div>
         </section>
