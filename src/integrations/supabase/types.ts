@@ -632,6 +632,10 @@ export type Database = {
         Args: { p_endpoint: string }
         Returns: undefined
       }
+      comprehensive_rls_audit: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       comprehensive_security_check: {
         Args: Record<PropertyKey, never>
         Returns: Json
