@@ -16,6 +16,7 @@ import WebIconsPreview from "@/components/studio/WebIconsPreview";
 import MiniGalleryCarousel from "@/components/studio/MiniGalleryCarousel";
 import MobileCameraSection from "@/components/studio/camera/MobileCameraSection";
 import EnhancedCameraWorkflow from "@/components/studio/camera/EnhancedCameraWorkflow";
+import StudioCreationMethods from "@/components/studio/StudioCreationMethods";
 import { useFigurines } from "@/components/figurine/useFigurines";
 import { useWebIconsGeneration } from "@/hooks/useWebIconsGeneration";
 import type { TabKey } from "@/hooks/useTabNavigation";
@@ -58,6 +59,7 @@ interface StudioTabContentProps {
   handleSignIn: () => void;
   setCustomModelUrl: (url: string | null) => void;
   onCameraImageCapture?: (imageBlob: Blob) => void;
+  onTabChange?: (tab: TabKey) => void;
 }
 
 const StudioTabContent = ({
@@ -197,6 +199,10 @@ const StudioTabContent = ({
     }
   };
 
+  // Show creation methods selection if no specific workflow is active
+  const showCreationMethods = !generatedImage && !isGeneratingImage && !displayModelUrl && 
+                               !isGenerating && !currentTaskId && !generatedIcon;
+
   if (!authUser) {
     return (
       <motion.div 
@@ -218,73 +224,87 @@ const StudioTabContent = ({
     case 'image-to-3d':
       return (
         <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-4 gap-4 max-w-7xl mx-auto"
+          className="space-y-8 max-w-7xl mx-auto"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, staggerChildren: 0.1 }}
         >
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="space-y-4"
-          >
-            <EnhancedPromptForm 
-              ref={promptFormRef}
-              onGenerate={onGenerate} 
-              isGenerating={isGeneratingImage}
-            />
-            
-            <ImageTo3DProgress
-              isGenerating={isGenerating}
-              progress={progress}
-              onViewModel={(url) => setCustomModelUrl(url)}
-              onDownload={(url) => {
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = 'image-to-3d-model.glb';
-                link.click();
+          {showCreationMethods ? (
+            <StudioCreationMethods 
+              activeTab={activeTab}
+              onTabChange={(tab) => {
+                // Handle tab change if callback is provided
+                if ((this as any).onTabChange) {
+                  (this as any).onTabChange(tab);
+                }
               }}
             />
-            
-            <MiniGalleryCarousel 
-              figurines={figurines.slice(0, 6)}
-              onCreateNew={focusImagePromptForm}
-            />
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <EnhancedImagePreview 
-              imageSrc={generatedImage} 
-              isLoading={isGeneratingImage}
-              onConvertTo3D={handleQuickConvert}
-              isConverting={isGenerating}
-              showMetadata={true}
-              enableGestures={true}
-              autoOptimize={true}
-            />
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:col-span-2"
-          >
-            <EnhancedModelViewer 
-              modelInfo={createModelInfo('image-to-3d')}
-              isLoading={shouldModelViewerLoad && !displayModelUrl}
-              progress={progress.progress || 0}
-              errorMessage={progress.status === 'error' ? progress.message : undefined}
-              onCustomModelLoad={(url, file) => setCustomModelUrl(url)}
-              variant="standard"
-              showControls={true}
-            />
-          </motion.div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="space-y-4"
+              >
+                <EnhancedPromptForm 
+                  ref={promptFormRef}
+                  onGenerate={onGenerate} 
+                  isGenerating={isGeneratingImage}
+                />
+                
+                <ImageTo3DProgress
+                  isGenerating={isGenerating}
+                  progress={progress}
+                  onViewModel={(url) => setCustomModelUrl(url)}
+                  onDownload={(url) => {
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'image-to-3d-model.glb';
+                    link.click();
+                  }}
+                />
+                
+                <MiniGalleryCarousel 
+                  figurines={figurines.slice(0, 6)}
+                  onCreateNew={focusImagePromptForm}
+                />
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                <EnhancedImagePreview 
+                  imageSrc={generatedImage} 
+                  isLoading={isGeneratingImage}
+                  onConvertTo3D={handleQuickConvert}
+                  isConverting={isGenerating}
+                  showMetadata={true}
+                  enableGestures={true}
+                  autoOptimize={true}
+                />
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="lg:col-span-2"
+              >
+                <EnhancedModelViewer 
+                  modelInfo={createModelInfo('image-to-3d')}
+                  isLoading={shouldModelViewerLoad && !displayModelUrl}
+                  progress={progress.progress || 0}
+                  errorMessage={progress.status === 'error' ? progress.message : undefined}
+                  onCustomModelLoad={(url, file) => setCustomModelUrl(url)}
+                  variant="standard"
+                  showControls={true}
+                />
+              </motion.div>
+            </div>
+          )}
         </motion.div>
       );
 
