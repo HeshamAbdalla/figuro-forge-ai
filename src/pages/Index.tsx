@@ -2,7 +2,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
-import Hero from "@/components/Hero";
+import { SplineSceneBasic } from "@/components/ui/spline-scene-basic";
 import Floating3DShowcase from "@/components/homepage/Floating3DShowcase";
 import SEO from "@/components/SEO";
 import { pageSEO } from "@/config/seo";
@@ -120,8 +120,10 @@ const Index = () => {
         {/* Header */}
         <Header />
         
-        {/* Hero Section - Full Height */}
-        <Hero />
+        {/* Hero Section with SplineScene */}
+        <section className="min-h-screen flex items-center justify-center p-4">
+          <SplineSceneBasic />
+        </section>
         
         {/* Simplified Gallery Section */}
         <section className="py-16 bg-figuro-dark">
