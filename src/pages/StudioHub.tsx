@@ -18,6 +18,7 @@ import {
   Type,
   Grid3X3
 } from "lucide-react";
+import { IconHover3D } from "@/components/ui/icon-3d-hover";
 import { Suspense, useState, useEffect } from "react";
 import SimpleErrorBoundary from "@/components/common/SimpleErrorBoundary";
 
@@ -267,206 +268,32 @@ const StudioHub = () => {
                 </motion.div>
               </motion.div>
 
-              {/* Magical Creation Methods Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto mb-16">
-                {creationMethods.map((method, index) => {
-                  const Icon3DComponent = method.icon3d;
-                  const FallbackIcon = method.fallbackIcon;
-                  return (
-                    <motion.div
-                      key={method.id}
-                      initial={{ opacity: 0, y: 50, scale: 0.8 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ 
-                        duration: 0.6, 
-                        delay: index * 0.15,
-                        type: "spring",
-                        stiffness: 100 
-                      }}
-                      whileHover={{ 
-                        y: -8, 
-                        scale: 1.02,
-                        transition: { duration: 0.2 }
-                      }}
-                      onHoverStart={() => setHoveredCard(method.id)}
-                      onHoverEnd={() => setHoveredCard(null)}
-                    >
-                      <Card 
-                        className={`
-                          relative backdrop-blur-2xl bg-gradient-to-br from-white/5 to-white/10 
-                          border border-white/20 hover:border-figuro-accent/50 
-                          cursor-pointer group h-full overflow-hidden
-                          transition-all duration-500 hover:shadow-2xl ${method.glowColor}
-                          before:absolute before:inset-0 before:bg-gradient-to-br before:${method.color} before:opacity-0 
-                          hover:before:opacity-10 before:transition-opacity before:duration-500
-                        `}
-                        onClick={() => handleNavigate(method.path)}
-                      >
-                        {/* Magical border effect */}
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-figuro-accent/20 via-purple-400/20 to-figuro-accent/20 opacity-0 group-hover:opacity-100"
-                          animate={{
-                            background: [
-                              "linear-gradient(0deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.2))",
-                              "linear-gradient(90deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.2))",
-                              "linear-gradient(180deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.2))",
-                              "linear-gradient(270deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.2))",
-                              "linear-gradient(360deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.2))",
-                            ]
-                          }}
-                          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                        />
-
-                        <CardHeader className="relative z-10">
-                          <div className="flex items-center justify-between mb-4">
-                            <motion.div 
-                              className="relative w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-black/30 to-black/50 border border-white/20 flex items-center justify-center"
-                              whileHover={{ rotate: 5, scale: 1.1 }}
-                              transition={{ type: "spring", stiffness: 300 }}
-                            >
-                              {/* Floating sparkles around icon */}
-                              <AnimatePresence>
-                                {hoveredCard === method.id && (
-                                  <>
-                                    {[...Array(6)].map((_, i) => (
-                                      <motion.div
-                                        key={i}
-                                        className="absolute w-1 h-1 bg-figuro-accent rounded-full"
-                                        initial={{ 
-                                          x: 0, 
-                                          y: 0, 
-                                          opacity: 0,
-                                          scale: 0 
-                                        }}
-                                        animate={{
-                                          x: Math.cos((i * Math.PI * 2) / 6) * 30,
-                                          y: Math.sin((i * Math.PI * 2) / 6) * 30,
-                                          opacity: [0, 1, 0],
-                                          scale: [0, 1, 0],
-                                        }}
-                                        exit={{ opacity: 0, scale: 0 }}
-                                        transition={{
-                                          duration: 1.5,
-                                          repeat: Infinity,
-                                          delay: i * 0.1,
-                                        }}
-                                      />
-                                    ))}
-                                  </>
-                                )}
-                              </AnimatePresence>
-
-                              <SimpleErrorBoundary fallback={
-                                <div className={`w-full h-full bg-gradient-to-br ${method.color} rounded-xl flex items-center justify-center`}>
-                                  <FallbackIcon className="w-8 h-8 text-white/80" />
-                                </div>
-                              }>
-                                <Suspense fallback={
-                                  <div className={`w-full h-full bg-gradient-to-br ${method.color} rounded-xl flex items-center justify-center`}>
-                                    <motion.div
-                                      animate={{ rotate: 360 }}
-                                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                    >
-                                      <FallbackIcon className="w-8 h-8 text-white/60" />
-                                    </motion.div>
-                                  </div>
-                                }>
-                                  <Icon3DComponent />
-                                </Suspense>
-                              </SimpleErrorBoundary>
-                            </motion.div>
-                            
-                            <div className="flex flex-col gap-2">
-                              {method.popular && (
-                                <motion.span 
-                                  className="bg-gradient-to-r from-figuro-accent to-purple-500 text-white text-xs px-3 py-1 rounded-full font-medium shadow-lg"
-                                  animate={{ scale: [1, 1.05, 1] }}
-                                  transition={{ duration: 2, repeat: Infinity }}
-                                >
-                                  ⭐ Popular
-                                </motion.span>
-                              )}
-                              {method.new && (
-                                <motion.span 
-                                  className="bg-gradient-to-r from-green-400 to-emerald-500 text-white text-xs px-3 py-1 rounded-full font-medium shadow-lg"
-                                  animate={{ 
-                                    boxShadow: [
-                                      "0 0 10px rgba(34, 197, 94, 0.3)",
-                                      "0 0 20px rgba(34, 197, 94, 0.6)",
-                                      "0 0 10px rgba(34, 197, 94, 0.3)"
-                                    ]
-                                  }}
-                                  transition={{ duration: 2, repeat: Infinity }}
-                                >
-                                  ✨ New
-                                </motion.span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <motion.div
-                            initial={{ y: 10, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.3 + index * 0.1 }}
-                          >
-                            <CardTitle className="text-white group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-figuro-accent group-hover:to-purple-400 group-hover:bg-clip-text transition-all duration-300 text-xl font-bold">
-                              {method.title}
-                            </CardTitle>
-                            <CardDescription className="text-white/80 text-sm mt-2 leading-relaxed">
-                              {method.description}
-                            </CardDescription>
-                            
-                            {/* Magic quote */}
-                            <motion.p 
-                              className="text-figuro-accent/80 text-xs mt-3 italic font-medium"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: hoveredCard === method.id ? 1 : 0 }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              "{method.magic}"
-                            </motion.p>
-                          </motion.div>
-                        </CardHeader>
-                        
-                        <CardContent className="relative z-10 pt-0">
-                          <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <Button 
-                              className={`
-                                w-full bg-gradient-to-r ${method.color} border-0 text-white font-semibold
-                                hover:shadow-lg hover:shadow-figuro-accent/25 transition-all duration-300
-                                relative overflow-hidden group/btn
-                              `}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleNavigate(method.path);
-                              }}
-                            >
-                              {/* Button shimmer effect */}
-                              <motion.div
-                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
-                                initial={{ x: "-100%" }}
-                                animate={{ x: hoveredCard === method.id ? "100%" : "-100%" }}
-                                transition={{ duration: 0.6 }}
-                              />
-                              
-                              <span className="relative z-10">Enter the Magic</span>
-                              <motion.div
-                                animate={{ x: hoveredCard === method.id ? 5 : 0 }}
-                                transition={{ type: "spring", stiffness: 400 }}
-                                className="relative z-10"
-                              >
-                                <ArrowRight className="w-4 h-4 ml-2" />
-                              </motion.div>
-                            </Button>
-                          </motion.div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
+              {/* New 3D Hover Creation Methods */}
+              <div className="flex flex-col gap-8 max-w-7xl mx-auto mb-16">
+                {creationMethods.map((method, index) => (
+                  <motion.div
+                    key={method.id}
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ 
+                      duration: 0.6, 
+                      delay: index * 0.15,
+                      type: "spring",
+                      stiffness: 100 
+                    }}
+                    onHoverStart={() => setHoveredCard(method.id)}
+                    onHoverEnd={() => setHoveredCard(null)}
+                  >
+                    <IconHover3D
+                      heading={method.title}
+                      text={method.description}
+                      onClick={() => handleNavigate(method.path)}
+                      width={800}
+                      height={180}
+                      className="w-full"
+                    />
+                  </motion.div>
+                ))}
               </div>
 
               {/* Magical Quick Actions */}
