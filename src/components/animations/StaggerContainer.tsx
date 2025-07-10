@@ -16,8 +16,7 @@ const containerVariants = {
     opacity: 1,
     transition: {
       delayChildren: custom.initialDelay,
-      staggerChildren: custom.staggerDelay,
-      ease: "easeOut"
+      staggerChildren: custom.staggerDelay
     }
   })
 };

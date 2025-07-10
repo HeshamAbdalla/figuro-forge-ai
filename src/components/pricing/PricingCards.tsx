@@ -124,8 +124,7 @@ const PricingCards = ({ currentPlan = "free" }: PricingCardsProps) => {
       y: 0, 
       scale: 1,
       transition: {
-        duration: 0.6,
-        ease: [0.25, 0.25, 0.25, 0.75]
+        duration: 0.6
       }
     }
   };
