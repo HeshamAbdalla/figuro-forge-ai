@@ -120,10 +120,8 @@ const Index = () => {
         {/* Header */}
         <Header />
         
-        {/* Hero Section with SplineScene */}
-        <section className="min-h-screen flex items-center justify-center p-4">
-          <SplineSceneBasic />
-        </section>
+        {/* Hero Section - Full Height */}
+        <SplineSceneBasic />
         
         {/* Simplified Gallery Section */}
         <section className="py-16 bg-figuro-dark">
