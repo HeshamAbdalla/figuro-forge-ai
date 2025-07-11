@@ -1,26 +1,26 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, forwardRef } from 'react';
 import { Button, ButtonProps } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
 interface SlideButtonProps extends Omit<ButtonProps, 'variant'> {
-  children: ReactNode;
+  children?: ReactNode;
   isLoading?: boolean;
   loadingText?: string;
   icon?: ReactNode;
   direction?: 'left' | 'right';
-  variant?: 'primary' | 'secondary' | 'outline';
+  variant?: 'primary' | 'secondary' | 'outline' | 'default' | 'destructive' | 'ghost' | 'link';
 }
 
-const SlideButton = React.forwardRef<HTMLButtonElement, SlideButtonProps>(
+const SlideButton = forwardRef<HTMLButtonElement, SlideButtonProps>(
   ({ 
     children, 
     isLoading = false, 
     loadingText = "Processing...", 
     icon, 
     direction = 'right',
-    variant = 'primary',
-    className,
+    variant = 'default',
+    className, 
     disabled,
     ...props 
   }, ref) => {
@@ -29,7 +29,11 @@ const SlideButton = React.forwardRef<HTMLButtonElement, SlideButtonProps>(
     const variantStyles = {
       primary: "bg-figuro-accent hover:bg-figuro-accent-hover text-white border-figuro-accent",
       secondary: "bg-white/10 hover:bg-white/20 text-white border-white/20",
-      outline: "bg-transparent hover:bg-white/10 text-white border-white/20"
+      outline: "bg-transparent hover:bg-white/10 text-white border-white/20",
+      default: "bg-primary text-primary-foreground hover:bg-primary/90",
+      destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+      ghost: "hover:bg-accent hover:text-accent-foreground",
+      link: "text-primary underline-offset-4 hover:underline"
     };
 
     return (
@@ -99,8 +103,8 @@ const SlideButton = React.forwardRef<HTMLButtonElement, SlideButtonProps>(
       </Button>
     );
   }
-);
+)
 
-SlideButton.displayName = "SlideButton";
+SlideButton.displayName = "SlideButton"
 
-export { SlideButton };
+export { SlideButton }
