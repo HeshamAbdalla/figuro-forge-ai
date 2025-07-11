@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { IconHover3D } from "@/components/ui/icon-3d-hover";
 import { 
@@ -67,25 +68,26 @@ const StudioCreationMethods = ({
   ];
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${className}`}>
       {creationMethods.map((method, index) => (
         <motion.div
           key={method.id}
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ 
-            duration: 0.6, 
+            duration: 0.5, 
             delay: index * 0.1,
             type: "spring",
-            stiffness: 100 
+            stiffness: 120 
           }}
+          className="relative"
         >
           <IconHover3D
             heading={method.title}
             text={method.description}
             onClick={method.onClick}
-            width={800}
-            height={180}
+            width={350}
+            height={140}
             className={`w-full transition-all duration-300 ${
               activeTab === method.id 
                 ? 'ring-2 ring-primary/50 bg-primary/5' 

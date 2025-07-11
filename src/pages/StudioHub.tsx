@@ -268,30 +268,49 @@ const StudioHub = () => {
                 </motion.div>
               </motion.div>
 
-              {/* New 3D Hover Creation Methods */}
-              <div className="flex flex-col gap-8 max-w-7xl mx-auto mb-16">
+              {/* New Grid Layout for 3D Hover Creation Methods */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 max-w-7xl mx-auto mb-16">
                 {creationMethods.map((method, index) => (
                   <motion.div
                     key={method.id}
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ 
                       duration: 0.6, 
-                      delay: index * 0.15,
+                      delay: index * 0.1,
                       type: "spring",
                       stiffness: 100 
                     }}
                     onHoverStart={() => setHoveredCard(method.id)}
                     onHoverEnd={() => setHoveredCard(null)}
+                    className="group"
                   >
                     <IconHover3D
                       heading={method.title}
                       text={method.description}
                       onClick={() => handleNavigate(method.path)}
-                      width={800}
-                      height={180}
-                      className="w-full"
+                      width={400}
+                      height={160}
+                      className="w-full h-full"
                     />
+                    
+                    {/* Popular/New Badge */}
+                    {(method.popular || method.new) && (
+                      <motion.div
+                        className="absolute -top-2 -right-2 z-10"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.5 + index * 0.1 }}
+                      >
+                        <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          method.popular 
+                            ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white' 
+                            : 'bg-gradient-to-r from-green-400 to-blue-500 text-white'
+                        }`}>
+                          {method.popular ? '🔥 Popular' : '✨ New'}
+                        </div>
+                      </motion.div>
+                    )}
                   </motion.div>
                 ))}
               </div>
