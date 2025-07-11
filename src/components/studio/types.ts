@@ -10,6 +10,8 @@ export interface TimelineNode {
   popular?: boolean;
   new?: boolean;
   magic?: string;
+  modelUrl?: string;
+  thumbnailUrl?: string;
 }
 
 export interface OrbitalTimelineConfig {

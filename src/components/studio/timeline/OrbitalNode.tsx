@@ -1,8 +1,9 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { TimelineNode } from '../types';
 import * as THREE from 'three';
+import Model3D from '../../model-viewer/Model3D';
 
 interface OrbitalNodeProps {
   node: TimelineNode;
@@ -22,6 +23,7 @@ export const OrbitalNode: React.FC<OrbitalNodeProps> = ({
   onHover,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const [localHovered, setLocalHovered] = useState(false);
 
   // Validate position prop
@@ -35,26 +37,27 @@ export const OrbitalNode: React.FC<OrbitalNodeProps> = ({
 
   // Simplified animation with better error handling
   useFrame((state) => {
-    if (!meshRef.current || !state?.clock) return;
+    if (!state?.clock) return;
     
     try {
-      const mesh = meshRef.current;
+      const elapsedTime = state.clock.elapsedTime || 0;
       
-      // Ensure mesh and properties exist
-      if (!mesh || !mesh.position || !mesh.rotation || !mesh.scale) return;
+      // Apply animation to the active element (mesh for sphere, group for 3D model)
+      const activeElement = node.modelUrl ? groupRef.current : meshRef.current;
+      
+      if (!activeElement || !activeElement.position || !activeElement.rotation) return;
       
       // Gentle floating animation
-      const elapsedTime = state.clock.elapsedTime || 0;
-      mesh.position.y = safePosition[1] + Math.sin(elapsedTime + safePosition[0]) * 0.1;
+      activeElement.position.y = safePosition[1] + Math.sin(elapsedTime + safePosition[0]) * 0.1;
       
       // Rotation animation
-      mesh.rotation.y += 0.01;
+      activeElement.rotation.y += 0.01;
       
-      // Scale based on interaction
-      const targetScale = isHovered || isSelected ? 1.2 : 1;
-      if (mesh.scale && typeof mesh.scale.lerp === 'function') {
+      // Scale animation for mesh (3D models handle scale via props)
+      if (!node.modelUrl && activeElement.scale && typeof activeElement.scale.lerp === 'function') {
+        const targetScale = isHovered || isSelected ? 1.2 : 1;
         const targetVector = new THREE.Vector3(targetScale, targetScale, targetScale);
-        mesh.scale.lerp(targetVector, 0.1);
+        activeElement.scale.lerp(targetVector, 0.1);
       }
     } catch (error) {
       console.error('Error in OrbitalNode animation:', error);
@@ -107,37 +110,77 @@ export const OrbitalNode: React.FC<OrbitalNodeProps> = ({
 
   return (
     <group position={safePosition}>
-      {/* Main Node Sphere */}
-      <mesh
-        ref={meshRef}
-        onPointerOver={handlePointerOver}
-        onPointerOut={handlePointerOut}
-        onClick={handleClick}
-        castShadow
-        receiveShadow
-      >
-        <icosahedronGeometry args={[0.5, 1]} />
-        <meshStandardMaterial
-          color={nodeColor}
-          emissive={nodeColor}
-          emissiveIntensity={emissiveIntensity}
-          roughness={0.2}
-          metalness={0.8}
-          transparent
-          opacity={0.9}
-        />
-      </mesh>
+      {/* Render 3D Model if available, otherwise fallback to sphere */}
+      {node.modelUrl ? (
+        <Suspense fallback={
+          <mesh
+            ref={meshRef}
+            onPointerOver={handlePointerOver}
+            onPointerOut={handlePointerOut}
+            onClick={handleClick}
+            castShadow
+            receiveShadow
+          >
+            <icosahedronGeometry args={[0.3, 1]} />
+            <meshStandardMaterial
+              color={nodeColor}
+              emissive={nodeColor}
+              emissiveIntensity={0.5}
+              wireframe
+            />
+          </mesh>
+        }>
+          <group
+            ref={groupRef}
+            onPointerOver={handlePointerOver}
+            onPointerOut={handlePointerOut}
+            onClick={handleClick}
+            scale={isHovered || isSelected ? 1.2 : 1}
+          >
+            <Model3D
+              modelSource={node.modelUrl}
+              onError={(error) => console.error('Error loading model:', error)}
+              isPreview={true}
+              enableLOD={false}
+              maxTriangles={1000}
+            />
+          </group>
+        </Suspense>
+      ) : (
+        <>
+          {/* Fallback Sphere */}
+          <mesh
+            ref={meshRef}
+            onPointerOver={handlePointerOver}
+            onPointerOut={handlePointerOut}
+            onClick={handleClick}
+            castShadow
+            receiveShadow
+          >
+            <icosahedronGeometry args={[0.5, 1]} />
+            <meshStandardMaterial
+              color={nodeColor}
+              emissive={nodeColor}
+              emissiveIntensity={emissiveIntensity}
+              roughness={0.2}
+              metalness={0.8}
+              transparent
+              opacity={0.9}
+            />
+          </mesh>
 
-      {/* Glow Effect */}
-      <mesh position={[0, 0, 0]}>
-        <sphereGeometry args={[0.8, 16, 16]} />
-        <meshBasicMaterial
-          color={nodeColor}
-          transparent
-          opacity={isHovered || isSelected ? 0.2 : 0.1}
-          side={THREE.BackSide}
-        />
-      </mesh>
+          {/* Glow Effect */}
+          <mesh position={[0, 0, 0]}>
+            <sphereGeometry args={[0.8, 16, 16]} />
+            <meshBasicMaterial
+              color={nodeColor}
+              transparent
+              opacity={isHovered || isSelected ? 0.2 : 0.1}
+              side={THREE.BackSide}
+            />
+          </mesh>
+        </>
+      )}
 
       {/* Node Icon */}
       <Html
