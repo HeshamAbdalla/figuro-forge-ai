@@ -56,12 +56,20 @@ export const useModelLoader = ({
       return;
     }
     
-    // Limit load attempts to prevent infinite loops
-    if (loadAttemptRef.current > 3) {
+    // Limit load attempts to prevent infinite loops with time-based reset
+    const now = Date.now();
+    const timeSinceLastAttempt = loadAttemptRef.current > 0 ? now - (loadAttemptRef.current * 1000) : 0;
+    
+    if (loadAttemptRef.current > 2 && timeSinceLastAttempt < 30000) {
       console.log(`Too many load attempts for ${modelIdRef.current}, aborting`);
       setLoading(false);
       onError(new Error("Too many load attempts"));
       return;
+    }
+    
+    // Reset attempt counter if enough time has passed
+    if (timeSinceLastAttempt > 30000) {
+      loadAttemptRef.current = 0;
     }
     
     loadAttemptRef.current += 1;
@@ -177,7 +185,7 @@ export const useModelLoader = ({
         objectUrlRef.current = null;
       }
     };
-  }, [modelSource, modelBlob, onError, model]);
+  }, [modelSource, modelBlob, onError]);
   
   // Clean up all resources when unmounting
   useEffect(() => {

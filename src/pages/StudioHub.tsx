@@ -12,6 +12,7 @@ import { RadialOrbitalTimeline } from "@/components/studio/timeline/RadialOrbita
 import { getStudioNodesWithModels, studioNodes } from "@/components/studio/data/studioNodes";
 import { TimelineNode } from "@/components/studio/types";
 import { useGalleryModels } from "@/hooks/useGalleryModels";
+import { ModelLoadingMonitor } from "@/components/debug/ModelLoadingMonitor";
 
 const StudioHub = () => {
   const navigate = useNavigate();
@@ -273,6 +274,7 @@ const StudioHub = () => {
             </div>
           </div>
         </VantaBackground>
+        <ModelLoadingMonitor />
       </div>
     </SecurityEnforcedRoute>
   );

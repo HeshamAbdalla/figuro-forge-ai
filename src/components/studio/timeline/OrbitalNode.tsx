@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { TimelineNode } from '../types';
 import * as THREE from 'three';
-import Model3D from '../../model-viewer/Model3D';
+import { useTimelineModelLoader } from '../../model-viewer/hooks/useTimelineModelLoader';
 
 interface OrbitalNodeProps {
   node: TimelineNode;
@@ -108,44 +108,44 @@ export const OrbitalNode: React.FC<OrbitalNodeProps> = ({
     return null;
   }
 
+  // Use optimized timeline model loader
+  const { loading: modelLoading, model: loadedModel, error: modelError } = useTimelineModelLoader({
+    modelUrl: node.modelUrl,
+    modelId: `timeline-${node.id}`,
+    priority: isSelected ? 10 : (isHovered ? 5 : 0)
+  });
+
   return (
     <group position={safePosition}>
       {/* Render 3D Model if available, otherwise fallback to sphere */}
       {node.modelUrl ? (
-        <Suspense fallback={
-          <mesh
-            ref={meshRef}
-            onPointerOver={handlePointerOver}
-            onPointerOut={handlePointerOut}
-            onClick={handleClick}
-            castShadow
-            receiveShadow
-          >
-            <icosahedronGeometry args={[0.3, 1]} />
-            <meshStandardMaterial
-              color={nodeColor}
-              emissive={nodeColor}
-              emissiveIntensity={0.5}
-              wireframe
+        <group
+          ref={groupRef}
+          onPointerOver={handlePointerOver}
+          onPointerOut={handlePointerOut}
+          onClick={handleClick}
+          scale={isHovered || isSelected ? 1.2 : 1}
+        >
+          {loadedModel && !modelLoading ? (
+            <primitive 
+              object={loadedModel.clone()} 
+              scale={[0.8, 0.8, 0.8]}
+              position={[0, 0, 0]}
             />
-          </mesh>
-        }>
-          <group
-            ref={groupRef}
-            onPointerOver={handlePointerOver}
-            onPointerOut={handlePointerOut}
-            onClick={handleClick}
-            scale={isHovered || isSelected ? 1.2 : 1}
-          >
-            <Model3D
-              modelSource={node.modelUrl}
-              onError={(error) => console.error('Error loading model:', error)}
-              isPreview={true}
-              enableLOD={false}
-              maxTriangles={1000}
-            />
-          </group>
-        </Suspense>
+          ) : (
+            <mesh castShadow receiveShadow>
+              <icosahedronGeometry args={[0.3, 1]} />
+              <meshStandardMaterial
+                color={nodeColor}
+                emissive={nodeColor}
+                emissiveIntensity={modelLoading ? 0.8 : 0.5}
+                wireframe={modelLoading}
+                transparent
+                opacity={modelLoading ? 0.7 : 1}
+              />
+            </mesh>
+          )}
+        </group>
       ) : (
         <>
           {/* Fallback Sphere */}

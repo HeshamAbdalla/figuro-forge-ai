@@ -5,7 +5,7 @@
 class ModelQueueManager {
   private static instance: ModelQueueManager;
   private loadingCount = 0;
-  private maxConcurrent = 1; // Conservative limit to prevent WebGL issues
+  private maxConcurrent = 3; // Optimized for timeline rendering
   private queue: Array<{
     id: string;
     priority: number;
@@ -130,11 +130,11 @@ class ModelQueueManager {
       const now = Date.now();
       
       // Circuit breaker: if too many recent failures, delay the load
-      if (history.failures > 2 && (now - history.lastAttempt) < 10000) {
+      if (history.failures > 3 && (now - history.lastAttempt) < 5000) {
         console.warn(`[Queue] Circuit breaker active for ${modelId}, delaying load`);
         setTimeout(() => {
           this.queueModelLoad(modelId, loadFunction, priority).then(resolve).catch(reject);
-        }, 5000);
+        }, 2000);
         return;
       }
       
@@ -215,7 +215,7 @@ class ModelQueueManager {
           
           // Add a delay before processing the next item to prevent overload
           this.lastProcessTime = Date.now();
-          setTimeout(() => this.processQueue(), 1000); // Increased delay for stability
+          setTimeout(() => this.processQueue(), 300); // Reduced delay for timeline
         }
       };
 
@@ -253,9 +253,8 @@ class ModelQueueManager {
     // Prevent queue thrashing by enforcing minimum time between processes
     const now = Date.now();
     const timeSinceLastProcess = now - this.lastProcessTime;
-    if (timeSinceLastProcess < 500) {
-      console.log(`[Queue] Throttling queue processing - only ${timeSinceLastProcess}ms since last process`);
-      setTimeout(() => this.processQueue(), 500 - timeSinceLastProcess);
+    if (timeSinceLastProcess < 200) {
+      setTimeout(() => this.processQueue(), 200 - timeSinceLastProcess);
       return;
     }
     
@@ -270,10 +269,10 @@ class ModelQueueManager {
           console.log(`[Queue] Processing next in queue: ${nextItem.id} (priority: ${nextItem.priority}), remaining: ${this.queue.length}`);
           this.lastProcessTime = now;
           
-          // Execute with delay to prevent race conditions
+          // Execute with minimal delay for timeline responsiveness
           setTimeout(() => {
             nextItem.loader().then(nextItem.resolve).catch(nextItem.reject);
-          }, 300);
+          }, 100);
         }
       }
     } finally {

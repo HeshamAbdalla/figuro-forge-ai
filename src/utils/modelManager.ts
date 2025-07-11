@@ -13,8 +13,8 @@ class ModelManager {
   private cache = new Map<string, ModelCacheEntry>();
   private loader = new GLTFLoader();
   private loadingPromises = new Map<string, Promise<THREE.Group>>();
-  private readonly CACHE_MAX_SIZE = 12;
-  private readonly CACHE_MAX_AGE = 8 * 60 * 1000; // 8 minutes
+  private readonly CACHE_MAX_SIZE = 15;
+  private readonly CACHE_MAX_AGE = 10 * 60 * 1000; // 10 minutes
 
   static getInstance(): ModelManager {
     if (!ModelManager.instance) {
@@ -48,10 +48,17 @@ class ModelManager {
       }
     });
 
-    // If still over limit, remove oldest entries
+    // If still over limit, remove least referenced and oldest entries
     if (this.cache.size > this.CACHE_MAX_SIZE) {
       const sortedEntries = entries
-        .sort((a, b) => a[1].loadTime - b[1].loadTime)
+        .sort((a, b) => {
+          // First sort by reference count (less referenced first)
+          if (a[1].references !== b[1].references) {
+            return a[1].references - b[1].references;
+          }
+          // Then by age (older first)
+          return a[1].loadTime - b[1].loadTime;
+        })
         .slice(0, this.cache.size - this.CACHE_MAX_SIZE);
       
       sortedEntries.forEach(([key, entry]) => {
@@ -176,7 +183,7 @@ class ModelManager {
     
     model.position.sub(center);
     if (maxDim > 0) {
-      model.scale.setScalar(2.2 / maxDim); // Slightly larger scale for foreground effect
+      model.scale.setScalar(1.8 / maxDim); // Optimized scale for timeline nodes
     }
   }
 

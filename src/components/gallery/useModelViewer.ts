@@ -18,8 +18,8 @@ export const useModelViewer = () => {
 
   // Configure the queue manager when component mounts
   useEffect(() => {
-    // Set concurrent loading limit to 1 to prevent WebGL context exhaustion
-    modelQueueManager.setMaxConcurrent(1);
+    // Set concurrent loading limit to 2 for timeline optimizations
+    modelQueueManager.setMaxConcurrent(2);
     
     return () => {
       // Reset active viewers count when component unmounts
