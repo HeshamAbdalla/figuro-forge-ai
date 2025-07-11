@@ -5,34 +5,16 @@ import { useEnhancedAuth } from "@/components/auth/EnhancedAuthProvider";
 import Header from "@/components/Header";
 import VantaBackground from "@/components/VantaBackground";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Images,
-  ArrowRight,
-  Sparkles,
-  Stars,
-  Zap,
-  Wand2,
-  Palette,
-  Camera,
-  Type,
-  Grid3X3
-} from "lucide-react";
-import { IconHover3D } from "@/components/ui/icon-3d-hover";
+import { Images, Stars, Sparkles, Wand2 } from "lucide-react";
 import { Suspense, useState, useEffect } from "react";
 import SimpleErrorBoundary from "@/components/common/SimpleErrorBoundary";
-
-// Import 3D icon components
-import Image3DIcon from "@/components/studio/icons3d/Image3DIcon";
-import Text3DIcon from "@/components/studio/icons3d/Text3DIcon";
-import Camera3DIcon from "@/components/studio/icons3d/Camera3DIcon";
-import Palette3DIcon from "@/components/studio/icons3d/Palette3DIcon";
-import Gallery3DIcon from "@/components/studio/icons3d/Gallery3DIcon";
+import { RadialOrbitalTimeline } from "@/components/studio/timeline/RadialOrbitalTimeline";
+import { studioNodes } from "@/components/studio/data/studioNodes";
+import { TimelineNode } from "@/components/studio/types";
 
 const StudioHub = () => {
   const navigate = useNavigate();
   const { user } = useEnhancedAuth();
-  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -53,68 +35,8 @@ const StudioHub = () => {
     duration: 3 + Math.random() * 2,
   }));
 
-  const creationMethods = [
-    {
-      id: 'image-to-3d',
-      title: '✨ Photo Magic',
-      description: "Transform images into stunning 3D models with AI-powered conversion",
-      icon3d: Image3DIcon,
-      fallbackIcon: Camera,
-      path: '/studio/image-to-3d',
-      color: 'from-blue-400 via-cyan-500 to-teal-600',
-      glowColor: 'shadow-blue-500/25',
-      popular: true,
-      magic: "Watch photos come alive in 3D space"
-    },
-    {
-      id: 'text-to-3d',
-      title: '🎨 Dream It, Build It',
-      description: 'Turn imagination into reality with magical text-to-3D creation',
-      icon3d: Text3DIcon,
-      fallbackIcon: Type,
-      path: '/studio/text-to-3d',
-      color: 'from-purple-400 via-pink-500 to-rose-600',
-      glowColor: 'shadow-purple-500/25',
-      new: true,
-      magic: "Words become worlds of possibility"
-    },
-    {
-      id: 'camera',
-      title: '📸 Instant 3D Capture',
-      description: 'Capture reality and transform it into digital masterpieces',
-      icon3d: Camera3DIcon,
-      fallbackIcon: Camera,
-      path: '/studio/camera',
-      color: 'from-green-400 via-emerald-500 to-teal-600',
-      glowColor: 'shadow-green-500/25',
-      magic: "Reality meets digital artistry"
-    },
-    {
-      id: 'web-icons',
-      title: '🎭 Icon Workshop',
-      description: 'Craft mesmerizing icons that captivate and inspire',
-      icon3d: Palette3DIcon,
-      fallbackIcon: Palette,
-      path: '/studio/web-icons',
-      color: 'from-orange-400 via-red-500 to-pink-600',
-      glowColor: 'shadow-orange-500/25',
-      magic: "Every pixel tells a story"
-    },
-    {
-      id: 'gallery',
-      title: '🏛️ Creative Sanctuary',
-      description: 'Your personal realm of artistic achievements and inspiration',
-      icon3d: Gallery3DIcon,
-      fallbackIcon: Grid3X3,
-      path: '/studio/gallery',
-      color: 'from-indigo-400 via-purple-500 to-violet-600',
-      glowColor: 'shadow-indigo-500/25',
-      magic: "Where creativity finds its home"
-    }
-  ];
-
-  const handleNavigate = (path: string) => {
-    navigate(path);
+  const handleNodeClick = (node: TimelineNode) => {
+    navigate(node.path);
   };
 
   return (
@@ -145,23 +67,6 @@ const StudioHub = () => {
           ))}
         </div>
 
-        {/* Mouse Follower Effect */}
-        <motion.div
-          className="fixed w-32 h-32 pointer-events-none"
-          style={{
-            left: mousePosition.x - 64,
-            top: mousePosition.y - 64,
-            zIndex: 1,
-          }}
-          animate={{
-            scale: hoveredCard ? 1.2 : 0.8,
-            opacity: hoveredCard ? 0.6 : 0.3,
-          }}
-          transition={{ type: "spring", stiffness: 150, damping: 15 }}
-        >
-          <div className="w-full h-full bg-gradient-to-r from-figuro-accent/20 to-purple-400/20 rounded-full blur-2xl" />
-        </motion.div>
-
         <VantaBackground>
           <Header />
           <div className="pt-20">
@@ -174,33 +79,6 @@ const StudioHub = () => {
                 transition={{ duration: 0.8, ease: "easeOut" }}
                 className="text-center mb-16 relative"
               >
-                {/* Floating Icons */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                  {[Wand2, Stars, Zap].map((Icon, index) => (
-                    <motion.div
-                      key={index}
-                      className="absolute"
-                      style={{
-                        left: `${20 + index * 30}%`,
-                        top: `${10 + index * 15}%`,
-                      }}
-                      animate={{
-                        y: [0, -10, 0],
-                        rotate: [0, 5, -5, 0],
-                        scale: [1, 1.1, 1],
-                      }}
-                      transition={{
-                        duration: 3 + index,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        delay: index * 0.5,
-                      }}
-                    >
-                      <Icon className="w-6 h-6 text-figuro-accent/30" />
-                    </motion.div>
-                  ))}
-                </div>
-
                 <motion.div
                   className="inline-flex items-center gap-3 mb-6 px-6 py-3 bg-gradient-to-r from-purple-500/10 to-figuro-accent/10 backdrop-blur-xl rounded-full border border-figuro-accent/20"
                   whileHover={{ scale: 1.05 }}
@@ -268,52 +146,29 @@ const StudioHub = () => {
                 </motion.div>
               </motion.div>
 
-              {/* New Grid Layout for 3D Hover Creation Methods */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 max-w-7xl mx-auto mb-16">
-                {creationMethods.map((method, index) => (
-                  <motion.div
-                    key={method.id}
-                    initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ 
-                      duration: 0.6, 
-                      delay: index * 0.1,
-                      type: "spring",
-                      stiffness: 100 
-                    }}
-                    onHoverStart={() => setHoveredCard(method.id)}
-                    onHoverEnd={() => setHoveredCard(null)}
-                    className="group"
-                  >
-                    <IconHover3D
-                      heading={method.title}
-                      text={method.description}
-                      onClick={() => handleNavigate(method.path)}
-                      width={400}
-                      height={160}
-                      className="w-full h-full"
-                    />
-                    
-                    {/* Popular/New Badge */}
-                    {(method.popular || method.new) && (
-                      <motion.div
-                        className="absolute -top-2 -right-2 z-10"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.5 + index * 0.1 }}
-                      >
-                        <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          method.popular 
-                            ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white' 
-                            : 'bg-gradient-to-r from-green-400 to-blue-500 text-white'
-                        }`}>
-                          {method.popular ? '🔥 Popular' : '✨ New'}
-                        </div>
-                      </motion.div>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
+              {/* Orbital Timeline Interface */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8, delay: 0.8 }}
+                className="max-w-7xl mx-auto mb-16"
+              >
+                <div className="relative bg-white/5 backdrop-blur-2xl rounded-3xl border border-white/10 overflow-hidden">
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center h-[600px]">
+                      <div className="text-white">Loading 3D Timeline...</div>
+                    </div>
+                  }>
+                    <SimpleErrorBoundary>
+                      <RadialOrbitalTimeline
+                        nodes={studioNodes}
+                        onNodeClick={handleNodeClick}
+                        className="h-[600px]"
+                      />
+                    </SimpleErrorBoundary>
+                  </Suspense>
+                </div>
+              </motion.div>
 
               {/* Magical Quick Actions */}
               <motion.div
@@ -322,7 +177,6 @@ const StudioHub = () => {
                 transition={{ duration: 0.8, delay: 1.2 }}
                 className="text-center relative"
               >
-                {/* Background glow */}
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-figuro-accent/10 to-pink-500/10 rounded-3xl blur-xl" />
                 
                 <div className="relative z-10 bg-white/5 backdrop-blur-2xl rounded-3xl p-8 border border-white/10">
