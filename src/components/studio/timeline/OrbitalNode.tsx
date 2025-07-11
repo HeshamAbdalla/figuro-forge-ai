@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
-import { Text, Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import { TimelineNode } from '../types';
 import * as THREE from 'three';
 
@@ -22,27 +22,24 @@ export const OrbitalNode: React.FC<OrbitalNodeProps> = ({
   onHover,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const textRef = useRef<THREE.Mesh>(null);
   const [localHovered, setLocalHovered] = useState(false);
-  const { camera, raycaster, mouse, scene } = useThree();
 
   // Animation
   useFrame((state) => {
     if (!meshRef.current) return;
     
-    // Gentle floating animation
-    meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime + position[0]) * 0.1;
-    
-    // Rotation animation
-    meshRef.current.rotation.y += 0.01;
-    
-    // Scale based on interaction
-    const targetScale = isHovered || isSelected ? 1.2 : 1;
-    meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
-    
-    // Text always face camera
-    if (textRef.current) {
-      textRef.current.lookAt(camera.position);
+    try {
+      // Gentle floating animation
+      meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime + position[0]) * 0.1;
+      
+      // Rotation animation
+      meshRef.current.rotation.y += 0.01;
+      
+      // Scale based on interaction
+      const targetScale = isHovered || isSelected ? 1.2 : 1;
+      meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
+    } catch (error) {
+      console.error('Error in OrbitalNode animation:', error);
     }
   });
 
@@ -83,6 +80,10 @@ export const OrbitalNode: React.FC<OrbitalNodeProps> = ({
 
   const nodeColor = getNodeColor();
   const emissiveIntensity = isHovered || isSelected ? 0.8 : 0.3;
+
+  if (!position || position.length !== 3) {
+    return null;
+  }
 
   return (
     <group position={position}>

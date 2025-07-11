@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, Suspense } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, PerspectiveCamera } from '@react-three/drei';
@@ -12,7 +12,7 @@ interface RadialOrbitalTimelineProps {
 }
 
 export const RadialOrbitalTimeline: React.FC<RadialOrbitalTimelineProps> = ({
-  nodes,
+  nodes = [],
   onNodeClick,
   className = ""
 }) => {
@@ -29,17 +29,25 @@ export const RadialOrbitalTimeline: React.FC<RadialOrbitalTimelineProps> = ({
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width - 0.5;
-    const y = (event.clientY - rect.top) / rect.height - 0.5;
-    
-    mouseX.set(x);
-    mouseY.set(y);
+    try {
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width - 0.5;
+      const y = (event.clientY - rect.top) / rect.height - 0.5;
+      
+      mouseX.set(x);
+      mouseY.set(y);
+    } catch (error) {
+      console.error('Error in mouse tracking:', error);
+    }
   };
 
   const handleNodeClick = (node: TimelineNode) => {
-    setSelectedNode(node.id);
-    onNodeClick(node);
+    try {
+      setSelectedNode(node.id);
+      onNodeClick(node);
+    } catch (error) {
+      console.error('Error handling node click:', error);
+    }
   };
 
   const handleNodeHover = (nodeId: string | null) => {
@@ -47,7 +55,11 @@ export const RadialOrbitalTimeline: React.FC<RadialOrbitalTimelineProps> = ({
   };
 
   // Calculate orbital positions for nodes
-  const calculateOrbitalPositions = () => {
+  const calculateOrbitalPositions = (): Array<[number, number, number]> => {
+    if (!nodes || nodes.length === 0) {
+      return [];
+    }
+
     const positions: Array<[number, number, number]> = [];
     const radius = 4;
     const layers = Math.ceil(nodes.length / 6);
@@ -70,6 +82,28 @@ export const RadialOrbitalTimeline: React.FC<RadialOrbitalTimelineProps> = ({
 
   const orbitalPositions = calculateOrbitalPositions();
 
+  // Error boundary component
+  const ErrorFallback = () => (
+    <div className="flex items-center justify-center h-full text-white">
+      <div className="text-center">
+        <p className="text-lg mb-2">Unable to load 3D timeline</p>
+        <p className="text-sm opacity-60">Please try refreshing the page</p>
+      </div>
+    </div>
+  );
+
+  if (!nodes || nodes.length === 0) {
+    return (
+      <div className={`relative w-full h-full min-h-[600px] bg-gradient-to-br from-figuro-dark via-purple-900/20 to-figuro-dark ${className}`}>
+        <div className="flex items-center justify-center h-full text-white">
+          <div className="text-center">
+            <p className="text-lg mb-2">No studio options available</p>
+            <p className="text-sm opacity-60">Please check your configuration</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div 
       ref={containerRef}
@@ -85,69 +119,77 @@ export const RadialOrbitalTimeline: React.FC<RadialOrbitalTimelineProps> = ({
           perspective: 1200,
         }}
       >
-        <Canvas
-          shadows
-          camera={{ position: [0, 0, 12], fov: 50 }}
-          gl={{ antialias: true, alpha: true }}
-        >
-          <PerspectiveCamera makeDefault position={[0, 0, 12]} />
-          <OrbitControls
-            enableZoom={true}
-            enablePan={false}
-            minDistance={8}
-            maxDistance={20}
-            autoRotate={!hoveredNode}
-            autoRotateSpeed={0.5}
-          />
-          
-          {/* Lighting */}
-          <ambientLight intensity={0.3} />
-          <pointLight position={[10, 10, 10]} intensity={1} castShadow />
-          <pointLight position={[-10, -10, -10]} intensity={0.5} color="#8b5cf6" />
-          
-          {/* Environment */}
-          <Environment preset="night" />
-          
-          {/* Central Hub */}
-          <group>
-            <mesh position={[0, 0, 0]}>
-              <sphereGeometry args={[0.5, 32, 32]} />
-              <meshStandardMaterial
-                color="#8b5cf6"
-                emissive="#4c1d95"
-                emissiveIntensity={0.5}
-                roughness={0.1}
-                metalness={0.8}
-              />
-            </mesh>
-          </group>
-          
-          {/* Orbital Nodes */}
-          {nodes.map((node, index) => (
-            <OrbitalNode
-              key={node.id}
-              node={node}
-              position={orbitalPositions[index]}
-              isSelected={selectedNode === node.id}
-              isHovered={hoveredNode === node.id}
-              onClick={() => handleNodeClick(node)}
-              onHover={(isHovered) => handleNodeHover(isHovered ? node.id : null)}
+        <Suspense fallback={<ErrorFallback />}>
+          <Canvas
+            shadows
+            camera={{ position: [0, 0, 12], fov: 50 }}
+            gl={{ antialias: true, alpha: true }}
+            onError={(error) => console.error('Canvas error:', error)}
+          >
+            <PerspectiveCamera makeDefault position={[0, 0, 12]} />
+            <OrbitControls
+              enableZoom={true}
+              enablePan={false}
+              minDistance={8}
+              maxDistance={20}
+              autoRotate={!hoveredNode}
+              autoRotateSpeed={0.5}
             />
-          ))}
-          
-          {/* Orbital Rings */}
-          {Array.from({ length: Math.ceil(nodes.length / 6) }).map((_, layer) => (
-            <mesh key={layer} rotation={[Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
-              <ringGeometry args={[4 + layer * 2 - 0.05, 4 + layer * 2 + 0.05, 64]} />
-              <meshBasicMaterial
-                color="#8b5cf6"
-                transparent
-                opacity={0.1}
-                side={2}
-              />
-            </mesh>
-          ))}
-        </Canvas>
+            
+            {/* Lighting */}
+            <ambientLight intensity={0.3} />
+            <pointLight position={[10, 10, 10]} intensity={1} castShadow />
+            <pointLight position={[-10, -10, -10]} intensity={0.5} color="#8b5cf6" />
+            
+            {/* Environment */}
+            <Environment preset="night" />
+            
+            {/* Central Hub */}
+            <group>
+              <mesh position={[0, 0, 0]}>
+                <sphereGeometry args={[0.5, 32, 32]} />
+                <meshStandardMaterial
+                  color="#8b5cf6"
+                  emissive="#4c1d95"
+                  emissiveIntensity={0.5}
+                  roughness={0.1}
+                  metalness={0.8}
+                />
+              </mesh>
+            </group>
+            
+            {/* Orbital Nodes */}
+            {nodes.map((node, index) => {
+              const position = orbitalPositions[index];
+              if (!position) return null;
+              
+              return (
+                <OrbitalNode
+                  key={node.id}
+                  node={node}
+                  position={position}
+                  isSelected={selectedNode === node.id}
+                  isHovered={hoveredNode === node.id}
+                  onClick={() => handleNodeClick(node)}
+                  onHover={(isHovered) => handleNodeHover(isHovered ? node.id : null)}
+                />
+              );
+            })}
+            
+            {/* Orbital Rings */}
+            {Array.from({ length: Math.ceil(nodes.length / 6) }).map((_, layer) => (
+              <mesh key={layer} rotation={[Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
+                <ringGeometry args={[4 + layer * 2 - 0.05, 4 + layer * 2 + 0.05, 64]} />
+                <meshBasicMaterial
+                  color="#8b5cf6"
+                  transparent
+                  opacity={0.1}
+                  side={2}
+                />
+              </mesh>
+            ))}
+          </Canvas>
+        </Suspense>
       </motion.div>
 
       {/* UI Overlay */}
