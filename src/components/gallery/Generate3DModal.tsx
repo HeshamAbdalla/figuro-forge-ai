@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { SlideButton } from '@/components/ui/slide-button';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, XCircle, Loader2, Box, AlertTriangle } from 'lucide-react';
 
@@ -135,13 +136,16 @@ const Generate3DModal: React.FC<Generate3DModalProps> = ({
               Cancel
             </Button>
             
-            <Button
+            <SlideButton
               onClick={handleGenerate}
               disabled={isProcessing || !imageUrl}
-              className="bg-figuro-accent hover:bg-figuro-accent-hover"
+              isLoading={isProcessing}
+              loadingText="Generating..."
+              icon={<Box className="h-4 w-4" />}
+              variant="primary"
             >
-              {isProcessing ? 'Generating...' : 'Generate 3D Model'}
-            </Button>
+              Generate 3D Model
+            </SlideButton>
           </div>
 
           {/* Additional Info */}

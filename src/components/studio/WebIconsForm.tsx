@@ -1,6 +1,7 @@
 import { useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { SlideButton } from "@/components/ui/slide-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -187,29 +188,17 @@ const WebIconsForm = forwardRef<WebIconsFormRef, WebIconsFormProps>(({ onGenerat
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Button
+              <SlideButton
                 type="submit"
                 disabled={!prompt.trim() || isGenerating}
-                className="w-full bg-figuro-accent hover:bg-figuro-accent-hover"
+                className="w-full"
+                isLoading={isGenerating}
+                loadingText="Generating Icon..."
+                icon={<Sparkles className="w-4 h-4" />}
+                variant="primary"
               >
-                {isGenerating ? (
-                  <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 mr-2"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                    </motion.div>
-                    Generating Icon...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Icon
-                  </>
-                )}
-              </Button>
+                Generate Icon
+              </SlideButton>
             </motion.div>
           </form>
         </CardContent>

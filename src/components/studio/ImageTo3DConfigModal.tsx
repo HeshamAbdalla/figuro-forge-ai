@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { SlideButton } from '@/components/ui/slide-button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
@@ -186,13 +187,16 @@ const ImageTo3DConfigModal: React.FC<ImageTo3DConfigModalProps> = ({
               Cancel
             </Button>
             
-            <Button
+            <SlideButton
               onClick={handleGenerate}
               disabled={isGenerating || !imageUrl}
-              className="bg-figuro-accent hover:bg-figuro-accent-hover"
+              isLoading={isGenerating}
+              loadingText="Generating..."
+              icon={<Settings className="h-4 w-4" />}
+              variant="primary"
             >
-              {isGenerating ? 'Generating...' : 'Generate 3D Model'}
-            </Button>
+              Generate 3D Model
+            </SlideButton>
           </div>
 
           {/* Info */}

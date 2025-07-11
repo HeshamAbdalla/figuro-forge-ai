@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { SlideButton } from "@/components/ui/slide-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download, Wand2, Image as ImageIcon, ArrowRight, Settings, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -201,36 +202,30 @@ const StreamlinedImagePreview = ({
         )}
         
         <div className="flex gap-2">
-          <Button
-            variant="outline"
+          <SlideButton
             size="sm"
             onClick={onOpenConfig}
             disabled={!imageSrc || isConverting || isLoading || imageError}
-            className={`border-white/20 hover:border-white/40 bg-white/5 ${isMobile ? 'h-8 px-2' : 'h-9'}`}
+            className={`${isMobile ? 'h-8 px-2' : 'h-9'}`}
+            icon={<Settings size={isMobile ? 12 : 14} />}
+            variant="outline"
           >
-            <Settings size={isMobile ? 12 : 14} className="mr-1" />
             <span className={isMobile ? 'text-xs' : ''}>Config</span>
-          </Button>
+          </SlideButton>
           
-          <Button
+          <SlideButton
             onClick={handleConvertTo3D}
             disabled={!imageSrc || isConverting || isLoading || imageError}
-            className={`flex-1 bg-figuro-accent hover:bg-figuro-accent-hover font-medium ${isMobile ? 'h-8 text-xs' : 'h-9'}`}
+            className={`flex-1 ${isMobile ? 'h-8 text-xs' : 'h-9'}`}
+            isLoading={isConverting}
+            loadingText={isMobile ? 'Converting...' : 'Converting...'}
+            icon={<Wand2 size={isMobile ? 12 : 16} />}
+            variant="primary"
           >
-            {isConverting ? (
-              <>
-                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                {isMobile ? 'Converting...' : 'Converting...'}
-              </>
-            ) : (
-              <>
-                <Wand2 size={isMobile ? 12 : 16} className="mr-2" />
-                <span className="hidden sm:inline">Convert to 3D</span>
-                <span className="sm:hidden">Convert</span>
-                <ArrowRight size={isMobile ? 10 : 14} className="ml-1" />
-              </>
-            )}
-          </Button>
+            <span className="hidden sm:inline">Convert to 3D</span>
+            <span className="sm:hidden">Convert</span>
+            <ArrowRight size={isMobile ? 10 : 14} className="ml-1" />
+          </SlideButton>
         </div>
       </div>
     </motion.div>

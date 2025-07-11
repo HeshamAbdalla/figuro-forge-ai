@@ -1,6 +1,7 @@
 
 import { useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { SlideButton } from "@/components/ui/slide-button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Sparkles, Settings, Loader2, AlertCircle } from "lucide-react";
@@ -186,34 +187,28 @@ const TextTo3DForm = forwardRef<TextTo3DFormRef, TextTo3DFormProps>(({ onGenerat
 
           {/* Mobile-first responsive button layout */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button
+            <SlideButton
               type="submit"
               disabled={!isFormValid || isGenerating}
-              className="w-full sm:flex-1 bg-figuro-accent hover:bg-figuro-accent-hover disabled:opacity-50 min-h-[44px]"
+              className="w-full sm:flex-1 min-h-[44px]"
+              isLoading={isGenerating}
+              loadingText="Generating..."
+              icon={<Sparkles size={16} />}
+              variant="primary"
             >
-              {isGenerating ? (
-                <>
-                  <Loader2 size={16} className="animate-spin mr-2 flex-shrink-0" />
-                  <span className="truncate">Generating...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={16} className="mr-2 flex-shrink-0" />
-                  <span className="truncate">Quick Generate</span>
-                </>
-              )}
-            </Button>
+              Quick Generate
+            </SlideButton>
 
-            <Button
+            <SlideButton
               type="button"
               onClick={handleAdvancedGenerate}
               disabled={!isFormValid || isGenerating}
+              className="w-full sm:flex-1 min-h-[44px]"
+              icon={<Settings size={16} />}
               variant="outline"
-              className="w-full sm:flex-1 border-white/20 text-white hover:bg-white/10 disabled:opacity-50 min-h-[44px]"
             >
-              <Settings size={16} className="mr-2 flex-shrink-0" />
-              <span className="truncate">Advanced Options</span>
-            </Button>
+              Advanced Options
+            </SlideButton>
           </div>
           
           {isFormValid && (

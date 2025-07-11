@@ -1,6 +1,7 @@
 import { useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { SlideButton } from "@/components/ui/slide-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Wand2, Shuffle, Star, Sparkles, Dice6 } from "lucide-react";
@@ -231,23 +232,17 @@ const EnhancedPromptForm = forwardRef<EnhancedPromptFormRef, EnhancedPromptFormP
           </SelectContent>
         </Select>
         
-        <Button
+        <SlideButton
           type="submit"
-          className="w-full bg-figuro-accent hover:bg-figuro-accent-hover h-10 disabled:opacity-50"
+          className="w-full h-10"
           disabled={isDisabled}
+          isLoading={isGenerating || isSubmitting}
+          loadingText={isSubmitting ? "Starting..." : "Generating..."}
+          icon={<Wand2 size={16} />}
+          variant="primary"
         >
-          {(isGenerating || isSubmitting) ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-              {isSubmitting ? "Starting..." : "Generating..."}
-            </>
-          ) : (
-            <>
-              <Wand2 size={16} className="mr-2" />
-              Generate Image
-            </>
-          )}
-        </Button>
+          Generate Image
+        </SlideButton>
       </form>
     </motion.div>
   );
