@@ -60,24 +60,36 @@ export const RadialOrbitalTimeline: React.FC<RadialOrbitalTimelineProps> = ({
       return [];
     }
 
-    const positions: Array<[number, number, number]> = [];
-    const radius = 4;
-    const layers = Math.ceil(nodes.length / 6);
-    
-    nodes.forEach((_, index) => {
-      const layer = Math.floor(index / 6);
-      const angleStep = (Math.PI * 2) / Math.min(6, nodes.length - layer * 6);
-      const angle = (index % 6) * angleStep;
-      const layerRadius = radius + layer * 2;
+    try {
+      const positions: Array<[number, number, number]> = [];
+      const radius = 4;
+      const layers = Math.ceil(nodes.length / 6);
       
-      const x = Math.cos(angle) * layerRadius;
-      const z = Math.sin(angle) * layerRadius;
-      const y = Math.sin(index * 0.5) * 0.5; // Slight vertical variation
+      nodes.forEach((_, index) => {
+        const layer = Math.floor(index / 6);
+        const nodesInLayer = Math.min(6, nodes.length - layer * 6);
+        const angleStep = (Math.PI * 2) / nodesInLayer;
+        const angle = (index % 6) * angleStep;
+        const layerRadius = radius + layer * 2;
+        
+        const x = Math.cos(angle) * layerRadius;
+        const z = Math.sin(angle) * layerRadius;
+        const y = Math.sin(index * 0.5) * 0.5; // Slight vertical variation
+        
+        // Ensure all values are finite numbers
+        if (isFinite(x) && isFinite(y) && isFinite(z)) {
+          positions.push([x, y, z]);
+        } else {
+          console.warn('Invalid position calculated:', { x, y, z, index, angle, layerRadius });
+          positions.push([0, 0, 0]); // Fallback position
+        }
+      });
       
-      positions.push([x, y, z]);
-    });
-    
-    return positions;
+      return positions;
+    } catch (error) {
+      console.error('Error calculating orbital positions:', error);
+      return [];
+    }
   };
 
   const orbitalPositions = calculateOrbitalPositions();
@@ -121,25 +133,25 @@ export const RadialOrbitalTimeline: React.FC<RadialOrbitalTimelineProps> = ({
       >
         <Suspense fallback={<ErrorFallback />}>
           <Canvas
-            shadows
             camera={{ position: [0, 0, 12], fov: 50 }}
-            gl={{ antialias: true, alpha: true }}
+            gl={{ antialias: true, alpha: true, preserveDrawingBuffer: false }}
             onError={(error) => console.error('Canvas error:', error)}
+            frameloop="always"
           >
-            <PerspectiveCamera makeDefault position={[0, 0, 12]} />
             <OrbitControls
               enableZoom={true}
               enablePan={false}
               minDistance={8}
               maxDistance={20}
               autoRotate={!hoveredNode}
-              autoRotateSpeed={0.5}
+              autoRotateSpeed={0.3}
+              enableDamping={true}
+              dampingFactor={0.05}
             />
             
-            {/* Lighting */}
-            <ambientLight intensity={0.3} />
-            <pointLight position={[10, 10, 10]} intensity={1} castShadow />
-            <pointLight position={[-10, -10, -10]} intensity={0.5} color="#8b5cf6" />
+            {/* Simplified Lighting */}
+            <ambientLight intensity={0.4} />
+            <directionalLight position={[5, 5, 5]} intensity={0.8} />
             
             {/* Environment */}
             <Environment preset="night" />
@@ -161,19 +173,24 @@ export const RadialOrbitalTimeline: React.FC<RadialOrbitalTimelineProps> = ({
             {/* Orbital Nodes */}
             {nodes.map((node, index) => {
               const position = orbitalPositions[index];
-              if (!position) return null;
+              if (!position || !Array.isArray(position) || position.length !== 3) return null;
               
-              return (
-                <OrbitalNode
-                  key={node.id}
-                  node={node}
-                  position={position}
-                  isSelected={selectedNode === node.id}
-                  isHovered={hoveredNode === node.id}
-                  onClick={() => handleNodeClick(node)}
-                  onHover={(isHovered) => handleNodeHover(isHovered ? node.id : null)}
-                />
-              );
+              try {
+                return (
+                  <OrbitalNode
+                    key={node.id}
+                    node={node}
+                    position={position}
+                    isSelected={selectedNode === node.id}
+                    isHovered={hoveredNode === node.id}
+                    onClick={() => handleNodeClick(node)}
+                    onHover={(isHovered) => handleNodeHover(isHovered ? node.id : null)}
+                  />
+                );
+              } catch (error) {
+                console.error('Error rendering OrbitalNode:', error, { node, position, index });
+                return null;
+              }
             })}
             
             {/* Orbital Rings */}

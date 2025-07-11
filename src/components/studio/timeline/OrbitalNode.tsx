@@ -26,18 +26,26 @@ export const OrbitalNode: React.FC<OrbitalNodeProps> = ({
 
   // Animation
   useFrame((state) => {
-    if (!meshRef.current) return;
+    if (!meshRef.current || !state?.clock) return;
     
     try {
+      const mesh = meshRef.current;
+      
+      // Ensure mesh has required properties before accessing
+      if (!mesh.position || !mesh.rotation || !mesh.scale) return;
+      
       // Gentle floating animation
-      meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime + position[0]) * 0.1;
+      mesh.position.y = position[1] + Math.sin(state.clock.elapsedTime + position[0]) * 0.1;
       
       // Rotation animation
-      meshRef.current.rotation.y += 0.01;
+      mesh.rotation.y += 0.01;
       
-      // Scale based on interaction
+      // Scale based on interaction with safety check
       const targetScale = isHovered || isSelected ? 1.2 : 1;
-      meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
+      const targetVector = new THREE.Vector3(targetScale, targetScale, targetScale);
+      if (mesh.scale && mesh.scale.lerp) {
+        mesh.scale.lerp(targetVector, 0.1);
+      }
     } catch (error) {
       console.error('Error in OrbitalNode animation:', error);
     }
