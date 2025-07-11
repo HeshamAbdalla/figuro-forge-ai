@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { TimelineNode } from '../types';
@@ -24,26 +24,36 @@ export const OrbitalNode: React.FC<OrbitalNodeProps> = ({
   const meshRef = useRef<THREE.Mesh>(null);
   const [localHovered, setLocalHovered] = useState(false);
 
-  // Animation
+  // Validate position prop
+  const safePosition = useMemo(() => {
+    if (!position || !Array.isArray(position) || position.length !== 3) {
+      console.warn('Invalid position provided to OrbitalNode:', position);
+      return [0, 0, 0] as [number, number, number];
+    }
+    return position.map(p => typeof p === 'number' && !isNaN(p) ? p : 0) as [number, number, number];
+  }, [position]);
+
+  // Simplified animation with better error handling
   useFrame((state) => {
     if (!meshRef.current || !state?.clock) return;
     
     try {
       const mesh = meshRef.current;
       
-      // Ensure mesh has required properties before accessing
-      if (!mesh.position || !mesh.rotation || !mesh.scale) return;
+      // Ensure mesh and properties exist
+      if (!mesh || !mesh.position || !mesh.rotation || !mesh.scale) return;
       
       // Gentle floating animation
-      mesh.position.y = position[1] + Math.sin(state.clock.elapsedTime + position[0]) * 0.1;
+      const elapsedTime = state.clock.elapsedTime || 0;
+      mesh.position.y = safePosition[1] + Math.sin(elapsedTime + safePosition[0]) * 0.1;
       
       // Rotation animation
       mesh.rotation.y += 0.01;
       
-      // Scale based on interaction with safety check
+      // Scale based on interaction
       const targetScale = isHovered || isSelected ? 1.2 : 1;
-      const targetVector = new THREE.Vector3(targetScale, targetScale, targetScale);
-      if (mesh.scale && mesh.scale.lerp) {
+      if (mesh.scale && typeof mesh.scale.lerp === 'function') {
+        const targetVector = new THREE.Vector3(targetScale, targetScale, targetScale);
         mesh.scale.lerp(targetVector, 0.1);
       }
     } catch (error) {
@@ -89,12 +99,14 @@ export const OrbitalNode: React.FC<OrbitalNodeProps> = ({
   const nodeColor = getNodeColor();
   const emissiveIntensity = isHovered || isSelected ? 0.8 : 0.3;
 
-  if (!position || position.length !== 3) {
+  // Early return with validation
+  if (!safePosition || safePosition.some(isNaN)) {
+    console.warn('OrbitalNode: Invalid position, skipping render');
     return null;
   }
 
   return (
-    <group position={position}>
+    <group position={safePosition}>
       {/* Main Node Sphere */}
       <mesh
         ref={meshRef}
@@ -159,51 +171,8 @@ export const OrbitalNode: React.FC<OrbitalNodeProps> = ({
         </div>
       </Html>
 
-      {/* Connection Line to Center */}
-      <group>
-        <line>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              array={new Float32Array([
-                0, 0, 0,  // Start at node
-                -position[0] * 0.9, -position[1] * 0.9, -position[2] * 0.9  // End near center
-              ])}
-              count={2}
-              itemSize={3}
-            />
-          </bufferGeometry>
-          <lineBasicMaterial
-            color={nodeColor}
-            transparent
-            opacity={isHovered || isSelected ? 0.6 : 0.2}
-            linewidth={2}
-          />
-        </line>
-      </group>
-
-      {/* Particle Effects for Special Nodes */}
-      {(node.popular || node.new) && (
-        <group>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <mesh
-              key={i}
-              position={[
-                Math.cos((i / 6) * Math.PI * 2) * 1.2,
-                Math.sin(Date.now() * 0.001 + i) * 0.1,
-                Math.sin((i / 6) * Math.PI * 2) * 1.2,
-              ]}
-            >
-              <sphereGeometry args={[0.02, 8, 8]} />
-              <meshBasicMaterial
-                color={node.popular ? '#fbbf24' : '#10b981'}
-                transparent
-                opacity={0.8}
-              />
-            </mesh>
-          ))}
-        </group>
-      )}
+      {/* Simplified Connection Line - Temporarily removed complex buffer geometry */}
+      {/* TODO: Re-implement connection line with proper geometry once error is resolved */}
     </group>
   );
 };
