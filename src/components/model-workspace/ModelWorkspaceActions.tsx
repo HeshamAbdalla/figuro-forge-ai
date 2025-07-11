@@ -1,11 +1,12 @@
 
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Share2, Heart, Eye, Copy, Edit } from "lucide-react";
 import { Figurine } from "@/types/figurine";
 import ShareModelModal from "./ShareModelModal";
 import { useFigurineLikes } from "@/hooks/useFigurineLikes";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
+import { cn } from "@/lib/utils";
 
 interface ModelWorkspaceActionsProps {
   figurine: Figurine;
@@ -34,70 +35,82 @@ const ModelWorkspaceActions: React.FC<ModelWorkspaceActionsProps> = ({
 
   return (
     <>
-      <Card className="bg-gray-900/50 border-white/10">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center">
-            <Eye className="w-5 h-5 mr-2 text-figuro-accent" />
-            Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button
-            onClick={onDownload}
-            className="w-full bg-figuro-accent hover:bg-figuro-accent/80 text-white"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Download {figurine.model_url ? 'Model' : 'Image'}
-          </Button>
-
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              onClick={handleShareClick}
-              className="border-white/20 text-white hover:bg-white/10"
-            >
-              <Share2 className="w-4 h-4 mr-1" />
-              Share
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={handleLike}
-              disabled={isLiking}
-              className={`border-white/20 ${
-                isLiked 
-                  ? 'text-red-400 border-red-400/50 hover:bg-red-400/10' 
-                  : 'text-white hover:bg-white/10'
-              }`}
-            >
-              <Heart className={`w-4 h-4 mr-1 ${isLiked ? 'fill-current' : ''}`} />
-              {isLiked ? `Liked (${likeCount})` : `Like (${likeCount})`}
-            </Button>
+      <div className="relative rounded-[1.25rem] border-[0.75px] border-border p-2 md:rounded-[1.5rem] md:p-3">
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+          borderWidth={3}
+        />
+        <div className="relative flex flex-col overflow-hidden rounded-xl border-[0.75px] bg-background p-6 shadow-sm dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
+          <div className="flex items-center mb-4">
+            <div className="w-fit rounded-lg border-[0.75px] border-border bg-muted p-2 mr-3">
+              <Eye className="w-4 h-4" />
+            </div>
+            <h2 className="text-xl font-semibold text-foreground">Actions</h2>
           </div>
+          
+          <div className="space-y-3">
+            <Button
+              onClick={onDownload}
+              className="w-full bg-figuro-accent hover:bg-figuro-accent/80 text-white"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download {figurine.model_url ? 'Model' : 'Image'}
+            </Button>
 
-          <div className="pt-4 border-t border-white/10">
-            <h4 className="text-white text-sm font-medium mb-3">Create Similar</h4>
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
-                size="sm"
-                className="w-full border-white/20 text-white hover:bg-white/10 justify-start"
+                onClick={handleShareClick}
+                className="border-border text-foreground hover:bg-muted"
               >
-                <Copy className="w-4 h-4 mr-2" />
-                Use This Prompt
+                <Share2 className="w-4 h-4 mr-1" />
+                Share
               </Button>
+
               <Button
                 variant="outline"
-                size="sm"
-                className="w-full border-white/20 text-white hover:bg-white/10 justify-start"
+                onClick={handleLike}
+                disabled={isLiking}
+                className={cn(
+                  "border-border",
+                  isLiked 
+                    ? 'text-red-400 border-red-400/50 hover:bg-red-400/10' 
+                    : 'text-foreground hover:bg-muted'
+                )}
               >
-                <Edit className="w-4 h-4 mr-2" />
-                Remix This Model
+                <Heart className={`w-4 h-4 mr-1 ${isLiked ? 'fill-current' : ''}`} />
+                {isLiked ? `Liked (${likeCount})` : `Like (${likeCount})`}
               </Button>
             </div>
+
+            <div className="pt-4 border-t border-border">
+              <h4 className="text-foreground text-sm font-medium mb-3">Create Similar</h4>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-border text-foreground hover:bg-muted justify-start"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Use This Prompt
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-border text-foreground hover:bg-muted justify-start"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Remix This Model
+                </Button>
+              </div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <ShareModelModal
         isOpen={showShareModal}
