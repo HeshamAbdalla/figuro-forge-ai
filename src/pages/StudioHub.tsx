@@ -9,13 +9,20 @@ import { Images, Stars, Sparkles, Wand2 } from "lucide-react";
 import { Suspense, useState, useEffect } from "react";
 import SimpleErrorBoundary from "@/components/common/SimpleErrorBoundary";
 import { RadialOrbitalTimeline } from "@/components/studio/timeline/RadialOrbitalTimeline";
-import { studioNodes } from "@/components/studio/data/studioNodes";
+import { getStudioNodesWithModels, studioNodes } from "@/components/studio/data/studioNodes";
 import { TimelineNode } from "@/components/studio/types";
+import { useGalleryModels } from "@/hooks/useGalleryModels";
 
 const StudioHub = () => {
   const navigate = useNavigate();
   const { user } = useEnhancedAuth();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  // Fetch gallery models for timeline nodes
+  const { models: galleryModels, loading: galleryLoading } = useGalleryModels(5);
+  
+  // Generate dynamic studio nodes with gallery models
+  const dynamicStudioNodes = galleryLoading ? studioNodes : getStudioNodesWithModels(galleryModels);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -161,7 +168,7 @@ const StudioHub = () => {
                   }>
                     <SimpleErrorBoundary>
                       <RadialOrbitalTimeline
-                        nodes={studioNodes}
+                        nodes={dynamicStudioNodes}
                         onNodeClick={handleNodeClick}
                         className="h-[600px]"
                       />
