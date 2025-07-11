@@ -280,7 +280,7 @@ const ModelWorkspace = () => {
             </div>
 
             {/* Sidebar - Info and Actions */}
-            <div className="lg:col-span-1 space-y-4 overflow-y-auto">
+            <div className="lg:col-span-1 space-y-4">
               <ModelWorkspaceInfo figurine={figurine} />
               <ModelWorkspaceActions 
                 figurine={figurine}
@@ -306,7 +306,7 @@ const ModelWorkspace = () => {
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
           {/* Left Sidebar - Model Info */}
-          <div className="lg:col-span-1 space-y-4 overflow-y-auto">
+          <div className="lg:col-span-1 space-y-4">
             <ModelWorkspaceInfo figurine={figurine} />
             <ModelWorkspaceSpecs figurine={figurine} />
           </div>
@@ -342,7 +342,7 @@ const ModelWorkspace = () => {
           </div>
 
           {/* Right Sidebar - Actions & Related */}
-          <div className="lg:col-span-1 space-y-4 overflow-y-auto">
+          <div className="lg:col-span-1 space-y-4">
             <ModelWorkspaceActions 
               figurine={figurine}
               onDownload={handleDownload}
