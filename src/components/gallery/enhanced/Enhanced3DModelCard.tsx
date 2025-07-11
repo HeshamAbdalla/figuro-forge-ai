@@ -5,10 +5,11 @@ import { Heart, Box } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { GlareCard } from "@/components/ui/glare-card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Figurine } from "@/types/figurine";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 
 interface Enhanced3DModelCardProps {
   figurine: Figurine;
@@ -114,70 +115,94 @@ const Enhanced3DModelCard: React.FC<Enhanced3DModelCardProps> = ({
   };
 
   const isTextTo3D = figurine.style === 'text-to-3d' || figurine.title.startsWith('Text-to-3D:');
+  const { isMobile, isTablet } = useResponsiveLayout();
+
+  // Responsive sizing for GlareCard
+  const cardStyle = {
+    "--radius": "16px",
+    width: isMobile ? "280px" : isTablet ? "300px" : "320px",
+    aspectRatio: isMobile ? "3/4" : "17/21",
+  } as React.CSSProperties;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -2, scale: 1.02 }}
-      transition={{ duration: 0.3 }}
-      className={`${className} cursor-pointer`}
+      whileHover={{ y: -8, scale: 1.02 }}
+      transition={{ duration: 0.4, type: "spring", stiffness: 200 }}
+      className={`${className} cursor-pointer group`}
       onClick={handleCardClick}
+      style={cardStyle}
     >
-      <Card className="bg-gradient-to-br from-gray-900/80 via-gray-800/60 to-gray-900/80 border border-white/10 hover:border-figuro-accent/40 transition-all duration-300 overflow-hidden group backdrop-blur-sm h-[400px]">
+      <GlareCard className="relative overflow-hidden">
         {/* Full Height Image Preview */}
-        <div className="relative h-full overflow-hidden bg-gray-900/50">
+        <div className="relative h-full w-full">
           <img
             src={figurine.image_url}
             alt={figurine.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = '/placeholder-model.png';
             }}
           />
           
-          {/* Subtle gradient overlay for better contrast */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10" />
+          {/* Enhanced gradient overlay for holographic effect */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
+          <div className="absolute inset-0 bg-gradient-to-br from-figuro-accent/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           
           {/* Top badges */}
-          <div className="absolute top-3 left-3 flex gap-2">
+          <div className="absolute top-3 left-3 flex gap-2 z-10">
             {isTextTo3D && (
-              <Badge className="bg-figuro-accent/90 text-white text-xs">
+              <Badge className="bg-figuro-accent/90 backdrop-blur-sm text-white text-xs border border-white/20">
                 <Box className="w-3 h-3 mr-1" />
                 Text-to-3D
               </Badge>
             )}
             {figurine.model_url && (
-              <Badge className="bg-green-500/90 text-white text-xs">
+              <Badge className="bg-emerald-500/90 backdrop-blur-sm text-white text-xs border border-white/20">
                 3D Model
               </Badge>
             )}
           </div>
 
-          {/* Like Button with count */}
-          <div className="absolute top-3 right-3 flex items-center gap-2">
+          {/* Like Button with enhanced styling */}
+          <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
             {likeCount > 0 && (
-              <span className="text-white/80 text-sm font-medium bg-black/40 px-2 py-1 rounded-full backdrop-blur-sm">
+              <span className="text-white/90 text-sm font-semibold bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
                 {likeCount}
               </span>
             )}
             <Button
               size="sm"
               variant="ghost"
-              className="p-2 bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm transition-colors"
+              className="p-2 bg-black/50 hover:bg-red-500/20 text-white backdrop-blur-sm transition-all duration-300 border border-white/20 hover:border-red-400/50"
               onClick={handleLike}
               disabled={isLiking}
             >
               <Heart 
-                className={`w-4 h-4 transition-colors ${
-                  isLiked ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'
+                className={`w-4 h-4 transition-all duration-300 ${
+                  isLiked 
+                    ? 'fill-red-500 text-red-500 scale-110' 
+                    : 'text-white hover:text-red-400 hover:scale-110'
                 }`} 
               />
             </Button>
           </div>
+
+          {/* Bottom info overlay with holographic styling */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent backdrop-blur-sm">
+            <h3 className="text-white font-semibold text-sm mb-1 truncate">
+              {figurine.title}
+            </h3>
+            {figurine.metadata?.creator_name && (
+              <p className="text-white/70 text-xs truncate">
+                by {figurine.metadata.creator_name}
+              </p>
+            )}
+          </div>
         </div>
-      </Card>
+      </GlareCard>
     </motion.div>
   );
 };
