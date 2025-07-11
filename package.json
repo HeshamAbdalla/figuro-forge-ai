@@ -59,6 +59,7 @@
     "framer-motion-3d": "^12.4.13",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.462.0",
+    "motion": "^12.23.3",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",

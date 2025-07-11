@@ -7,6 +7,7 @@ interface SlideButtonProps extends Omit<ButtonProps, 'variant'> {
   children?: ReactNode;
   isLoading?: boolean;
   loadingText?: string;
+  loadingContent?: ReactNode;
   icon?: ReactNode;
   direction?: 'left' | 'right';
   variant?: 'primary' | 'secondary' | 'outline' | 'default' | 'destructive' | 'ghost' | 'link';
@@ -17,6 +18,7 @@ const SlideButton = forwardRef<HTMLButtonElement, SlideButtonProps>(
     children, 
     isLoading = false, 
     loadingText = "Processing...", 
+    loadingContent,
     icon, 
     direction = 'right',
     variant = 'default',

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SlideButton } from "@/components/ui/slide-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ImageGeneration } from "@/components/ui/ai-chat-image-generation-1";
 import { Wand2, Shuffle, Star, Sparkles, Dice6 } from "lucide-react";
 
 const ART_STYLES = [
@@ -232,17 +233,31 @@ const EnhancedPromptForm = forwardRef<EnhancedPromptFormRef, EnhancedPromptFormP
           </SelectContent>
         </Select>
         
-        <SlideButton
-          type="submit"
-          className="w-full h-10"
-          disabled={isDisabled}
-          isLoading={isGenerating || isSubmitting}
-          loadingText={isSubmitting ? "Starting..." : "Generating..."}
-          icon={<Wand2 size={16} />}
-          variant="primary"
-        >
-          Generate Image
-        </SlideButton>
+        {isGenerating ? (
+          <div className="w-full">
+            <ImageGeneration>
+              <div className="aspect-video w-full bg-figuro-accent/20 rounded-lg flex items-center justify-center">
+                <img
+                  className="aspect-video max-w-full object-cover rounded-lg"
+                  src="https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=800&q=80"
+                  alt="Generation preview"
+                />
+              </div>
+            </ImageGeneration>
+          </div>
+        ) : (
+          <SlideButton
+            type="submit"
+            className="w-full h-10"
+            disabled={isDisabled}
+            isLoading={isSubmitting}
+            loadingText="Starting..."
+            icon={<Wand2 size={16} />}
+            variant="primary"
+          >
+            Generate Image
+          </SlideButton>
+        )}
       </form>
     </motion.div>
   );
