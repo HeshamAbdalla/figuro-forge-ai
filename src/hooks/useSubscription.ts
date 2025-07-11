@@ -245,6 +245,7 @@ export const useSubscription = () => {
       actionType,
       planType: subscription.plan_type,
       isUnlimited: planLimits.is_unlimited,
+      planTypeCheck: subscription.plan_type === 'unlimited',
       totalCredits: (subscription.credits_remaining || 0) + (subscription.bonus_credits || 0),
       imageGenerationsLimit: planLimits.image_generations_limit,
       modelConversionsLimit: planLimits.model_conversions_limit,
@@ -252,8 +253,9 @@ export const useSubscription = () => {
       convertedCountThisMonth: subscription.converted_3d_this_month
     });
     
-    if (planLimits.is_unlimited) {
-      console.log('✅ [useSubscription] Unlimited plan - action allowed');
+    // For unlimited plans, always allow action - check both is_unlimited flag and plan_type
+    if (planLimits.is_unlimited || subscription.plan_type === 'unlimited') {
+      console.log('✅ [useSubscription] Unlimited plan detected - action always allowed');
       return true;
     }
 

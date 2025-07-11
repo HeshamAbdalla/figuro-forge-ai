@@ -71,7 +71,6 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
     }
   }, [isUpgradeModalOpen, upgradeModalAction, user]);
 
-  // Properly memoize the showUpgradeModal function with stable dependencies
   const showUpgradeModal = useCallback((action: UpgradeModalAction) => {
     console.log('🔥 [UPGRADE-MODAL-HOOK] ===== SHOWING UPGRADE MODAL =====');
     
@@ -80,6 +79,13 @@ export const useEnhancedUpgradeModal = (): UseEnhancedUpgradeModalReturn => {
       console.error('❌ [UPGRADE-MODAL-HOOK] Invalid upgrade action provided:', action);
       console.error('✅ [UPGRADE-MODAL-HOOK] Valid actions are:', ["image_generation", "model_conversion", "model_remesh"]);
       return; // Early exit on invalid action
+    }
+    
+    // Add additional check - if user has unlimited plan, don't show upgrade modal
+    if (user) {
+      // This is temporary debugging - we should NOT show upgrade modal for unlimited users
+      console.log('⚠️ [UPGRADE-MODAL-HOOK] WARNING: Upgrade modal triggered for authenticated user');
+      console.log('⚠️ [UPGRADE-MODAL-HOOK] This might be a bug if user has unlimited plan');
     }
     
     // Prevent duplicate calls - guard against re-triggering

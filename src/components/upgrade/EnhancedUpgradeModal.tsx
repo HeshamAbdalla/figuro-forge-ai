@@ -91,9 +91,10 @@ const EnhancedUpgradeModal: React.FC<EnhancedUpgradeModalProps> = ({
     return null;
   }
 
-  // Log when modal should be visible but isOpen is false
+  // Temporarily comment out the warning that might prevent rendering
   if (!isOpen && actionType) {
     console.warn('❌ [ENHANCED-UPGRADE-MODAL] Modal rendered but isOpen=false with actionType:', actionType);
+    // Don't return null here - let it render to debug
   }
 
   // If modal should be open, log visibility check
